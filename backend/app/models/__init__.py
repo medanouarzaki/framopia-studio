@@ -1,5 +1,6 @@
 """Public models for the Framopia Studio backend."""
 
+from app.models.job import Job, JobState, JobStatus
 from app.models.edit_plan import (
     AudioPlan,
     CaptionLine,
@@ -16,6 +17,9 @@ from app.models.edit_plan import (
 from app.models.validate import EditPlanValidationError, validate_edit_plan
 
 __all__ = [
+    "Job",
+    "JobState",
+    "JobStatus",
     "AudioPlan",
     "CaptionLine",
     "EditPlan",

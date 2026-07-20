@@ -115,3 +115,27 @@ Claude Code runs `acceptEdits` + allowlist by default (`.claude/settings.json`).
 **Reason:** The spec (§16.4) says to enforce a configurable ceiling but does not pick a value. For an internal two-operator tool, 5 USD per job is generous (a 30s reel with 8 images at ~4¢ each + ASR/text calls costs well under $1). 5 USD gives headroom for larger jobs while providing a meaningful guard against runaway loops. Operators override via `.env` for their workflow.
 
 ---
+
+## D-012 · Job ID format: YYYYMMDD-HHMMSS-<6hex> (2026-07-20)
+
+**Decision:** Job IDs are generated as `{UTC-timestamp}-{uuid4().hex[:6]}`, e.g. `20260720-143022-a3f9e1`.
+
+**Reason:** Timestamp prefix makes IDs lexicographically sortable by creation time with no extra index. Six hex chars from uuid4 give 16^6 = ~16M collision resistance per second — more than adequate for a two-operator local tool. Human-readable without decoding. Job directories on disk sort in creation order.
+
+---
+
+## D-013 · In-memory status: source of truth for live state only (2026-07-20)
+
+**Decision:** `JobManager._statuses` and `_jobs` dicts are the live source of truth. They are NOT persisted to disk beyond `job.json` (which holds durable metadata only, not live state). Cross-process-restart resume is OUT OF SCOPE for v1.
+
+**Reason:** v1 is a local, two-operator tool. Restarts are intentional (config changes, code updates). In-flight jobs are uncommon and short (under a minute end-to-end). Adding durable state (a SQLite db, Redis, etc.) would increase complexity without proportional benefit. If a restart kills a job, the operator re-submits — acceptable tradeoff. Revisit for v2 if usage patterns change.
+
+---
+
+## D-014 · jobs_dir is NOT in Settings (2026-07-20)
+
+**Decision:** The `jobs_root` path is NOT a `Settings` field and is never sourced from `.env`. `JobManager` accepts it as a constructor argument (defaulting to `DEFAULT_JOBS_ROOT = <repo_root>/jobs/`). Tests inject `tmp_path` directly.
+
+**Reason:** Jobs root is a structural repo path, not an operator secret or environment variable. Putting it in Settings would invite operators to misconfigure it (e.g. writing jobs outside the repo). Keeping it hardcoded as a constant with an injectable override for tests is simpler, safer, and consistent with D-010 (host also not configurable). The repo's `.gitignore` already ignores `/jobs/`.
+
+---

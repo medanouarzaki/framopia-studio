@@ -132,3 +132,32 @@ This machine runs Python 3.14.2 (Homebrew default). The spec (§6.1 / Appendix D
 **M0 is now COMPLETE.** T-000 through T-005 are all done. Next: T-101 (job workspace + job manager + async runner) starts M1.
 
 ---
+
+## 2026-07-20 — T-101 · Job workspace + job manager + async stage runner
+
+**What was done:**
+- Created `backend/app/models/job.py`: `JobState` (`enum.StrEnum` — values "running", "awaiting_correction", "ready_for_ae", "error"), `JobStatus` (state, stage, progress_pct clamped [0,100], message), `Job` (durable record — job_id, created_at, brand_kit, brief, width/height/fps/duration/model_ids).
+- Updated `backend/app/models/__init__.py` to export `Job`, `JobState`, `JobStatus`.
+- Created `backend/app/jobs/paths.py`: `WorkspacePaths` frozen dataclass with `jobs_root + job_id` constructor; properties for `job_dir`, `assets_dir`, `images_dir`, `audio_dir`, `client_dir`, `log_path`, `job_json_path`. `DEFAULT_JOBS_ROOT = <repo_root>/jobs/`.
+- Created `backend/app/jobs/joblog.py`: `JobLogger` — append-only JSON Lines to `log.txt`; `log_stage()`, `log_error()`, `log_gate()`. Never logs secret values (spec §20).
+- Created `backend/app/jobs/manager.py`: `JobContext` (job_id, paths, job, logger, settings), `Stage` (name, run callable, is_gate flag), `_PipelineState` (gate-pause record), `JobManager` (`create()`, `status()`, `get_job()`, `list_jobs()`, `run_pipeline()`, `resume()`, `_run_stages()`).
+- Stage runner: iterates stages, updates status progress before each, calls `await stage.run(ctx)`, logs duration on success, sets ERROR + halts on exception, pauses at gate stages (saves `_PipelineState` in `_pending`), sets READY_FOR_AE + progress=100 on completion.
+- `resume()` pops from `_pending`, re-enters `_run_stages()` with remaining stages.
+- Created `backend/tests/test_jobs.py`: 15 tests — JobState string values, workspace scaffolding, job.json round-trip, initial status, tmp_path isolation, straight-through pipeline, progress advancement, gate pause, resume, resume-without-gate error, error halt, error message no-secret, log no-secret, progress_pct clamp, list_jobs.
+- 55/55 tests green; ruff clean.
+
+**Decisions logged:** D-012 (job ID format), D-013 (in-memory status scope), D-014 (jobs_dir not in Settings).
+
+**What T-102 (ingest) needs to know:**
+- Receive a `JobContext`; fill `ctx.job.width/height/fps/duration` and write updated `job.json` via `ctx.paths.job_json_path.write_text(ctx.job.model_dump_json(indent=2))`.
+- Source video is at `ctx.paths.client_dir / <filename>` (provided by the operator; ingest validates its existence).
+- Call `ctx.logger.log_stage("ingest", duration_s, width=w, height=h, fps=f, duration_s=d)` on success.
+
+**What T-106 (correction gate API) needs to know:**
+- Mark the ASR correction stage as `is_gate=True` in the pipeline stages list.
+- After the operator submits a corrected transcript, call `await mgr.resume(job_id)` to continue downstream.
+- `mgr._pending[job_id]` holds the remaining stages + ctx — the gate mechanism is generic.
+
+**Next task:** T-102 (ingest stage) — first real pipeline stage.
+
+---
