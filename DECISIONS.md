@@ -41,3 +41,19 @@ Claude Code runs `acceptEdits` + allowlist by default (`.claude/settings.json`).
 **Reason:** Spec §17.6 requires the build to be fully automated via CLI. Both operators (Mohamed + Younes) have push access; Younes to be added as a collaborator once his GitHub username is provided.
 
 ---
+
+## D-003 · librosa version pin (2026-07-20)
+
+**Decision:** `librosa>=0.10.1,<1.0` in `pyproject.toml`.
+
+**Reason:** librosa 0.10.x is the last thoroughly stable release series with a stable public API. Pinning `<1.0` protects against a future breaking major-version bump. numpy and scipy are left lower-bounded only since librosa's own resolver manages their compatibility.
+
+---
+
+## D-004 · Version string source (2026-07-20)
+
+**Decision:** `__version__ = "0.1.0"` in `backend/app/__init__.py` is the single source of truth. `pyproject.toml` `[project].version` mirrors it (both say `0.1.0`); `/health` reads it via `from app import __version__`.
+
+**Reason:** Avoids `importlib.metadata` (requires the package to be installed, complicates test environments). One definition, imported everywhere — no duplication. If ever driven from VCS tags, only `__init__.py` changes.
+
+---

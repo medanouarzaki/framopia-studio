@@ -48,3 +48,29 @@ This is the only remaining step for T-001.
 **Next session needs to know:** T-002 (Python backend + /health) is next. The backend must bind to `127.0.0.1` only. Brand Kit `config.json` has placeholder palette — Mohamed/Younes need to fill real values before T-201, but that's not a blocker now.
 
 ---
+
+## 2026-07-20 — T-002 · Python backend project + tooling + /health
+
+**What was done:**
+- Created `backend/pyproject.toml` (hatchling build, Python 3.12+, all runtime + dev deps declared).
+- Created `backend/app/__init__.py` with `__version__ = "0.1.0"` as the single version source.
+- Created `backend/app/main.py`: FastAPI app with `GET /health` returning `{status, version, ffmpeg_ok, keys_ok}`; `SERVER_HOST = "127.0.0.1"` and `SERVER_PORT = 8000` as the single binding constants; `ffmpeg_ok` and `keys_ok` are stubs (both `True`) until T-005.
+- Created `backend/app/config.py`: importable stub only, clearly marked `# T-005: full config`.
+- Created `backend/tests/test_health.py`: 4 tests — 200 status, response shape + types, exact key set, localhost-only binding assertion.
+- Installed all deps into `backend/.venv` (Python 3.14.2 — satisfies ≥3.12).
+- `pytest`: 4/4 passed. `ruff check`: all checks passed (one import-sort auto-fixed).
+
+**Runtime on this machine:** Python 3.14.2 (Homebrew) — newer than the 3.12+ spec minimum; no compatibility issues found.
+
+**Decisions logged:** D-003 (librosa version pin), D-004 (version string source).
+
+**What T-005 needs to know:**
+- `ffmpeg_ok` and `keys_ok` in `/health` are explicit stubs; T-005 replaces with real checks.
+- `SERVER_PORT = 8000` is in `app/main.py`; T-005 should wire it to `pydantic-settings` config.
+- Venv lives at `backend/.venv`; use `backend/.venv/bin/python -m pytest` or activate it.
+
+**What T-004 needs to know:** `backend/app/models/` is empty (only `.gitkeep`); T-004 creates `edit_plan.py` there. `backend/app/__init__.py` exists and exports `__version__`.
+
+**Next task:** T-004 (Edit Plan schema + golden example + validator) or T-005 (config + secrets) — both depend only on T-002. Either can go next; T-004 is the central contract.
+
+---

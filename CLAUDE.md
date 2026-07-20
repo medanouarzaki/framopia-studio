@@ -18,9 +18,12 @@ Before touching any file: read `PROGRESS.md` (latest entries), `TASKS.md` (next 
 ## How to run tests
 
 ```bash
-cd backend && python -m pytest          # run all backend tests
-cd backend && ruff check .              # lint
+cd backend && .venv/bin/python -m pytest    # run all backend tests (use venv Python)
+cd backend && .venv/bin/ruff check .        # lint
 ```
+
+The venv lives at `backend/.venv`. Activate it with `source backend/.venv/bin/activate` or prefix
+commands with `backend/.venv/bin/` as shown above. The venv is git-ignored.
 
 Always run pytest before committing. Paste results in the completion report. A stage without a passing test is not done.
 

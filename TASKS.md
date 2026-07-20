@@ -11,7 +11,7 @@ Status legend: `[ ]` TODO · `[~]` IN-PROGRESS · `[x]` DONE · `[B]` BLOCKED ·
 
 - [x] **T-000** GitHub + git tooling bootstrap (one-time auth)
 - [x] **T-001** Repo scaffolding + state files + create/push private repo
-- [ ] **T-002** Python backend project + tooling + /health
+- [x] **T-002** Python backend project + tooling + /health
 - [ ] **T-003** Scripted, idempotent Mac environment setup
 - [ ] **T-004** Edit Plan schema (Pydantic) + golden example + validator
 - [ ] **T-005** Config + secrets + cost-control scaffolding
