@@ -2,7 +2,7 @@
 
 Internal automation tool that turns an already-cut talking-head video (Moroccan Darija / French / English) into a finished vertical reel — captions, B-roll images, music, and motion — by building an After Effects composition from hand-crafted templates.
 
-**Operators:** Mohamed Anouar Zaki + Younes (Framopia). Not a public product.
+**Operators:** Mohamed Anouar Zaki + Younes Derfoufi (Framopia). Not a public product.
 
 ## Quick links
 
