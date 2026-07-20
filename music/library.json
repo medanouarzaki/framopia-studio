@@ -1,0 +1,5 @@
+{
+  "_comment": "Music library index. Add tracks here; actual audio files are git-ignored. Mood values: cozy, energetic, upbeat, calm, dramatic, playful. Energy: 1 (very low) to 5 (very high).",
+  "tracks": [],
+  "sfx": []
+}

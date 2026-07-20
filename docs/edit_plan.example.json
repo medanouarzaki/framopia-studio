@@ -1,0 +1,104 @@
+{
+  "schema_version": "1.0",
+  "job_id": "20260720-demo01",
+  "brand_kit": "framopia-clientA",
+  "reel": {
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "duration": 12.0
+  },
+  "source": {
+    "video": "input.mp4",
+    "audio": "audio.wav"
+  },
+  "captions": [
+    {
+      "segment_index": 0,
+      "template": "caption_karaoke_default",
+      "words": [
+        { "text": "Salam", "script": "latin",  "start": 0.30, "end": 0.60, "emphasis": false },
+        { "text": "بزاف",  "script": "arabic", "start": 0.60, "end": 0.95, "emphasis": true  },
+        { "text": "ديال",  "script": "arabic", "start": 0.95, "end": 1.20, "emphasis": false },
+        { "text": "promo", "script": "latin",  "start": 1.20, "end": 1.70, "emphasis": true  }
+      ]
+    },
+    {
+      "segment_index": 1,
+      "template": "caption_karaoke_default",
+      "words": [
+        { "text": "300",   "script": "latin",  "start": 2.10, "end": 2.45, "emphasis": true  },
+        { "text": "DH",    "script": "latin",  "start": 2.45, "end": 2.70, "emphasis": true  },
+        { "text": "غير",   "script": "arabic", "start": 2.70, "end": 2.95, "emphasis": false },
+        { "text": "معقولة",   "script": "arabic", "start": 2.95, "end": 3.50, "emphasis": false }
+      ]
+    }
+  ],
+  "visuals": [
+    {
+      "id": "v1",
+      "kind": "generated_image",
+      "asset": "assets/images/v1.png",
+      "text": null,
+      "template": "image_reveal_slideup",
+      "start": 2.02,
+      "end": 6.05,
+      "beat_aligned": true
+    },
+    {
+      "id": "v2",
+      "kind": "client_asset",
+      "asset": "assets/client/product.png",
+      "text": null,
+      "template": "image_reveal_scalein",
+      "start": 6.05,
+      "end": 9.10,
+      "beat_aligned": true
+    },
+    {
+      "id": "v3",
+      "kind": "animated_text",
+      "asset": null,
+      "text": "300 DH",
+      "template": "animtext_bold",
+      "start": 9.10,
+      "end": 11.50,
+      "beat_aligned": true
+    }
+  ],
+  "motion": [
+    {
+      "kind": "punch_in",
+      "target": "speaker",
+      "at": 4.00,
+      "amount": 1.08,
+      "template": "punch_soft"
+    },
+    {
+      "kind": "transition",
+      "template": "transition_whip_pan",
+      "at": 6.05
+    }
+  ],
+  "audio": {
+    "music": {
+      "asset": "assets/audio/track_cozy_01.wav",
+      "gain_db": -14.0,
+      "start": 0.0
+    },
+    "sfx": [
+      {
+        "asset": "assets/audio/whoosh.wav",
+        "at": 6.05,
+        "gain_db": -10.0
+      }
+    ]
+  },
+  "beats": [0.50, 1.02, 1.55, 2.02, 2.55, 3.05, 3.55, 4.02, 6.05, 9.10],
+  "meta": {
+    "summary": "Client A announces a 300 DH promo offer — a great deal, the speaker emphasizes.",
+    "brief": "cozy autumn promo, 300 DH deal, warm mood",
+    "generated_at": "2026-07-20T10:00:00Z",
+    "cost_estimate_usd": 0.28
+  }
+}

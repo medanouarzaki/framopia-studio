@@ -1,0 +1,45 @@
+# Secrets
+.env
+
+# Per-job workspaces (large, generated, not committed)
+/jobs/
+
+# Music and SFX tracks (large binary files — library.json IS committed)
+/music/*.wav
+/music/*.mp3
+/music/*.aif
+/music/*.aiff
+/music/*.m4a
+
+# Brand kit samples (large reference reels)
+brand_kits/*/samples/*
+!brand_kits/*/samples/.gitkeep
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+*.egg-info/
+dist/
+build/
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+htmlcov/
+.coverage
+
+# Node / JS
+node_modules/
+npm-debug.log*
+
+# macOS
+.DS_Store
+.AppleDouble
+
+# IDE
+.vscode/
+.idea/
+*.swp
