@@ -1,0 +1,4 @@
+{
+  "text": "{\"summary\": \"Speaker promotes a 300-dirham cold-brew promo to a Moroccan audience.\", \"segments\": [{\"start_word_idx\": 0, \"end_word_idx\": 4, \"visual_intent\": \"show product packaging\", \"emphasis_words\": [\"300\", \"dirham\", \"promo\"]}]}",
+  "model_id": "gemini-2.5-flash"
+}

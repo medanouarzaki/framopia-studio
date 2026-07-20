@@ -36,6 +36,13 @@ class Settings(BaseSettings):
     # Server — host is NOT here by design (D-010 / §21)
     backend_port: int = 8000
 
+    # Gemini model IDs (D-022) — sourced here so stages/tests can override via .env
+    # Text model used for ASR (Stage 3) and understanding (Stage 6).
+    gemini_text_model: str = "gemini-2.5-flash"
+    # Image models: Nano Banana 2 (default workhorse) and Pro (hero shots) per spec §6.4.
+    gemini_image_model: str = "gemini-3.1-flash-image"
+    gemini_image_pro_model: str = "gemini-3-pro-image"
+
     # Cost controls (§16.4)
     max_images_per_job: int = 8
     cheap_mode: bool = False

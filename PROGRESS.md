@@ -260,3 +260,65 @@ own `_run_ffprobe`. A future session can clean this up by updating the T-102 moc
 **Next task:** T-104 (Gemini client — asr/understand/image, mockable).
 
 ---
+
+## 2026-07-21 — T-104 · Mockable Gemini client
+
+**What was built:**
+- `backend/app/clients/gemini.py` — thin transport + retry client:
+  - `GeminiError(RuntimeError)` + `GeminiTransientError(GeminiError)` error hierarchy.
+  - Result types: `TranscriptSegment`, `TranscribeResult`, `UnderstandResult`, `ImageResult`.
+  - `GeminiClient(transport=None, max_attempts=3, backoff_s=1.0)`:
+    - `transcribe(audio_path, *, prompt=None, brief=None) -> TranscribeResult` — reads audio bytes,
+      sends as base64 to Gemini, parses JSON array of segments from model output.
+    - `understand(*, transcript, prompt=None, words=None, brief=None) -> UnderstandResult` — sends
+      transcript; returns raw_text for T-108 to parse.
+    - `generate_image(prompt, *, model=None, meter=None) -> ImageResult` — decodes base64 image
+      bytes; increments CostMeter after successful generation.
+  - Retry: bounded max_attempts on GeminiTransientError (429/5xx/timeout); non-transient errors
+    propagate immediately without retry. backoff_s injectable so tests pass backoff_s=0.
+  - Secrets discipline: key obtained via `.get_secret_value()` only in `_get_api_key()`;
+    passed to transport; never logged or embedded in error messages.
+  - Production HTTP transport via httpx (never called in tests — seam replaces it).
+- `backend/app/config.py` (additive): three new model-ID fields — `gemini_text_model`,
+  `gemini_image_model`, `gemini_image_pro_model` (D-022).
+- `backend/tests/fixtures/gemini/` — three recorded fixture files:
+  - `transcribe_response.json`: 2-segment Darija/French response with start/end/script.
+  - `understand_response.json`: summary + segments JSON for understanding stage.
+  - `image_response.json`: base64-encoded 1×1 PNG for image generation.
+- `backend/tests/test_gemini.py` — 24 tests covering all methods, retry, cost meter, key safety.
+
+**Injectable seam (for T-105/T-108/T-111 authors):**
+Create a transport callable with signature `(method: str, model_id: str, payload: dict, api_key: str) -> dict`.
+Pass it as `GeminiClient(transport=my_transport, backoff_s=0)`. The transport returns
+`{"text": str, "model_id": str}` for text calls and `{"image_bytes_b64": str, "model_id": str}` for
+image calls. Fixture files in `tests/fixtures/gemini/` show the exact dict shapes.
+
+**Text model ID decision (D-022):** spec says "flagship audio-capable" but gives no concrete ID.
+Chose `gemini-2.5-flash` as the 2025-era flagship audio+reasoning model. T-105/T-108 can
+override per-job via `.env` (`GEMINI_TEXT_MODEL=...`) without touching code.
+
+**Test results:** 111/111 passed (24 new + 87 prior). `ruff check .` clean.
+
+**Decisions logged:** D-022 (model IDs in Settings), D-023 (injection seam design), D-024 (image
+cost estimates), D-025 (retry policy).
+
+**What T-105 (ASR stage) needs to know:**
+- Import `GeminiClient` from `app.clients.gemini`.
+- Write `app/prompts/asr.md` with the §11 script-and-code-switch prompt; pass it as
+  `client.transcribe(audio_path, prompt=asr_prompt, brief=ctx.job.brief)`.
+- The result is `TranscribeResult` — use `result.segments` (list of `TranscriptSegment`) and
+  `result.raw_text` to build `transcript_raw.json`.
+- In tests: `GeminiClient(transport=<fixture_transport>, backoff_s=0)`.
+
+**What T-108 (understanding stage) needs to know:**
+- Call `client.understand(transcript=..., prompt=understand_prompt, brief=ctx.job.brief)`.
+- Parse `result.raw_text` as JSON to build `understanding.json`.
+
+**What T-111 (image stage) needs to know:**
+- Call `client.generate_image(prompt, meter=meter)` for Nano Banana 2 workhorse images.
+- Call `client.generate_image(prompt, model=settings.gemini_image_pro_model, meter=meter)` for Pro.
+- The CostMeter accumulates spend and T-111 enforces the ceiling.
+
+**Next task:** T-105 (ASR stage — transcript_raw.json).
+
+---

@@ -1,0 +1,4 @@
+{
+  "text": "[{\"text\": \"Salam, kifach ndir marketing?\", \"start\": 0.0, \"end\": 3.2, \"confidence\": 0.92, \"script\": \"arabic\"}, {\"text\": \"promo 300 dirham\", \"start\": 3.5, \"end\": 5.1, \"confidence\": 0.97, \"script\": \"latin\"}]",
+  "model_id": "gemini-2.5-flash"
+}

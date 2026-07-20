@@ -21,7 +21,7 @@ Status legend: `[ ]` TODO · `[~]` IN-PROGRESS · `[x]` DONE · `[B]` BLOCKED ·
 - [x] **T-101** Job workspace + job manager + async runner
 - [x] **T-102** Ingest stage
 - [x] **T-103** Audio extraction (ffmpeg)
-- [ ] **T-104** Gemini client (asr/understand/image) — mockable
+- [x] **T-104** Gemini client (asr/understand/image) — mockable
 - [ ] **T-105** ASR stage (transcript_raw.json)
 - [ ] **T-106** Correction gate API (pause/resume)
 - [ ] **T-107** Forced alignment stage (words.json)

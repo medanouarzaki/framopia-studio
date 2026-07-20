@@ -188,6 +188,43 @@ Claude Code runs `acceptEdits` + allowlist by default (`.claude/settings.json`).
 
 ---
 
+## D-022 · Gemini model IDs in Settings (2026-07-21)
+
+**Decision:** Three model-ID fields added to `Settings` (all overridable via `.env`):
+- `gemini_text_model: str = "gemini-2.5-flash"` — for ASR (Stage 3) and understanding (Stage 6).
+- `gemini_image_model: str = "gemini-3.1-flash-image"` — Nano Banana 2, default workhorse image model.
+- `gemini_image_pro_model: str = "gemini-3-pro-image"` — Nano Banana Pro, hero-shot escalation.
+
+**Reason (text model):** Spec §6.2/§6.3 calls for "current Gemini flagship audio-capable model" but gives no concrete model ID. `gemini-2.5-flash` is the 2025-era flagship that handles audio + reasoning and code-switched Darija. If Google renames the model, operators update `GEMINI_TEXT_MODEL=...` in `.env` without touching code. T-105/T-108 should rely on `settings.gemini_text_model`, not a hardcoded string. (**Flag for Planner:** confirm or adjust this model ID before T-105 is tested against the live API.)
+
+**Reason (image models):** Spec §6.4 names `gemini-3.1-flash-image` and `gemini-3-pro-image` explicitly — these are taken verbatim.
+
+---
+
+## D-023 · Gemini injection seam: class-based injectable transport (2026-07-21)
+
+**Decision:** `GeminiClient.__init__` takes an optional `transport: GeminiTransport | None` callable. If None, the real `_http_transport` is used. Tests always inject a fixture-returning callable; `backoff_s=0` zeroes the retry sleep.
+
+**Reason:** A class-based seam is explicit, typed, and doesn't require monkeypatching module globals — the injection is visible at the call site in tests. Alternative (module-level `_transport` var with monkeypatch) was considered but is less visible and can cause test-isolation issues if teardown is incomplete. The `backoff_s` parameter makes retry tests fast without a separate `unittest.mock.patch` on `time.sleep`.
+
+---
+
+## D-024 · Image cost estimates: $0.04 Nano Banana 2, $0.08 Nano Banana Pro (2026-07-21)
+
+**Decision:** `_COST_NANO_BANANA_2_USD = 0.04` and `_COST_NANO_BANANA_PRO_USD = 0.08` (constants in `gemini.py`).
+
+**Reason:** Spec §6.4 states "~4¢/image" for Nano Banana 2 and "~2× cost" for Pro. These are estimates — actual Gemini pricing depends on resolution and API tier. The CostMeter uses these to give the operator an indicative ceiling guard; T-111 enforces the ceiling. If pricing changes, update the constants (not the ceiling logic).
+
+---
+
+## D-025 · Retry policy: 3 attempts, 1s default backoff, transient-only (2026-07-21)
+
+**Decision:** `max_attempts=3` (2 retries), `backoff_s=1.0` by default, both injectable on `GeminiClient`. Only `GeminiTransientError` (429, 5xx, timeout) triggers retries. Any other `GeminiError` propagates immediately.
+
+**Reason:** Three attempts covers most transient bursts (quota reset, brief 5xx). More than 3 attempts risks pipeline stalls inside a ~30s reel job. The 1s backoff is gentle for a low-volume internal tool. Making both injectable allows tests to pass `backoff_s=0` for speed without mocking `time.sleep`. The transient/non-transient split means auth failures (4xx) surface immediately rather than wasting 3 attempts.
+
+---
+
 ## D-021 · audio.wav lives at job_dir/audio.wav, NOT assets/audio/ (2026-07-21)
 
 **Decision:** The extracted speech WAV is written to `ctx.paths.job_dir / "audio.wav"` (the job root), not to `ctx.paths.audio_dir` (`assets/audio/`).
