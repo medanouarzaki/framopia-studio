@@ -100,3 +100,35 @@ This is the only remaining step for T-001.
 **Next task:** T-005 (config + secrets + cost-control scaffolding) — completes M0 and unblocks T-101+.
 
 ---
+
+## 2026-07-20 — T-005 · Config + secrets + cost-control scaffolding (pre-flight + main task)
+
+**Pre-flight (bidi lock guard R2):**
+Verified by codepoint inspection that the golden's Arabic words are stored in correct logical Unicode order:
+- بزاف = U+0628 U+0632 U+0627 U+0641 (correct) ✓
+- ديال = U+062F U+064A U+0627 U+0644 (correct) ✓
+Added `test_bidi_caption_arabic_logical_codepoint_order` to `test_edit_plan.py` asserting character-by-character equality so any byte-reversal breaks a test. Committed separately as `bc4598f`.
+
+**What was built (T-005):**
+- `backend/app/config.py`: pydantic-settings `Settings` class with `gemini_api_key: SecretStr | None` (optional, boot-and-report), `elevenlabs_api_key`, `backend_port`, `max_images_per_job`, `cheap_mode`, `cost_ceiling_usd`. `get_settings(_env_file)` with `@cache` for injectable test isolation; `clear_settings_cache()` for test teardown.
+- `backend/app/util/__init__.py` + `backend/app/util/cost.py`: `CostMeter` — `add()`, `total()`, `exceeds_ceiling()`, `reset()`. Pure, no I/O, no secrets.
+- `backend/app/main.py`: `/health` now returns real `ffmpeg_ok` (shutil.which) and `keys_ok` (gemini_api_key non-None + non-empty). `SERVER_PORT` from `Settings.backend_port`; `SERVER_HOST` remains hardcoded to `"127.0.0.1"` (not configurable by design).
+- `backend/tests/test_config.py`: 15 tests covering fixture load, defaults, missing-key no-crash, SecretStr masking in repr/str/logs, cache/cache-clear, and CostMeter.
+- `backend/tests/test_health.py`: updated — `ffmpeg_ok`/`keys_ok` assertions now check types only (not hardcoded True), plus a reality-check test for each.
+- 40/40 tests green; ruff clean.
+
+**⚠ Python runtime flag for T-003:**
+This machine runs Python 3.14.2 (Homebrew default). The spec (§6.1 / Appendix D) pins `python@3.12`. The current venv is built from 3.14. T-003's `mac_setup.sh` will run `brew install python@3.12` and may build a second venv from that, creating two subtly different runtimes. T-003 must decide: (a) standardize the venv on 3.12 per spec (rebuild the current .venv), OR (b) formally accept 3.14 as the project runtime (log as a decision). Do not resolve here; flag for T-003.
+
+**Decisions logged:** D-009 (optional key + boot-and-report), D-010 (host not configurable), D-011 (cost ceiling default 5.0 USD).
+
+**What M1 (T-101+) needs to know:**
+- Import config via `from app.config import get_settings`.
+- Never call `.get_secret_value()` in logging paths.
+- `CostMeter` lives in `app.util.cost`; pipeline stages call `meter.add(estimated_usd)` after each billable Gemini call.
+- `get_settings().cost_ceiling_usd` is the ceiling; `get_settings().max_images_per_job` caps image count.
+- `get_settings().cheap_mode` disables Pro-tier image generation when True.
+
+**M0 is now COMPLETE.** T-000 through T-005 are all done. Next: T-101 (job workspace + job manager + async runner) starts M1.
+
+---

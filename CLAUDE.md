@@ -61,6 +61,8 @@ Every Executor session must, as its **final act**, update these four files befor
 
 All API keys live in the git-ignored `.env`. Document new keys in `.env.example` (name only, no value). Never print key values in logs or output.
 
+API keys in `Settings` use `pydantic.SecretStr` — their values are masked in repr/str/logs automatically. Only call `.get_secret_value()` inside the code that actually sends the key (e.g. an HTTP client constructor). Never call it in logging paths, error messages, or health responses.
+
 ## Git workflow
 
 - Branch `main` is always working and pullable. Commit straight to `main` for normal tasks. Use `feature/<name>` only for risky/experimental work.

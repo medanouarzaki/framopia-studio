@@ -91,3 +91,27 @@ Claude Code runs `acceptEdits` + allowlist by default (`.claude/settings.json`).
 **Reason:** The golden must be usable as a standalone test fixture before T-202 creates the real registry. Opt-in checking (pass a set to enable) rather than opt-out (pass a flag to disable) is the cleaner API — absence of context means the check doesn't apply yet.
 
 ---
+
+## D-009 · gemini_api_key is Optional — boot-and-report, not crash-on-missing (2026-07-20)
+
+**Decision:** `gemini_api_key: SecretStr | None = None` in `Settings`. A missing key does NOT raise a ValidationError at startup. Instead, `/health` returns `keys_ok: false`, clearly signalling the missing key to the operator.
+
+**Reason:** Spec §14.1 defines `/health` as the readiness surface. Crashing on import or server start before the operator can even see the health endpoint is a poor UX — especially during T-003 setup when the key may not yet be present. Boot-and-report (import succeeds, health shows red) matches how production services handle missing credentials.
+
+---
+
+## D-010 · SERVER_HOST is hardcoded, never configurable via env (2026-07-20)
+
+**Decision:** `SERVER_HOST = "127.0.0.1"` is a constant in `app/main.py`, not a field in `Settings`. It will never be sourced from `.env` or any config.
+
+**Reason:** Spec §21 requires the backend to bind to `127.0.0.1` only. If the host were a config field, a misconfigured `.env` or a future operator error could expose the service on `0.0.0.0`. Making it structurally impossible (not in config = cannot be overridden) is the only reliable enforcement. `SERVER_PORT` is in config (reasonable per-machine variation); host is not.
+
+---
+
+## D-011 · cost_ceiling_usd default = 5.0 USD (2026-07-20)
+
+**Decision:** `cost_ceiling_usd: float = 5.0` in `Settings`.
+
+**Reason:** The spec (§16.4) says to enforce a configurable ceiling but does not pick a value. For an internal two-operator tool, 5 USD per job is generous (a 30s reel with 8 images at ~4¢ each + ASR/text calls costs well under $1). 5 USD gives headroom for larger jobs while providing a meaningful guard against runaway loops. Operators override via `.env` for their workflow.
+
+---

@@ -1,29 +1,39 @@
 """Framopia Studio backend — FastAPI application entry point."""
 
+import shutil
+
 from fastapi import FastAPI
 
 from app import __version__
+from app.config import get_settings
 
-# Server binding constants — the only place these are defined.
-# T-005 will wire port to pydantic-settings; host is fixed to localhost by spec §21.
+# SERVER_HOST is hardcoded and NOT sourced from config (spec §21 / D-010).
+# Binding to anything other than 127.0.0.1 must be structurally impossible,
+# not just conventionally avoided. SERVER_PORT comes from Settings.backend_port.
 SERVER_HOST = "127.0.0.1"
-SERVER_PORT = 8000
 
 app = FastAPI(title="Framopia Studio Backend", version=__version__)
 
 
 @app.get("/health")
 def health() -> dict:
-    """Return service health. ffmpeg_ok and keys_ok are stubs until T-005."""
+    """Return service readiness. Checks ffmpeg on PATH and Gemini key presence."""
+    settings = get_settings()
+    ffmpeg_ok: bool = shutil.which("ffmpeg") is not None
+    keys_ok: bool = (
+        settings.gemini_api_key is not None
+        and len(settings.gemini_api_key.get_secret_value()) > 0
+    )
     return {
         "status": "ok",
         "version": __version__,
-        "ffmpeg_ok": True,   # T-005: replace with real ffmpeg PATH check
-        "keys_ok": True,     # T-005: replace with real GEMINI_API_KEY presence check
+        "ffmpeg_ok": ffmpeg_ok,
+        "keys_ok": keys_ok,
     }
 
 
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run("app.main:app", host=SERVER_HOST, port=SERVER_PORT, reload=True)
+    settings = get_settings()
+    uvicorn.run("app.main:app", host=SERVER_HOST, port=settings.backend_port, reload=True)
