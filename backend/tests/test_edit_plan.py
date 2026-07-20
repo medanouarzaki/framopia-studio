@@ -136,6 +136,25 @@ def test_bidi_caption_script_tags() -> None:
     assert texts == ["Salam", "بزاف", "ديال", "promo"]
 
 
+def test_bidi_caption_arabic_logical_codepoint_order() -> None:
+    """Guard R2: Arabic words are stored in LOGICAL (Unicode) order, not display-reversed.
+
+    Terminals and some editors visually reverse RTL runs, so we compare codepoints directly.
+    بزاف must be U+0628 U+0632 U+0627 U+0641 (ba, zain, alef, fa — logical left-to-right).
+    ديال must be U+062F U+064A U+0627 U+0644 (dal, ya, alef, lam — logical left-to-right).
+    Any byte-level reversal of the stored strings will break this test immediately.
+    """
+    raw = json.loads(GOLDEN_PATH.read_text(encoding="utf-8"))
+    plan = EditPlan.model_validate(raw)
+    first_segment = next(c for c in plan.captions if c.segment_index == 0)
+    arabic_words = {w.text: w for w in first_segment.words if w.script == "arabic"}
+
+    # بزاف — ba(0628) zain(0632) alef(0627) fa(0641)
+    assert list(arabic_words["بزاف"].text) == ["ب", "ز", "ا", "ف"]
+    # ديال — dal(062F) ya(064A) alef(0627) lam(0644)
+    assert list(arabic_words["ديال"].text) == ["د", "ي", "ا", "ل"]
+
+
 def test_bidi_caption_non_overlapping_touching() -> None:
     """Touching word timings (end[i] == start[i+1]) are accepted (not treated as overlap)."""
     raw = json.loads(GOLDEN_PATH.read_text(encoding="utf-8"))
