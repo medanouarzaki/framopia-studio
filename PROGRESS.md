@@ -74,3 +74,29 @@ This is the only remaining step for T-001.
 **Next task:** T-004 (Edit Plan schema + golden example + validator) or T-005 (config + secrets) — both depend only on T-002. Either can go next; T-004 is the central contract.
 
 ---
+
+## 2026-07-20 — T-004 · Edit Plan schema (Pydantic) + golden example + validator
+
+**What was done:**
+- Created `backend/app/models/edit_plan.py`: full Pydantic v2 models (`Word`, `CaptionLine`, `Reel`, `Source`, `Visual`, `Motion`, `MusicCue`, `SfxCue`, `AudioPlan`, `Meta`, `EditPlan`) matching spec §8 field-for-field.
+- In-plan model_validators: word non-overlap with touching allowed; visual windows within [0, duration] with end>start; beat_aligned visuals' START within 1/fps of some beat (D-005); Motion punch_in requires target+amount; Visual kind/payload consistency.
+- Created `backend/app/models/validate.py`: `validate_edit_plan(plan, *, known_templates, check_assets, job_dir)` for external context — template registry check (D-007, skippable before T-202) and asset existence check (skippable by default).
+- Created `backend/app/models/__init__.py` exporting all public models.
+- The `docs/edit_plan.example.json` golden was already correct (transition_whip_pan, exact beat-start matches) — no changes needed.
+- 18 new tests in `backend/tests/test_edit_plan.py`; full suite 22/22 passed; ruff clean.
+
+**Resolved contradictions implemented and logged (D-005, D-007):**
+- **Contradiction #1 (beat alignment):** §8 said both start and end must be on a beat, but Appendix A golden's v3 has end=11.5 not in its beats array. Resolution (D-005): beat_aligned constrains START only; END is bounded by [0, duration]. Implemented in `check_plan_constraints`.
+- **Contradiction #2 (transition template name):** Appendix A wrote "whip_pan", but Appendix F prefix convention and T-203 require "transition_whip_pan". Resolution (D-007): golden and all code use "transition_whip_pan". Golden was already correct from T-001.
+
+**What T-005 needs to know:** No dependencies on config from models/validate. `EditPlan` and `validate_edit_plan` are importable as-is.
+
+**What T-112 needs to know:** Assembly stage creates the plan dict and calls `EditPlan.model_validate(d)` then `validate_edit_plan(plan, known_templates=registry.template_names())` — the registry check is skipped until T-202 lands.
+
+**What T-202 needs to know:** `validate_edit_plan(..., known_templates=<set>)` is the hook for the real registry check. Pass the set of template names from `registry.json`.
+
+**What the AE side needs to know:** Golden at `docs/edit_plan.example.json` is a valid, complete plan. Load it with `json2.js` in ExtendScript to develop and test T-301+ without the backend.
+
+**Next task:** T-005 (config + secrets + cost-control scaffolding) — completes M0 and unblocks T-101+.
+
+---

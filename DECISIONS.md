@@ -57,3 +57,37 @@ Claude Code runs `acceptEdits` + allowlist by default (`.claude/settings.json`).
 **Reason:** Avoids `importlib.metadata` (requires the package to be installed, complicates test environments). One definition, imported everywhere — no duplication. If ever driven from VCS tags, only `__init__.py` changes.
 
 ---
+
+## D-005 · beat_aligned constrains START only, not end (2026-07-20)
+
+**Decision:** When `beat_aligned=true` on a Visual, the validator requires that `visual.start` is within `1/fps` seconds (one frame) of some beat in the `beats` array. The `end` time is NOT required to be on a beat — it only needs to lie within `[0, reel.duration]`.
+
+**Reason:** Resolves Contradiction #1 (Planner-decided). Spec §8 text said both start/end match a beat, but the golden's v3 has `end=11.5` which is not in its `beats` array. The musical intent is that a visual *begins* on a beat; how long it stays is a pacing choice, not a beat-snap requirement. Using one frame (1/fps) as epsilon accommodates floating-point precision.
+
+**Beat epsilon formula:** `beat_epsilon = 1.0 / reel.fps` — computed at validation time from the plan's own fps. No separate field needed.
+
+---
+
+## D-006 · Motion modeled as a single class with kind discriminator (2026-07-20)
+
+**Decision:** Both motion shapes (`punch_in` and `transition`) are represented by a single `Motion` class with `kind: Literal["punch_in","transition"]`, with `target` and `amount` as optional fields validated by a `model_validator` that requires them when `kind=="punch_in"`.
+
+**Reason:** The two shapes share `kind`, `template`, and `at`. Using a single class with a post-construction validator avoids a Pydantic Union/discriminated-union pattern, which adds complexity for a two-shape case. If a third motion kind is added later with divergent fields, discriminated unions are the upgrade path — log a decision at that point.
+
+---
+
+## D-007 · Transition template name is "transition_whip_pan", not "whip_pan" (2026-07-20)
+
+**Decision:** The transition template in the golden and all code is named `"transition_whip_pan"`, using the `transition_*` prefix from Appendix F's naming convention. Appendix A used the bare name `"whip_pan"` — that was an inconsistency in the spec, resolved in favour of the convention.
+
+**Reason:** Resolves Contradiction #2 (Planner-decided). Appendix F establishes `transition_*` as the sigil-prefix category for transition templates. The registry (T-202) and the authored templates (T-203) will both use this convention; using `"whip_pan"` in the golden would create a mismatch the validator would catch (correctly) as "unknown template". Consistency wins.
+
+---
+
+## D-008 · validate_edit_plan template check is opt-in (known_templates=None skips) (2026-07-20)
+
+**Decision:** `validate_edit_plan()` accepts `known_templates: set[str] | None`. When `None`, the template check is entirely skipped. When a set is provided, every template name in the plan must be in it or a `EditPlanValidationError` is raised.
+
+**Reason:** The golden must be usable as a standalone test fixture before T-202 creates the real registry. Opt-in checking (pass a set to enable) rather than opt-out (pass a flag to disable) is the cleaner API — absence of context means the check doesn't apply yet.
+
+---
