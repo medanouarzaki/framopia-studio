@@ -214,3 +214,49 @@ D-018 (rotation handling), D-019 (fps warning range).
 **Next task:** T-103 (audio extraction with ffmpeg).
 
 ---
+
+## 2026-07-21 — T-103 · Audio extraction stage + shared ffmpeg client
+
+**What was built:**
+- `backend/app/clients/__init__.py` — new clients package.
+- `backend/app/clients/ffmpeg.py` — shared subprocess wrapper:
+  - `FfmpegError(RuntimeError)` — public error type for all ffmpeg/ffprobe failures.
+  - `probe(path) -> dict` — runs ffprobe, returns parsed JSON; raises FfmpegError on all
+    failure modes (not found, timeout, bad exit, invalid JSON).
+  - `extract_audio(src, dst)` — runs ffmpeg to extract `-vn -ac 1 -ar 16000 -c:a pcm_s16le`
+    WAV; raises FfmpegError on all failure modes.
+- `backend/app/pipeline/audio.py` — audio extraction stage:
+  - Checks `input.mp4` exists (AudioError if missing).
+  - Probes for an audio stream via `clients.ffmpeg.probe()` — AudioError if no audio stream
+    (talking-head takes must have speech; absence is a real error, not a silent empty wav).
+  - Calls `clients.ffmpeg.extract_audio()` — AudioError on FfmpegError.
+  - Verifies output with `wave` module: `getframerate()==16000`, `getnchannels()==1`.
+  - Writes to `job_dir/audio.wav` (JOB ROOT — NOT assets/audio/).
+  - Logs `ctx.logger.log_stage("audio", elapsed, sample_rate=16000, channels=1, out_bytes=N)`.
+- `backend/tests/test_audio.py` — 12 tests (all passed):
+  - Error type checks (FfmpegError, AudioError are RuntimeError).
+  - Missing input.mp4, ffprobe failure (mocked), ffmpeg non-zero exit (mocked),
+    ffmpeg not found during extract (mocked), no audio stream (mocked).
+  - Integration: 16 kHz mono WAV verified via wave module, audio.wav at job root NOT
+    assets/audio/, real video-only clip rejected, through-runner success (ready_for_ae),
+    through-runner no-audio error state.
+
+**ffprobe consolidation outcome (D-020 — DEFERRED):**
+`test_ingest.py` patches `app.pipeline.ingest.subprocess.run` at three mock call sites.
+Moving `_run_ffprobe` into `app/clients/ffmpeg.py` would require updating those patch paths to
+`app.clients.ffmpeg.subprocess.run` — touching T-102 tests, which the task explicitly prohibits.
+Consolidation deferred. `probe()` is in `ffmpeg.py` for use by new stages; ingest.py retains its
+own `_run_ffprobe`. A future session can clean this up by updating the T-102 mock targets.
+
+**Test results:** 87/87 passed (12 new + 75 prior). `ruff check .` clean (2 style fixes auto-applied).
+
+**Decisions logged:** D-020 (ffprobe consolidation deferred), D-021 (audio.wav at job root).
+
+**What T-104 (Gemini client) needs to know:**
+- `app/clients/` is now the home for external client wrappers — Gemini client goes there too.
+- `FfmpegError` is the established error pattern: public RuntimeError subclass + human-readable
+  message; stage wraps in domain-specific error (AudioError). Follow same pattern for GeminiError.
+
+**Next task:** T-104 (Gemini client — asr/understand/image, mockable).
+
+---

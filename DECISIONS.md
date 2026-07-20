@@ -179,3 +179,19 @@ Claude Code runs `acceptEdits` + allowlist by default (`.claude/settings.json`).
 **Reason:** The design target is standard social-media frame rates (24/25/30/60 fps). Outside this range, the take may still be usable (e.g. 120 fps slow-mo content can be ingested at its native rate and matched in AE). Rejection would be too strict; warning surfaces the anomaly so the operator can verify the AE comp frame rate matches before the build stage.
 
 ---
+
+## D-020 · ffprobe consolidation deferred to a future session (2026-07-21)
+
+**Decision:** The `_run_ffprobe()` helper in `app/pipeline/ingest.py` is NOT moved to `app/clients/ffmpeg.py` in this session. `probe()` was added to `ffmpeg.py` for use by new stages; ingest keeps its own private copy.
+
+**Reason:** `test_ingest.py` mocks `app.pipeline.ingest.subprocess.run` at three call sites. Consolidating would require changing those patch targets to `app.clients.ffmpeg.subprocess.run` — i.e. touching T-102 tests. The task spec explicitly prohibits that. Deferred. A future session (e.g. T-113 cleanup) can update the three mock paths in `test_ingest.py` and then move `_run_ffprobe` to `ffmpeg.py`.
+
+---
+
+## D-021 · audio.wav lives at job_dir/audio.wav, NOT assets/audio/ (2026-07-21)
+
+**Decision:** The extracted speech WAV is written to `ctx.paths.job_dir / "audio.wav"` (the job root), not to `ctx.paths.audio_dir` (`assets/audio/`).
+
+**Reason:** Spec §5 workspace diagram places `audio.wav` at the job root alongside `input.mp4` and `job.json`. `assets/audio/` is reserved for music/SFX assets referenced by the Edit Plan (e.g. `track_cozy_01.wav` selected by T-109). Mixing the speech track into `assets/audio/` would require the music-selection stage to distinguish them, adding fragility. Keeping them at different levels makes the distinction structural.
+
+---
