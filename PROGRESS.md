@@ -161,3 +161,56 @@ This machine runs Python 3.14.2 (Homebrew default). The spec (§6.1 / Appendix D
 **Next task:** T-102 (ingest stage) — first real pipeline stage.
 
 ---
+
+## 2026-07-20 — T-102 · Ingest stage
+
+**Pre-flight (commit 1c07f20 check):**
+`git show 1c07f20` confirmed: authored by Mohamed Anouar ZAKI (same email as all prior commits),
+message "Update operator name in README.md", diff adds surname "Derfoufi" to Younes's name in
+README.md. One file changed; no state files (TASKS.md, PROGRESS.md, DECISIONS.md) touched.
+**Verdict: benign — Mohamed's own commit, not a foreign/unexpected change. No contradiction with
+state files. Pre-flight passes.**
+
+**What was built:**
+- `backend/app/pipeline/__init__.py` — new pipeline package.
+- `backend/app/pipeline/ingest.py` — ingest stage:
+  - `_run_ffprobe()`: shells out to `ffprobe -v quiet -print_format json -show_streams
+    -show_format`; converts all failure modes (not found, timeout, bad exit, invalid JSON) to
+    human-readable `IngestError` instead of raw stack traces.
+  - `_effective_wh()`: reads display rotation from `side_data_list` first, falls back to
+    `tags.rotate`; swaps w/h for 90°/270° (D-018).
+  - `_parse_fps()`: converts `r_frame_rate` "num/den" to float.
+  - `run_ingest(ctx)`: validates aspect (D-016, ±2%, 9:16 required), duration (D-017, 1–300 s),
+    warns on unusual fps (D-019, outside 24–60), copies take → `job_dir/input.mp4`, copies client
+    assets → `client_dir`, fills `ctx.job.width/height/fps/duration`, writes `job.json`.
+- `backend/app/models/job.py` (additive): added `source_path: str | None` and
+  `client_asset_paths: list[str]` to `Job` — stored in job.json, read by ingest (D-015).
+- `backend/app/jobs/manager.py` (additive): extended `create()` with optional `source_path` and
+  `client_asset_paths` parameters — backward-compatible, all existing tests still pass.
+- `backend/tests/test_ingest.py` — 20 tests:
+  - Unit: `_parse_fps` fraction/integer, `_effective_wh` no-rotation/90/270/180/side_data.
+  - No-fftools: missing file, no source_path, ffprobe non-zero exit (mocked), ffprobe not found
+    (mocked), invalid JSON (mocked).
+  - Integration (fftools required): valid 1080×1920 records metadata + updates job.json, take
+    copied to canonical location, client assets copied to client_dir, 1920×1080 rejected with
+    "9:16" + dimensions in message, rejection does not write input.mp4, 720×1280 accepted,
+    through-runner success → READY_FOR_AE, through-runner rejection → ERROR.
+
+**Test results:** 75/75 passed (20 new + 55 prior). `ruff check .` clean.
+
+**Input-plumbing decision (D-015):** `source_path` and `client_asset_paths` recorded on the Job
+model at `create()` time. Stored in job.json so the decision is durable and auditable. The
+`Stage.run(ctx)` interface needed no change. See DECISIONS.md.
+
+**Decisions logged:** D-015 (input plumbing), D-016 (9:16 tolerance), D-017 (duration bounds),
+D-018 (rotation handling), D-019 (fps warning range).
+
+**What T-103 needs to know:**
+- The canonical take is at `ctx.paths.job_dir / "input.mp4"` after ingest completes.
+- The ffprobe helper is in `app/pipeline/ingest.py` — task spec says T-103 builds the full
+  `app/clients/ffmpeg.py`; at that point the ingest helper should be consolidated there.
+- `ctx.job.fps` is `round(fps)` (int); raw float fps is in the log entry.
+
+**Next task:** T-103 (audio extraction with ffmpeg).
+
+---

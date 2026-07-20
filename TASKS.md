@@ -19,7 +19,7 @@ Status legend: `[ ]` TODO · `[~]` IN-PROGRESS · `[x]` DONE · `[B]` BLOCKED ·
 ## M1 — Backend pipeline (no After Effects)
 
 - [x] **T-101** Job workspace + job manager + async runner
-- [ ] **T-102** Ingest stage
+- [x] **T-102** Ingest stage
 - [ ] **T-103** Audio extraction (ffmpeg)
 - [ ] **T-104** Gemini client (asr/understand/image) — mockable
 - [ ] **T-105** ASR stage (transcript_raw.json)

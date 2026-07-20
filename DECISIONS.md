@@ -139,3 +139,43 @@ Claude Code runs `acceptEdits` + allowlist by default (`.claude/settings.json`).
 **Reason:** Jobs root is a structural repo path, not an operator secret or environment variable. Putting it in Settings would invite operators to misconfigure it (e.g. writing jobs outside the repo). Keeping it hardcoded as a constant with an injectable override for tests is simpler, safer, and consistent with D-010 (host also not configurable). The repo's `.gitignore` already ignores `/jobs/`.
 
 ---
+
+## D-015 · Input plumbing for ingest: source_path recorded on Job at create() (2026-07-21)
+
+**Decision:** `source_path: str | None` and `client_asset_paths: list[str]` are added as optional fields on the `Job` model and stored in `job.json`. `JobManager.create()` accepts them as optional keyword arguments. The ingest stage reads them from `ctx.job.source_path` and `ctx.job.client_asset_paths`.
+
+**Reason:** The `Stage.run(ctx)` interface only receives `JobContext`, so external inputs must reach the stage via `ctx`. Two clean options: (a) record on `Job` at `create()` time — durable, explicit, auditable in `job.json`; (b) pre-placement convention — operator drops file in `client_dir` before running pipeline, ingest scans. Option (a) is better: eliminates "which file is the source?" ambiguity when multiple videos are in `client_dir`, is self-documenting, and requires only an additive field addition with no breaking changes to the T-101 surface.
+
+---
+
+## D-016 · 9:16 aspect-ratio tolerance = ±2% (2026-07-21)
+
+**Decision:** Accept a take when `|width/height − 9/16| ≤ 0.02` (2%). Reject otherwise with a human-readable message including effective dimensions and the required ratio.
+
+**Reason:** 1080×1920 and 720×1280 have exact 9/16 ratios (0.5625). Some codecs produce codec-aligned dimensions like 1088×1920 (aspect 0.5667, delta 0.0042) — within 2% and should be accepted. 2% is wide enough to catch codec alignment and floating-point imprecision while firmly rejecting 16:9 (delta ~1.2), 4:3, and other landscape ratios.
+
+---
+
+## D-017 · Duration bounds: 1 s minimum, 300 s maximum (2026-07-21)
+
+**Decision:** Reject takes shorter than 1.0 s or longer than 300.0 s (5 minutes). Takes within [1.0, 300.0] s are accepted.
+
+**Reason:** Spec §3 targets ~30 s reels, up to ~90 s without breaking. 1 s minimum rejects nonsense clips and test flashes that would produce empty or degenerate Edit Plans. 300 s (5 min) ceiling is ~3.3× the spec maximum (90 s), giving generous headroom for operator use-cases while guarding against accidental full-episode ingests that would blow cost ceilings and AE composition limits.
+
+---
+
+## D-018 · Rotation handling: swap w/h for 90°/270°; 0°/180° unchanged (2026-07-21)
+
+**Decision:** Read display rotation from `side_data_list[].rotation` (modern ffprobe) first; fall back to `tags.rotate`. Normalize with `% 360`. Swap width/height when rotation is 90° or 270°. Leave 0°/180° unchanged (180° rotates image but preserves landscape/portrait orientation). Other rotation values are not swapped.
+
+**Reason:** Phone cameras often store footage as 1920×1080 + 90° rotation tag; the displayed image is portrait 1080×1920. Not swapping would cause these valid portrait takes to fail the 9:16 check. The 90°/270° case covers all known phone models. Other angles (45°, etc.) are exotic and don't swap portrait/landscape; leaving them unswapped is the safer default.
+
+---
+
+## D-019 · FPS warning range: 24–60 fps (2026-07-21)
+
+**Decision:** Warn (do NOT reject) when `fps < 24.0` or `fps > 60.0`. Warning is included in the ingest log entry. Pipeline proceeds normally.
+
+**Reason:** The design target is standard social-media frame rates (24/25/30/60 fps). Outside this range, the take may still be usable (e.g. 120 fps slow-mo content can be ingested at its native rate and matched in AE). Rejection would be too strict; warning surfaces the anomaly so the operator can verify the AE comp frame rate matches before the build stage.
+
+---

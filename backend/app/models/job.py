@@ -54,4 +54,8 @@ class Job(BaseModel):
     fps: int | None = None
     duration: float | None = None
 
+    # Set at create() time so the ingest stage knows what to copy in (D-015)
+    source_path: str | None = None
+    client_asset_paths: list[str] = Field(default_factory=list)
+
     model_ids: dict = Field(default_factory=dict)

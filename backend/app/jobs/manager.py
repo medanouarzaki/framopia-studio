@@ -108,11 +108,25 @@ class JobManager:
         ts = datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
         return f"{ts}-{uuid.uuid4().hex[:6]}"
 
-    def create(self, brand_kit: str, brief: str) -> Job:
+    def create(
+        self,
+        brand_kit: str,
+        brief: str,
+        source_path: str | Path | None = None,
+        client_asset_paths: list[str | Path] | None = None,
+    ) -> Job:
         """Create a new job workspace and register it.
 
         Scaffolds jobs/<id>/ with the full asset subtree, an empty log.txt,
         and job.json. Initial status is RUNNING / stage="created" / 0%.
+
+        Args:
+            brand_kit: Brand kit identifier for this job.
+            brief: Operator-written brief text.
+            source_path: Absolute path to the operator-supplied take (D-015).
+                         Stored in job.json; read by the ingest stage at run time.
+            client_asset_paths: Additional operator-supplied asset paths to copy
+                                 into client_dir during ingest.
 
         Returns:
             The newly created Job record.
@@ -132,6 +146,8 @@ class JobManager:
             created_at=datetime.now(UTC).isoformat(),
             brand_kit=brand_kit,
             brief=brief,
+            source_path=str(source_path) if source_path is not None else None,
+            client_asset_paths=[str(p) for p in (client_asset_paths or [])],
         )
         paths.job_json_path.write_text(job.model_dump_json(indent=2), encoding="utf-8")
 
