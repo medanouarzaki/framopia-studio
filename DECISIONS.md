@@ -283,6 +283,69 @@ orchestration endpoint — just the minimal manager wiring needed for T-106.
 
 ---
 
+## D-030 · Forced aligner backend: WhisperX (2026-07-21)
+
+**Decision:** WhisperX (`pip install whisperx`) is the chosen production forced-alignment backend,
+using the Arabic wav2vec2 model `jonatasgrosman/wav2vec2-large-xlsr-53-arabic` by default.
+
+**Reason — chosen over MFA:**
+MFA requires per-language pronunciation dictionaries + kaldi + conda. Mixed-script Darija+French
+in a single segment requires a multilingual dictionary MFA does not natively provide. Conda install
+overhead is large; MFA is the heaviest option.
+
+**Reason — chosen over aeneas:**
+aeneas uses eSpeak NG for phoneme synthesis (system dep, not pip-only) and works at fragment level
+with per-fragment language specification. Handling code-switched segments (Arabic and French words
+in the same sentence) requires splitting by language and re-merging — fragile for Darija.
+
+**Reason — chosen WhisperX:**
+WhisperX's `align()` function accepts pre-set `segments` (seeded text) and aligns them to audio
+without re-transcribing. It is pip-installable (no conda), supports Arabic via HuggingFace models,
+and is designed for exactly this use case. The Arabic xlsr-53 model covers Darija phonetics
+adequately for caption-display timing accuracy (±100 ms).
+
+**Mixed-script limitation:** A single Arabic model is used for the full audio of each segment.
+French/English words in a code-switched segment get Arabic-phoneme alignment, which may be ±100–
+200 ms off for individual words. This is acceptable for caption display timing in v1. If needed,
+T-113 can detect per-segment dominant language and switch models (log a decision at that point).
+
+**T-003 install requirement (Planner action needed):**
+mac_setup.sh must add: `pip install whisperx torch torchvision torchaudio`
+Model `jonatasgrosman/wav2vec2-large-xlsr-53-arabic` downloads automatically on first use via HF
+cache. This was NOT in the original T-003 spec; Planner must add it before T-003 runs.
+
+---
+
+## D-031 · Per-word script derived from codepoints, not segment hint (2026-07-21)
+
+**Decision:** In `run_align`, the `script` tag for each word is derived from the word's OWN Unicode
+codepoints. Any codepoint in the Arabic blocks (U+0600–U+06FF, U+0750–U+077F, U+08A0–U+08FF,
+U+FB50–U+FDFF, U+FE70–U+FEFF) → `"arabic"`; otherwise → `"latin"`. The T-105 segment-level `script`
+hint is NOT inherited.
+
+**Reason:** The segment hint is a coarse approximation for the dominant script of a whole segment.
+A segment labelled `"arabic"` may contain French words ("promo", "design", "marketing") that are
+`"latin"` at the word level. The T-303 caption builder and bidi text shaping need per-word script
+accuracy, not segment-level. Codepoint derivation is unambiguous, has no external dependencies, and
+is consistent with the §11.2 mixed-script rule. The segment hint is still written to
+`transcript_raw.json` for operator reference but is not used downstream.
+
+---
+
+## D-032 · words.json is a flat list, not a nested object (2026-07-21)
+
+**Decision:** `words.json` is a JSON array (not `{job_id, words: [...]}`), placed at the job root:
+`job_dir/words.json`. Each element: `{word, script, start, end, segment_index}`.
+
+**Reason:** Spec Stage 5 describes the output as "a flat list of per-word timings." A flat list
+is the simplest shape for T-108 (understanding) and T-303 (AE caption builder) to consume — both
+iterate the list linearly. Adding a wrapper object would require callers to navigate one extra
+level with no benefit. The `segment_index` field maintains segment provenance without nesting.
+Placement at job root is consistent with `audio.wav`, `transcript_raw.json`, and
+`transcript_corrected.json` (D-021).
+
+---
+
 ## D-021 · audio.wav lives at job_dir/audio.wav, NOT assets/audio/ (2026-07-21)
 
 **Decision:** The extracted speech WAV is written to `ctx.paths.job_dir / "audio.wav"` (the job root), not to `ctx.paths.audio_dir` (`assets/audio/`).

@@ -24,7 +24,7 @@ Status legend: `[ ]` TODO · `[~]` IN-PROGRESS · `[x]` DONE · `[B]` BLOCKED ·
 - [x] **T-104** Gemini client (asr/understand/image) — mockable
 - [x] **T-105** ASR stage (transcript_raw.json)
 - [x] **T-106** Correction gate API (pause/resume)
-- [ ] **T-107** Forced alignment stage (words.json)
+- [x] **T-107** Forced alignment stage (words.json)
 - [ ] **T-108** Understanding & segmentation stage
 - [ ] **T-109** Music library + selection + beat detection
 - [ ] **T-110** Visual planning stage

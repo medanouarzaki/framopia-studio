@@ -1,0 +1,22 @@
+{
+  "job_id": "test-align-fixture",
+  "model_id": "gemini-2.5-flash",
+  "segments": [
+    {
+      "index": 0,
+      "text": "Salam بزاف ديال promo",
+      "start": 0.0,
+      "end": 3.0,
+      "confidence": 0.95,
+      "script": "arabic"
+    },
+    {
+      "index": 1,
+      "text": "مزيان le design",
+      "start": 3.5,
+      "end": 5.0,
+      "confidence": 0.92,
+      "script": "arabic"
+    }
+  ]
+}

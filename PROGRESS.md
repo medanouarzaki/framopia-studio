@@ -443,3 +443,94 @@ directly before TestClient calls, which overrides the lazy singleton. This keeps
 **Next task:** T-107 (forced alignment stage — words.json).
 
 ---
+
+## 2026-07-21 — T-107 · Forced alignment stage (words.json)
+
+**Pre-flight:** T-106 commit `1e1f376` confirmed on origin/main. Tree clean.
+
+**What was built:**
+- `backend/app/clients/aligner.py` — aligner interface + WhisperX adapter:
+  - `AlignerError(RuntimeError)` — client-level error.
+  - `AlignerCallable = Callable[[Path, list[str]], list[tuple[float, float]]]` — the public type
+    contract: `(audio_path, words) -> [(start_s, end_s), ...]`.
+  - `make_whisperx_aligner(*, model_name, language, device) -> AlignerCallable` — factory that
+    returns a closure; heavy imports (`whisperx`) are INSIDE the closure body, so importing this
+    module does NOT require WhisperX/torch to be installed. The unit-test suite is unaffected.
+- `backend/app/pipeline/align.py` — forced-alignment stage:
+  - `AlignError(RuntimeError)` — stage-level error.
+  - `_ARABIC_RANGES` — five Arabic Unicode blocks from spec §6.2 / D-031.
+  - `_MONO_EPSILON = 1e-4` — 0.1 ms tolerance for floating-point monotonicity checks.
+  - `_derive_script(word) -> "arabic"|"latin"` — codepoint-based, NOT inherited from segment hint.
+  - `_read_audio_duration(audio_path)` — reads PCM WAV header via stdlib wave module.
+  - `run_align(ctx, *, _aligner=None)` — stage entry point:
+    1. Checks audio.wav and transcript_corrected.json exist (AlignError if missing).
+    2. Reads + validates corrected transcript via Transcript Pydantic model.
+    3. Tokenizes each segment's text with `.split()` → `(word, segment_index)` pairs.
+    4. Gets audio duration from WAV header.
+    5. Calls aligner (injected fake in tests; WhisperX via `make_whisperx_aligner()` in prod).
+    6. Validates count match (timings == words).
+    7. For each word: validates `end > start`, `start >= 0`, `end <= audio_duration`,
+       and monotonicity (`start[i] >= end[i-1] - epsilon`).
+    8. Writes `job_dir/words.json` flat list with `{word, script, start, end, segment_index}`,
+       `ensure_ascii=False`, at job root (D-021).
+    9. Logs `("align", elapsed, words=N, aligner=name)`.
+  - Injection seam: `run_align(ctx, *, _aligner=None)` → tests use
+    `functools.partial(run_align, _aligner=my_fake)` in Stage. Same pattern as T-105.
+- `backend/app/models/words.py` — `WordTiming(BaseModel)` with
+  `{word, script: Literal["arabic","latin"], start, end, segment_index}`.
+- `backend/app/models/__init__.py` — exports `WordTiming`.
+- `backend/tests/fixtures/aligner/corrected_transcript.json` — two-segment fixture:
+  - Seg 0 (index=0): "Salam بزاف ديال promo" → 4 words.
+  - Seg 1 (index=1): "مزيان le design" → 3 words.
+  - Total: 7 words. Audio: synthetic silent 5.0 s WAV via wave+struct (no ffmpeg needed).
+- `backend/tests/test_align.py` — 24 tests (all green):
+  - Unit: `_derive_script` for latin ASCII, Arabic-block words, mixed-script word, punctuation.
+  - Happy path: words.json at job root, not under assets/, is a flat list, count=7, shape.
+  - Reading order + monotonic starts.
+  - Segment index attribution (first 4 → 0, last 3 → 1).
+  - Bidi canonical: Salam→latin, بزاف→arabic (U+0628..U+0641 codepoint-verified), ديال→arabic,
+    promo→latin. Surface forms preserved. ensure_ascii=False (no \\uXXXX escapes).
+  - Seg 1 مزيان → arabic by codepoint (U+0645).
+  - Missing audio.wav: error state + "audio.wav"/"not found" in message.
+  - Missing transcript_corrected.json: error state + "transcript_corrected.json"/"not found".
+  - Missing audio → words.json not written.
+  - Count mismatch: error + "mismatch"/"count" in message; no words.json.
+  - Overlap violation: error + "overlap"/"monoton" in message.
+  - end < start violation: error.
+  - Out of bounds: error + "duration"/"exceeds".
+  - Through-runner success: ready_for_ae, progress=100.
+  - Through-runner missing audio: error state.
+
+**Test results:** 169/169 passed (24 new + 145 prior). `ruff check .` clean (2 fixes: B905
+`strict=True` on zip; F401 unused `torch` import removed from WhisperX adapter).
+
+**Chosen aligner backend: WhisperX (D-030)**
+WhisperX was chosen over MFA and aeneas because it:
+(a) accepts seeded text via `whisperx.align()` — aligns GIVEN words, does NOT re-transcribe;
+(b) is pip-installable on macOS (no conda/kaldi);
+(c) supports Arabic/Darija via HuggingFace wav2vec2 models;
+(d) handles mixed-script content at the segment level.
+Mixed-script limitation: Arabic model used for the whole audio segment; French/English word
+timings have adequate accuracy (±100 ms) for caption display. See D-030.
+
+**T-003 install-line flag (DO NOT EDIT T-003 HERE — just record for the Planner):**
+`mac_setup.sh` must include:
+  pip install whisperx torch torchvision torchaudio
+  # Model auto-downloaded on first use via HuggingFace cache:
+  # jonatasgrosman/wav2vec2-large-xlsr-53-arabic
+This is a NEW requirement not in the current T-003 spec. Planner must add it before T-003 runs.
+
+**What T-108 (understanding stage) needs to know:**
+- Inputs: `job_dir/transcript_corrected.json` (operator-corrected text) + `job_dir/words.json`
+  (per-word timings with script tags) + `ctx.job.brief` (operator brief).
+- `words.json` is a flat list of `{word, script, start, end, segment_index}`.
+- `WordTiming` model in `app/models/words.py` can be used to read/validate the file.
+- The `Transcript` model in `app/models/transcript.py` has the corrected-transcript structure.
+- T-108 calls `GeminiClient.understand(transcript=..., words=..., brief=..., prompt=...)` and
+  writes `job_dir/understanding.json` (the segment/visual plan for T-110).
+
+**Real-aligner timing spot-check DEFERRED to T-113 live smoke** (see COMPLETION REPORT).
+
+**Next task:** T-108 (understanding & segmentation stage).
+
+---
