@@ -572,3 +572,76 @@ This is a NEW requirement not in the current T-003 spec. Planner must add it bef
 **Next task:** T-109 (music library + selection + beat detection).
 
 ---
+
+## 2026-07-21 — T-109 · Music library + selection + beat detection
+
+**Pre-flight:** T-108 commit `8d7dc9b` confirmed present on `origin/main`; tree clean; no foreign
+commits.
+
+**Ordering note (spec Stage 7):** Music selection + beat detection MUST run before final visual
+placement (T-110), so visuals can snap to the beat grid. This stage's `run_music` is designed to
+be placed in the pipeline's stage list before any future visual-planning stage. Do not reorder.
+
+**What was built:**
+- `backend/app/clients/beats.py` — `BeatDetectionError` + `detect_beats(audio_path) -> list[float]`.
+  Heavy `librosa` import is guarded inside the function body (module import never requires
+  librosa). Returns a strictly ascending, non-empty list of beat timestamps by sorting and
+  de-duplicating librosa's `beat_track()` output.
+- `backend/app/models/music_library.py` — `MusicLibraryEntry` Pydantic model for
+  `music/library.json` entries: `{file, type: "music"|"sfx", mood, energy (1-5), bpm, has_vocals,
+  duration}`.
+- `backend/app/pipeline/music.py` — the stage:
+  - `MusicSelectionError(RuntimeError)` — stage-level error.
+  - `_load_library()` reads + validates `music/library.json` (fails loud if missing/invalid).
+  - `_target_energy()` / `_score()` / `_select_track()` — deterministic selection: hard-reject
+    tracks shorter than the reel, then sort by `(mood_matches, -energy_delta, instrumental_bonus)`
+    descending (see D-036 for the full scoring rationale).
+  - `run_music(ctx, *, _beat_detector=None, _library_path=None)` — stage entry point: loads the
+    library, selects a track, copies it into `ctx.paths.audio_dir`, runs beat detection (real
+    librosa in prod, injectable fake in tests), writes `beats.json` and `music.json` at the job
+    root, logs via `ctx.logger.log_stage("music", ..., beats=N, track=..., duration_fallback_used=...)`.
+  - `DEFAULT_MUSIC_GAIN_DB = -14.0` — Brand Kit default (§13.2), `TODO(T-201)`-marked hook.
+  - `_FALLBACK_REEL_DURATION_S = 30.0` — used and logged when `ctx.job.duration` is unset.
+- `music/library.json` — populated the pre-existing (T-001-seeded) empty `{tracks, sfx}` scaffold
+  with 3 fixture MUSIC entries (one instrumental cozy, one instrumental upbeat, one vocal
+  energetic) so the schema is concrete. Real audio files are NOT committed (git-ignored, confirmed
+  `.gitignore` already covers `/music/*.wav` etc. from T-001).
+- `backend/tests/test_music.py` — 13 tests, all green: selection logic (instrumental preference,
+  duration rejection, mood/energy scoring, SFX-entries ignored), real-librosa beat detection on an
+  in-test-synthesized click-track (numpy, no committed media) asserting strictly ascending +
+  non-empty, missing/empty/all-too-short library → error state through the runner, full
+  runner-integration test (fake detector) asserting `beats.json` + `music.json` + copied audio
+  artifact all land correctly and the job reaches `ready_for_ae`, duration-fallback logging, and
+  beat-detector-error wrapping.
+
+**Decisions:** D-036 (beats.json/music.json placement at job root + `AudioPlan` reuse for the
+chosen-track record; library schema kept as `{tracks, sfx}`; scoring function; duration fallback;
+Brand Kit gain hook).
+
+**What was learned:**
+- `music/library.json` already existed as an empty scaffold from T-001 (`{tracks: [], sfx: []}`
+  with a comment documenting mood/energy conventions) — no contradiction, just populated it rather
+  than creating a new file.
+- Reusing `AudioPlan`/`MusicCue`/`SfxCue` from `app/models/edit_plan.py` for the chosen-track
+  record avoided a second, parallel model family — T-112 (Edit Plan assembly) can consume
+  `music.json` directly as `EditPlan.audio`.
+- `JobManager._jobs[job_id].duration = X` (direct mutation, mirroring the ingest-stage pattern in
+  `app/pipeline/ingest.py:266`) is the established way to set a job's duration in tests before
+  `create()` doesn't accept it as a parameter.
+- The T-101 runner's own generic `ctx.logger.log_stage(stage.name, duration, stages_done=...)`
+  call (in `manager.py`) writes a SECOND `"music"`-stage log line after the stage's own structured
+  log line — tests that inspect `log.txt` for stage-specific keys must filter for those keys, not
+  just take the last `"music"` entry.
+
+**Test results:** 202/202 passed (189 prior + 13 new). `ruff check .` clean.
+
+**What T-110 (visual planning stage) needs to know:**
+- `job_dir/beats.json` is a flat JSON array of ascending float beat timestamps — the grid visuals
+  and transitions snap to.
+- `job_dir/music.json` has the `AudioPlan` shape (`{music: {asset, gain_db, start}, sfx: []}`) —
+  T-110 does not need to read it (T-112 assembly will), but its presence confirms T-109 completed.
+- Both files are guaranteed to exist together — the stage never writes one without the other.
+
+**Next task:** T-110 (visual planning stage).
+
+---

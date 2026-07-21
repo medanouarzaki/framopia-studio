@@ -14,6 +14,7 @@ from app.models.edit_plan import (
     Word,
 )
 from app.models.job import Job, JobState, JobStatus
+from app.models.music_library import MusicLibraryEntry
 from app.models.transcript import Transcript, TranscriptSegment
 from app.models.understanding import Understanding, UnderstandingSegment
 from app.models.validate import EditPlanValidationError, validate_edit_plan
@@ -30,6 +31,7 @@ __all__ = [
     "Meta",
     "Motion",
     "MusicCue",
+    "MusicLibraryEntry",
     "Reel",
     "SfxCue",
     "Source",

@@ -1,5 +1,33 @@
 {
-  "_comment": "Music library index. Add tracks here; actual audio files are git-ignored. Mood values: cozy, energetic, upbeat, calm, dramatic, playful. Energy: 1 (very low) to 5 (very high).",
-  "tracks": [],
+  "_comment": "Music library index. Add tracks here; actual audio files are git-ignored (see .gitignore). Mood values: cozy, energetic, upbeat, calm, dramatic, playful. Energy: 1 (very low) to 5 (very high).",
+  "tracks": [
+    {
+      "file": "track_cozy_01.wav",
+      "type": "music",
+      "mood": ["cozy", "calm"],
+      "energy": 2,
+      "bpm": 92,
+      "has_vocals": false,
+      "duration": 120.0
+    },
+    {
+      "file": "track_upbeat_01.wav",
+      "type": "music",
+      "mood": ["upbeat", "playful"],
+      "energy": 4,
+      "bpm": 118,
+      "has_vocals": false,
+      "duration": 105.0
+    },
+    {
+      "file": "track_energetic_vox_01.wav",
+      "type": "music",
+      "mood": ["energetic", "dramatic"],
+      "energy": 5,
+      "bpm": 128,
+      "has_vocals": true,
+      "duration": 100.0
+    }
+  ],
   "sfx": []
 }

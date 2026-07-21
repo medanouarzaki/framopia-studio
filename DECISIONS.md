@@ -377,3 +377,49 @@ Placement at job root is consistent with `audio.wav`, `transcript_raw.json`, and
 **Reason:** An empty `visual_intent` is ambiguous (did the model refuse, or is this intentional?). The explicit string `"speaker only"` carries intent and is checkable downstream. Encoding it in the prompt gives the human operator a spec-compliant value to type if they hand-edit `understanding.json`.
 
 ---
+
+## D-036 · beats.json / music.json placement, library schema, and scoring function (2026-07-21)
+
+**Decision (placement):** `beats.json` and `music.json` (the chosen-track record) are written to
+the **job root** (`job_dir/beats.json`, `job_dir/music.json`), consistent with D-021's placement
+of computed per-job JSON artifacts (`words.json`, `understanding.json`, etc.). Only the actual
+selected audio FILE is copied into `ctx.paths.audio_dir` (`assets/audio/`) — the reserved dir is
+for music/SFX binary assets, not computed JSON. `music.json` reuses the existing `AudioPlan`
+Pydantic model (`music: MusicCue`, `sfx: list[SfxCue]`) from `app/models/edit_plan.py` rather than
+introducing a parallel record shape, since T-112 (Edit Plan assembly) will need exactly this shape
+to populate `EditPlan.audio`.
+
+**Decision (library schema):** `music/library.json` keeps the pre-existing `{tracks: [...], sfx:
+[...]}` wrapper (seeded empty at T-001) rather than flattening to a single array. Each entry
+follows spec §13.1's `{file, type, mood, energy, bpm, has_vocals, duration}` shape, validated by
+the new `MusicLibraryEntry` model (`app/models/music_library.py`). Real audio files stay
+git-ignored (`.gitignore` already covers `/music/*.wav` etc. from T-001); only metadata is
+committed. Populated with 3 fixture entries (`track_cozy_01.wav`, `track_upbeat_01.wav`,
+`track_energetic_vox_01.wav`) so the schema is concrete, even though the operator must still add
+the real licensed audio files locally before a real job can run.
+
+**Decision (scoring function):** Since `Job.brief` is free text with no structured mood/energy
+field (T-201 Brand Kit / any future structured-brief work may add one), the stage derives a target
+energy 1-5 from a small keyword→energy lookup table (`_ENERGY_KEYWORDS` in `app/pipeline/music.py`),
+defaulting to neutral energy 3 when no keyword matches. Candidate MUSIC tracks are (a) hard-filtered
+to `duration >= reel_duration` (reject, not just deprioritize — a track that cuts off mid-reel is
+never acceptable), then (b) sorted by the deterministic tuple `(mood_matches, -energy_delta,
+instrumental_bonus)` descending, so more mood keyword matches wins first, then closer energy, then
+instrumental over an otherwise-equal vocal track.
+
+**Decision (duration fallback):** When `ctx.job.duration` is unset (e.g. this stage runs before
+ingest has recorded it, or in isolation), the stage falls back to `_FALLBACK_REEL_DURATION_S =
+30.0` seconds — the spec's target reel length (D-A1) — and logs `duration_fallback_used=True` via
+`ctx.logger.log_stage`, rather than crashing.
+
+**Decision (Brand Kit gain hook):** `DEFAULT_MUSIC_GAIN_DB = -14.0` is a module-level constant in
+`app/pipeline/music.py`, matching spec §13.2's "~-14 dB" default. It is marked with a `TODO(T-201)`
+comment: once the Brand Kit loader exists, this should be sourced from the kit's audio config
+instead of hardcoded.
+
+**Reason:** All four sub-decisions keep T-109 self-contained and unblocked while T-201 (Brand Kit)
+and any future structured-brief work do not yet exist, without inventing scope beyond what T-109
+needs. Reusing `AudioPlan`/`MusicCue`/`SfxCue` avoids a duplicate model family that T-112 would
+otherwise have to reconcile.
+
+---

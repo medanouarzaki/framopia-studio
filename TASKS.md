@@ -26,7 +26,7 @@ Status legend: `[ ]` TODO · `[~]` IN-PROGRESS · `[x]` DONE · `[B]` BLOCKED ·
 - [x] **T-106** Correction gate API (pause/resume)
 - [x] **T-107** Forced alignment stage (words.json)
 - [x] **T-108** Understanding & segmentation stage
-- [ ] **T-109** Music library + selection + beat detection
+- [x] **T-109** Music library + selection + beat detection
 - [ ] **T-110** Visual planning stage
 - [ ] **T-111** Image generation & sourcing stage
 - [ ] **T-112** Edit Plan assembly + validation
