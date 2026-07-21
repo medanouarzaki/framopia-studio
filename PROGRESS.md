@@ -322,3 +322,60 @@ cost estimates), D-025 (retry policy).
 **Next task:** T-105 (ASR stage — transcript_raw.json).
 
 ---
+
+## 2026-07-21 — T-105 · ASR stage (transcript_raw.json)
+
+**What was built:**
+- `backend/app/prompts/asr.md` — ASR prompt encoding §11.2 mixed-script rule (LOCKED):
+  - French/English/technical words → Latin script (marketing, promo, WhatsApp).
+  - Darija/Arabic words → Arabic script (سلام، بزاف، كيفاش، مزيان، ديال).
+  - Specifies JSON output format: `{text, start, end, confidence, script}` per segment.
+  - No preamble, no markdown fences — model must return raw JSON array only.
+- `backend/tests/fixtures/gemini/asr_transcribe_response.json` — ASR fixture with real Arabic
+  codepoints: segment 0 is Darija (سلام، كيفاش تدير marketing؟, script:"arabic"),
+  segment 1 is mixed (promo 300 dirham بزاف, script:"latin"). Codepoints verified: سلام =
+  U+0633 U+0644 U+0627 U+0645; بزاف = U+0628 U+0632 U+0627 U+0641.
+- `backend/app/pipeline/asr.py` — ASR stage:
+  - Checks `job_dir/audio.wav` exists (AsrError if missing — T-103 must run first).
+  - Reads `app/prompts/asr.md` at runtime (AsrError on OSError).
+  - Calls `GeminiClient.transcribe(audio, prompt=prompt, brief=ctx.job.brief)`.
+  - Shapes result into `{job_id, model_id, segments: [{index, text, start, end, confidence, script?}]}`.
+  - Writes to `job_dir/transcript_raw.json` with `ensure_ascii=False` (preserves Arabic).
+  - Injection seam: `run_asr(ctx, *, _gemini_client=None)` — tests pass
+    `functools.partial(run_asr, _gemini_client=client)` to `Stage`.
+- `backend/tests/test_asr.py` — 13 tests (all green):
+  - Prompt file exists; prompt contains Latin-script rule + concrete French/English examples;
+    prompt contains Arabic-script rule + Arabic codepoint examples.
+  - Happy path: transcript_raw.json produced with correct job_id, model_id, 2 segments.
+  - Segment shape: all required keys present, 0-based index ordering.
+  - Placement: at job root, NOT under assets/.
+  - Arabic codepoints (BIDI trap defence): seg0[0..3] asserted by exact codepoint value
+    (U+0633 U+0644 U+0627 U+0645 = سلام); seg1 has both Latin + Arabic codepoints.
+  - Script hint: "arabic" and "latin" carried through into output.
+  - Missing audio.wav: error state, "audio.wav"+"not found" in message; no transcript written.
+  - GeminiError surfaces as stage error with non-empty message.
+  - Through-runner success: state=ready_for_ae, progress=100.0, transcript on disk.
+  - Through-runner failure: state=error with message.
+
+**Test results:** 124/124 passed (13 new + 111 prior). `ruff check .` clean (2 style fixes auto-applied to test_asr.py).
+
+**BIDI trap institutional memory:**
+Arabic stored in logical (Unicode) order in both the fixture and the output JSON. All test assertions
+use codepoint integers, not string equality against visual representations. Future sessions that touch
+ASR/caption must continue this practice: verify Arabic content with `ord(c)` checks, not display.
+
+**What T-106 (correction gate API) needs to know:**
+- After ASR completes, the operator can edit `transcript_raw.json` manually.
+- The correction gate is a `Stage(is_gate=True)` that pauses the pipeline after ASR writes its output.
+- T-106 adds an HTTP endpoint for the operator to submit the corrected transcript (or confirm as-is),
+  then calls `mgr.resume(job_id)` to proceed to T-107 (forced alignment).
+- The `transcript_raw.json` at job root is the editable artifact between ASR and alignment.
+
+**What T-107 (forced alignment) needs to know:**
+- Input: `job_dir/transcript_raw.json` (after operator correction gate).
+- Output: `job_dir/words.json` with per-word `{text, start, end, confidence}` timings.
+- Word-level alignment is the input to T-108's visual segmentation.
+
+**Next task:** T-106 (correction gate API — pause/resume endpoint).
+
+---

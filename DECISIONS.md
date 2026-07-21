@@ -225,6 +225,23 @@ Claude Code runs `acceptEdits` + allowlist by default (`.claude/settings.json`).
 
 ---
 
+## D-026 · §11.2 mixed-script rule is LOCKED in asr.md prompt (2026-07-21)
+
+**Decision:** The script-assignment rule (French/English/technical → Latin; Darija/Arabic → Arabic)
+is encoded verbatim in `app/prompts/asr.md` and marked LOCKED. The rule text must not be weakened
+or reversed by any future session without a Planner decision and a new DECISIONS.md entry.
+
+**Reason:** Spec §11.2 locks this rule. Mixed-script captions with correct bidi shaping depend on
+the ASR output using the right script for each word. If this rule were relaxed (e.g. Darija in Latin
+transliteration), the entire caption rendering pipeline (T-303) would produce incorrect output. The
+lock makes the constraint explicit so no Executor changes it thinking it's incidental.
+
+**Enforcement:** `test_asr_prompt_contains_latin_script_rule` and
+`test_asr_prompt_contains_arabic_script_rule` in `tests/test_asr.py` fail if the rule is removed from
+the prompt, providing a test-level guard.
+
+---
+
 ## D-021 · audio.wav lives at job_dir/audio.wav, NOT assets/audio/ (2026-07-21)
 
 **Decision:** The extracted speech WAV is written to `ctx.paths.job_dir / "audio.wav"` (the job root), not to `ctx.paths.audio_dir` (`assets/audio/`).
