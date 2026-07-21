@@ -353,3 +353,27 @@ Placement at job root is consistent with `audio.wav`, `transcript_raw.json`, and
 **Reason:** Spec §5 workspace diagram places `audio.wav` at the job root alongside `input.mp4` and `job.json`. `assets/audio/` is reserved for music/SFX assets referenced by the Edit Plan (e.g. `track_cozy_01.wav` selected by T-109). Mixing the speech track into `assets/audio/` would require the music-selection stage to distinguish them, adding fragility. Keeping them at different levels makes the distinction structural.
 
 ---
+
+## D-033 · understanding.json shape (2026-07-21)
+
+**Decision:** `understanding.json` is a JSON object with `summary` (string) and `segments` (array), at the job root. Each segment: `{index, text, start, end, visual_intent, emphasis_word_indices}`. Validated against `Understanding` / `UnderstandingSegment` Pydantic models.
+
+**Reason:** The spec Stage 6 shape is taken verbatim; no extra wrapper object. Placement at job root is consistent with D-021 (all stage outputs at the top of `job_dir`). The Pydantic validation gate ensures downstream stages (T-109, T-110, T-303) can trust the shape without defensive loading.
+
+---
+
+## D-034 · emphasis_word_indices range validation is the stage's responsibility (2026-07-21)
+
+**Decision:** `run_understand` validates that every value in `emphasis_word_indices` is in `[0, len(words)-1]`. Out-of-range → `UnderstandError` (fail loud, spec §20). The Gemini client does not validate this.
+
+**Reason:** The Gemini client is intentionally opaque to output structure. The stage owns the semantic contract between the model output and the downstream consumers. An out-of-range index would cause a silent wrong-word emphasis in T-303, which is worse than a loud failure here.
+
+---
+
+## D-035 · "speaker only" is a reserved sentinel string for visual_intent (2026-07-21)
+
+**Decision:** The understanding prompt encodes `"speaker only"` (exact string, lower-case, no trailing punctuation) as the required value when no visual is appropriate. The stage validates `visual_intent` is non-empty but does NOT treat `"speaker only"` as special — it is simply a valid non-empty value. T-110 (visual planning) must handle this sentinel by producing no B-roll slot for that segment.
+
+**Reason:** An empty `visual_intent` is ambiguous (did the model refuse, or is this intentional?). The explicit string `"speaker only"` carries intent and is checkable downstream. Encoding it in the prompt gives the human operator a spec-compliant value to type if they hand-edit `understanding.json`.
+
+---

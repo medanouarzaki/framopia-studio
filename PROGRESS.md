@@ -534,3 +534,41 @@ This is a NEW requirement not in the current T-003 spec. Planner must add it bef
 **Next task:** T-108 (understanding & segmentation stage).
 
 ---
+
+## 2026-07-21 — T-108 · Understanding & segmentation stage
+
+**Pre-flight:** T-107 commit `147f55e` confirmed on `origin/main`; tree clean.
+
+**What was done:**
+- Created `backend/app/prompts/understand.md` — the operator-editable understanding prompt encoding the §11.3 emphasis rule (nouns, numbers, brand/product names, punchy verbs) and the `"speaker only"` visual_intent convention.
+- Created `backend/app/models/understanding.py` — `Understanding` and `UnderstandingSegment` Pydantic models for `understanding.json` (shape per spec Stage 6).
+- Created `backend/app/pipeline/understand.py` — the stage: reads `transcript_corrected.json` + `words.json`, calls `GeminiClient.understand()` via the injection seam, parses the raw text as JSON, validates with the Pydantic model, validates emphasis indices in range [0, len(words)-1] and visual_intent non-empty, writes `understanding.json` at the job root (`ensure_ascii=False`, D-021).
+- Added `Understanding` and `UnderstandingSegment` exports to `backend/app/models/__init__.py`.
+- Created `backend/tests/fixtures/gemini/understand_t108_response.json` — canonical Gemini fixture with Arabic summary, two segments (one "show product packaging", one "speaker only"), emphasis indices referencing the 7-word fixture list.
+- Created `backend/tests/fixtures/understand/` — `corrected_transcript.json` (2-segment, 7-word Darija/French fixture) and `words.json` (7-word flat list matching the aligner fixture).
+- Created `backend/tests/test_understand.py` — 20 tests; all PASSED.
+
+**Decisions:** D-033 (understanding.json shape), D-034 (emphasis-index validation), D-035 (visual_intent sentinel).
+
+**What was learned:**
+- `JobStatus.progress_pct` (not `.progress`) is the correct field name.
+- Fixture `text` field contains the raw model output as a JSON-encoded string (the Gemini transport internal format); the stage owns parsing that raw string into structured data.
+- `pytest.MonkeyPatch().context()` + `mp.setattr("app.clients.gemini.get_settings", lambda: ...)` is the correct pattern for this codebase; `app.config._settings` does not exist as a module-level var.
+
+**Test results:** 189/189 passed. ruff clean.
+
+**What T-109 (music library + selection + beat detection) needs to know:**
+- `understanding.json` at the job root provides a `summary` (paragraph) and a `segments` list.
+- Each segment has `visual_intent` (a visual concept or `"speaker only"`) and `emphasis_word_indices` (global indices into `words.json`).
+- T-109 should use the `summary` and `segments` for music mood selection (match energy level, pacing).
+- The full `understanding.json` is available via `ctx.paths.job_dir / "understanding.json"`.
+- `Understanding` model in `app/models/understanding.py` can be used to read/validate it.
+
+**What T-110 (visual planning stage) needs to know:**
+- Same `understanding.json` is the primary input.
+- `visual_intent` per segment tells the visual planner WHAT to show; T-110 decides HOW (which image slot, what B-roll concept to generate in T-111).
+- `emphasis_word_indices` indicate which words should get visual emphasis in the caption layer.
+
+**Next task:** T-109 (music library + selection + beat detection).
+
+---

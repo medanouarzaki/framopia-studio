@@ -15,6 +15,7 @@ from app.models.edit_plan import (
 )
 from app.models.job import Job, JobState, JobStatus
 from app.models.transcript import Transcript, TranscriptSegment
+from app.models.understanding import Understanding, UnderstandingSegment
 from app.models.validate import EditPlanValidationError, validate_edit_plan
 from app.models.words import WordTiming
 
@@ -34,6 +35,8 @@ __all__ = [
     "Source",
     "Transcript",
     "TranscriptSegment",
+    "Understanding",
+    "UnderstandingSegment",
     "Visual",
     "Word",
     "WordTiming",
