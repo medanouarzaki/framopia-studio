@@ -423,3 +423,89 @@ needs. Reusing `AudioPlan`/`MusicCue`/`SfxCue` avoids a duplicate model family t
 otherwise have to reconcile.
 
 ---
+
+## D-037 · visual_plan.json placement, model reuse, and seed (2026-07-21)
+
+**Decision:** T-110's output artifact is `job_dir/visual_plan.json` (job root), consistent with
+D-021. Its `visuals`/`motion` arrays are built directly from the existing `Visual`/`Motion`
+Pydantic models in `app/models/edit_plan.py` (`model_dump()` on write) — no parallel model family,
+mirroring D-036's reuse of `AudioPlan` for T-109. The artifact also records `seed` (int),
+`reel_duration` (float), and `reel_duration_fallback_used` (bool) so T-112 assembly (and any
+re-run) can reproduce or audit the plan without re-deriving them.
+
+**Reason:** `Visual`/`Motion` are already the exact contract T-112 needs for `EditPlan.visuals` /
+`EditPlan.motion`; inventing a second shape would force a translation step at assembly time for no
+benefit. Recording the seed makes "given the same inputs + seed, re-run reproduces the plan" (spec
+§14.4) auditable from the artifact itself, not just from test code.
+
+---
+
+## D-038 · client-asset relevance heuristic: tokenized keyword overlap (2026-07-21)
+
+**Decision:** A client asset is "relevant" to a segment (§12.1 step 1) iff the lowercase word
+tokens (regex `[a-zA-Z0-9؀-ۿ]{3,}`, i.e. length ≥ 3, Latin/digit/basic-Arabic-block) of the
+segment's `visual_intent` intersect the tokens of the asset's filename stem. Client files are
+enumerated from `ctx.paths.client_dir` sorted by name for determinism; the first (sorted) match
+wins if more than one asset matches.
+
+**Reason:** No structured tagging exists for client assets in v1 (that's a Brand Kit / T-201-era
+concern at the earliest) — filenames are the only signal available. Token-overlap on the filename
+stem is simple, has zero dependencies, is fully deterministic, and matches the spirit of §12.1
+("is there a relevant client asset for what's being said"). The length-≥3 floor avoids spurious
+matches on short/common substrings.
+
+---
+
+## D-039 · generated_image vs animated_text: digit/keyword text-card heuristic (2026-07-21)
+
+**Decision:** Within spec §12.1 step 2/3, a segment with a substantive (non-"speaker only")
+`visual_intent` that contains a digit, or one of a small keyword list (`price`, `discount`,
+`% off`, `percent`, `stat`, `quote`, `number`) anywhere (case-insensitive), routes to
+`kind="animated_text"` (`template="animtext_bold"`, `text=visual_intent` verbatim) instead of
+`kind="generated_image"`. All other substantive intents route to `generated_image`.
+
+**Reason:** A price/number/stat is a textual fact, not a visual concept — asking Nano Banana to
+"generate an image of 300 DH" produces a nonsensical or on-image-text-violating result (spec
+§12.2 explicitly forbids baked-in text). A deterministic keyword/digit check routes these to the
+branded text-card template instead, matching the golden example's `v3` (`"300 DH"` →
+`animated_text`/`animtext_bold`).
+
+---
+
+## D-040 · density bounds: MIN_VISUAL_DURATION_S = 1.5s, no explicit max-rate rule (2026-07-21)
+
+**Decision:** `MIN_VISUAL_DURATION_S = 1.5` (seconds) in `app/pipeline/plan_visuals.py`. Every
+placed visual's window is extended to at least this length (capped at the reel duration; if it
+can't fit, the visual is dropped and the segment falls back to no-visual/speaker). No separate
+"merge segments that are too close together" pass exists — visuals are strictly sequential/
+non-overlapping by construction (each visual's start is `max(segment.start, previous_visual.end)`
+snapped to a beat), so the 1.5s floor already caps the maximum visual rate at roughly one every
+1.5s, well inside the spec's "~5s or on key moments" guidance for reels with normally-paced
+segments. No additional target-cadence merge logic was added — out of scope for a first cut; if
+real reels come back too "choppy" at T-502 tuning, add a cadence-based merge there.
+
+**Reason:** 1.5s is long enough to register as a deliberate visual (not a strobe/flash) at typical
+short-form viewing speed, short enough not to waste the "roughly every ~5s" budget spec'd for key
+moments. Concrete bounds were requested by the task; deferring cadence-merging avoids inventing
+scope beyond what T-110 needs — segment boundaries (chosen by T-108's understanding stage) are
+already the pacing signal.
+
+---
+
+## D-041 · motion placement: punch_soft on no-visual segments, transition_whip_pan between visuals (2026-07-21)
+
+**Decision:** `punch_in`/`punch_soft` (amount 1.08) is emitted once per segment that ends up with
+NO visual (i.e. "speaker only", or dropped by density/window constraints), at the beat nearest
+(not necessarily on-or-after) that segment's `start`. `transition`/`transition_whip_pan` (D-007)
+is emitted at the `start` of every visual EXCEPT the first (i.e. only at boundaries BETWEEN
+consecutive visuals, not at the initial speaker→first-visual entrance) — matching the golden
+example's single transition at the `v1`→`v2` boundary, not at `v1.start`.
+
+**Reason:** Punch-ins exist to keep speaker-only stretches visually alive without a competing
+visual; tying them to segments that got no B-roll is the most direct reading of spec §13.3's
+"speaker punch-ins" alongside "visual swaps." The transition-only-between-visuals rule mirrors the
+one concrete example the spec provides (Appendix A) rather than inventing a new pattern; a
+transition at the very first visual's entrance would double up with that visual's own beat-aligned
+reveal animation, which already provides the "cut" feeling.
+
+---

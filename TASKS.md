@@ -27,7 +27,7 @@ Status legend: `[ ]` TODO · `[~]` IN-PROGRESS · `[x]` DONE · `[B]` BLOCKED ·
 - [x] **T-107** Forced alignment stage (words.json)
 - [x] **T-108** Understanding & segmentation stage
 - [x] **T-109** Music library + selection + beat detection
-- [ ] **T-110** Visual planning stage
+- [x] **T-110** Visual planning stage
 - [ ] **T-111** Image generation & sourcing stage
 - [ ] **T-112** Edit Plan assembly + validation
 - [ ] **T-113** Backend orchestration + endpoints + live smoke

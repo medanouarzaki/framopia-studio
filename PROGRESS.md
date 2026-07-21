@@ -645,3 +645,89 @@ Brand Kit gain hook).
 **Next task:** T-110 (visual planning stage).
 
 ---
+
+## 2026-07-21 — T-110 · Visual planning stage
+
+**Pre-flight:** T-109 commit `751f147` confirmed present on `origin/main`; tree clean; no foreign
+commits.
+
+**Ordering note (kept true):** `plan_visuals` runs AFTER `music` in the eventual pipeline stage
+list — it reads `beats.json` produced there and snaps every visual start onto it. This stage is
+fully deterministic and makes no Gemini/API calls (depends only on T-108 + T-109 artifacts).
+
+**What was built:**
+- `backend/app/pipeline/plan_visuals.py` — the stage:
+  - `PlanVisualsError(RuntimeError)` — stage-level error.
+  - `_tokenize()` / `_find_client_asset()` — client-asset relevance via filename/intent
+    keyword-token overlap (D-038).
+  - `_looks_like_text_card()` — digit/keyword heuristic routing a segment to `animated_text`
+    instead of `generated_image` (D-039).
+  - `_classify()` — implements spec §12.1's decision order per segment: client_asset →
+    (speaker-only → none) → text-card → animated_text → else generated_image.
+  - `_snap_start_on_or_after()` — smallest beat ≥ a candidate time, or `None` if the grid is
+    exhausted (visual gets dropped, not forced out of range).
+  - `run_plan_visuals(ctx, *, _seed=None)` — stage entry point: reads `understanding.json` +
+    `beats.json`, enumerates `ctx.paths.client_dir` (sorted), derives a reproducible seed from
+    `ctx.job_id` (sha256-based, override via `_seed` for tests), classifies + places each segment's
+    visual sequentially (non-overlapping, `MIN_VISUAL_DURATION_S=1.5` floor, D-040), emits
+    `punch_soft` motion for no-visual segments and `transition_whip_pan` between consecutive
+    visuals (D-041), writes `job_dir/visual_plan.json` (D-037), logs via
+    `ctx.logger.log_stage("plan_visuals", ..., visuals=N, motion=M, reel_duration_fallback_used=...)`.
+  - Reused `Visual`/`Motion` from `app/models/edit_plan.py` directly — no parallel model (D-037),
+    mirroring T-109's `AudioPlan` reuse.
+  - Reel-duration fallback imports T-109's `_FALLBACK_REEL_DURATION_S` constant from
+    `app.pipeline.music` rather than re-deciding the value, per the task's explicit instruction.
+- `backend/tests/test_plan_visuals.py` — 22 tests, all green: all four §12.1 branches
+  (client_asset priority, speaker-only → no visual, text-card → animated_text, plain concept →
+  generated_image, no-client-asset fallback), only-V1-template-names, start-on-beat, window-in-
+  range, non-overlap, min-duration, motion presence + punch fields + transition-only-between-
+  visuals, determinism (two separate jobs + explicit shared seed → byte-identical JSON; same
+  job_id re-run with default seed → byte-identical), a full `EditPlan` construction/validation
+  test proving T-112 will accept this output, missing/empty-input error states, duration-fallback
+  logging, and runner integration.
+
+**Decisions:** D-037 (visual_plan.json placement + model reuse + seed recording), D-038
+(client-asset relevance heuristic), D-039 (generated_image vs animated_text heuristic), D-040
+(density bounds), D-041 (motion placement rule).
+
+**What was learned:**
+- No `BUILD_STATE.md` file exists in the repo — it is referenced only in code/PROGRESS comments
+  from prior sessions (align.py, understand.py, asr.py, main.py) as an external/institutional
+  reference, never as a committed doc. Not treated as a new contradiction: the task itself
+  supplied the concrete V1 template-name list needed here (`image_reveal_slideup`,
+  `image_reveal_scalein`, `animtext_bold`, `punch_soft`, `transition_whip_pan`), so nothing was
+  guessed. Flagging for the Planner in case `BUILD_STATE.md` was meant to exist and is missing
+  from the repo.
+- The committed golden (`docs/edit_plan.example.json`) already uses `transition_whip_pan` (not the
+  spec-prose's bare `whip_pan`), confirming D-007 was already applied there — no drift to fix.
+- `EditPlan`'s own validator does NOT check visual non-overlap (only window-in-range + end>start +
+  beat-alignment-on-start) — T-110's non-overlap guarantee is a stage-level invariant, tested here,
+  not something T-112 assembly re-derives.
+
+**Test results:** 224/224 passed (202 prior + 22 new). `ruff check .` clean.
+
+**What T-111 (image generation & sourcing) needs to know:**
+- `visual_plan.json` at the job root lists every `generated_image` visual with `asset =
+  "assets/images/<id>.png"` (e.g. `"assets/images/v3.png"`) — T-111 must generate and save exactly
+  that file for each such visual; the file does not exist yet when T-110 finishes (by design —
+  `Visual` doesn't check file existence, only `validate_edit_plan(check_assets=True)` at T-112
+  does).
+- `visual.template` on `generated_image`/`client_asset` visuals is already the reveal template
+  (`image_reveal_slideup` or `image_reveal_scalein`) — T-111 does not choose or touch templates.
+- `client_asset` visuals reference `assets/client/<original filename>` — those files already exist
+  (copied by ingest, T-102); T-111 has nothing to do for those.
+
+**What T-112 (Edit Plan assembly) needs to know:**
+- `visual_plan.json`'s `visuals`/`motion` arrays deserialize directly into `Visual`/`Motion` model
+  instances (`Visual.model_validate(v)` / `Motion.model_validate(m)`) — no translation needed.
+- `visual_plan.json` also carries `seed`, `reel_duration`, and `reel_duration_fallback_used` for
+  audit/reproducibility; assembly should prefer `ctx.job.duration` when set and only fall back to
+  the recorded `reel_duration` (or re-derive via the same fallback) if it's still unset at
+  assembly time.
+- Every visual's `start` is guaranteed to be an exact value from `beats.json` (not just within one
+  frame), so beat-alignment validation at `EditPlan` construction is satisfied for free as long as
+  the SAME `beats.json` (T-109's) is passed through to `EditPlan.beats`.
+
+**Next task:** T-111 (image generation & sourcing stage).
+
+---
