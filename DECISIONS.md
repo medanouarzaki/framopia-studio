@@ -242,6 +242,47 @@ the prompt, providing a test-level guard.
 
 ---
 
+## D-027 · POST /jobs/{id}/transcript: URL job_id overrides body job_id (2026-07-21)
+
+**Decision:** When writing `transcript_corrected.json`, the `job_id` is taken from the URL path
+parameter, not from the `Transcript` body's `job_id` field. The body's `job_id` is ignored.
+
+**Reason:** The URL is the authoritative identifier. If the operator round-trips the raw transcript
+(copy GET response, POST it back), the `job_id` in the body is the same as the URL. But if the
+body has a wrong or stale `job_id` (e.g. pasted from a different job), using the URL avoids
+silently writing a self-inconsistent file. Tests assert this with a "WRONG-ID" body.
+
+---
+
+## D-028 · Correction gate POST uses FastAPI BackgroundTasks for resume (2026-07-21)
+
+**Decision:** `POST /jobs/{id}/transcript` schedules `mgr.resume(job_id)` via
+`background_tasks.add_task(mgr.resume, job_id)` (FastAPI `BackgroundTasks`) rather than
+awaiting it directly in the endpoint.
+
+**Reason:** Spec §14.2 states remaining pipeline stages run asynchronously; the panel polls
+`/status`. If resume is awaited directly, the POST blocks until all downstream stages complete —
+for a real pipeline with Gemini calls, this could take 30–60+ seconds. BackgroundTasks returns the
+response first, then runs the resume. TestClient (Starlette) completes background tasks before
+returning from `client.post()`, so tests remain deterministic.
+
+---
+
+## D-029 · JobManager singleton via lazy app.state + dependency injection (2026-07-21)
+
+**Decision:** A single `JobManager` instance is stored in `app.state.job_manager` and exposed via
+a FastAPI `_get_manager(request)` dependency. It is initialised lazily on the first request (no
+`lifespan` needed). Tests override it by directly assigning `app.state.job_manager = mgr` with a
+tmp_path-based manager before calling any endpoint.
+
+**Reason:** A lifespan context manager would run during `TestClient(app)` setup, creating a manager
+with the default `jobs_root`. Tests would then need to override it anyway. The lazy approach is
+simpler: tests assign before the first request, the lazy check never fires. Existing `test_health.py`
+tests are unaffected since they don't call job endpoints. This is NOT T-113's full `POST /jobs`
+orchestration endpoint — just the minimal manager wiring needed for T-106.
+
+---
+
 ## D-021 · audio.wav lives at job_dir/audio.wav, NOT assets/audio/ (2026-07-21)
 
 **Decision:** The extracted speech WAV is written to `ctx.paths.job_dir / "audio.wav"` (the job root), not to `ctx.paths.audio_dir` (`assets/audio/`).

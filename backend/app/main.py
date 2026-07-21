@@ -1,11 +1,16 @@
 """Framopia Studio backend — FastAPI application entry point."""
 
+import json
 import shutil
 
-from fastapi import FastAPI
+from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Request
 
 from app import __version__
 from app.config import get_settings
+from app.jobs.manager import JobManager
+from app.jobs.paths import WorkspacePaths
+from app.models.job import JobState
+from app.models.transcript import Transcript
 
 # SERVER_HOST is hardcoded and NOT sourced from config (spec §21 / D-010).
 # Binding to anything other than 127.0.0.1 must be structurally impossible,
@@ -13,6 +18,28 @@ from app.config import get_settings
 SERVER_HOST = "127.0.0.1"
 
 app = FastAPI(title="Framopia Studio Backend", version=__version__)
+
+
+# ---------------------------------------------------------------------------
+# Manager dependency — lazy singleton, overridable in tests
+# ---------------------------------------------------------------------------
+
+
+def _get_manager(request: Request) -> JobManager:
+    """FastAPI dependency: return the app-wide JobManager.
+
+    Initialised on first use with the default jobs_root (D-014).
+    Tests override it by assigning to app.state.job_manager before calling
+    any endpoint; the lazy check here means no lifespan is needed.
+    """
+    if not hasattr(request.app.state, "job_manager"):
+        request.app.state.job_manager = JobManager()
+    return request.app.state.job_manager
+
+
+# ---------------------------------------------------------------------------
+# Health check
+# ---------------------------------------------------------------------------
 
 
 @app.get("/health")
@@ -30,6 +57,101 @@ def health() -> dict:
         "ffmpeg_ok": ffmpeg_ok,
         "keys_ok": keys_ok,
     }
+
+
+# ---------------------------------------------------------------------------
+# Transcript correction gate endpoints (spec Stage 4 / §14.1 / §14.2)
+# ---------------------------------------------------------------------------
+
+
+@app.get("/jobs/{job_id}/transcript")
+def get_transcript(
+    job_id: str,
+    mgr: JobManager = Depends(_get_manager),  # noqa: B008
+) -> dict:
+    """Return the raw ASR transcript for the operator correction UI.
+
+    The transcript lives at job_dir/transcript_raw.json (written by the ASR
+    stage, T-105). The correction UI renders the segments and lets the operator
+    fix transcription errors before the pipeline resumes.
+
+    Errors:
+        404: Job not found, or ASR stage has not completed yet.
+    """
+    try:
+        mgr.get_job(job_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"Job {job_id!r} not found.") from None
+
+    paths = WorkspacePaths(mgr._jobs_root, job_id)
+    raw_path = paths.job_dir / "transcript_raw.json"
+    if not raw_path.exists():
+        raise HTTPException(
+            status_code=404,
+            detail="Transcript not ready — the ASR stage has not completed for this job.",
+        )
+
+    return json.loads(raw_path.read_text(encoding="utf-8"))
+
+
+@app.post("/jobs/{job_id}/transcript")
+async def post_transcript(
+    job_id: str,
+    body: Transcript,
+    background_tasks: BackgroundTasks,
+    mgr: JobManager = Depends(_get_manager),  # noqa: B008
+) -> dict:
+    """Accept the operator-corrected transcript and resume the pipeline.
+
+    Validates the body against the Transcript schema (§14.3). On success,
+    writes transcript_corrected.json at the job root and schedules
+    mgr.resume() as a background task so the POST returns immediately
+    while the remaining pipeline stages run asynchronously (§14.2).
+
+    The gate is the quality keystone (spec Stage 4): this endpoint is the
+    ONLY way to advance a job past AWAITING_CORRECTION. It MUST NOT be
+    bypassed or auto-called.
+
+    Arabic in the corrected transcript is stored in logical (codepoint) order
+    via ensure_ascii=False (BIDI trap — BUILD_STATE §5 / D-027).
+
+    Errors:
+        404: Job not found.
+        409: Job is not currently awaiting correction.
+        422: Request body fails Transcript schema validation (FastAPI / Pydantic).
+    """
+    try:
+        mgr.get_job(job_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"Job {job_id!r} not found.") from None
+
+    status = mgr.status(job_id)
+    if status.state != JobState.AWAITING_CORRECTION:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"Job {job_id!r} is not awaiting correction "
+                f"(current state: {status.state.value!r}). "
+                "Only a job in 'awaiting_correction' can receive a corrected transcript."
+            ),
+        )
+
+    # Write transcript_corrected.json at the job root (D-021 / D-027).
+    # Override job_id from the URL so the file is always self-consistent.
+    paths = WorkspacePaths(mgr._jobs_root, job_id)
+    corrected_data = body.model_dump()
+    corrected_data["job_id"] = job_id  # URL wins over body (D-027)
+
+    out = paths.job_dir / "transcript_corrected.json"
+    out.write_text(
+        json.dumps(corrected_data, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+
+    # Resume the pipeline in the background so the POST returns immediately (§14.2).
+    background_tasks.add_task(mgr.resume, job_id)
+
+    return {"ok": True, "job_id": job_id}
 
 
 if __name__ == "__main__":

@@ -379,3 +379,67 @@ ASR/caption must continue this practice: verify Arabic content with `ord(c)` che
 **Next task:** T-106 (correction gate API — pause/resume endpoint).
 
 ---
+
+## 2026-07-21 — T-106 · Transcript correction gate API
+
+**Pre-flight:** T-105 commit `2709fdb` confirmed on origin/main. Tree clean.
+
+**What was built:**
+- `backend/app/models/transcript.py` — shared Pydantic models (spec §14.3):
+  - `TranscriptSegment`: `{index: int, text: str, start?, end?, confidence?, script?}`
+  - `Transcript`: `{job_id: str, model_id: str, segments: list[TranscriptSegment]}`
+  - Same shape used for `transcript_raw.json` (read by GET), POST body (validated by Pydantic),
+    and `transcript_corrected.json` (written by POST). Shape field-for-field consistent with T-105.
+- `backend/app/pipeline/correction_gate.py` — `CORRECTION_GATE_STAGE`:
+  - `Stage(name="correction_gate", run=_noop, is_gate=True)`.
+  - The noop run does nothing; `is_gate=True` in the T-101 runner handles the actual pause.
+  - Module docstring explicitly states the gate MUST NEVER be skipped.
+  - T-113 (pipeline assembly) will wire this between the ASR stage and downstream stages.
+- `backend/app/main.py` — two new endpoints + lazy manager singleton:
+  - `_get_manager(request)` dependency: returns `app.state.job_manager`, initialised on first
+    use with the default `jobs_root`. Tests override by setting `app.state.job_manager = mgr`.
+  - `GET /jobs/{id}/transcript`: reads `transcript_raw.json`; 404 on unknown job or missing file.
+  - `POST /jobs/{id}/transcript`: validates body as `Transcript` (Pydantic → 422 on malformed);
+    409 if job not in `awaiting_correction`; 404 if unknown; writes `transcript_corrected.json`
+    at job root with `ensure_ascii=False`; schedules `mgr.resume(job_id)` via BackgroundTasks
+    (§14.2: POST returns immediately, remaining stages run asynchronously).
+  - `job_id` from the URL always overrides `job_id` in the body (D-027).
+- `backend/app/models/__init__.py` — exports `Transcript`, `TranscriptSegment`.
+- `backend/tests/test_correction_gate.py` — 21 tests (all green):
+  - Gate is real pause: state=awaiting_correction; downstream did NOT run before POST.
+  - transcript_raw.json exists on disk at the gate.
+  - GET happy path: returns raw segments, job_id, model_id.
+  - GET 404: unknown job; transcript not ready.
+  - POST happy path: writes transcript_corrected.json at job root (not under assets/), resumes
+    pipeline, downstream stub runs, state→ready_for_ae, progress=100.
+  - POST: job_id from URL wins over body.
+  - POST malformed: 422, job stays paused, no corrected.json written, downstream didn't run.
+  - POST to non-awaiting job: 409 with "awaiting_correction" in detail.
+  - POST after already resumed: 409 (second POST rejected).
+  - Arabic codepoints: سلام (U+0633..U+0645) preserved in logical order; `ensure_ascii=False`
+    means raw UTF-8 chars in file (no \\uXXXX escapes).
+
+**Test results:** 145/145 passed (21 new + 124 prior). `ruff check .` clean (4 issues fixed: B008
+`noqa` for two FastAPI `Depends` calls, B904 `from None` on two `raise HTTPException` in except).
+
+**Resume via BackgroundTasks (D-028):**
+`mgr.resume()` is an async coroutine. Using `background_tasks.add_task(mgr.resume, job_id)`
+schedules it in FastAPI/Starlette's async execution after the response is sent. In TestClient
+tests, background tasks complete before `client.post()` returns, so assertions after the POST
+call reliably observe the post-resume state. No `asyncio.create_task` needed.
+
+**Manager wiring (D-029):**
+Lazy init via `_get_manager` dependency (no `lifespan` needed). Tests set `app.state.job_manager`
+directly before TestClient calls, which overrides the lazy singleton. This keeps existing
+`test_health.py` tests unaffected (they don't call job endpoints).
+
+**What T-107 (forced alignment) needs to know:**
+- Input: `job_dir/transcript_corrected.json` (NOT `transcript_raw.json` — operator's corrections
+  must be honoured). If the operator confirmed without changes, the corrected file is a copy of raw.
+- `Transcript` model is in `app/models/transcript.py` — import and use to read/validate the input.
+- `transcript_corrected.json` is always at job root (D-021 placement consistency).
+- Output: `job_dir/words.json` with per-word `{text, start, end, confidence}` timings.
+
+**Next task:** T-107 (forced alignment stage — words.json).
+
+---

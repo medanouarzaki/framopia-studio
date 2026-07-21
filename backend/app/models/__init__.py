@@ -14,6 +14,7 @@ from app.models.edit_plan import (
     Word,
 )
 from app.models.job import Job, JobState, JobStatus
+from app.models.transcript import Transcript, TranscriptSegment
 from app.models.validate import EditPlanValidationError, validate_edit_plan
 
 __all__ = [
@@ -30,6 +31,8 @@ __all__ = [
     "Reel",
     "SfxCue",
     "Source",
+    "Transcript",
+    "TranscriptSegment",
     "Visual",
     "Word",
     "validate_edit_plan",

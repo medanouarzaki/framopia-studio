@@ -23,7 +23,7 @@ Status legend: `[ ]` TODO · `[~]` IN-PROGRESS · `[x]` DONE · `[B]` BLOCKED ·
 - [x] **T-103** Audio extraction (ffmpeg)
 - [x] **T-104** Gemini client (asr/understand/image) — mockable
 - [x] **T-105** ASR stage (transcript_raw.json)
-- [ ] **T-106** Correction gate API (pause/resume)
+- [x] **T-106** Correction gate API (pause/resume)
 - [ ] **T-107** Forced alignment stage (words.json)
 - [ ] **T-108** Understanding & segmentation stage
 - [ ] **T-109** Music library + selection + beat detection
