@@ -604,3 +604,90 @@ practical benefit; cross-job caching is a natural T-502-era enhancement once rea
 are known.
 
 ---
+
+## D-047 · Ceiling-skipped visuals are DROPPED; only their own transition is removed with them (2026-07-21)
+
+**Decision:** During assembly (T-112), a `generated_image` visual whose `images.json` entry has
+`status=="skipped_ceiling"` is DROPPED entirely from the final `EditPlan.visuals` (not left as a
+dangling reference, not substituted with a placeholder). A `motion` item is dropped alongside it
+ONLY if it is a `transition` whose `at` exactly equals the dropped visual's `start` (i.e. the
+transition that marked THAT visual's own entrance) — every other motion item (punch-ins, and
+transitions tied to surviving visuals) is left untouched. No new transitions are synthesized to
+"heal" the gap left by a drop.
+
+**Reason:** The task's recommended policy (drop + log, don't leave a dangling reference) is the
+only option compatible with `validate_edit_plan(check_assets=True)`, which is a required and
+non-negotiable gate — a dangling asset reference would correctly fail validation, and silently
+inventing a placeholder image would misrepresent what was actually generated. Scoping the
+transition removal to an exact `at`-equals-dropped-`start` match (rather than e.g. renumbering or
+re-deriving transitions for the new visual sequence) is the simplest rule that removes exactly the
+motion cue that no longer makes sense, without inventing new pacing logic T-112 has no mandate to
+own (that's T-110's job, already run).
+
+---
+
+## D-048 · Determinism via an injectable clock, not generated_at exclusion (2026-07-21)
+
+**Decision:** `run_assemble_plan` accepts an optional `_now: Callable[[], datetime] | None`
+keyword argument (same pattern as T-110's `_seed` and T-111's `_gemini_client`). Production leaves
+it `None` (uses `datetime.now(UTC)`); tests inject a fixed clock so `meta.generated_at` is
+reproducible and the full `edit_plan.json` can be compared byte-for-byte (after normalizing
+`job_id`, which is inherently job-specific and not a determinism concern).
+
+**Reason:** An injectable clock is more useful than excluding `generated_at` from comparison — it
+lets tests assert the EXACT written file is reproducible end-to-end (spec §14.4), not just "every
+field except one." It also matches this codebase's established injection-seam idiom instead of
+introducing a new "exclude field N from comparison" test pattern.
+
+---
+
+## D-049 · Reel width/height/fps fallback: 1080×1920 @ 30fps when ctx.job is unset (2026-07-21)
+
+**Decision:** If `ctx.job.width`, `.height`, or `.fps` is `None` at assembly time, T-112 falls back
+to `1080×1920 @ 30fps` (the golden example's resolution, also T-111's D-043 reframe target) and
+logs `reel_dims_fallback_used=True` via `ctx.logger.log_stage`, mirroring T-109's
+`duration_fallback_used` convention (imported, not re-decided, for `duration` itself).
+
+**Reason:** In normal operation, ingest (T-102) always sets width/height/fps/duration together, so
+this fallback should never fire in production — but T-112 can be (and is, in this session's tests)
+exercised standalone against hand-built fixtures without a full ingest run, and the task's
+instructions only explicitly covered the `duration` fallback. Extending the same convention to the
+sibling reel-dimension fields keeps the stage runnable in isolation without crashing, consistent
+with spec §20's "degrade gracefully, log the gap" philosophy applied elsewhere (D-036, D-037).
+
+---
+
+## D-050 · cost_estimate_usd aggregates only images.json today — ASR/understanding costs untracked (known gap) (2026-07-21)
+
+**Decision:** `edit_plan.json`'s `meta.cost_estimate_usd` is set to `images.json`'s
+`cost_estimate_usd` value verbatim. Music selection (T-109) has no API cost (no aggregation
+needed). ASR (T-105) and understanding (T-108) Gemini text-generation calls are NOT metered
+anywhere today — no `CostMeter` is threaded through those stages — so this total UNDERSTATES true
+per-job spend. This is a known, explicitly logged gap, not a bug to silently work around here.
+
+**Reason:** The task instructions were explicit: aggregate what IS tracked today, do not invent new
+tracking in this session (T-112's scope is assembly, not cost-metering infrastructure for other
+stages). Silently pretending the total is complete would be worse than an honest partial total with
+a documented gap. Logged as **T-506** in TASKS.md for a future session to wire ASR/understanding
+into a job-wide `CostMeter`.
+
+---
+
+## D-051 · V1_TEMPLATE_NAMES module-level stub, TODO(T-202) swap hook (2026-07-21)
+
+**Decision:** `app/pipeline/assemble_plan.py` defines `V1_TEMPLATE_NAMES: set[str]` as a hardcoded
+set of the six template names established across T-107–T-111
+(`caption_karaoke_default`, `image_reveal_slideup`, `image_reveal_scalein`, `animtext_bold`,
+`punch_soft`, `transition_whip_pan`), passed as `known_templates=` to `validate_edit_plan()`
+(D-008's opt-in template check, now actually exercised for the first time). It is marked
+`TODO(T-202)`: once the template registry (`registry.json`) loader exists, T-202 should replace
+this stub with a call into the real registry rather than editing this hardcoded set in place.
+
+**Reason:** T-202 (template registry schema + validator) does not exist yet, but `check_assets=True`
+and template validation are both required NOW so T-112 actually fails loud on bad references — a
+real gate is strictly better than skipping it (`known_templates=None`) until T-202 lands. The
+six-name set is exactly the V1 surface every upstream stage (T-108's caption template,
+T-110's image/animtext/motion templates) already commits to, so there is no ambiguity about what
+"known" means today.
+
+---

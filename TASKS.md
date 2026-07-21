@@ -29,7 +29,7 @@ Status legend: `[ ]` TODO · `[~]` IN-PROGRESS · `[x]` DONE · `[B]` BLOCKED ·
 - [x] **T-109** Music library + selection + beat detection
 - [x] **T-110** Visual planning stage
 - [x] **T-111** Image generation & sourcing stage
-- [ ] **T-112** Edit Plan assembly + validation
+- [x] **T-112** Edit Plan assembly + validation
 - [ ] **T-113** Backend orchestration + endpoints + live smoke
 
 ## M2 — Brand Kit + templates (human-authored) + registry
@@ -71,5 +71,10 @@ Status legend: `[ ]` TODO · `[~]` IN-PROGRESS · `[x]` DONE · `[B]` BLOCKED ·
       understanding.json segment via time-window overlap (see D-045). Low priority — the overlap
       heuristic works reliably given how T-110 constructs windows; only worth doing if a future
       stage needs it too or the heuristic proves fragile in real data (T-501/T-502).
+- [ ] **T-506** (discovered at T-112) ASR (T-105) and understanding (T-108) Gemini calls have no
+      CostMeter tracking, so `edit_plan.json`'s `meta.cost_estimate_usd` today only reflects
+      image-generation spend (T-111), understating true per-job cost. A future session should wire
+      a CostMeter through those two stages (or a job-wide meter passed via JobContext) and update
+      T-112's aggregation accordingly.
 
 _Newly discovered tasks go here with a `[ ] T-NNN` id and a brief description, then get added to `docs/FRAMOPIA_STUDIO_TASKS.md` in the next Planner session._

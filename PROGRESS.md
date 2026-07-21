@@ -809,3 +809,82 @@ key + scope).
 **Next task:** T-112 (Edit Plan assembly + validation).
 
 ---
+
+## 2026-07-21 — T-112 · Edit Plan assembly + validation
+
+**Pre-flight:** T-111 commit `d120e76` confirmed present on `origin/main`; tree clean; no foreign
+commits.
+
+**This is the M1 convergence point.** `assemble_plan.py` reads every upstream job-root artifact
+(`words.json`, `understanding.json`, `visual_plan.json`, `images.json`, `music.json`,
+`beats.json`) plus `ctx.job`, and produces `job_dir/edit_plan.json` — the artifact T-113's
+endpoints will serve and the AE side (M3) consumes. No API calls; fully deterministic given fixed
+inputs + an injected clock.
+
+**What was built:**
+- `backend/app/pipeline/assemble_plan.py` — the stage:
+  - `AssembleError(RuntimeError)` — stage-level error; nothing partial is ever written on failure
+    (the file is only written after BOTH `EditPlan` construction AND `validate_edit_plan()` pass).
+  - `V1_TEMPLATE_NAMES` — the six-name V1 template stub (D-051), `TODO(T-202)`-marked.
+  - `_build_captions()` — groups `words.json` (flat, global order) by `segment_index` into
+    `CaptionLine`s (`template="caption_karaoke_default"`), setting `emphasis=True` from
+    `understanding.json`'s per-segment `emphasis_word_indices` (GLOBAL indices, D-034). Relies on
+    `CaptionLine`'s own Pydantic validator to fail loud on overlap — no silent reordering.
+  - `_reconcile_visuals_and_motion()` — D-047: drops `skipped_ceiling` generated_image visuals,
+    swaps in `images.json`'s authoritative `asset` for `client_asset` visuals (the `_9x16` path
+    when reframed), leaves `animated_text` untouched, and drops only the `transition` motion item
+    whose `at` matches a dropped visual's `start`.
+  - `run_assemble_plan(ctx, *, _now=None)` — reads all six artifacts (fail-loud per-file with a
+    named upstream stage in the error message), builds `reel`/`source`/`meta` (duration fallback
+    imported from T-109 per instruction, D-049 extends the same convention to width/height/fps),
+    constructs `EditPlan(...)`, runs `validate_edit_plan(known_templates=V1_TEMPLATE_NAMES,
+    check_assets=True, job_dir=...)`, writes `edit_plan.json` only on success, logs via
+    `ctx.logger.log_stage("assemble_plan", ..., captions=N, visuals=V, dropped=D, dropped_ids=[...],
+    motion=M, beats=B, duration_fallback_used=..., reel_dims_fallback_used=...)`.
+  - No changes to `app/models/edit_plan.py` or `app/models/validate.py` — every EditPlan/CaptionLine/
+    Visual/Motion/AudioPlan/Meta/Reel/Source model and the `validate_edit_plan()` external checks
+    are reused exactly as built at T-004/T-008's related work.
+- `backend/tests/test_assemble_plan.py` — 13 tests, all green: happy-path assembly +
+  re-validation, caption grouping/emphasis/bidi-codepoint preservation, overlap fail-loud,
+  ceiling-skip drop + transition removal (dedicated 3-visual fixture), reframed client-asset path
+  used, only-V1-templates-used, unknown-template rejection, missing-asset-for-non-skipped-visual
+  fail-loud, out-of-range-window fail-loud, missing-input-file fail-loud, meta/cost-aggregation,
+  determinism (two separate jobs + fixed clock → byte-identical after normalizing `job_id`), and
+  runner integration.
+
+**Decisions:** D-047 (ceiling-skip drop + transition-removal rule), D-048 (determinism via
+injectable clock), D-049 (reel-dims fallback), D-050 (cost aggregation gap — ASR/understanding
+untracked), D-051 (V1_TEMPLATE_NAMES stub + TODO(T-202) hook).
+
+**What was learned:**
+- `validate_edit_plan(check_assets=True)` also checks `plan.source.video`/`plan.source.audio`
+  existence under `job_dir` (not just visual/audio assets) — test fixtures needed `input.mp4` and
+  `audio.wav` stub files too, not just the images/client-asset/track files.
+- D-008's opt-in template check (`known_templates=None` skips it) is exercised here for the first
+  time with a real, non-None set — confirms the opt-in design worked as intended: earlier stages
+  could validate the golden standalone before this stage existed.
+
+**Test results:** 252/252 passed (239 prior + 13 new). `ruff check .` clean.
+
+**What T-113 (backend orchestration + endpoints) needs to know:**
+- `job_dir/edit_plan.json` is the final artifact — `GET /jobs/{id}/edit_plan` (spec §14.1) should
+  serve this file directly once T-113 wires the full pipeline stage list (ingest → audio → asr →
+  correction gate → align → understand → music → plan_visuals → images → assemble_plan) behind
+  `POST /jobs`. Successful completion of `assemble_plan` is what should put a job at
+  `ready_for_ae` in a real end-to-end run (T-101's runner already does this automatically once
+  `assemble_plan` is the last stage in the list).
+- `meta.cost_estimate_usd` currently ONLY reflects image-generation spend — see D-050 / **T-506**
+  (new task: wire ASR/understanding into cost tracking) before treating this number as a complete
+  per-job cost.
+- `V1_TEMPLATE_NAMES` in `assemble_plan.py` is a `TODO(T-202)` stub — when the template registry
+  loader lands, replace the hardcoded set with the registry's actual template set (D-051).
+- **T-505** (from T-111) is still open: `Visual` has no segment traceability, so both T-111 and any
+  future stage needing segment context must re-derive it (T-111 does, via time-window overlap,
+  D-045). T-112 itself did NOT need this — it consumes `images.json`'s manifest and
+  `understanding.json`'s emphasis indices directly, no overlap-matching required here.
+
+**Next task:** T-113 (backend orchestration + endpoints + live smoke) — the last M1 task, and the
+first one that will exercise ASR/understanding/image generation against the REAL Gemini API (not
+just fixtures).
+
+---
