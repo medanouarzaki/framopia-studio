@@ -509,3 +509,98 @@ transition at the very first visual's entrance would double up with that visual'
 reveal animation, which already provides the "cut" feeling.
 
 ---
+
+## D-042 · images.json placement + Brand Kit style/negative hooks (2026-07-21)
+
+**Decision:** T-111's output artifact is `job_dir/images.json` (job root, D-021). It records, per
+visual: `visual_id`, `kind`, `status` (`generated`|`cached`|`skipped_ceiling`|`reframed`|
+`unchanged`|`skipped_no_image`), `asset` (final path), and for generated ones `model` +
+`prompt_hash`; job-level totals `generated`/`cached`/`client_reframed`/`skipped_ceiling` and
+`cost_estimate_usd`. `_DEFAULT_IMAGE_STYLE` and `_DEFAULT_NEGATIVE` are module-level constants in
+`app/pipeline/images.py`, each marked `TODO(T-201)`: source from the Brand Kit's
+`image_style.default` / `image_style.negative` once the loader exists.
+
+**Reason:** Mirrors T-109/T-110's D-021-consistent placement and TODO(T-201)-hook pattern
+(`DEFAULT_MUSIC_GAIN_DB`). No existing model shape fits this artifact (unlike T-109/T-110, which
+reused `AudioPlan`/`Visual`/`Motion`) — it is intentionally a plain dict/JSON, not a new Pydantic
+model, since T-112 does not consume it directly as EditPlan input (only the FILES it writes matter
+for `check_assets=True`); adding a model here would be scope beyond what's needed.
+
+---
+
+## D-043 · Client-asset reframe: ffmpeg pad-to-1080×1920, ±2% skip tolerance (2026-07-21)
+
+**Decision:** A `client_asset` visual's source file is checked with `ffprobe` (a private helper in
+`images.py`, NOT added to `app/clients/ffmpeg.py` — that file was out of scope for this task). If
+its aspect ratio is within ±2% of 9:16 (same tolerance value as D-016, applied independently here),
+it is left unchanged. Otherwise it is letterbox-padded via `ffmpeg` (`scale` +
+`force_original_aspect_ratio=decrease` + `pad`, black background) to a fixed 1080×1920 canvas and
+written to `assets/client/<stem>_9x16<ext>`. No Pillow dependency was added (`pyproject.toml` is
+not in this task's touchable-files list) — `ffmpeg`, already a repo dependency used elsewhere, does
+the job via subprocess, matching D-020's precedent of a stage keeping its own private ffprobe/ffmpeg
+calls rather than centralizing prematurely.
+
+**Reason:** 1080×1920 is the golden Edit Plan example's reel resolution (Appendix A) — a reasonable
+concrete default until the Brand Kit (T-201) can supply the real per-kit reel dimensions. Padding
+(not cropping) is the safer default for arbitrary client photos/logos: cropping risks cutting off
+the subject, which is worse than black bars for a first cut. Black is a neutral, unopinionated pad
+color until Brand Kit background colors exist.
+
+---
+
+## D-044 · No hero/Pro-escalation rule in v1 — always Nano Banana 2 (Flash) (2026-07-21)
+
+**Decision:** `_select_model()` always returns `settings.gemini_image_model` (Flash). There is no
+"first visual is the hero" or similar heuristic, and `cheap_mode` has no additional effect today
+(it would only matter to disable Pro escalation, which never happens in v1) — it's still threaded
+through `_select_model()`'s signature so a future hero rule automatically respects it without an
+API change.
+
+**Reason:** The task explicitly permits "no hero escalation in v1" as an acceptable choice. No data
+available at this stage reliably signals "brand-critical" (there's no hero flag on `Visual`, and
+adding one was explicitly out of scope). An arbitrary proxy like "the first generated_image visual"
+would be fragile and misleading (the first B-roll moment isn't necessarily the most important one).
+Deferring hero selection to a future session — once there's an actual signal (e.g. a Brand Kit hero
+keyword list, or an operator-flagged moment) — avoids inventing a rule that would likely need to be
+redone anyway.
+
+---
+
+## D-045 · generated_image visual_intent recovered via time-window overlap with understanding.json (2026-07-21)
+
+**Decision:** `Visual` (from T-110, `app/models/edit_plan.py`) carries `visual_intent` only for
+`animated_text` visuals (as `text`) — `generated_image` visuals have no such field, and neither
+`Visual` nor `visual_plan.json` link a visual back to its originating `understanding.json` segment
+index. Since building a spec-compliant prompt (§12.2) requires the segment's `visual_intent`, T-111
+re-reads `understanding.json` directly and matches each `generated_image` visual to the segment
+with the GREATEST time-overlap against the visual's `[start, end]` window
+(`_match_segment_intent()` in `images.py`). No segment overlapping at all raises `ImagesError`
+(fail loud) rather than guessing.
+
+**Reason:** This is a genuine gap between what T-110 produces and what T-111 needs, discovered
+during implementation. The task's file-touch list explicitly forbids modifying `plan_visuals.py`
+or the `Visual` schema in this session, so a clean fix (e.g. adding an optional `segment_index` to
+`Visual`) is out of scope here — logged as **T-505** in TASKS.md for a future session to consider.
+The overlap heuristic is safe because T-110 constructs every visual's window FROM its origin
+segment's `[start, end]` (snapped-forward/clipped/extended) and windows are strictly
+non-overlapping (D-040), so the true origin segment reliably has the largest (and typically only
+substantial) overlap. This is a data-flow bridge, not a reinterpretation of any settled decision.
+
+---
+
+## D-046 · Image cache keyed by prompt hash, in-memory, per-stage-run (2026-07-21)
+
+**Decision:** `run_images` keeps an in-memory `dict[prompt_sha256_hex, bytes]` scoped to a single
+stage invocation. A cache hit reuses the bytes for a NEW visual's output file without calling
+`GeminiClient.generate_image()` again (so no cost-meter increment, no ceiling consumption). No
+cross-job or on-disk cache exists in v1.
+
+**Reason:** Spec §12.4 asks for prompt-hash caching "per job (and optionally per kit)" — per-job
+in-memory is the minimal correct implementation for "does not pay twice within a job," and avoids
+building a persistence/eviction story (on-disk / cross-job caching) that v1 doesn't need yet. Since
+two segments producing byte-identical prompts (same visual_intent + same brief) is the realistic
+within-job collision case (e.g. a recurring "cozy morning" beat), this already captures the
+practical benefit; cross-job caching is a natural T-502-era enhancement once real usage patterns
+are known.
+
+---

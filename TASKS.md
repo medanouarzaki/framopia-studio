@@ -28,7 +28,7 @@ Status legend: `[ ]` TODO · `[~]` IN-PROGRESS · `[x]` DONE · `[B]` BLOCKED ·
 - [x] **T-108** Understanding & segmentation stage
 - [x] **T-109** Music library + selection + beat detection
 - [x] **T-110** Visual planning stage
-- [ ] **T-111** Image generation & sourcing stage
+- [x] **T-111** Image generation & sourcing stage
 - [ ] **T-112** Edit Plan assembly + validation
 - [ ] **T-113** Backend orchestration + endpoints + live smoke
 
@@ -65,5 +65,11 @@ Status legend: `[ ]` TODO · `[~]` IN-PROGRESS · `[x]` DONE · `[B]` BLOCKED ·
 - [ ] **T-504** Docs + troubleshooting + tag v1.0
 
 ---
+
+- [ ] **T-505** (discovered at T-111) Consider adding segment traceability to `Visual` (e.g. an
+      optional `segment_index`) so downstream stages don't have to re-derive the originating
+      understanding.json segment via time-window overlap (see D-045). Low priority — the overlap
+      heuristic works reliably given how T-110 constructs windows; only worth doing if a future
+      stage needs it too or the heuristic proves fragile in real data (T-501/T-502).
 
 _Newly discovered tasks go here with a `[ ] T-NNN` id and a brief description, then get added to `docs/FRAMOPIA_STUDIO_TASKS.md` in the next Planner session._

@@ -731,3 +731,81 @@ fully deterministic and makes no Gemini/API calls (depends only on T-108 + T-109
 **Next task:** T-111 (image generation & sourcing stage).
 
 ---
+
+## 2026-07-21 — T-111 · Image generation & sourcing stage
+
+**Pre-flight:** T-110 commit `eec433b` confirmed present on `origin/main`; tree clean; no foreign
+commits.
+
+**Contradiction found and resolved (not a stop-worthy spec conflict — see D-045):** T-110's
+`Visual` model carries `visual_intent` only for `animated_text` (`text` field); `generated_image`
+visuals have no such field and nothing in `visual_plan.json` links a visual back to its originating
+`understanding.json` segment. Building a spec-compliant prompt (§12.2) needs that visual_intent.
+Since modifying `plan_visuals.py`/`Visual` was explicitly out of this session's file-touch list,
+T-111 re-reads `understanding.json` and recovers the intent via time-window overlap
+(`_match_segment_intent()`) instead. Logged as D-045 and flagged as **T-505** (low priority: add
+`Visual.segment_index` traceability) for a future session — the heuristic works reliably given how
+T-110 constructs windows, so this is not blocking.
+
+**What was built:**
+- `backend/app/pipeline/images.py` — the stage:
+  - `ImagesError(RuntimeError)` — stage-level error.
+  - `_build_prompt(visual_intent, brief)` — style + subject + optional brief override + negative +
+    hard constraints (9:16, no on-image text, no watermark, safe-area), per §12.2.
+  - `_match_segment_intent()` — D-045's overlap-based visual→segment recovery.
+  - `_select_model()` — D-044: always Flash (`settings.gemini_image_model`), no hero/Pro escalation
+    in v1.
+  - `_probe_dimensions()` / `_is_already_9x16()` / `_reframe_to_9x16()` — self-contained ffprobe/
+    ffmpeg subprocess calls (D-043), NOT added to `app/clients/ffmpeg.py` (out of this task's
+    touch-list; mirrors D-020's stage-isolation precedent).
+  - `run_images(ctx, *, _gemini_client=None)` — stage entry point: reads `visual_plan.json` +
+    `understanding.json`, for each visual: `generated_image` → build prompt → cache-hash lookup →
+    (cache hit / ceiling check / real `client.generate_image()` call) → write bytes to the EXACT
+    `visual.asset` path T-110 named; `client_asset` → probe dims → reframe-or-skip (no Gemini call);
+    `animated_text` → no-op. Writes `job_dir/images.json` (D-042), logs via
+    `ctx.logger.log_stage("images", ..., generated=N, cached=C, client_reframed=R,
+    skipped_ceiling=S)`.
+  - No changes to `app/clients/gemini.py` — its existing `generate_image(prompt, model=, meter=)`
+    signature already covered every need.
+- `backend/tests/test_images.py` — 15 tests, all green: prompt-construction substring assertions,
+  exact-asset-path generation, animated_text no-op, cache-hit-one-call (two visuals sharing a
+  prompt), ceiling-stop-and-flag + CostMeter increment, cheap_mode/Flash-always (parametrized),
+  client-asset reframe vs already-9:16-skip vs no-Gemini-call (ffmpeg-gated,
+  `skip_no_fftools`-guarded like `test_audio.py`), missing-input error states, and runner
+  integration.
+
+**Decisions:** D-042 (images.json placement + style/negative hooks), D-043 (client-asset reframe
+rule), D-044 (no hero escalation in v1), D-045 (visual_intent recovery via overlap), D-046 (cache
+key + scope).
+
+**What was learned:**
+- `ctx.settings` (already part of `JobContext`) is the right place to read `max_images_per_job` /
+  `cheap_mode` / `gemini_image_model` — no need for the stage to call `get_settings()` itself; only
+  `app.clients.gemini`'s OWN internal calls (`_get_api_key()`, `generate_image()`'s model default)
+  need the `app.clients.gemini.get_settings` monkeypatch in tests, confirming the BUILD_STATE
+  learned pattern from T-108/T-109 still holds and generalizes cleanly.
+- `GeminiClient.generate_image()` already accepted `model=` and `meter=` from T-104 — no client
+  changes were needed at all for this stage.
+
+**Test results:** 239/239 passed (224 prior + 15 new). `ruff check .` clean.
+
+**What T-112 (Edit Plan assembly) needs to know:**
+- Every `generated_image` visual named in `visual_plan.json` now has a real file on disk at its
+  exact `asset` path (`job_dir/assets/images/<id>.png`) UNLESS `images.json` flags it
+  `"status": "skipped_ceiling"` — assembly/validation should treat ceiling-skipped visuals as
+  needing operator attention (e.g. drop them from the plan, or block `check_assets=True` with a
+  clear message) rather than assuming every named asset exists.
+- `client_asset` visuals may now have a `_9x16` sibling file; `images.json`'s per-visual `asset`
+  field tells you which path is the RIGHT one to put in the final `EditPlan` (the reframed path
+  when `status=="reframed"`, the original when `"unchanged"`) — `visual_plan.json`'s own `asset`
+  field was intentionally left untouched (T-110 stays authoritative for windows/templates/kind;
+  T-111 only reports what it did).
+  `animated_text` visuals are unaffected (no file, `visual_plan.json`'s `asset=null` stays correct).
+- `job_dir/images.json` is the manifest to read for all of the above; it also carries
+  `cost_estimate_usd` for this stage's spend, which assembly's `meta.cost_estimate_usd` should
+  aggregate alongside other stages' costs (T-109's music selection has no cost; ASR/understanding
+  costs aren't tracked yet either — a future session should reconcile job-wide cost aggregation).
+
+**Next task:** T-112 (Edit Plan assembly + validation).
+
+---
