@@ -162,7 +162,7 @@ def test_ffprobe_nonzero_exit_surfaces_clear_error(tmp_path: Path) -> None:
     mock_proc.stderr = "Invalid data found when processing input"
     mock_proc.stdout = ""
 
-    with patch("app.pipeline.ingest.subprocess.run", return_value=mock_proc):
+    with patch("app.clients.ffmpeg.subprocess.run", return_value=mock_proc):
         stage = Stage(name="ingest", run=run_ingest)
         asyncio.run(mgr.run_pipeline(job.job_id, [stage]))
 
@@ -180,7 +180,7 @@ def test_ffprobe_not_found_surfaces_clear_error(tmp_path: Path) -> None:
     mgr = JobManager(jobs_root=tmp_path / "jobs")
     job = mgr.create("kitA", "brief", source_path=str(fake_video))
 
-    with patch("app.pipeline.ingest.subprocess.run", side_effect=FileNotFoundError):
+    with patch("app.clients.ffmpeg.subprocess.run", side_effect=FileNotFoundError):
         stage = Stage(name="ingest", run=run_ingest)
         asyncio.run(mgr.run_pipeline(job.job_id, [stage]))
 
@@ -202,7 +202,7 @@ def test_ffprobe_invalid_json_surfaces_clear_error(tmp_path: Path) -> None:
     mock_proc.stderr = ""
     mock_proc.stdout = "this is not json {"
 
-    with patch("app.pipeline.ingest.subprocess.run", return_value=mock_proc):
+    with patch("app.clients.ffmpeg.subprocess.run", return_value=mock_proc):
         stage = Stage(name="ingest", run=run_ingest)
         asyncio.run(mgr.run_pipeline(job.job_id, [stage]))
 

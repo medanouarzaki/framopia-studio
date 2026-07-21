@@ -29,6 +29,7 @@ import subprocess
 import time
 from pathlib import Path
 
+from app.clients.ffmpeg import FfmpegError, probe
 from app.clients.gemini import GeminiClient
 from app.config import Settings
 from app.jobs.manager import JobContext
@@ -135,33 +136,21 @@ def _select_model(settings: Settings) -> str:
 
 
 def _probe_dimensions(path: Path) -> tuple[int, int]:
-    """Return (width, height) of an image/video file via ffprobe."""
+    """Return (width, height) of an image/video file via the shared ffprobe client (D-020)."""
     try:
-        proc = subprocess.run(
-            [
-                "ffprobe", "-v", "quiet",
-                "-select_streams", "v:0",
-                "-show_entries", "stream=width,height",
-                "-of", "csv=p=0",
-                str(path),
-            ],
-            capture_output=True,
-            text=True,
-            timeout=30,
-        )
-    except FileNotFoundError as exc:
-        raise ImagesError("ffprobe not found. Install ffmpeg (brew install ffmpeg).") from exc
-    except subprocess.TimeoutExpired as exc:
-        raise ImagesError(f"ffprobe timed out probing {path.name!r}.") from exc
+        result = probe(path)
+    except FfmpegError as exc:
+        raise ImagesError(str(exc)) from exc
 
-    if proc.returncode != 0:
-        raise ImagesError(
-            f"ffprobe exited {proc.returncode} for {path.name!r}: {proc.stderr.strip()}"
-        )
+    video_stream = next(
+        (s for s in result.get("streams", []) if s.get("codec_type") == "video"),
+        None,
+    )
+    if video_stream is None:
+        raise ImagesError(f"No video/image stream found in {path.name!r}.")
     try:
-        w_str, h_str = proc.stdout.strip().split(",")
-        return int(w_str), int(h_str)
-    except ValueError as exc:
+        return int(video_stream["width"]), int(video_stream["height"])
+    except (KeyError, ValueError) as exc:
         raise ImagesError(f"Could not parse ffprobe dimensions for {path.name!r}.") from exc
 
 

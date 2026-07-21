@@ -691,3 +691,48 @@ T-110's image/animtext/motion templates) already commits to, so there is no ambi
 "known" means today.
 
 ---
+
+## D-052 · ffprobe consolidation completed at T-113 (2026-07-21)
+
+**Decision:** `app/pipeline/ingest.py`'s private `_run_ffprobe()` and
+`app/pipeline/images.py`'s private `_probe_dimensions()` subprocess
+implementation are both removed. Both now call `app.clients.ffmpeg.probe()`
+directly, catching `FfmpegError` and re-raising as their own stage-level
+error type (`IngestError` / `ImagesError`) with the original message
+preserved verbatim. `tests/test_ingest.py`'s three
+`patch("app.pipeline.ingest.subprocess.run", ...)` mock targets were updated
+to `patch("app.clients.ffmpeg.subprocess.run", ...)`. `tests/test_images.py`
+needed no changes — it never mocked ffprobe, only gated real-ffmpeg tests
+behind a skip marker. Full suite green after the change (258/258).
+
+**Reason:** D-020 deferred this exact consolidation to "a future session"
+specifically because it required touching T-102's mock targets, which that
+session's file-touch list prohibited. T-113 explicitly permits touching
+`test_ingest.py`'s mocks, closing that gap. Consolidating removes ~70 lines
+of duplicated ffprobe subprocess/error-handling logic spread across two
+stage modules, with `app/clients/ffmpeg.py` as the single source of truth.
+
+---
+
+## D-053 · CostMeter wiring for ASR/understanding deferred to T-506 (2026-07-21)
+
+**Decision:** T-113 does NOT wire a job-wide `CostMeter` through the ASR
+(T-105) or understanding (T-108) stages. `meta.cost_estimate_usd` in
+`edit_plan.json` continues to reflect only image-generation spend — D-050's
+known gap remains open, still tracked as **T-506**.
+
+**Reason:** T-113's own instructions explicitly offered this as an
+executor's call, either option acceptable as long as it's logged. Given
+T-113's already-large scope (full pipeline orchestration wiring, six
+new/changed HTTP endpoints, a live-smoke script, and an ffprobe
+consolidation), wiring a job-wide CostMeter would require: adding a meter
+handle to `JobContext` (or threading one through
+`build_pipeline_stages()`), touching `asr.py`'s and `understand.py`'s Gemini
+call sites AND their existing test suites' mock plumbing
+(`test_asr.py` / `test_understand.py`), and updating
+`assemble_plan.py`'s cost aggregation plus its determinism tests — a second
+cross-cutting change with its own non-trivial test-touch surface, better
+scoped as a focused follow-up (T-506) than folded into an already-broad
+orchestration task under time pressure.
+
+---

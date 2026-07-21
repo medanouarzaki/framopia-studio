@@ -30,7 +30,7 @@ Status legend: `[ ]` TODO · `[~]` IN-PROGRESS · `[x]` DONE · `[B]` BLOCKED ·
 - [x] **T-110** Visual planning stage
 - [x] **T-111** Image generation & sourcing stage
 - [x] **T-112** Edit Plan assembly + validation
-- [ ] **T-113** Backend orchestration + endpoints + live smoke
+- [x] **T-113** Backend orchestration + endpoints + live smoke (code half; human live smoke pending)
 
 ## M2 — Brand Kit + templates (human-authored) + registry
 
@@ -71,10 +71,19 @@ Status legend: `[ ]` TODO · `[~]` IN-PROGRESS · `[x]` DONE · `[B]` BLOCKED ·
       understanding.json segment via time-window overlap (see D-045). Low priority — the overlap
       heuristic works reliably given how T-110 constructs windows; only worth doing if a future
       stage needs it too or the heuristic proves fragile in real data (T-501/T-502).
-- [ ] **T-506** (discovered at T-112) ASR (T-105) and understanding (T-108) Gemini calls have no
-      CostMeter tracking, so `edit_plan.json`'s `meta.cost_estimate_usd` today only reflects
-      image-generation spend (T-111), understating true per-job cost. A future session should wire
-      a CostMeter through those two stages (or a job-wide meter passed via JobContext) and update
-      T-112's aggregation accordingly.
+- [ ] **T-506** (discovered at T-112, reaffirmed at T-113/D-053) ASR (T-105) and understanding
+      (T-108) Gemini calls have no CostMeter tracking, so `edit_plan.json`'s `meta.cost_estimate_usd`
+      today only reflects image-generation spend (T-111), understating true per-job cost. A future
+      session should wire a CostMeter through those two stages (or a job-wide meter passed via
+      JobContext) and update T-112's aggregation accordingly.
+
+**M1 is now CODE-COMPLETE** (T-101 through T-113 all done) pending the HUMAN live-smoke run:
+Mohamed runs `backend/scripts/live_smoke.py` against a real ~5s Darija clip with a real
+`GEMINI_API_KEY`, per the README section, and logs the outcome (transcript plausibility, a
+WhisperX word-timing spot-check, D-022 model-id confirmation, and observed cost) in PROGRESS.md.
+
+**Younes GitHub collaborator TODO (from T-001) — still open:** `gh api
+repos/medanouarzaki/framopia-studio/collaborators` shows only `medanouarzaki` as of this session.
+Younes's GitHub username is still needed before he can be added as a push collaborator.
 
 _Newly discovered tasks go here with a `[ ] T-NNN` id and a brief description, then get added to `docs/FRAMOPIA_STUDIO_TASKS.md` in the next Planner session._

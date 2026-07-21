@@ -11,12 +11,11 @@ Job at create() time so the Stage.run(ctx) interface needs no extra parameters.
 from __future__ import annotations
 
 import asyncio
-import json
 import shutil
-import subprocess
 import time
 from pathlib import Path
 
+from app.clients.ffmpeg import FfmpegError, probe
 from app.jobs.manager import JobContext
 
 # ---------------------------------------------------------------------------
@@ -48,52 +47,6 @@ class IngestError(RuntimeError):
 
     The message is human-readable and safe to surface directly to the operator.
     """
-
-
-# ---------------------------------------------------------------------------
-# ffprobe helper (lives here per task spec; T-103 builds the full ffmpeg client)
-# ---------------------------------------------------------------------------
-
-
-def _run_ffprobe(path: Path) -> dict:
-    """Run ffprobe on *path* and return parsed JSON output.
-
-    Raises IngestError for all failure modes (not found, timeout, bad exit,
-    invalid JSON) with a human-readable message instead of a raw stack trace.
-    """
-    try:
-        proc = subprocess.run(
-            [
-                "ffprobe",
-                "-v", "quiet",
-                "-print_format", "json",
-                "-show_streams",
-                "-show_format",
-                str(path),
-            ],
-            capture_output=True,
-            text=True,
-            timeout=30,
-        )
-    except FileNotFoundError:
-        raise IngestError(
-            "ffprobe not found. Install ffmpeg (brew install ffmpeg) to use the ingest stage."
-        ) from None
-    except subprocess.TimeoutExpired as exc:
-        raise IngestError(f"ffprobe timed out probing {path.name!r} (30 s limit).") from exc
-
-    if proc.returncode != 0:
-        stderr = proc.stderr.strip() or "(no stderr)"
-        raise IngestError(
-            f"ffprobe exited with code {proc.returncode} for {path.name!r}: {stderr}"
-        )
-
-    try:
-        return json.loads(proc.stdout)
-    except json.JSONDecodeError as exc:
-        raise IngestError(
-            f"ffprobe produced invalid JSON for {path.name!r}: {exc}"
-        ) from exc
 
 
 # ---------------------------------------------------------------------------
@@ -169,12 +122,15 @@ async def run_ingest(ctx: JobContext) -> None:
         raise IngestError(f"source_path is not a regular file: {source}")
 
     # ------------------------------------------------------------------
-    # 2. Probe with ffprobe
+    # 2. Probe with ffprobe (shared app.clients.ffmpeg.probe — D-020)
     # ------------------------------------------------------------------
-    probe = _run_ffprobe(source)
+    try:
+        probe_result = probe(source)
+    except FfmpegError as exc:
+        raise IngestError(str(exc)) from exc
 
     video_stream = next(
-        (s for s in probe.get("streams", []) if s.get("codec_type") == "video"),
+        (s for s in probe_result.get("streams", []) if s.get("codec_type") == "video"),
         None,
     )
     if video_stream is None:
@@ -190,7 +146,7 @@ async def run_ingest(ctx: JobContext) -> None:
         raise IngestError(f"Could not read frame rate from {source.name!r}.")
     fps = _parse_fps(raw_fps)
 
-    duration_str = probe.get("format", {}).get("duration", "")
+    duration_str = probe_result.get("format", {}).get("duration", "")
     if not duration_str:
         raise IngestError(f"Could not read duration from {source.name!r}.")
     duration = float(duration_str)

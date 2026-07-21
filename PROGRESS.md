@@ -888,3 +888,138 @@ first one that will exercise ASR/understanding/image generation against the REAL
 just fixtures).
 
 ---
+
+## 2026-07-21 — T-113 · Backend orchestration + endpoints + live smoke (CODE HALF)
+
+**Pre-flight:** T-112 commit `3cc1d4c` confirmed present on `origin/main`; tree clean; no foreign
+commits. This is the LAST M1 task.
+
+**This is the M1 convergence point.** The ten pipeline stages built across T-102–T-112 are now
+wired into one ordered list behind a real `POST /jobs`, with the full spec §14.1 endpoint set
+completed and a mocked end-to-end test proving a job can go from creation to `ready_for_ae` with a
+validated `edit_plan.json` on disk.
+
+**What was built:**
+- `backend/app/jobs/manager.py` — added `build_pipeline_stages(*, _gemini_client=None,
+  _aligner=None, _beat_detector=None, _library_path=None) -> list[Stage]`: assembles the fixed
+  ordered stage list `ingest → audio → asr → correction_gate (is_gate=True) → align → understand →
+  music → plan_visuals → images → assemble_plan`. All pipeline-module imports are LOCAL to the
+  function (avoids a circular import, since every pipeline module imports `JobContext`/`Stage`
+  from this same file). The four injection-seam kwargs pass straight through to the relevant
+  stages via `functools.partial`, letting tests replace every external dependency (Gemini,
+  WhisperX, librosa, the committed music library) with fast deterministic fakes while running the
+  REAL stage code end to end.
+  - Also added `JobManager.cancel(job_id) -> JobStatus`: idempotent-safe — cancelling an
+    already-terminal job (`ready_for_ae`/`error`) is a clean no-op; cancelling a
+    running/awaiting-correction job discards its `_pending` continuation (if any) and sets
+    `state=ERROR, message="Job cancelled by operator."`. `_run_stages()` now checks for this
+    terminal state at the top of every loop iteration so a cancel between stages actually stops
+    further progress (a cancel mid-await inside an already-running stage is NOT interrupted — no
+    asyncio task-handle tracking exists in v1; documented as a known limitation in the method's
+    docstring, consistent with D-013's in-memory-only scope).
+- `backend/app/main.py` — completed the spec §14.1 endpoint set:
+  - `GET /brand_kits` — stub, returns `[]`, code comment notes the T-201 dependency.
+  - `POST /jobs` — `{video_path, brand_kit, brief, client_asset_paths[]} → {job_id}` via a new
+    `CreateJobRequest` Pydantic model (local to main.py — not a cross-boundary contract type like
+    `Transcript`). Calls `mgr.create(...)` then schedules `mgr.run_pipeline(job_id, stages)` via
+    `BackgroundTasks` — same D-028 pattern as the T-106 correction-gate resume, so the endpoint
+    returns immediately in production while remaining fully synchronous/deterministic under
+    `TestClient` in tests.
+  - `GET /jobs/{id}/status` — `{stage, progress_pct, state, message}`, 404 unknown.
+  - `GET /jobs/{id}/edit_plan` — serves `edit_plan.json`; 404 (with a clear message) if the job is
+    unknown, not yet `ready_for_ae`, or the file isn't on disk.
+  - `GET /jobs/{id}/build_report` + `POST /jobs/{id}/build_report` — minimal passthrough
+    (read/write `build_report.json` at job root); the POST side is for the future AE panel (M3+).
+  - `POST /jobs/{id}/cancel` — 404 unknown; otherwise calls `mgr.cancel()` and returns the
+    resulting state/message (200 in both the "actually cancelled" and "already terminal" cases —
+    idempotent per the acceptance criteria).
+  - The existing T-106 `GET`/`POST /jobs/{id}/transcript` endpoints were left untouched (still
+    422/409/404 correctly) — confirmed by the full suite staying green, not just by inspection.
+- `backend/tests/test_orchestration.py` — 6 new tests, all green:
+  - **The big one:** `test_full_pipeline_pauses_at_gate_then_resumes_to_ready_for_ae` — a real
+    `TestClient(app)` end-to-end run. Synthesizes a real 5.0s 1080×1920 av clip with `ffmpeg`
+    (skipped, not failed, when ffmpeg/ffprobe are unavailable — same `skip_no_fftools` pattern as
+    T-102/T-103/T-111's tests), monkeypatches `app.main.build_pipeline_stages` to inject a single
+    Gemini transport fixture (serving ASR then understand as ordered "text" calls, plus any number
+    of "image" calls), a deterministic fake WhisperX aligner, a dense fake beat grid, and a
+    tmp_path music library + real silent-WAV track. `POST /jobs` → job pauses at
+    `awaiting_correction` → `GET`/`POST /jobs/{id}/transcript` (operator confirms as-is,
+    round-trip pattern from T-106's own tests) → resumes → `ready_for_ae`, `progress_pct==100`.
+    Asserts the served `edit_plan.json` round-trips through `EditPlan.model_validate` AND
+    `validate_edit_plan(known_templates=V1_TEMPLATE_NAMES, check_assets=True, job_dir=...)` — the
+    exact acceptance-criteria gate — plus a caption-count and a generated-image-visual sanity
+    check.
+  - `test_edit_plan_404_before_ready_and_status_404_for_unknown_job` — 404 shape coverage for all
+    five job-scoped GET/POST endpoints against an unknown job, plus edit_plan 404 on a freshly
+    created (still-running) job.
+  - `test_brand_kits_stub_returns_empty_list`, `test_post_jobs_returns_promptly_with_job_id`
+    (asserts `POST /jobs` returns `{job_id}` immediately even though the injected `video_path`
+    doesn't exist — ingest fails cleanly into `error` state in the background, the endpoint itself
+    never blocks on or reflects that failure), `test_cancel_running_job_then_idempotent_on_terminal`,
+    `test_build_report_post_then_get`.
+  - The fixture content (2-segment, 7-word Darija/French transcript; `"show product packaging"`
+    vs. `"speaker only"` visual intents) is the SAME canonical content T-107/T-108's own fixture
+    files already use, kept inline in this file rather than re-read from disk so the whole chain
+    (ASR → align → understand → plan_visuals → images) is traceable in one place.
+- **ffprobe consolidation (D-052, closes D-020's deferral):** `ingest.py`'s private
+  `_run_ffprobe()` and `images.py`'s private `_probe_dimensions()` were both removed in favor of
+  `app.clients.ffmpeg.probe()`, each stage now catching `FfmpegError` and re-raising its own
+  stage-level error type with the message preserved. `test_ingest.py`'s three
+  `subprocess.run` mock targets were updated from `app.pipeline.ingest.subprocess.run` to
+  `app.clients.ffmpeg.subprocess.run`; `test_images.py` needed no changes.
+- **CostMeter decision (D-053):** Deferred wiring a job-wide CostMeter through ASR/understanding
+  to **T-506** — see DECISIONS.md for the full reasoning (scope containment).
+- `backend/scripts/live_smoke.py` — new, HUMAN-RUN ONLY. Not imported by any test, not under
+  `tests/` (pytest's `testpaths = ["tests"]` already excludes it structurally), makes real Gemini/
+  WhisperX/librosa calls only when a human runs it directly, with a `y/N`-style confirmation gate
+  before spending any money. Uses `build_pipeline_stages()` with all injection kwargs left `None`
+  (real everything) via `JobManager` directly (in-process, not an actual HTTP round-trip — the
+  script mirrors what `POST /jobs` does rather than literally calling it, since a full server
+  process isn't needed to exercise the identical pipeline code path). Prints the raw transcript
+  at the correction gate, accepts either Enter (accept as-is) or a path to a corrected JSON file,
+  resumes, and prints every artifact's on-disk path plus the final `edit_plan.json` path and its
+  (partial — D-050) cost estimate.
+- `README.md` — added a "Live smoke test (HUMAN ONLY — costs real money)" section documenting
+  usage and the cost caveat; updated the "Build status" line to reflect M1 code-completion.
+
+**Test results:** 258/258 passed (252 prior + 6 new). `ruff check .` clean (no fixes needed).
+
+**What was learned:**
+- The existing per-stage injection-seam convention (T-105/T-107/T-108/T-109/T-110/T-111's
+  `_gemini_client` / `_aligner` / `_beat_detector` / `_library_path` kwargs) composed cleanly into
+  one `build_pipeline_stages()` factory with zero changes needed to any individual stage module —
+  the seams were already designed for exactly this composition, even though no prior session
+  wired them together.
+- T-107's and T-108's existing test fixtures (`tests/fixtures/aligner/corrected_transcript.json`
+  and `tests/fixtures/understand/corrected_transcript.json` + `words.json`) already share the
+  IDENTICAL 2-segment, 7-word Darija/French transcript content — confirming the fixtures were
+  already designed to chain, even though nothing before this session actually chained them through
+  a real multi-stage run.
+- `JobManager.create()` requires `_library_path` to point at a directory containing BOTH
+  `library.json` and the real (even if silent/synthetic) audio file it references — the committed
+  `music/library.json`'s three fixture tracks reference files that are intentionally git-ignored
+  and absent on a fresh checkout (per T-109/D-036), so any end-to-end run (including the live-smoke
+  script in production mode) requires the operator to have added real licensed audio files under
+  `music/` locally before `POST /jobs` can reach `ready_for_ae`. This was already true from T-109;
+  T-113 didn't change it, but it's the first session to actually hit it end-to-end.
+
+**Contradictions found:** none. No stop-and-report was needed this session.
+
+**Human live-smoke — STILL PENDING (Mohamed, separately, after this push):**
+Run `backend/scripts/live_smoke.py` (see the new README section) against a real ~5s Darija clip
+with a real `GEMINI_API_KEY`. Confirm a plausible transcript + edit_plan + images, spot-check a
+couple of WhisperX word timings (spec §7 Stage 5) by ear, confirm or adjust the D-022
+`gemini-2.5-flash` text-model id based on real output quality, and note the actual observed cost
+plus any other observations as a new PROGRESS.md entry. Expect Darija ASR imperfections — that is
+exactly what the correction gate exists to catch. Also add real licensed audio files under
+`music/` locally first (see "What was learned" above) — the committed `music/library.json` fixture
+entries reference files that are git-ignored and not present on a fresh checkout.
+
+**Younes GitHub collaborator TODO (from T-001):** still open. `gh api
+repos/medanouarzaki/framopia-studio/collaborators` shows only `medanouarzaki` as of this session —
+his GitHub username is still needed.
+
+**M1 is now CODE-COMPLETE** (T-101 through T-113). M2 (Brand Kit + templates + registry) is next,
+starting with T-201.
+
+---

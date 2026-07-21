@@ -4,10 +4,13 @@ Pipeline stages that invoke ffmpeg tools import from here. Each function raises
 FfmpegError (a RuntimeError subclass) with a human-readable message on any
 failure mode so callers never see raw stack traces.
 
-Note (D-020): The ingest stage (T-102) still contains its own private
-_run_ffprobe() because test_ingest.py patches app.pipeline.ingest.subprocess.run
-at three call sites — migrating those patches would require touching T-102 tests,
-which is prohibited. New stages import probe() from here directly.
+Note (D-020, consolidated at T-113): the ingest stage (T-102) previously kept a
+private ``_run_ffprobe()`` because test_ingest.py mocked
+``app.pipeline.ingest.subprocess.run`` directly. It now imports ``probe()``
+from here; the T-102 test mocks were updated to patch
+``app.clients.ffmpeg.subprocess.run`` instead. images.py's client-asset
+dimension probe (D-043) still has its own private ffprobe invocation — see
+that module's docstring for why it isn't consolidated here.
 """
 
 from __future__ import annotations

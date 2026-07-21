@@ -63,6 +63,68 @@ class Stage:
 # ---------------------------------------------------------------------------
 
 
+def build_pipeline_stages(
+    *,
+    _gemini_client: object | None = None,
+    _aligner: object | None = None,
+    _beat_detector: object | None = None,
+    _library_path: Path | None = None,
+) -> list[Stage]:
+    """Build the full ordered M1 pipeline (spec Stage 1-10 / T-113).
+
+    ingest -> audio -> asr -> correction_gate (pause) -> align -> understand ->
+    music -> plan_visuals -> images -> assemble_plan
+
+    The correction_gate is a real Stage(is_gate=True) — the runner pauses there
+    in AWAITING_CORRECTION until POST /jobs/{id}/transcript calls resume().
+    Because assemble_plan is last and only writes edit_plan.json on full
+    success (D-047/T-112), a successful job lands at READY_FOR_AE with
+    progress_pct == 100 automatically, with no special-casing needed here.
+
+    Test seam: pass _gemini_client / _aligner / _beat_detector / _library_path
+    to inject fakes into every stage that would otherwise reach out to a real
+    external tool or the committed music library (asr/understand/images use
+    _gemini_client; align uses _aligner; music uses _beat_detector and
+    _library_path). Leave all None in production — each stage constructs its
+    own real client/aligner/detector and reads the committed music/library.json.
+    Imports are local to avoid a circular import with the pipeline modules,
+    which import JobContext/Stage from here.
+    """
+    import functools
+
+    from app.pipeline.align import run_align
+    from app.pipeline.asr import run_asr
+    from app.pipeline.assemble_plan import run_assemble_plan
+    from app.pipeline.audio import run_audio
+    from app.pipeline.correction_gate import CORRECTION_GATE_STAGE
+    from app.pipeline.images import run_images
+    from app.pipeline.ingest import run_ingest
+    from app.pipeline.music import run_music
+    from app.pipeline.plan_visuals import run_plan_visuals
+    from app.pipeline.understand import run_understand
+
+    return [
+        Stage(name="ingest", run=run_ingest),
+        Stage(name="audio", run=run_audio),
+        Stage(name="asr", run=functools.partial(run_asr, _gemini_client=_gemini_client)),
+        CORRECTION_GATE_STAGE,
+        Stage(name="align", run=functools.partial(run_align, _aligner=_aligner)),
+        Stage(
+            name="understand",
+            run=functools.partial(run_understand, _gemini_client=_gemini_client),
+        ),
+        Stage(
+            name="music",
+            run=functools.partial(
+                run_music, _beat_detector=_beat_detector, _library_path=_library_path
+            ),
+        ),
+        Stage(name="plan_visuals", run=run_plan_visuals),
+        Stage(name="images", run=functools.partial(run_images, _gemini_client=_gemini_client)),
+        Stage(name="assemble_plan", run=run_assemble_plan),
+    ]
+
+
 @dataclass
 class _PipelineState:
     remaining_stages: list[Stage]
@@ -180,6 +242,39 @@ class JobManager:
         return list(self._jobs)
 
     # ------------------------------------------------------------------
+    # Cancellation
+    # ------------------------------------------------------------------
+
+    def cancel(self, job_id: str) -> JobStatus:
+        """Cancel a job: transition it to a terminal ERROR state.
+
+        Idempotent-safe: cancelling a job that already reached a terminal
+        state (READY_FOR_AE or ERROR) is a clean no-op that returns the
+        current status unchanged. A job paused at the correction gate has
+        its pending continuation discarded so a stray POST /transcript can
+        no longer resume it.
+
+        Known limitation (D-013 in-memory scope): if the job is actively
+        mid-stage (e.g. awaiting a Gemini call) inside an already-running
+        background task, this does not interrupt that in-flight await —
+        there is no task-handle tracking in v1. It DOES stop the pipeline
+        from advancing to any further stage: _run_stages checks for this
+        terminal state at the top of every loop iteration.
+        """
+        if job_id not in self._statuses:
+            raise KeyError(f"Unknown job: {job_id!r}")
+        current = self._statuses[job_id]
+        if current.state in (JobState.READY_FOR_AE, JobState.ERROR):
+            return current
+        self._pending.pop(job_id, None)
+        self._update_status(
+            job_id,
+            state=JobState.ERROR,
+            message="Job cancelled by operator.",
+        )
+        return self._statuses[job_id]
+
+    # ------------------------------------------------------------------
     # Internal: status mutation
     # ------------------------------------------------------------------
 
@@ -248,6 +343,9 @@ class JobManager:
         ctx: JobContext,
     ) -> None:
         for i, stage in enumerate(stages):
+            if self._statuses[job_id].state == JobState.ERROR:
+                return  # cancelled (or already failed) — stop advancing
+
             pct = stages_done / total_stages * 100.0 if total_stages else 0.0
             self._update_status(job_id, stage=stage.name, progress_pct=pct)
 
