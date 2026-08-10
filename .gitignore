@@ -5,6 +5,9 @@ dist/
 .DS_Store
 .env
 tools/cv/.venv/
+benchmarks/results/
+benchmarks/whisper/.venv/
+benchmarks/whisper/models/
 
 # video files (watermark master is committed explicitly)
 *.mp4

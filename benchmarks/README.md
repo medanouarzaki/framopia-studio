@@ -1,0 +1,56 @@
+# Transcription benchmark harness
+
+Compares transcription engines (ElevenLabs Scribe, Gemini, a local Whisper
+baseline, and a Scribe+Gemini hybrid) against hand-written ground truth, and
+scores WER, orthography conformance, and cross-engine timestamp deviation.
+Nothing here makes a live API call except `npm run bench` itself, and that
+requires an explicit `--yes` or an interactive confirmation after printing
+estimated cost.
+
+## Ground truth format
+
+Hand-written, no timestamps by design — a human listens and types what they
+hear, not when they heard it.
+
+```json
+{
+  "words": [
+    { "text": "wach", "lang": "darija", "script": "latin" },
+    { "text": "salut", "lang": "fr", "script": "latin" }
+  ]
+}
+```
+
+`lang` is one of `darija` | `fr` | `en` | `msa`. `script` is `latin` |
+`arabic`. See `docs/ORTHOGRAPHY_GUIDE.md` for the spelling conventions these
+are checked against.
+
+A plain-text source form is also accepted (one utterance per line): the
+loader tokenizes it into words tagged `darija`/`latin` by default, for a
+human to correct by hand afterwards.
+
+## Running a benchmark
+
+```
+npm run bench -- --audio <path> --ground-truth <path.json> \
+  [--engines scribe,gemini,whisper,hybrid] [--keyterms <path.txt>] [--yes]
+```
+
+`--audio` accepts a 16kHz mono WAV directly, or an mp4/mov that gets
+extracted to `.local/bench-audio/` via ffmpeg first. Without `--yes`, the
+runner prints per-engine cost estimates and asks for interactive
+confirmation before any billable call.
+
+`--dry-run` runs the full pipeline against `fixtures/` with no network
+calls, useful for testing the harness itself.
+
+Results land in `results/<timestamp>/` (gitignored): per-engine normalized
+JSON, raw API responses, `report.md`, and spotcheck HTML pages for the
+timestamp-bearing engines (scribe, whisper, hybrid — Gemini's timestamps
+are self-reported by the model and not spot-checked separately here).
+
+## Local Whisper baseline
+
+`whisper/setup.sh` creates `whisper/.venv` (gitignored) with `mlx-whisper`
+and predownloads the `large-v3` weights. It's a free baseline for sanity,
+not a production candidate — Apple Silicon only.
