@@ -1,4 +1,0 @@
-{
-  "text": "{\"summary\": \"المتحدث يروج لعرض قهوة باردة بسعر 300 درهم لجمهور مغربي، مع تأكيد على جودة التصميم.\", \"segments\": [{\"index\": 0, \"text\": \"Salam بزاف ديال promo\", \"start\": 0.0, \"end\": 2.0, \"visual_intent\": \"show product packaging\", \"emphasis_word_indices\": [1, 2, 3]}, {\"index\": 1, \"text\": \"مزيان le design\", \"start\": 3.5, \"end\": 5.0, \"visual_intent\": \"speaker only\", \"emphasis_word_indices\": [4, 6]}]}",
-  "model_id": "gemini-2.5-flash"
-}
