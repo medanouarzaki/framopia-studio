@@ -1,0 +1,7 @@
+{
+  "name": "framopia-studio",
+  "private": true,
+  "scripts": {
+    "check": "npm run typecheck --prefix service && npm run lint --prefix service && npm run test --prefix service -- --run"
+  }
+}
