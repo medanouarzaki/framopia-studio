@@ -1,0 +1,13 @@
+{
+  "_comment": "Synthetic fixture matching the documented ElevenLabs Speech-to-Text response shape (not a real API response) — used to unit test scribe.ts response mapping.",
+  "language_code": "ar",
+  "language_probability": 0.91,
+  "text": "wach nta mzyan",
+  "words": [
+    { "text": "wach", "type": "word", "start": 0.0, "end": 0.32, "logprob": -0.05 },
+    { "text": " ", "type": "spacing", "start": 0.32, "end": 0.4, "logprob": 0.0 },
+    { "text": "nta", "type": "word", "start": 0.4, "end": 0.6, "logprob": -0.12 },
+    { "text": " ", "type": "spacing", "start": 0.6, "end": 0.68, "logprob": 0.0 },
+    { "text": "mzyan", "type": "word", "start": 0.68, "end": 1.1, "logprob": -0.3 }
+  ]
+}

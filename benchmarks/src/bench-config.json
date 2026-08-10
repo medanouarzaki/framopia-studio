@@ -1,0 +1,10 @@
+{
+  "geminiModel": "gemini-2.5-pro",
+  "geminiPrices": {
+    "textInputUsdPerMillionTokens": 1.25,
+    "audioInputUsdPerMillionTokens": 1.25,
+    "outputUsdPerMillionTokens": 10.0,
+    "asOf": "2026-08",
+    "note": "gemini-2.5-pro is the current GA (non-preview) Gemini Pro model; Gemini 3 Pro variants are still preview as of this date. Audio-specific input pricing for Pro wasn't confirmed at time of writing, so audioInputUsdPerMillionTokens is set equal to text input as a placeholder — verify against ai.google.dev pricing before a live run."
+  }
+}

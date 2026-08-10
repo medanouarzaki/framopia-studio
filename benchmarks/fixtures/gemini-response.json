@@ -1,0 +1,12 @@
+{
+  "_comment": "Synthetic fixture matching the strict-JSON shape requested in the gemini.ts prompt (not a real API response) — used to unit test gemini.ts response parsing.",
+  "text": "{\"words\":[{\"text\":\"wach\",\"startS\":0.0,\"endS\":0.32},{\"text\":\"nta\",\"startS\":0.4,\"endS\":0.6},{\"text\":\"mzyan\",\"startS\":0.68,\"endS\":1.1}]}",
+  "usageMetadata": {
+    "promptTokenCount": 1200,
+    "candidatesTokenCount": 40,
+    "promptTokensDetails": [
+      { "modality": "TEXT", "tokenCount": 900 },
+      { "modality": "AUDIO", "tokenCount": 300 }
+    ]
+  }
+}
