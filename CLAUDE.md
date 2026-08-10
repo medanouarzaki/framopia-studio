@@ -18,18 +18,27 @@ AI-generated contextual images, SFX, and a watermark. Full spec in
 - `reports/` — per-session work reports
 - `panel/` — After Effects CEP panel (not started)
 - `service/` — Node/TypeScript companion service
+- `benchmarks/` — transcription benchmark harness (Scribe, Gemini, local
+  Whisper baseline, Scribe+Gemini hybrid), scored on WER, orthography
+  conformance, and cross-engine timestamp deviation. See `benchmarks/README.md`.
 - `tools/cv/`, `tools/validate-templates/` — helper scripts (not started)
 - `templates/`, `modes/` — AE templates and per-client config (not started)
 - `assets/brand/`, `assets/watermark/`, `assets/sfx/` — shared assets (not started)
-- `benchmarks/` — accuracy/cost benchmarks (not started)
 - `.local/` — machine-local config, secrets, run state (gitignored, never committed)
 
 ## Commands
 
-- `npm run check` (repo root) — typecheck + lint + test for `service/`. This
-  is the regression gate; it must pass before any commit that touches code.
+- `npm run check` (repo root) — typecheck + lint + test for `service/` and
+  `benchmarks/`. This is the regression gate; it must pass before any
+  commit that touches code.
 - Start the service: `npm run build --prefix service && npm run start --prefix service`.
   On start it writes `.local/service.json` with `{ port, token }`.
+- Run the transcription benchmark: `npm run bench -- --audio <path> --ground-truth <path.json>`
+  (add `--dry-run` to exercise the harness against fixtures with no network
+  calls, or `--yes` to skip the interactive cost confirmation). See
+  `benchmarks/README.md` for the ground-truth format and full flag list.
+  `benchmarks/whisper/setup.sh` installs the local Whisper baseline
+  (Apple Silicon only, not run by `npm run check`).
 
 ## Conventions (binding — see docs/CLAUDE_CODE_GUIDELINES.md)
 
@@ -46,10 +55,12 @@ AI-generated contextual images, SFX, and a watermark. Full spec in
 
 ## Status
 
-Block 1 in progress: repo scaffold, docs, and the `service/` skeleton
-(config loading, health endpoint, in-memory job framework, cost ledger)
-are done. Benchmarks, panel, templates, and real job types are not
-started yet.
+Block 1 in progress: repo scaffold, docs, the `service/` skeleton, and
+the `benchmarks/` transcription benchmark harness are done and tested
+offline against fixtures. No real footage exists yet, so the harness has
+never made a live API call or scored a real transcript — that, plus
+freezing a transcription config from the results, is what's left in
+Block 1. Panel, templates, and real job types are not started yet.
 
 See `docs/BLOCKS.md` for the full block plan and `handoffs/` for prior
 session context.
