@@ -6,7 +6,9 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
-    "test": "vitest"
+    "test": "vitest",
+    "build": "tsc",
+    "start": "node dist/server.js"
   },
   "devDependencies": {
     "@eslint/js": "^9.13.0",
