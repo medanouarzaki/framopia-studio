@@ -8,7 +8,11 @@ import type { TranscribedWord, TranscriptionResult } from '../types.js';
 const execFileAsync = promisify(execFile);
 
 const WHISPER_MODEL = 'mlx-community/whisper-large-v3-mlx';
-const WHISPER_VENV_BIN = path.join(REPO_ROOT, 'benchmarks', 'whisper', '.venv', 'bin');
+const WHISPER_DIR = path.join(REPO_ROOT, 'benchmarks', 'whisper');
+const WHISPER_VENV_BIN = path.join(WHISPER_DIR, '.venv', 'bin');
+// Matches the HF_HOME set in whisper/setup.sh, so a model predownloaded by
+// setup.sh is actually found instead of triggering a re-download.
+const WHISPER_HF_HOME = path.join(WHISPER_DIR, 'models');
 
 export interface WhisperRawWord {
   word: string;
@@ -52,17 +56,21 @@ export async function transcribeWithWhisper(
 
   const mlxWhisperBin = path.join(WHISPER_VENV_BIN, 'mlx_whisper');
   const startedAt = Date.now();
-  await execFileAsync(mlxWhisperBin, [
-    audioPath,
-    '--model',
-    WHISPER_MODEL,
-    '--word_timestamps',
-    'True',
-    '--output_format',
-    'json',
-    '--output_dir',
-    rawDir,
-  ]);
+  await execFileAsync(
+    mlxWhisperBin,
+    [
+      audioPath,
+      '--model',
+      WHISPER_MODEL,
+      '--word_timestamps',
+      'True',
+      '--output_format',
+      'json',
+      '--output_dir',
+      rawDir,
+    ],
+    { env: { ...process.env, HF_HOME: WHISPER_HF_HOME } },
+  );
   const wallTimeS = (Date.now() - startedAt) / 1000;
 
   const outputName = `${path.basename(audioPath, path.extname(audioPath))}.json`;

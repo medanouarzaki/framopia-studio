@@ -6,6 +6,12 @@ set -euo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")"
 
+# Keeps downloaded weights under benchmarks/whisper/models (gitignored)
+# instead of the default ~/.cache/huggingface, so this baseline is fully
+# self-contained under benchmarks/whisper/. whisper.ts sets the same
+# HF_HOME when it spawns mlx_whisper.
+export HF_HOME="$(pwd)/models"
+
 python3 -m venv .venv
 .venv/bin/pip install --upgrade pip
 .venv/bin/pip install mlx-whisper
