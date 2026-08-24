@@ -85,6 +85,8 @@ The central artifact is the **Edit Plan** — one JSON per video, schema-version
 
 ## 7. Transcription strategy (highest stakes)
 
+**Resolved 2026-08-24: the config is frozen per `docs/DECISION-transcription-config.md` (hybrid Scribe + Gemini correction). The research findings below are kept as the record of what was believed before the benchmark ran; where they disagree with the decision document, the decision document wins.**
+
 Prior research findings (binding as starting point, not as final choice):
 
 - Whisper large-v3 is disqualified as primary: on code-switched Arabic+European audio it transliterates/translates, ~50% WER on code-switched segments.
