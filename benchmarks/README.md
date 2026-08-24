@@ -32,9 +32,17 @@ human to correct by hand afterwards.
 ## Running a benchmark
 
 ```
-npm run bench -- --audio <path> --ground-truth <path.json> \
+npm run bench -- --audio <path> (--ground-truth <path.json> | --no-ground-truth) \
   [--engines scribe,gemini,whisper,hybrid] [--keyterms <path.txt>] [--yes]
 ```
+
+Paths are resolved relative to `benchmarks/`, so pass absolute paths when
+invoking from the repo root.
+
+`--no-ground-truth` runs the engines and skips WER scoring only; the raw
+response, normalized JSON, plain-text transcript, cost record, spotcheck
+HTML, and orthography conformance are still produced. Use it to validate
+an engine's API shape before any ground truth exists.
 
 `--audio` accepts a 16kHz mono WAV directly, or an mp4/mov that gets
 extracted to `.local/bench-audio/` via ffmpeg first. Without `--yes`, the
@@ -48,6 +56,10 @@ Results land in `results/<timestamp>/` (gitignored): per-engine normalized
 JSON, raw API responses, `report.md`, and spotcheck HTML pages for the
 timestamp-bearing engines (scribe, whisper, hybrid — Gemini's timestamps
 are self-reported by the model and not spot-checked separately here).
+
+The reels this harness is calibrated against are catalogued in
+`footage.json`; the videos themselves live on an external drive and are
+never copied into the repo.
 
 ## Local Whisper baseline
 
