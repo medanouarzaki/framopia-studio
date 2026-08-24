@@ -1,5 +1,10 @@
 # CLAUDE.md
 
+The repo lives on the external SSD at
+`/Volumes/T7 Shield/INSEA/Projects/framopia-studio`; the drive has to be
+mounted before anything works. Test footage sits inside it under
+`my files/test videos/` and is gitignored — never commit video or audio.
+
 Operating memory for Claude Code sessions on this repo. Keep this file in
 sync with what actually exists — update it at the end of every session.
 
@@ -41,6 +46,10 @@ AI-generated contextual images, SFX, and a watermark. Full spec in
   `benchmarks/README.md` for the ground-truth format and full flag list.
   `benchmarks/whisper/setup.sh` installs the local Whisper baseline
   (Apple Silicon only, not run by `npm run check`).
+- `npm run bench:tag` — turn the hand-written `.local/ground-truth/*.txt`
+  transcripts into tagged ground-truth JSON.
+- `npm run bench:aggregate` — rescore every reel's latest run from disk (no
+  API calls) into `benchmarks/RESULTS-block1.md`.
 
 ## Conventions (binding — see docs/CLAUDE_CODE_GUIDELINES.md)
 
@@ -57,19 +66,27 @@ AI-generated contextual images, SFX, and a watermark. Full spec in
 
 ## Status
 
-Block 1 in progress. Done: repo scaffold, docs, the `service/` skeleton,
-the `benchmarks/` harness, `docs/ORTHOGRAPHY_GUIDE.md` frozen at v1.0
-(only the freeze-list extension is open, landing as v1.0.1 once ground
-truth exists), the four test reels catalogued in `benchmarks/footage.json`
-with audio extracted to `.local/bench-audio/`, the local Whisper baseline
-installed and smoke-tested, and Scribe validated against the live API.
+Block 1 is benchmarked and awaiting the freeze decision. Done: repo
+scaffold, docs, the `service/` skeleton, the `benchmarks/` harness,
+`docs/ORTHOGRAPHY_GUIDE.md` frozen at **v1.0.1** (freeze list extended
+from all four ground-truth reels; §6 now puts aesthetic/medical procedure
+terms in Arabic script), the four reels catalogued in
+`benchmarks/footage.json` with audio in `.local/bench-audio/`, hand-written
+ground truth for all four reels in `.local/ground-truth/`, and a full live
+sweep of all four engines over all four reels recorded in
+`benchmarks/RESULTS-block1.md`.
 
-Left in Block 1: the user hand-writes ground truth using the kit in
-`.local/ground-truth/`, then Gemini and hybrid run for real and a winning
-transcription config is frozen. **Scribe returns Darija in Arabic script,
-not Arabizi** — transliteration is the Gemini pass's job, which makes the
-hybrid engine the presumed production shape rather than one option among
-four. Panel, templates, and real job types are not started yet.
+Two facts that shape everything downstream:
+
+- **Scribe returns Darija in Arabic script, not Arabizi.** Transliteration
+  is the Gemini pass's job; both Gemini prompts now carry explicit per-word
+  script rules (`benchmarks/src/engines/script-rules.ts`).
+- **Gemini bills thinking tokens at the output rate**, and on these reels
+  thinking ran ~5x the visible output. `computeGeminiCost` counts them; any
+  new Gemini caller must too, or it will under-report by ~5x.
+
+Left in Block 1: pick and freeze a transcription config from the recorded
+results. Panel, templates, and real job types are not started yet.
 
 See `docs/BLOCKS.md` for the full block plan and `handoffs/` for prior
 session context.
