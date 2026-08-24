@@ -60,6 +60,14 @@ AI-generated contextual images, SFX, and a watermark. Full spec in
   hand-written transcript.
   `benchmarks/whisper/setup.sh` installs the local Whisper baseline
   (Apple Silicon only, not run by `npm run check`).
+- `npm run transcribe -- --video <abs path> [--out <path.json>] [--keyterms
+  <path>] [--yes]` — the production path end to end: ffmpeg audio extraction
+  (`-vn -ac 1 -ar 16000 -c:a pcm_s16le`), Scribe, the correction pass,
+  alignment, and a transcript artifact written to
+  `.local/transcripts/<name>.json`. Billable; prints an estimate and asks for
+  confirmation unless `--yes`. The same code runs behind the `transcribe` job
+  type on the HTTP path, so the two cannot diverge. It writes a plain
+  transcript, **not** an Edit Plan — that schema is not built yet.
 - `npm run bench:tag` — turn the hand-written `.local/ground-truth/*.txt`
   transcripts into tagged ground-truth JSON.
 - `npm run bench:aggregate` — rescore every reel's latest run from disk (no
@@ -87,7 +95,7 @@ Block 1 definition-of-done evidence. `docs/PROJECT_SPEC.md` §7 points at it.
 
 Frozen config: **hybrid** — Scribe v2 batch for word timings and a first
 pass, then a Gemini `gemini-3.1-pro-preview` correction pass carrying
-`docs/ORTHOGRAPHY_GUIDE.md` (**v1.0.3, frozen**) plus the per-word script
+`docs/ORTHOGRAPHY_GUIDE.md` (**v1.0.4, frozen**) plus the per-word script
 rules, realigned onto Scribe's timings by Levenshtein anchoring with linear
 interpolation across inserted words.
 
@@ -128,19 +136,33 @@ neighbour); and the production hybrid module.
 
 `service/src/transcription/` — `scribe.ts` (Scribe v2 batch client),
 `correction.ts` (the Gemini correction pass), `align.ts` (anchor alignment of
-corrected text onto Scribe timings), `index.ts` (`transcribeHybrid`).
-**It is not wired to the HTTP job framework and nothing calls it yet** —
-integration is the next session. It has no fallback path: if the correction
-pass fails it throws a structured `TranscriptionError`, because returning the
-Scribe draft would hand back Arabic-script Darija labelled as a hybrid result.
+corrected text onto Scribe timings), `drift.ts`, `cost.ts`, `media.ts`,
+`job.ts` (the `transcribe` job runner), `index.ts` (`transcribeHybrid`).
+It has no fallback path: if the correction pass fails it throws a structured
+`TranscriptionError`, because returning the Scribe draft would hand back
+Arabic-script Darija labelled as a hybrid result.
 
-`PROMPT_VERSION` in `correction.ts` is the correction prompt's identity and
-will feed the cache fingerprint (ARCHITECTURE §6). It is `1`: the Block 1
-frozen prompt ported verbatim plus exactly one addition — an explicit rule
-that the conjunction `و` is written `w`, never French `ou`. **That rule is
-unvalidated**; no run has exercised it, so the Block 1 evidence describes a
-prompt that differs from this one by that paragraph. Validating it is the
-next session's job. Any prompt change means bumping `PROMPT_VERSION`.
+`transcribeHybrid` requires the audio duration, because Scribe bills per
+audio-hour and its response carries none. It returns a **cost breakdown**
+(`scribeUsd`, `geminiUsd`, `totalUsd`) so no caller has to remember to add a
+component, prints an estimate before the first billable call, and appends
+**two** ledger lines — stages `transcribe-scribe` and
+`transcribe-gemini-correction`. It also returns a **token-count drift**
+record (draft count, corrected count, delta, fraction); past 15% — a starting
+threshold chosen without evidence — it adds a `TranscriptionWarning`. A
+high-drift correction is flagged, never dropped.
+
+**Prompt versions.** `ACTIVE_PROMPT_VERSION` in `correction.ts` is the
+prompt's identity and will feed the cache fingerprint (ARCHITECTURE §6).
+Version 1 is the Block 1 frozen prompt, verbatim, and is the only version run
+C's evidence covers. Version 2 is version 1 plus the rule that the conjunction
+`و` is written `w` (never French `ou`), with the keyterms block moved ahead of
+the JSON-shape instruction. **Version 2 is active.** Rolling back is that one
+constant. Both are constructible at runtime by passing `version`.
+`benchmarks/RESULTS-block2-promptv2.md` records the comparison: overall WER on
+the ground-truth reel was **unchanged at 22.2%**, with darija 1.7 points worse
+and fr/en 6.2 points better, and no `ou` corruption under either version. The
+user has not yet ruled on whether version 2 stands.
 
 Panel, templates, and real job types are not started.
 
