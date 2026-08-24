@@ -3,6 +3,7 @@ import path from 'node:path';
 import { createPartFromBase64, createUserContent, GoogleGenAI } from '@google/genai';
 import { computeGeminiCost, DOCS_DIR, modelConfig, SCRIPT_RULES, type GeminiUsage } from '@framopia/core';
 import { TranscriptionError, type TranscriptWord } from './types.js';
+import type { CorrectedWord } from './tagging.js';
 
 export type PromptVersion = 1 | 2;
 
@@ -95,10 +96,15 @@ ${jsonShape}`;
 }
 
 interface CorrectionRawResponse {
-  words: { text: string }[];
+  words: CorrectedWord[];
 }
 
-export function parseCorrectionResponseText(text: string): string[] {
+/**
+ * Returns the words as the model gave them, including any `lang`/`script` it
+ * volunteered. The frozen prompt asks only for `text`, so those are normally
+ * absent; see tagging.ts for what happens then.
+ */
+export function parseCorrectionResponse(text: string): CorrectedWord[] {
   const stripped = text
     .trim()
     .replace(/^```(?:json)?/i, '')
@@ -121,7 +127,15 @@ export function parseCorrectionResponseText(text: string): string[] {
     throw new TranscriptionError('correction', 'response is missing a "words" array', true);
   }
 
-  return record.words.map((w) => w.text);
+  return record.words.map((w) => ({
+    text: w.text,
+    ...(typeof w.lang === 'string' ? { lang: w.lang } : {}),
+    ...(typeof w.script === 'string' ? { script: w.script } : {}),
+  }));
+}
+
+export function parseCorrectionResponseText(text: string): string[] {
+  return parseCorrectionResponse(text).map((w) => w.text);
 }
 
 const OVERLOAD_MARKERS = ['503', 'UNAVAILABLE', 'high demand', 'overloaded'];
@@ -142,6 +156,7 @@ export interface CorrectionOptions {
 
 export interface CorrectionResult {
   correctedTexts: string[];
+  correctedWords: CorrectedWord[];
   promptVersion: PromptVersion;
   model: string;
   costUsd: number;
@@ -198,8 +213,11 @@ export async function correctTranscript(options: CorrectionOptions): Promise<Cor
 
   const usage = (response.usageMetadata ?? {}) as GeminiUsage;
 
+  const correctedWords = parseCorrectionResponse(response.text ?? '');
+
   return {
-    correctedTexts: parseCorrectionResponseText(response.text ?? ''),
+    correctedTexts: correctedWords.map((w) => w.text),
+    correctedWords,
     promptVersion: version,
     model: modelConfig.geminiModel,
     costUsd: computeGeminiCost(usage),

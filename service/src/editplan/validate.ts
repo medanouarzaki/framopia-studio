@@ -133,7 +133,7 @@ function checkWords(c: Checker, value: unknown): void {
     }
     c.string(`${p}.text`, w.text);
     c.string(`${p}.sourceText`, w.sourceText);
-    c.oneOf(`${p}.lang`, w.lang, LANGS);
+    if (w.lang !== null) c.oneOf(`${p}.lang`, w.lang, LANGS);
     c.oneOf(`${p}.script`, w.script, SCRIPTS);
     c.nullableNumber(`${p}.confidence`, w.confidence);
     c.boolean(`${p}.removed`, w.removed);

@@ -63,7 +63,12 @@ export interface PlanWord {
   text: string;
   /** Raw ASR form, kept for audit and diff. */
   sourceText: string;
-  lang: WordLang;
+  /**
+   * Null where no stage has determined the language yet. The correction
+   * prompt frozen in Block 1 does not report it and it is not derivable from
+   * the characters, so null is the honest value rather than a default.
+   */
+  lang: WordLang | null;
   script: WordScript;
   confidence: number | null;
   /** Cleaning marks never delete a word; they mark it. */
