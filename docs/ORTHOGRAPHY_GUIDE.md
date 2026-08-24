@@ -1,6 +1,6 @@
-# Framopia Studio — Darija Orthography Guide (v1.0.1)
+# Framopia Studio — Darija Orthography Guide (v1.0.2)
 
-Status: **v1.0.1 — frozen**. All §9 questions are resolved: the freeze list was extended from the four hand-written ground-truth transcripts, closing the last one. This document is injected verbatim into every Gemini transcription/correction prompt, so it is written as rules, not prose. **Consistency across videos matters more than any single "correct" spelling.**
+Status: **v1.0.2 — frozen**. All §9 questions are resolved. v1.0.2 (2026-08-24) added the numeral rule in §3a and widened the §6 Arabic-script rule to the whole medical/aesthetic domain, both from gaps the Block 1 benchmark exposed. This document is injected verbatim into every Gemini transcription/correction prompt, so it is written as rules, not prose. **Consistency across videos matters more than any single "correct" spelling.**
 
 ## 1. Scope
 
@@ -38,6 +38,12 @@ Notes:
 - Long vowels: `a`, `i`, `ou` (`ou` for /uː/, French habit): `so9`, `bousa`.
 - Word-final /a/ from ة: `a` (`khedma`? no — `khdma`; `mdina`).
 
+## 3a. Numbers
+
+Numbers are written as **digits**, never spelled out: `4`, `15`, `18`, `20`. Write `mabin 7essa w 7essa 15 yom`, not `khmstachr yom`. This holds whatever the surrounding language is, and it holds for ordinals read as numbers.
+
+This does not conflict with §2. `3`, `7` and `9` are letters when they sit inside a word (`3ndi`, `7essa`, `so9`); a digit standing alone as its own token is a number (`3 dial l7essass` is three sessions). Nothing else in Arabizi produces a standalone digit token, so the two readings never collide.
+
 ## 4. High-frequency words — fixed spellings (freeze list)
 
 One spelling per word, always. Where the ground truth spelled a word more than one way, the majority spelling won.
@@ -48,7 +54,7 @@ Added in v1.0.1, from the four ground-truth reels:
 
 `dial` / `diali` / `dialk` (of/mine/yours — the possessive takes its pronoun suffix attached, `dialha`, `dialo`, `dialna`) · `li` (which/who) · `houa` (he/it) · `joj` (two) · `wa7d` (one, also the indefinite article) · `7essa` / `7essass` (session / sessions) · `mabin` (between) · `tal` (up to, until) · `mn` (from) · `3la` (about, on) · `fa` (so, then) · `lyoma` (today) · `yom` (day) · `nhdr` (I talk) · `lik` / `likom` (to you sg/pl) · `lkher` (the end) · `tb3i` (follow — f. imperative) · `kat7taji` (you need — f.) · `kidom` (it lasts)
 
-v1.0.1 replaced `dyal`/`dyali` with `dial`/`diali`: the ground truth wrote `dial` eleven times and `dyal` never, and §4's own rule is that the user's habit wins.
+v1.0.1 replaced `dyal`/`dyali` with `dial`/`diali`: the ground truth wrote `dial` eleven times and `dyal` never, and §4's own rule is that the user's habit wins. Confirmed by the user on 2026-08-24; `dial` is settled.
 
 Variants seen in the ground truth and deliberately **not** frozen, because the majority form above supersedes them: `dl`/`dla` (reduced `dial`), `main` (a typo for `mabin`, and it collides with French `les mains`), `ta` (reduced `tal`), `yawm` (→ `yom`), `7sessa` (→ `7essa`). Apostrophes are always straight (`l'ADN`, `l'effet`), never curly.
 
@@ -64,7 +70,14 @@ Verb prefixes attach without hyphen: `kan-` (present, 1sg/1pl per context), `kat
 
 Write in **Arabic script** in two cases.
 
-**(a) Aesthetic and medical procedure/treatment terms**, even mid-Darija — this is how the terms are actually written and read in the clinic register, and it holds regardless of surrounding language: `شد طبيعي للوجه`, `محفزات الكولاجين`, `الإبرة الحريرية`, `حمض الهيالورونيك`, `ترطيب عميق للبشرة`, `نتائج جد فعالة`. Branded product names and French technical terms are **not** covered by this rule and keep their Latin spelling (`le profhilo`, `les polynucléotides`, `faiblement réticulé`, `la mésothérapie`).
+**(a) The medical and aesthetic domain**, even mid-Darija — this is how the register is actually written and read in the clinic, and it holds regardless of surrounding language. The rule covers the whole domain vocabulary, not just named procedures:
+
+- procedures and treatments: `شد طبيعي للوجه`, `محفزات الكولاجين`, `الإبرة الحريرية`, `ترطيب عميق للبشرة`
+- anatomical regions: `المنطقة حول العينين`, `البشرة`, `الوجه`
+- substance and material names: `مادة الكافيين`, `حمض الهيالورونيك`, `الكولاجين`
+- outcome phrases in the same register: `نتائج جد فعالة`
+
+Branded product names and French technical terms are **not** covered and keep their Latin/French spelling: `le profhilo`, `le RRS eyes`, `les polynucléotides`, `l'acide hyaluronique`, `faiblement réticulé`, `la mésothérapie`. Where the same substance has both a domain Arabic name and a French technical one, write the one actually spoken.
 
 **(b) Genuinely MSA/classical register as spoken:** religious formulas (`بسم الله`, `إن شاء الله` when uttered formally — but casual "nchaalah" in flowing Darija stays Latin: `nchaalah`), Quran/hadith quotes, formal citations, deliberate formal-register switches. Everything conversational stays Latin, even MSA-origin vocabulary used casually. When unsure, prefer Latin and lower the word's confidence so the editor reviews it. The per-word script decision is always editable in the review UI.
 
