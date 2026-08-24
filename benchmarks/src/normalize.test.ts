@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { normalizeForWer, normalizeWords, splitScriptBoundaries } from './normalize.js';
+import { normalizeForWer, normalizeToken, normalizeWords, splitScriptBoundaries } from './normalize.js';
 
 describe('splitScriptBoundaries', () => {
   it('splits a joined arabic/latin token, the real واحدcocktail case', () => {
@@ -45,5 +45,16 @@ describe('normalizeForWer — numerals', () => {
 
   it('still splits mixed-script tokens on the way through', () => {
     expect(normalizeForWer(['واحدcocktail'])).toEqual(['واحد', 'cocktail']);
+  });
+});
+
+describe('normalizeToken — arabic punctuation', () => {
+  it('strips an arabic question mark the ground truth attached to a word', () => {
+    expect(normalizeToken('للوجه؟')).toBe('للوجه');
+    expect(normalizeToken('للوجه')).toBe('للوجه');
+  });
+
+  it('leaves the arabic letters themselves untouched', () => {
+    expect(normalizeToken('المنطقة')).toBe('المنطقة');
   });
 });

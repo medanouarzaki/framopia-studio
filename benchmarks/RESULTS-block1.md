@@ -22,10 +22,10 @@ set cannot speak to, which is the whole story for raw Scribe.
 
 | engine | overall WER | darija WER | fr/en WER | orthography | ts dev vs scribe (med/p90) | null ts | cost | wall |
 |---|---|---|---|---|---|---|---|---|
-| scribe | 68.8% | 98.3% | 10.4% | 100.0% (223 ar unscored) | — / — | 0 | $0.0054 | 11.2s |
-| gemini | 36.2% | 29.7% | 14.6% | 97.3% (35 ar unscored) | 721ms / 2895ms | 0 | $0.5719 | 567.9s |
-| whisper | 84.1% | 95.9% | 95.8% | 100.0% (223 ar unscored) | 155ms / 1460ms | 0 | $0.0000 | 50.2s |
-| hybrid | 31.9% | 28.5% | 10.4% | 97.2% (37 ar unscored) | 0ms / 1794ms | 0 | $0.5334 | 654.1s |
+| scribe | 67.0% | 98.3% | 10.4% | 100.0% (223 ar unscored) | — / — | 0 | $0.0054 | 11.2s |
+| gemini | 35.5% | 29.7% | 14.6% | 97.3% (35 ar unscored) | 666ms / 1586ms | 0 | $0.5719 | 567.9s |
+| whisper | 84.1% | 95.9% | 95.8% | 100.0% (223 ar unscored) | 145ms / 484ms | 0 | $0.0000 | 50.2s |
+| hybrid | 31.2% | 28.5% | 10.4% | 97.2% (37 ar unscored) | 0ms / 8ms | 0 | $0.5334 | 654.1s |
 
 Total billed: $1.1107.
 
@@ -69,16 +69,16 @@ prompt, which would cost another sweep.
 
 | engine | overall WER | darija WER | fr/en WER | orthography | ts dev vs scribe (med/p90) | null ts | cost | wall |
 |---|---|---|---|---|---|---|---|---|
-| scribe | 71.6% | 100.0% | 60.0% | 100.0% (62 ar unscored) | — / — | 0 | $0.0013 | 2.8s |
-| gemini | 43.3% | 28.2% | 40.0% | 98.6% (16 ar unscored) | 861ms / 6919ms | 0 | $0.1120 | 90.6s |
-| whisper | 73.1% | 94.9% | 100.0% | 100.0% (56 ar unscored) | 120ms / 4561ms | 0 | $0.0000 | 12.1s |
-| hybrid | 47.8% | 33.3% | 40.0% | 100.0% (16 ar unscored) | 0ms / 7175ms | 0 | $0.1396 | 260.2s |
+| scribe | 68.7% | 100.0% | 60.0% | 100.0% (62 ar unscored) | — / — | 0 | $0.0013 | 2.8s |
+| gemini | 40.3% | 28.2% | 40.0% | 98.6% (16 ar unscored) | 641ms / 1721ms | 0 | $0.1120 | 90.6s |
+| whisper | 73.1% | 94.9% | 100.0% | 100.0% (56 ar unscored) | 120ms / 659ms | 0 | $0.0000 | 12.1s |
+| hybrid | 44.8% | 33.3% | 40.0% | 100.0% (16 ar unscored) | 0ms / 32ms | 0 | $0.1396 | 260.2s |
 
 ### test-2 — 22.3s, 69 reference words
 
 | engine | overall WER | darija WER | fr/en WER | orthography | ts dev vs scribe (med/p90) | null ts | cost | wall |
 |---|---|---|---|---|---|---|---|---|
-| scribe | 71.0% | 97.7% | 0.0% | 100.0% (59 ar unscored) | — / — | 0 | $0.0014 | 3.3s |
+| scribe | 68.1% | 97.7% | 0.0% | 100.0% (59 ar unscored) | — / — | 0 | $0.0014 | 3.3s |
 | gemini | 39.1% | 32.6% | 0.0% | 97.3% (8 ar unscored) | 1281ms / 2361ms | 0 | $0.1342 | 188.6s |
 | whisper | 88.4% | 100.0% | 100.0% | 100.0% (65 ar unscored) | 140ms / 299ms | 0 | $0.0000 | 13.0s |
 | hybrid | 33.3% | 32.6% | 0.0% | 97.3% (10 ar unscored) | 0ms / 0ms | 0 | $0.1277 | 91.1s |
@@ -87,7 +87,7 @@ prompt, which would cost another sweep.
 
 | engine | overall WER | darija WER | fr/en WER | orthography | ts dev vs scribe (med/p90) | null ts | cost | wall |
 |---|---|---|---|---|---|---|---|---|
-| scribe | 57.6% | 96.9% | 6.3% | 100.0% (41 ar unscored) | — / — | 0 | $0.0013 | 2.2s |
-| gemini | 33.9% | 28.1% | 12.5% | 95.2% (6 ar unscored) | 500ms / 1661ms | 0 | $0.1696 | 155.1s |
-| whisper | 83.1% | 93.8% | 87.5% | 100.0% (42 ar unscored) | 200ms / 659ms | 0 | $0.0000 | 11.6s |
+| scribe | 55.9% | 96.9% | 6.3% | 100.0% (41 ar unscored) | — / — | 0 | $0.0013 | 2.2s |
+| gemini | 33.9% | 28.1% | 12.5% | 95.2% (6 ar unscored) | 500ms / 1621ms | 0 | $0.1696 | 155.1s |
+| whisper | 83.1% | 93.8% | 87.5% | 100.0% (42 ar unscored) | 159ms / 659ms | 0 | $0.0000 | 11.6s |
 | hybrid | 18.6% | 15.6% | 6.3% | 94.8% (6 ar unscored) | 0ms / 0ms | 0 | $0.1174 | 74.2s |
