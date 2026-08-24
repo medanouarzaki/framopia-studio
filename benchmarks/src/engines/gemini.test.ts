@@ -59,3 +59,19 @@ describe('computeGeminiCost', () => {
     expect(computeGeminiCost({})).toBe(0);
   });
 });
+
+describe('computeGeminiCost — thinking tokens', () => {
+  it('bills thinking tokens at the output rate alongside visible output', () => {
+    const withoutThinking = computeGeminiCost({
+      promptTokenCount: 1000,
+      candidatesTokenCount: 1000,
+    });
+    const withThinking = computeGeminiCost({
+      promptTokenCount: 1000,
+      candidatesTokenCount: 1000,
+      thoughtsTokenCount: 1000,
+    });
+    expect(withThinking).toBeGreaterThan(withoutThinking);
+    expect(withThinking - withoutThinking).toBeCloseTo(withoutThinking - 1000e-6 * 2.0, 9);
+  });
+});

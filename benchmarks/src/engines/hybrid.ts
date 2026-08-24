@@ -8,6 +8,7 @@ import { normalizeToken } from '../normalize.js';
 import { align } from '../wer.js';
 import { computeGeminiCost, type GeminiUsage } from './gemini.js';
 import { estimateScribeCost, transcribeWithScribe } from './scribe.js';
+import { generateWithOneRetry } from './generate-retry.js';
 import { SCRIPT_RULES } from './script-rules.js';
 
 /**
@@ -155,7 +156,7 @@ export async function runHybrid(options: RunHybridOptions): Promise<Transcriptio
   const prompt = await buildHybridCorrectionPrompt(scribeResult.words, keyterms);
 
   const startedAt = Date.now();
-  const response = await ai.models.generateContent({
+  const response = await generateWithOneRetry(ai, {
     model: benchConfig.geminiModel,
     contents: createUserContent([prompt, createPartFromBase64(audioBuffer.toString('base64'), 'audio/wav')]),
   });

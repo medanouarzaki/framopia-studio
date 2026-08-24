@@ -10,6 +10,10 @@ const GEMINI_AUDIO_TOKENS_PER_SECOND = 32;
 const ESTIMATED_WORDS_PER_SECOND = 2.5;
 const ESTIMATED_OUTPUT_TOKENS_PER_WORD = 20;
 const GUIDE_PROMPT_TEXT_TOKENS = 2000;
+// Gemini 3.1 Pro thinks before answering and bills those tokens at the output
+// rate. On the Block 1 reels thinking ran ~5x the visible output, so the
+// estimate has to carry the same multiplier or it lands 5x low.
+const THINKING_TOKEN_MULTIPLIER = 5;
 
 export function estimateGeminiCallCost(durationS: number): number {
   const audioTokens = durationS * GEMINI_AUDIO_TOKENS_PER_SECOND;
@@ -19,7 +23,8 @@ export function estimateGeminiCallCost(durationS: number): number {
   return (
     (audioTokens / 1_000_000) * geminiPrices.audioInputUsdPerMillionTokens +
     (GUIDE_PROMPT_TEXT_TOKENS / 1_000_000) * geminiPrices.textInputUsdPerMillionTokens +
-    (outputTokens / 1_000_000) * geminiPrices.outputUsdPerMillionTokens
+    ((outputTokens * (1 + THINKING_TOKEN_MULTIPLIER)) / 1_000_000) *
+      geminiPrices.outputUsdPerMillionTokens
   );
 }
 

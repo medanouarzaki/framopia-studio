@@ -7,6 +7,7 @@ import {
   GoogleGenAI,
 } from '@google/genai';
 import { benchConfig } from '../bench-config.js';
+import { generateWithOneRetry } from './generate-retry.js';
 import { SCRIPT_RULES } from './script-rules.js';
 import { REPO_ROOT } from '../paths.js';
 import type { TranscribedWord, TranscriptionResult } from '../types.js';
@@ -87,10 +88,17 @@ export interface GeminiUsageDetail {
 export interface GeminiUsage {
   promptTokenCount?: number;
   candidatesTokenCount?: number;
+  thoughtsTokenCount?: number;
   promptTokensDetails?: GeminiUsageDetail[];
 }
 
-/** Prices audio and text prompt tokens separately when the SDK reports a per-modality breakdown; falls back to a flat text rate otherwise. */
+/**
+ * Prices audio and text prompt tokens separately when the SDK reports a
+ * per-modality breakdown; falls back to a flat text rate otherwise.
+ * Thinking tokens are billed at the output rate and are reported separately
+ * from candidatesTokenCount — on a real 23s reel they were five times the
+ * visible output, so leaving them out understates a call by ~5x.
+ */
 export function computeGeminiCost(usage: GeminiUsage): number {
   const { geminiPrices } = benchConfig;
   let inputCost = 0;
@@ -109,8 +117,8 @@ export function computeGeminiCost(usage: GeminiUsage): number {
       ((usage.promptTokenCount ?? 0) / 1_000_000) * geminiPrices.textInputUsdPerMillionTokens;
   }
 
-  const outputCost =
-    ((usage.candidatesTokenCount ?? 0) / 1_000_000) * geminiPrices.outputUsdPerMillionTokens;
+  const billedOutputTokens = (usage.candidatesTokenCount ?? 0) + (usage.thoughtsTokenCount ?? 0);
+  const outputCost = (billedOutputTokens / 1_000_000) * geminiPrices.outputUsdPerMillionTokens;
 
   return inputCost + outputCost;
 }
@@ -141,7 +149,7 @@ export async function transcribeWithGemini(
   const prompt = await buildGeminiPrompt(keyterms);
 
   const startedAt = Date.now();
-  const response = await ai.models.generateContent({
+  const response = await generateWithOneRetry(ai, {
     model: benchConfig.geminiModel,
     contents: createUserContent([prompt, audioPart]),
   });
