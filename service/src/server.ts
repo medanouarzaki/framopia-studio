@@ -4,7 +4,7 @@ import http, { type IncomingMessage, type ServerResponse } from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createJob, getJob, UnknownJobTypeError } from './jobs.js';
-import { LOCAL_DIR } from './paths.js';
+import { LOCAL_DIR } from '@framopia/core';
 
 const SERVICE_JSON_PATH = path.join(LOCAL_DIR, 'service.json');
 

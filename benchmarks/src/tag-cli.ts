@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { LOCAL_DIR } from './paths.js';
+import { LOCAL_DIR } from '@framopia/core';
 import { tagTranscript } from './tag-ground-truth.js';
 
 const labels = ['ground-truth', 'test-1', 'test-2', 'test-3'];

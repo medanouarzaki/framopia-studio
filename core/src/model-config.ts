@@ -1,4 +1,4 @@
-import benchConfigJson from './bench-config.json' with { type: 'json' };
+import modelConfigJson from './model-config.json' with { type: 'json' };
 
 export interface GeminiPrices {
   textInputUsdPerMillionTokens: number;
@@ -6,9 +6,9 @@ export interface GeminiPrices {
   outputUsdPerMillionTokens: number;
 }
 
-export interface BenchConfig {
+export interface ModelConfig {
   geminiModel: string;
   geminiPrices: GeminiPrices;
 }
 
-export const benchConfig: BenchConfig = benchConfigJson;
+export const modelConfig: ModelConfig = modelConfigJson;

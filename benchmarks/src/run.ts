@@ -4,15 +4,14 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
-import { appendCost } from './costs.js';
 import { ensureWavAudio, getAudioDurationSeconds } from './audio.js';
-import { estimateCosts } from './estimate.js';
 import { loadGroundTruth } from './ground-truth.js';
 import { alignCorrectedOntoScribeTimings, parseCorrectionResponseText, runHybrid } from './engines/hybrid.js';
 import { mapScribeResponse, transcribeWithScribe, type ScribeRawResponse } from './engines/scribe.js';
 import { parseGeminiResponseText, transcribeWithGemini } from './engines/gemini.js';
 import { mapWhisperResponse, transcribeWithWhisper, type WhisperRawResponse } from './engines/whisper.js';
-import { LOCAL_DIR, RESULTS_DIR, FIXTURES_DIR } from './paths.js';
+import { appendCost, estimateCosts, LOCAL_DIR } from '@framopia/core';
+import { RESULTS_DIR, FIXTURES_DIR } from './paths.js';
 import { generateSpotcheckHtml } from './spotcheck.js';
 import { buildReport } from './report.js';
 import type { TranscriptionResult } from './types.js';
@@ -292,7 +291,7 @@ async function main(): Promise<void> {
   let elevenLabsApiKey: string | undefined;
   let googleApiKey: string | undefined;
   if (!dryRun) {
-    const { loadConfig } = await import('./config.js');
+    const { loadConfig } = await import('@framopia/core');
     const config = loadConfig();
     elevenLabsApiKey = config.elevenLabsApiKey;
     googleApiKey = config.googleApiKey;

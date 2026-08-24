@@ -1,13 +1,17 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import {
+  estimateScribeCost,
+  SCRIBE_KEYTERM_SURCHARGE,
+  SCRIBE_USD_PER_AUDIO_HOUR,
+} from '@framopia/core';
 import type { TranscribedWord, TranscriptionResult } from '../types.js';
 import { EngineRequestError, fetchWithOneRetry } from './http.js';
 
+export { estimateScribeCost, SCRIBE_KEYTERM_SURCHARGE, SCRIBE_USD_PER_AUDIO_HOUR };
+
 const SCRIBE_ENDPOINT = 'https://api.elevenlabs.io/v1/speech-to-text';
 const DEFAULT_MODEL_ID = 'scribe_v2';
-
-export const SCRIBE_USD_PER_AUDIO_HOUR = 0.22;
-export const SCRIBE_KEYTERM_SURCHARGE = 0.2;
 
 export interface ScribeRawWord {
   text: string;
@@ -36,12 +40,6 @@ export function mapScribeResponse(raw: ScribeRawResponse): TranscribedWord[] {
       // logprob is in (-inf, 0]; exp() maps it to a (0, 1] confidence-like score.
       confidence: typeof word.logprob === 'number' ? Math.exp(word.logprob) : null,
     }));
-}
-
-export function estimateScribeCost(durationS: number, keytermsUsed: boolean): number {
-  const hours = durationS / 3600;
-  const base = hours * SCRIBE_USD_PER_AUDIO_HOUR;
-  return keytermsUsed ? base * (1 + SCRIBE_KEYTERM_SURCHARGE) : base;
 }
 
 export interface TranscribeWithScribeOptions {

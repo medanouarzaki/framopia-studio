@@ -6,10 +6,9 @@ import {
   createUserContent,
   GoogleGenAI,
 } from '@google/genai';
-import { benchConfig } from '../bench-config.js';
+import { computeGeminiCost, modelConfig, REPO_ROOT, type GeminiUsage } from '@framopia/core';
 import { generateWithOneRetry } from './generate-retry.js';
 import { SCRIPT_RULES } from './script-rules.js';
-import { REPO_ROOT } from '../paths.js';
 import type { TranscribedWord, TranscriptionResult } from '../types.js';
 
 const MAX_INLINE_BYTES = 20 * 1024 * 1024;
@@ -80,48 +79,8 @@ export function parseGeminiResponseText(text: string): TranscribedWord[] {
   }));
 }
 
-export interface GeminiUsageDetail {
-  modality?: string;
-  tokenCount?: number;
-}
-
-export interface GeminiUsage {
-  promptTokenCount?: number;
-  candidatesTokenCount?: number;
-  thoughtsTokenCount?: number;
-  promptTokensDetails?: GeminiUsageDetail[];
-}
-
-/**
- * Prices audio and text prompt tokens separately when the SDK reports a
- * per-modality breakdown; falls back to a flat text rate otherwise.
- * Thinking tokens are billed at the output rate and are reported separately
- * from candidatesTokenCount — on a real 23s reel they were five times the
- * visible output, so leaving them out understates a call by ~5x.
- */
-export function computeGeminiCost(usage: GeminiUsage): number {
-  const { geminiPrices } = benchConfig;
-  let inputCost = 0;
-
-  if (usage.promptTokensDetails && usage.promptTokensDetails.length > 0) {
-    for (const detail of usage.promptTokensDetails) {
-      const tokens = detail.tokenCount ?? 0;
-      const pricePerMillion =
-        detail.modality === 'AUDIO'
-          ? geminiPrices.audioInputUsdPerMillionTokens
-          : geminiPrices.textInputUsdPerMillionTokens;
-      inputCost += (tokens / 1_000_000) * pricePerMillion;
-    }
-  } else {
-    inputCost =
-      ((usage.promptTokenCount ?? 0) / 1_000_000) * geminiPrices.textInputUsdPerMillionTokens;
-  }
-
-  const billedOutputTokens = (usage.candidatesTokenCount ?? 0) + (usage.thoughtsTokenCount ?? 0);
-  const outputCost = (billedOutputTokens / 1_000_000) * geminiPrices.outputUsdPerMillionTokens;
-
-  return inputCost + outputCost;
-}
+// Re-exported so benchmark callers keep a single import path per engine.
+export { computeGeminiCost, type GeminiUsage };
 
 export interface TranscribeWithGeminiOptions {
   apiKey: string;
@@ -150,7 +109,7 @@ export async function transcribeWithGemini(
 
   const startedAt = Date.now();
   const response = await generateWithOneRetry(ai, {
-    model: benchConfig.geminiModel,
+    model: modelConfig.geminiModel,
     contents: createUserContent([prompt, audioPart]),
   });
   const wallTimeS = (Date.now() - startedAt) / 1000;

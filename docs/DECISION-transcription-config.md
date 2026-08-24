@@ -21,8 +21,9 @@ for transcription. Numbers come from `benchmarks/RESULTS-block1.md` (run C).
    pass inserted, which have no Scribe anchor, get timings spread evenly
    across the gap between the anchors on either side.
 
-Model ids and prices live in `benchmarks/src/bench-config.json`; changing
-either is a config edit, not a code change.
+Model ids and prices live in `core/src/model-config.json` (moved there from
+`benchmarks/src/bench-config.json` in Block 2 session 2, when the shared
+package was created); changing either is a config edit, not a code change.
 
 ## Run C — the evidence
 
@@ -76,7 +77,7 @@ unusable, and the drift compounds through a reel.
   noise. Revisit if production reels differ in speaker, register, or domain.
 - **`gemini-3.1-pro-preview` is a preview model.** `gemini-2.5-pro` was
   retired mid-Block-1 and there is no GA Pro tier to pin instead. Swapping
-  models is a `bench-config.json` edit; re-running the benchmark after any
+  models is a `core/src/model-config.json` edit; re-running the benchmark after any
   swap is the point of keeping the harness.
 - **The `ou`/`و` corruption is unresolved.** In run B's test-1 diff, the
   hybrid path rendered the Darija conjunction `و` as French `ou` where

@@ -1,12 +1,10 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { createPartFromBase64, createUserContent, GoogleGenAI } from '@google/genai';
-import { benchConfig } from '../bench-config.js';
-import { REPO_ROOT } from '../paths.js';
+import { computeGeminiCost, modelConfig, REPO_ROOT, type GeminiUsage } from '@framopia/core';
 import type { TranscribedWord, TranscriptionResult } from '../types.js';
 import { normalizeToken } from '../normalize.js';
 import { align } from '../wer.js';
-import { computeGeminiCost, type GeminiUsage } from './gemini.js';
 import { estimateScribeCost, transcribeWithScribe } from './scribe.js';
 import { generateWithOneRetry } from './generate-retry.js';
 import { SCRIPT_RULES } from './script-rules.js';
@@ -157,7 +155,7 @@ export async function runHybrid(options: RunHybridOptions): Promise<Transcriptio
 
   const startedAt = Date.now();
   const response = await generateWithOneRetry(ai, {
-    model: benchConfig.geminiModel,
+    model: modelConfig.geminiModel,
     contents: createUserContent([prompt, createPartFromBase64(audioBuffer.toString('base64'), 'audio/wav')]),
   });
   const correctionWallTimeS = (Date.now() - startedAt) / 1000;

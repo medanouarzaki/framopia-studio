@@ -5,7 +5,8 @@ import { scoreOrthography } from './orthography.js';
 import { crossEngineDeviation, sanityCheck } from './timestamps.js';
 import { align, computeSubsetWer, scoreAlignment, type WerResult } from './wer.js';
 import { normalizeForWer } from './normalize.js';
-import { LOCAL_DIR, RESULTS_DIR } from './paths.js';
+import { LOCAL_DIR } from '@framopia/core';
+import { RESULTS_DIR } from './paths.js';
 import type { GroundTruth, TranscriptionResult } from './types.js';
 
 export const REELS = ['ground-truth', 'test-1', 'test-2', 'test-3'];

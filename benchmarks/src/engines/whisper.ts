@@ -2,7 +2,7 @@ import { execFile } from 'node:child_process';
 import { mkdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { promisify } from 'node:util';
-import { REPO_ROOT } from '../paths.js';
+import { REPO_ROOT } from '@framopia/core';
 import type { TranscribedWord, TranscriptionResult } from '../types.js';
 
 const execFileAsync = promisify(execFile);

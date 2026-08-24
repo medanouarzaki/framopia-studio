@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { FIXTURES_DIR } from '../paths.js';
-import { computeGeminiCost, parseGeminiResponseText } from './gemini.js';
+import { parseGeminiResponseText } from './gemini.js';
 
 interface GeminiFixture {
   text: string;
@@ -37,41 +37,5 @@ describe('parseGeminiResponseText', () => {
 
   it('throws when the words array is missing', () => {
     expect(() => parseGeminiResponseText('{}')).toThrow(/words/);
-  });
-});
-
-describe('computeGeminiCost', () => {
-  it('prices text and audio prompt tokens separately via promptTokensDetails', () => {
-    const { usageMetadata } = loadFixture();
-    const cost = computeGeminiCost(usageMetadata);
-    // 900 text tok @1.25/M + 300 audio tok @1.25/M + 40 output tok @10/M
-    const expected = (900 / 1_000_000) * 1.25 + (300 / 1_000_000) * 1.25 + (40 / 1_000_000) * 10;
-    expect(cost).toBeCloseTo(expected);
-  });
-
-  it('falls back to a flat prompt-token rate without a modality breakdown', () => {
-    const cost = computeGeminiCost({ promptTokenCount: 1000, candidatesTokenCount: 100 });
-    const expected = (1000 / 1_000_000) * 1.25 + (100 / 1_000_000) * 10;
-    expect(cost).toBeCloseTo(expected);
-  });
-
-  it('is zero for empty usage', () => {
-    expect(computeGeminiCost({})).toBe(0);
-  });
-});
-
-describe('computeGeminiCost — thinking tokens', () => {
-  it('bills thinking tokens at the output rate alongside visible output', () => {
-    const withoutThinking = computeGeminiCost({
-      promptTokenCount: 1000,
-      candidatesTokenCount: 1000,
-    });
-    const withThinking = computeGeminiCost({
-      promptTokenCount: 1000,
-      candidatesTokenCount: 1000,
-      thoughtsTokenCount: 1000,
-    });
-    expect(withThinking).toBeGreaterThan(withoutThinking);
-    expect(withThinking - withoutThinking).toBeCloseTo(withoutThinking - 1000e-6 * 2.0, 9);
   });
 });
