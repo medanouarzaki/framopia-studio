@@ -20,6 +20,12 @@ export const SCRIPT_RULES = `Script rules, applied per word:
   technical terms stay Latin even when they name a procedure or a
   substance: le profhilo, le RRS eyes, l'acide hyaluronique, la
   mésothérapie, faiblement réticulé.
+- The script switch is term-level, never clause-level. Only the domain term
+  itself goes into Arabic script; the connectives, pronouns, copulas and
+  prepositions around it stay Arabizi even when the sentence is entirely
+  about the procedure. Write "محفزات الكولاجين hia 3ibara 3an إبر", never
+  "محفزات الكولاجين هي عبارة عن إبر". A multi-word term (المنطقة حول
+  العينين) switches as one unit, because those words are the term.
 - Numbers are digits, never spelled out: write 15, not khmstachr. Inside a
   word 3/7/9 are still letters (3ndi, 7essa, so9); a digit standing alone
   is a number.

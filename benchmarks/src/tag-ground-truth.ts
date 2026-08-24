@@ -22,7 +22,9 @@ const FRENCH_LEXICON = new Set([
   'cocktail', 'adn', 'rrs',
 ]);
 
-const ENGLISH_LEXICON = new Set(['the', 'and', 'eyes', 'cabin', 'kids', 'skin', 'face']);
+// "kids" and "cabin" were here for a mishearing in the test-1 transcript that
+// v1.0.3 corrected to Darija "kidom mabin"; both engines had heard it right.
+const ENGLISH_LEXICON = new Set(['the', 'and', 'eyes', 'skin', 'face']);
 
 function stripLeadingArticle(word: string): string {
   return word.replace(/^l['’]/i, '');
