@@ -1,7 +1,8 @@
 import { alignCorrectedOntoDraft } from './align.js';
-import { correctTranscript, type PromptVersion } from './correction.js';
-import { transcribeWithScribe } from './scribe.js';
-import type { TranscriptWord } from './types.js';
+import { correctTranscript, type CorrectionResult, type PromptVersion } from './correction.js';
+import { driftWarning, measureTokenDrift, type TokenDrift } from './drift.js';
+import { transcribeWithScribe, type ScribeResult } from './scribe.js';
+import type { TranscriptionWarning, TranscriptWord } from './types.js';
 
 export interface HybridTranscribeOptions {
   elevenLabsApiKey: string;
@@ -21,6 +22,9 @@ export interface HybridTranscript {
   model: string;
   costUsd: number;
   wallTimeS: number;
+  drift: TokenDrift;
+  /** Non-fatal problems. A flagged result is still a returned result. */
+  warnings: TranscriptionWarning[];
 }
 
 /**
@@ -49,6 +53,21 @@ export async function transcribeHybrid(
     version,
   });
 
+  return assembleHybridResult(scribe, correction);
+}
+
+/**
+ * The pure half of transcribeHybrid: everything that happens once both calls
+ * have returned. Split out so alignment, drift and cost assembly are testable
+ * without reaching an API.
+ */
+export function assembleHybridResult(
+  scribe: ScribeResult,
+  correction: CorrectionResult,
+): HybridTranscript {
+  const drift = measureTokenDrift(scribe.words.length, correction.correctedTexts.length);
+  const warning = driftWarning(drift);
+
   return {
     words: alignCorrectedOntoDraft(scribe.words, correction.correctedTexts),
     draftWords: scribe.words,
@@ -58,6 +77,8 @@ export async function transcribeHybrid(
     // response, so the caller adds it alongside the duration it already has.
     costUsd: correction.costUsd,
     wallTimeS: scribe.wallTimeS + correction.wallTimeS,
+    drift,
+    warnings: warning === null ? [] : [warning],
   };
 }
 
@@ -69,5 +90,16 @@ export {
   ACTIVE_PROMPT_VERSION,
   type PromptVersion,
 } from './correction.js';
+export {
+  driftWarning,
+  measureTokenDrift,
+  DRIFT_WARNING_THRESHOLD,
+  type TokenDrift,
+} from './drift.js';
 export { mapScribeResponse, transcribeWithScribe } from './scribe.js';
-export { TranscriptionError, type TranscriptionStage, type TranscriptWord } from './types.js';
+export {
+  TranscriptionError,
+  type TranscriptionStage,
+  type TranscriptionWarning,
+  type TranscriptWord,
+} from './types.js';

@@ -10,6 +10,16 @@ export interface TranscriptWord {
 export type TranscriptionStage = 'scribe' | 'correction' | 'align';
 
 /**
+ * The non-fatal half of the ARCHITECTURE §8 channel: same stage/cause shape
+ * as TranscriptionError, surfaced alongside a result instead of replacing it.
+ * A warning never suppresses output — the panel shows both.
+ */
+export interface TranscriptionWarning {
+  stage: TranscriptionStage;
+  cause: string;
+}
+
+/**
  * Structured per ARCHITECTURE §8: the panel shows stage, cause and whether a
  * retry is worth offering, verbatim. Nothing in this module degrades
  * silently, so every failure path throws one of these.
