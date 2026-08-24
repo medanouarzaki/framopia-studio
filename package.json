@@ -9,6 +9,7 @@
   "scripts": {
     "build:core": "npm run build --workspace @framopia/core",
     "check": "npm run build:core && npm run typecheck --workspaces --if-present && npm run lint --workspaces --if-present && npm run test --workspaces --if-present -- --run",
+    "transcribe": "npm run build:core && npm run transcribe --workspace framopia-service --",
     "bench": "npm run build:core && npm run bench --workspace framopia-benchmarks --",
     "bench:tag": "npm run build:core && npm run tag --workspace framopia-benchmarks",
     "bench:aggregate": "npm run build:core && npm run aggregate --workspace framopia-benchmarks"

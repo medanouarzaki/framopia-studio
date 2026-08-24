@@ -17,6 +17,14 @@ const runners: Record<string, JobRunner> = {
   noop: async () => null,
 };
 
+/**
+ * Registration rather than a static map so jobs.ts stays free of pipeline
+ * imports; the HTTP path and the CLI then run the same runner.
+ */
+export function registerJobRunner(type: string, runner: JobRunner): void {
+  runners[type] = runner;
+}
+
 const jobs = new Map<string, Job>();
 
 export class UnknownJobTypeError extends Error {
