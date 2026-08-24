@@ -12,6 +12,9 @@ export interface CostEntry {
   model: string;
   unit: string;
   usd: number;
+  // Set only on corrections to an earlier, wrong entry: the ledger is
+  // append-only, so a correction is a delta line that names what it fixes.
+  note?: string;
 }
 
 interface CostRecord extends CostEntry {

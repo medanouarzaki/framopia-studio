@@ -118,3 +118,33 @@ prompt, which would cost another sweep.
 | gemini | 25.0% | 33.3% | 12.5% | 96.6% (11 ar unscored) | 231ms / 499ms | 0 | $0.1306 | 75.0s |
 | whisper | 85.0% | 93.9% | 87.5% | 100.0% (42 ar unscored) | 159ms / 659ms | 0 | $0.0000 | 11.6s |
 | hybrid | 20.0% | 21.2% | 6.3% | 95.2% (11 ar unscored) | 0ms / 0ms | 0 | $0.0727 | 42.1s |
+
+## Ledger note — one understated cost entry from session 4
+
+The `.local/costs.jsonl` entry
+
+```
+{"stage":"benchmark-gemini","model":"gemini","unit":"run","usd":0.031668,"timestamp":"2026-08-24T19:50:06.011Z"}
+```
+
+is **known-low and must never be quoted as an actual cost**. It was written
+before `computeGeminiCost` billed `thoughtsTokenCount` at the output rate, so
+it counts only the 2084 visible output tokens and omits 10295 thinking tokens.
+
+The raw response survives at
+`benchmarks/results/2026-08-24T19-48-01-202Z/raw/gemini.json`
+(`promptTokensDetails` 2748 TEXT + 582 AUDIO, `candidatesTokenCount` 2084,
+`thoughtsTokenCount` 10295). Re-costed with the current constants
+($2.00/M input, $12.00/M output) the call was **$0.155208**, not $0.031668 —
+4.9x. Reconstructing the old formula from the same usage reproduces
+$0.031668 exactly, which is what identifies this raw response as that call.
+
+The ledger is append-only, so the original line stands. A delta-only entry of
+$0.123540 (`stage: benchmark-gemini-correction`) was appended with a `note`
+naming the corrected timestamp. Ledger totals are therefore correct in sum;
+the single 19:50:06 line is not correct on its own.
+
+No other entry needed correcting. 19:50:06 is the first Gemini line in the
+ledger, and the next one (19:54:06, $0.156060) reproduces exactly from its own
+raw `usageMetadata` **with** thinking tokens included, so the fix was already
+in place from that call onward.
