@@ -53,3 +53,10 @@ describe('convertPlainTextToGroundTruth', () => {
     expect(gt.words.map((w) => w.text)).toEqual(['wach', 'chno']);
   });
 });
+
+describe('convertPlainTextToGroundTruth — comments', () => {
+  it('ignores the instruction header the ground-truth kit ships with', () => {
+    const gt = convertPlainTextToGroundTruth('# how to write this\n# 9 for qaf\nwach nta mzyan\n');
+    expect(gt.words.map((w) => w.text)).toEqual(['wach', 'nta', 'mzyan']);
+  });
+});

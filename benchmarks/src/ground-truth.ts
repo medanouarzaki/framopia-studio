@@ -38,13 +38,14 @@ export function parseGroundTruthJson(raw: string): GroundTruth {
 /**
  * Converts a plain-text source (one utterance per line) into ground truth
  * shape for later manual lang/script tagging. Every word defaults to
- * darija/latin, the most common case in a Darija-majority reel.
+ * darija/latin, the most common case in a Darija-majority reel. `#` lines
+ * are instructions to the human writing the transcript, not content.
  */
 export function convertPlainTextToGroundTruth(text: string): GroundTruth {
   const words: GroundTruthWord[] = text
     .split('\n')
     .map((line) => line.trim())
-    .filter((line) => line.length > 0)
+    .filter((line) => line.length > 0 && !line.startsWith('#'))
     .flatMap((line) => line.split(/\s+/))
     .map((token) => ({ text: token, lang: 'darija', script: 'latin' }));
 
