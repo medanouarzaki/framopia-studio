@@ -48,6 +48,11 @@ export interface VowellessClusterReport {
   examples: FlaggedExample[];
 }
 
+export interface DialAttachmentReport {
+  count: number;
+  examples: FlaggedExample[];
+}
+
 export interface FreezeListReport {
   totalOccurrences: number;
   conformant: number;
@@ -73,6 +78,7 @@ export interface OrthographyReport {
   digitSubstitutions: DigitSubstitutionReport;
   shDigraph: ShDigraphReport;
   ouConjunction: OuConjunctionReport;
+  dialAttachment: DialAttachmentReport;
   freezeList: FreezeListReport;
   score: number;
   warnings: OrthographyWarnings;
@@ -167,6 +173,42 @@ export function findOuConjunctions(words: string[]): OuConjunctionReport {
 }
 
 /**
+ * §4 (v1.0.5) writes `dial` separate from the word it governs: `dial l7loul`,
+ * never `dl7loul` or the reduced `dl`/`dla`. Pronoun suffixes stay attached,
+ * so `diali`, `dialk`, `dialha`, `dialo` and `dialna` are correct and must
+ * not flag.
+ *
+ * Unlike the vowel-less check this is a scored violation: since v1.0.5 the
+ * guide states the rule outright, so a fused form is unambiguously wrong
+ * rather than a judgement call.
+ */
+export function findDialAttachment(words: string[]): DialAttachmentReport {
+  const examples: FlaggedExample[] = [];
+  // A pronoun suffix is short and vowel-final; anything longer after "dial"
+  // is the noun it governs, fused on.
+  const suffixes = new Set(['', 'i', 'k', 'ha', 'o', 'na', 'hom', 'kom', 'hm']);
+
+  for (const word of words) {
+    if (!isLatinWord(word)) continue;
+    const lower = stripEdgePunctuation(word.toLowerCase());
+
+    if (lower.startsWith('dial')) {
+      const rest = lower.slice(4);
+      if (suffixes.has(rest)) continue;
+      examples.push({ word, detail: `"dial" fused to "${rest}" — §4 writes it separate` });
+      continue;
+    }
+
+    // The reduced forms §4 lists as not frozen, whether standalone or fused.
+    if (/^dla?$/.test(lower) || /^dl[^aeiou]/.test(lower) || /^dla./.test(lower)) {
+      examples.push({ word, detail: 'reduced "dl"/"dla" — §4 writes dial separate and in full' });
+    }
+  }
+
+  return { count: examples.length, examples };
+}
+
+/**
  * §3 drops barely-pronounced schwas but requires an "e" where dropping would
  * leave an unreadable cluster. A Latin-script token with no vowel at all has
  * gone past that line — the correction pass produced 7l and l7l for 7el and
@@ -237,6 +279,7 @@ export function scoreOrthography(words: string[]): OrthographyReport {
   const digitSubstitutions = findDigitSubstitutions(words);
   const shDigraph = findShDigraph(words);
   const ouConjunction = findOuConjunctions(words);
+  const dialAttachment = findDialAttachment(words);
   const vowellessClusters = findVowellessClusters(words);
   const freezeList = findFreezeListConformance(words);
 
@@ -244,7 +287,11 @@ export function scoreOrthography(words: string[]): OrthographyReport {
   // vowellessClusters is deliberately absent: it is a warning, not a
   // violation. See OrthographyWarnings.
   const violations =
-    digitSubstitutions.count + shDigraph.count + ouConjunction.count + freezeList.nearMiss;
+    digitSubstitutions.count +
+    shDigraph.count +
+    ouConjunction.count +
+    dialAttachment.count +
+    freezeList.nearMiss;
   const score = totalWords === 0 ? 1 : Math.max(0, 1 - violations / totalWords);
 
   const arabicScriptWords = words.filter((word) => ARABIC_SCRIPT_RE.test(word)).length;
@@ -253,6 +300,7 @@ export function scoreOrthography(words: string[]): OrthographyReport {
     digitSubstitutions,
     shDigraph,
     ouConjunction,
+    dialAttachment,
     freezeList,
     score,
     warnings: { vowellessClusters },

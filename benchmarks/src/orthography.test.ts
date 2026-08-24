@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   editDistance,
   findFreezeListConformance,
+  findDialAttachment,
   findOuConjunctions,
   findVowellessClusters,
   scoreOrthography,
@@ -226,5 +227,54 @@ describe('scoreOrthography — violations versus warnings', () => {
     const report = scoreOrthography(['yom', 'ou', '7l']);
     expect(report.score).toBeCloseTo(1 - 1 / 3, 12);
     expect(report.warnings.vowellessClusters.count).toBe(1);
+  });
+});
+
+describe('dial attachment', () => {
+  it('accepts dial written separate from the word it governs', () => {
+    expect(findDialAttachment(['joj', 'dial', 'l7loul']).count).toBe(0);
+  });
+
+  it('flags dial fused to the following noun', () => {
+    // Both forms came out of identical calls in Block 2 session 4.
+    const report = findDialAttachment(['joj', 'dl7loul']);
+    expect(report.count).toBe(1);
+    expect(report.examples[0]?.word).toBe('dl7loul');
+  });
+
+  it('flags every fused form the noise floor produced', () => {
+    const report = findDialAttachment(['dl7loul', 'dl7essass', 'dlvitaminat']);
+    expect(report.count).toBe(3);
+  });
+
+  it('flags the reduced dl and dla standing alone', () => {
+    expect(findDialAttachment(['dl', 'dla']).count).toBe(2);
+  });
+
+  it('does not flag the pronoun suffixes §4 keeps attached', () => {
+    expect(findDialAttachment(['diali', 'dialk', 'dialha', 'dialo', 'dialna']).count).toBe(0);
+  });
+
+  it('does not flag unrelated words that merely start with d', () => {
+    expect(findDialAttachment(['daba', 'des', 'dernière', 'diri']).count).toBe(0);
+  });
+
+  it('ignores case and edge punctuation', () => {
+    expect(findDialAttachment(['Dial', 'dialha,']).count).toBe(0);
+    expect(findDialAttachment(['Dl7loul.']).count).toBe(1);
+  });
+
+  it('does not reach into Arabic script', () => {
+    expect(findDialAttachment(['ديال', 'الحلول']).count).toBe(0);
+  });
+});
+
+describe('scoreOrthography — dial is a scored violation', () => {
+  it('counts a fused dial against the score', () => {
+    const clean = scoreOrthography(['joj', 'dial', 'l7loul']);
+    const fused = scoreOrthography(['joj', 'dl7loul']);
+    expect(clean.score).toBe(1);
+    expect(fused.dialAttachment.count).toBe(1);
+    expect(fused.score).toBeCloseTo(0.5, 12);
   });
 });
