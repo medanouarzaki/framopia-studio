@@ -1,12 +1,10 @@
-# Block 1 transcription benchmark — run B (guide v1.0.2 rescore)
+# Block 1 transcription benchmark — run A (guide v1.0.1)
 
-Run A, scored under guide v1.0.1, is preserved in `RESULTS-block1-runA.md`.
-**Run B rescores the identical engine outputs** — no engine was re-run and
-none was re-prompted with the v1.0.2 rules, so nothing here measures how the
-engines would behave if told about the numeral rule or the widened
-Arabic-script scope. What changed is the scoring: spelled-out numerals now
-compare equal to the digits the ground truth writes (§3a), and one ground
-truth typo (`main` for `mabin`) was corrected.
+Preserved verbatim from the session-4 commit. The engine outputs behind it
+are the same ones run B rescores; only the scoring rules and the ground
+truth changed between them. Kept so the effect of the v1.0.2 corrections
+stays visible instead of being silently overwritten.
+
 
 Four reels, 88.8s of code-switched Darija/French
 talking-head audio, scored against hand-written ground truth. Ground truth
@@ -23,9 +21,9 @@ set cannot speak to, which is the whole story for raw Scribe.
 | engine | overall WER | darija WER | fr/en WER | orthography | ts dev vs scribe (med/p90) | null ts | cost | wall |
 |---|---|---|---|---|---|---|---|---|
 | scribe | 68.8% | 98.3% | 10.4% | 100.0% (223 ar unscored) | — / — | 0 | $0.0054 | 11.2s |
-| gemini | 36.2% | 29.7% | 14.6% | 97.3% (35 ar unscored) | 721ms / 2895ms | 0 | $0.5719 | 567.9s |
+| gemini | 40.6% | 36.6% | 14.6% | 97.3% (35 ar unscored) | 721ms / 2895ms | 0 | $0.5719 | 567.9s |
 | whisper | 84.1% | 95.9% | 95.8% | 100.0% (223 ar unscored) | 155ms / 1460ms | 0 | $0.0000 | 50.2s |
-| hybrid | 31.9% | 28.5% | 10.4% | 97.2% (37 ar unscored) | 0ms / 1794ms | 0 | $0.5334 | 654.1s |
+| hybrid | 36.2% | 35.5% | 10.4% | 97.2% (37 ar unscored) | 0ms / 1794ms | 0 | $0.5334 | 654.1s |
 
 Total billed: $1.1107.
 
@@ -40,19 +38,20 @@ is the honest signal for raw Scribe, and it is the best of any engine.
 Scribe's word timings by construction, so it can only agree with Scribe at
 the median; the p90 is where its realignment of inserted words shows up.
 
-**The numeral artifact is gone.** Guide v1.0.2 §3a settles numbers as digits
-and the WER normalizer maps the spelled-out Darija forms onto them, so
-`khmstach` and `15` now compare equal. This is what moved the Gemini rows
-between run A and run B.
+**Two known scoring artifacts inflate the Darija WER of both Gemini rows**,
+and neither is a transcription error:
 
-**The Arabic-script scope artifact is still live in these numbers.** Guide
-v1.0.2 §6 now covers anatomical regions and substance names, matching what
-the ground truth does, but the engines that produced these outputs were
-prompted under v1.0.1 and still transliterate them (`lmnti9a 7awl l3inin`
-for `المنطقة حول العينين`, `wmaddat lcaféine` for `مادة الكافيين`). Those
-remain real errors against the ground truth. Unlike the numeral case this
-one cannot be fixed by rescoring — it needs a re-run under the v1.0.2
-prompt, which would cost another sweep.
+- *Numerals.* The ground truth writes digits (`4`, `15`, `18`) where Gemini
+  spells the number out (`rb3a`, `khmstachr`, `tmntach`). The orthography
+  guide has no numeral rule, so neither form is wrong yet.
+- *Arabic-script scope.* The v1.0.1 §6 rule covers procedure and treatment
+  terms. The ground truth also puts anatomical regions and substance names
+  in Arabic script (`المنطقة حول العينين`, `ومادة الكافيين`) where Gemini
+  transliterated them (`lmnti9a 7awl l3inin`, `wmaddat lcaféine`).
+
+On the ground-truth reel these two account for roughly a tenth of the
+reference words. Closing both in the guide would move the Gemini and
+hybrid Darija numbers down without either engine changing.
 
 ## Per reel
 
@@ -61,33 +60,33 @@ prompt, which would cost another sweep.
 | engine | overall WER | darija WER | fr/en WER | orthography | ts dev vs scribe (med/p90) | null ts | cost | wall |
 |---|---|---|---|---|---|---|---|---|
 | scribe | 72.8% | 98.3% | 6.3% | 100.0% (61 ar unscored) | — / — | 0 | $0.0014 | 2.9s |
-| gemini | 29.6% | 29.3% | 18.8% | 97.6% (5 ar unscored) | 240ms / 641ms | 0 | $0.1561 | 133.5s |
+| gemini | 37.0% | 39.7% | 18.8% | 97.6% (5 ar unscored) | 240ms / 641ms | 0 | $0.1561 | 133.5s |
 | whisper | 90.1% | 94.8% | 100.0% | 100.0% (60 ar unscored) | 159ms / 319ms | 0 | $0.0000 | 13.5s |
-| hybrid | 27.2% | 29.3% | 12.5% | 96.3% (5 ar unscored) | 0ms / 0ms | 0 | $0.1487 | 228.5s |
+| hybrid | 34.6% | 39.7% | 12.5% | 96.3% (5 ar unscored) | 0ms / 0ms | 0 | $0.1487 | 228.5s |
 
 ### test-1 — 22.0s, 67 reference words
 
 | engine | overall WER | darija WER | fr/en WER | orthography | ts dev vs scribe (med/p90) | null ts | cost | wall |
 |---|---|---|---|---|---|---|---|---|
 | scribe | 71.6% | 100.0% | 60.0% | 100.0% (62 ar unscored) | — / — | 0 | $0.0013 | 2.8s |
-| gemini | 43.3% | 28.2% | 40.0% | 98.6% (16 ar unscored) | 861ms / 6919ms | 0 | $0.1120 | 90.6s |
+| gemini | 46.3% | 33.3% | 40.0% | 98.6% (16 ar unscored) | 861ms / 6919ms | 0 | $0.1120 | 90.6s |
 | whisper | 73.1% | 94.9% | 100.0% | 100.0% (56 ar unscored) | 120ms / 4561ms | 0 | $0.0000 | 12.1s |
-| hybrid | 47.8% | 33.3% | 40.0% | 100.0% (16 ar unscored) | 0ms / 7175ms | 0 | $0.1396 | 260.2s |
+| hybrid | 50.7% | 38.5% | 40.0% | 100.0% (16 ar unscored) | 0ms / 7175ms | 0 | $0.1396 | 260.2s |
 
 ### test-2 — 22.3s, 69 reference words
 
 | engine | overall WER | darija WER | fr/en WER | orthography | ts dev vs scribe (med/p90) | null ts | cost | wall |
 |---|---|---|---|---|---|---|---|---|
 | scribe | 71.0% | 97.7% | 0.0% | 100.0% (59 ar unscored) | — / — | 0 | $0.0014 | 3.3s |
-| gemini | 39.1% | 32.6% | 0.0% | 97.3% (8 ar unscored) | 1281ms / 2361ms | 0 | $0.1342 | 188.6s |
+| gemini | 42.0% | 37.2% | 0.0% | 97.3% (8 ar unscored) | 1281ms / 2361ms | 0 | $0.1342 | 188.6s |
 | whisper | 88.4% | 100.0% | 100.0% | 100.0% (65 ar unscored) | 140ms / 299ms | 0 | $0.0000 | 13.0s |
-| hybrid | 33.3% | 32.6% | 0.0% | 97.3% (10 ar unscored) | 0ms / 0ms | 0 | $0.1277 | 91.1s |
+| hybrid | 36.2% | 37.2% | 0.0% | 97.3% (10 ar unscored) | 0ms / 0ms | 0 | $0.1277 | 91.1s |
 
 ### test-3 — 21.2s, 59 reference words
 
 | engine | overall WER | darija WER | fr/en WER | orthography | ts dev vs scribe (med/p90) | null ts | cost | wall |
 |---|---|---|---|---|---|---|---|---|
 | scribe | 57.6% | 96.9% | 6.3% | 100.0% (41 ar unscored) | — / — | 0 | $0.0013 | 2.2s |
-| gemini | 33.9% | 28.1% | 12.5% | 95.2% (6 ar unscored) | 500ms / 1661ms | 0 | $0.1696 | 155.1s |
+| gemini | 37.3% | 34.4% | 12.5% | 95.2% (6 ar unscored) | 500ms / 1661ms | 0 | $0.1696 | 155.1s |
 | whisper | 83.1% | 93.8% | 87.5% | 100.0% (42 ar unscored) | 200ms / 659ms | 0 | $0.0000 | 11.6s |
-| hybrid | 18.6% | 15.6% | 6.3% | 94.8% (6 ar unscored) | 0ms / 0ms | 0 | $0.1174 | 74.2s |
+| hybrid | 22.0% | 21.9% | 6.3% | 94.8% (6 ar unscored) | 0ms / 0ms | 0 | $0.1174 | 74.2s |

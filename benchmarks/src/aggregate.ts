@@ -201,7 +201,15 @@ export function buildAggregateReport(resultsRoot = RESULTS_DIR): string {
 
   const totalCost = aggregateRows.reduce((n, [, s]) => n + s.costUsd, 0);
 
-  return `# Block 1 transcription benchmark — results
+  return `# Block 1 transcription benchmark — run B (guide v1.0.2 rescore)
+
+Run A, scored under guide v1.0.1, is preserved in \`RESULTS-block1-runA.md\`.
+**Run B rescores the identical engine outputs** — no engine was re-run and
+none was re-prompted with the v1.0.2 rules, so nothing here measures how the
+engines would behave if told about the numeral rule or the widened
+Arabic-script scope. What changed is the scoring: spelled-out numerals now
+compare equal to the digits the ground truth writes (§3a), and one ground
+truth typo (\`main\` for \`mabin\`) was corrected.
 
 Four reels, ${totalDurationS.toFixed(1)}s of code-switched Darija/French
 talking-head audio, scored against hand-written ground truth. Ground truth
@@ -230,20 +238,19 @@ is the honest signal for raw Scribe, and it is the best of any engine.
 Scribe's word timings by construction, so it can only agree with Scribe at
 the median; the p90 is where its realignment of inserted words shows up.
 
-**Two known scoring artifacts inflate the Darija WER of both Gemini rows**,
-and neither is a transcription error:
+**The numeral artifact is gone.** Guide v1.0.2 §3a settles numbers as digits
+and the WER normalizer maps the spelled-out Darija forms onto them, so
+\`khmstach\` and \`15\` now compare equal. This is what moved the Gemini rows
+between run A and run B.
 
-- *Numerals.* The ground truth writes digits (\`4\`, \`15\`, \`18\`) where Gemini
-  spells the number out (\`rb3a\`, \`khmstachr\`, \`tmntach\`). The orthography
-  guide has no numeral rule, so neither form is wrong yet.
-- *Arabic-script scope.* The v1.0.1 §6 rule covers procedure and treatment
-  terms. The ground truth also puts anatomical regions and substance names
-  in Arabic script (\`المنطقة حول العينين\`, \`ومادة الكافيين\`) where Gemini
-  transliterated them (\`lmnti9a 7awl l3inin\`, \`wmaddat lcaféine\`).
-
-On the ground-truth reel these two account for roughly a tenth of the
-reference words. Closing both in the guide would move the Gemini and
-hybrid Darija numbers down without either engine changing.
+**The Arabic-script scope artifact is still live in these numbers.** Guide
+v1.0.2 §6 now covers anatomical regions and substance names, matching what
+the ground truth does, but the engines that produced these outputs were
+prompted under v1.0.1 and still transliterate them (\`lmnti9a 7awl l3inin\`
+for \`المنطقة حول العينين\`, \`wmaddat lcaféine\` for \`مادة الكافيين\`). Those
+remain real errors against the ground truth. Unlike the numeral case this
+one cannot be fixed by rescoring — it needs a re-run under the v1.0.2
+prompt, which would cost another sweep.
 
 ## Per reel
 
