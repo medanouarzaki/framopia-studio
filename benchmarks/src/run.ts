@@ -23,7 +23,7 @@ const DRY_RUN_AUDIO_LABEL = 'fixtures/ (dry run — no real audio file)';
 
 export interface RunBenchmarkOptions {
   audioPath: string;
-  groundTruthPath: string;
+  groundTruthPath: string | null;
   engines: string[];
   keyterms: string[];
   yes: boolean;
@@ -165,7 +165,7 @@ export async function runBenchmark(options: RunBenchmarkOptions): Promise<string
   const rawDir = path.join(resultsDir, 'raw');
   await mkdir(rawDir, { recursive: true });
 
-  const groundTruth = loadGroundTruth(options.groundTruthPath);
+  const groundTruth = options.groundTruthPath === null ? null : loadGroundTruth(options.groundTruthPath);
 
   let audioPath: string;
   let durationS: number;
@@ -209,6 +209,11 @@ export async function runBenchmark(options: RunBenchmarkOptions): Promise<string
 
     results.push(result);
     await writeFile(path.join(resultsDir, `${engine}.json`), JSON.stringify(result, null, 2), 'utf8');
+    await writeFile(
+      path.join(resultsDir, `${engine}.txt`),
+      `${result.words.map((w) => w.text).join(' ')}\n`,
+      'utf8',
+    );
 
     if (result.costUsd > 0) {
       appendCost({ stage: `benchmark-${engine}`, model: engine, unit: 'run', usd: result.costUsd });
@@ -236,6 +241,7 @@ async function main(): Promise<void> {
       audio: { type: 'string' },
       'ground-truth': { type: 'string' },
       engines: { type: 'string' },
+      'no-ground-truth': { type: 'boolean', default: false },
       keyterms: { type: 'string' },
       yes: { type: 'boolean', default: false },
       'dry-run': { type: 'boolean', default: false },
@@ -243,11 +249,14 @@ async function main(): Promise<void> {
   });
 
   const dryRun = values['dry-run'] ?? false;
+  const noGroundTruth = values['no-ground-truth'] ?? false;
   const audioPath = values.audio ?? (dryRun ? DRY_RUN_AUDIO_LABEL : undefined);
-  const groundTruthPath = values['ground-truth'] ?? (dryRun ? path.join(FIXTURES_DIR, 'ground-truth.json') : undefined);
+  const groundTruthPath = noGroundTruth
+    ? null
+    : (values['ground-truth'] ?? (dryRun ? path.join(FIXTURES_DIR, 'ground-truth.json') : undefined));
 
-  if (!audioPath || !groundTruthPath) {
-    console.error('Usage: npm run bench -- --audio <path> --ground-truth <path.json> [--engines ...] [--keyterms <path>] [--yes] [--dry-run]');
+  if (!audioPath || groundTruthPath === undefined) {
+    console.error('Usage: npm run bench -- --audio <path> (--ground-truth <path.json> | --no-ground-truth) [--engines ...] [--keyterms <path>] [--yes] [--dry-run]');
     process.exitCode = 1;
     return;
   }

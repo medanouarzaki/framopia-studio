@@ -34,6 +34,24 @@ describe('runBenchmark --dry-run', () => {
     rmSync(resultsRoot, { recursive: true, force: true });
   });
 
+  it('omits WER columns and still reports when no ground truth is given', async () => {
+    const resultsDir = await runBenchmark({
+      audioPath: 'unused-in-dry-run.wav',
+      groundTruthPath: null,
+      engines: ['scribe'],
+      keyterms: [],
+      yes: false,
+      dryRun: true,
+      resultsRoot,
+    });
+
+    const report = readFileSync(path.join(resultsDir, 'report.md'), 'utf8');
+    expect(report).not.toContain('overall WER');
+    expect(report).toContain('orthography');
+    expect(report).toContain('## Transcripts');
+    expect(existsSync(path.join(resultsDir, 'scribe.txt'))).toBe(true);
+  });
+
   it('produces a report.md and per-engine result files with no network calls', async () => {
     const resultsDir = await runBenchmark({
       audioPath: 'unused-in-dry-run.wav',

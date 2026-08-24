@@ -20,6 +20,19 @@ function result(engine: string, texts: string[]): TranscriptionResult {
   };
 }
 
+describe('buildReport — no ground truth', () => {
+  it('drops the WER columns but keeps orthography', () => {
+    const md = buildReport([result('scribe', ['wach', 'nta', 'mzyan'])], null, {
+      title: 'No GT',
+      audioPath: 'a.wav',
+      groundTruthPath: null,
+    });
+    expect(md).not.toContain('overall WER');
+    expect(md).toContain('orthography');
+    expect(md).toContain('| scribe |');
+  });
+});
+
 describe('buildReport', () => {
   it('includes one row per engine and the report title', () => {
     const md = buildReport(
