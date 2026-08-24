@@ -21,6 +21,9 @@ const ALL_ENGINES = ['scribe', 'gemini', 'whisper', 'hybrid'];
 // alignment, which is exactly why they need eyeballing against the audio.
 const SPOTCHECK_ENGINES = new Set(['scribe', 'whisper', 'hybrid', 'gemini']);
 const DRY_RUN_AUDIO_LABEL = 'fixtures/ (dry run — no real audio file)';
+// Word span of the synthetic fixtures, used only when a dry run has no real
+// input file to probe.
+const FIXTURE_SPAN_S = 1.1;
 
 export interface RunBenchmarkOptions {
   audioPath: string;
@@ -33,6 +36,8 @@ export interface RunBenchmarkOptions {
   googleApiKey?: string;
   resultsRoot?: string;
   confirm?: (message: string) => Promise<boolean>;
+  // Injectable so the dry-run cost path can be tested without ffprobe.
+  probeDurationS?: (mediaPath: string) => Promise<number>;
 }
 
 export function requiresConfirmation(dryRun: boolean, totalUsd: number, yes: boolean): boolean {
@@ -171,8 +176,18 @@ export async function runBenchmark(options: RunBenchmarkOptions): Promise<string
   let audioPath: string;
   let durationS: number;
   if (options.dryRun) {
-    audioPath = DRY_RUN_AUDIO_LABEL;
-    durationS = 1.1; // matches the synthetic fixtures' word span
+    // The engines still run off fixtures, but the cost estimate has to come
+    // from the real media or the gate it feeds is meaningless. ffprobe reads
+    // the container directly, so this stays free and needs no conversion.
+    const probe = options.probeDurationS ?? getAudioDurationSeconds;
+    const realInput = existsSync(options.audioPath) ? options.audioPath : null;
+    if (realInput === null && options.audioPath !== DRY_RUN_AUDIO_LABEL) {
+      console.warn(
+        `Dry run: ${options.audioPath} does not exist, so the estimate falls back to the ${FIXTURE_SPAN_S}s fixture span.`,
+      );
+    }
+    audioPath = realInput ?? DRY_RUN_AUDIO_LABEL;
+    durationS = realInput ? await probe(realInput) : FIXTURE_SPAN_S;
   } else {
     audioPath = await ensureWavAudio(options.audioPath, path.join(LOCAL_DIR, 'bench-audio'));
     durationS = await getAudioDurationSeconds(audioPath);

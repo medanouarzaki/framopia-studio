@@ -1,7 +1,7 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { FIXTURES_DIR } from './paths.js';
 import { requiresConfirmation, runBenchmark } from './run.js';
 
@@ -141,5 +141,70 @@ describe('runBenchmark --dry-run', () => {
       },
     });
     expect(called).toBe(false);
+  });
+});
+
+describe('runBenchmark --dry-run cost estimate', () => {
+  let resultsRoot: string;
+
+  beforeEach(() => {
+    resultsRoot = mkdtempSync(path.join(tmpdir(), 'framopia-bench-results-'));
+  });
+
+  afterEach(() => {
+    rmSync(resultsRoot, { recursive: true, force: true });
+    vi.restoreAllMocks();
+  });
+
+  it('prices a dry run from the real input duration, not the fixture span', async () => {
+    const mediaPath = path.join(resultsRoot, 'reel.mov');
+    writeFileSync(mediaPath, '');
+    const probed: string[] = [];
+    const logged: string[] = [];
+    vi.spyOn(console, 'log').mockImplementation((...args: unknown[]) => {
+      logged.push(args.join(' '));
+    });
+
+    await runBenchmark({
+      audioPath: mediaPath,
+      groundTruthPath: null,
+      engines: ['scribe'],
+      keyterms: [],
+      yes: false,
+      dryRun: true,
+      resultsRoot,
+      probeDurationS: async (p) => {
+        probed.push(p);
+        return 25.692333;
+      },
+    });
+
+    expect(probed).toEqual([mediaPath]);
+    expect(logged[0]).toContain('25.7s');
+    // 25.692333s at $0.22/audio-hour, four decimal places.
+    expect(logged.join('\n')).toContain('scribe: $0.0016');
+  });
+
+  it('falls back to the fixture span when the input does not exist', async () => {
+    const logged: string[] = [];
+    vi.spyOn(console, 'log').mockImplementation((...args: unknown[]) => {
+      logged.push(args.join(' '));
+    });
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    await runBenchmark({
+      audioPath: 'unused-in-dry-run.wav',
+      groundTruthPath: null,
+      engines: ['scribe'],
+      keyterms: [],
+      yes: false,
+      dryRun: true,
+      resultsRoot,
+      probeDurationS: async () => {
+        throw new Error('probe must not run without a real file');
+      },
+    });
+
+    expect(logged[0]).toContain('1.1s');
   });
 });
