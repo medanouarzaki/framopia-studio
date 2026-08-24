@@ -156,6 +156,8 @@ export interface CorrectionOptions {
 
 export interface CorrectionResult {
   correctedTexts: string[];
+  /** The response verbatim, so a cache entry can be replayed byte for byte. */
+  rawText: string;
   correctedWords: CorrectedWord[];
   promptVersion: PromptVersion;
   model: string;
@@ -213,10 +215,12 @@ export async function correctTranscript(options: CorrectionOptions): Promise<Cor
 
   const usage = (response.usageMetadata ?? {}) as GeminiUsage;
 
-  const correctedWords = parseCorrectionResponse(response.text ?? '');
+  const rawText = response.text ?? '';
+  const correctedWords = parseCorrectionResponse(rawText);
 
   return {
     correctedTexts: correctedWords.map((w) => w.text),
+    rawText,
     correctedWords,
     promptVersion: version,
     model: modelConfig.geminiModel,

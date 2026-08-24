@@ -3,7 +3,7 @@ import path from 'node:path';
 import { TranscriptionError, type TranscriptWord } from './types.js';
 
 const SCRIBE_ENDPOINT = 'https://api.elevenlabs.io/v1/speech-to-text';
-const DEFAULT_MODEL_ID = 'scribe_v2';
+export const SCRIBE_MODEL_ID = 'scribe_v2';
 
 export interface ScribeRawWord {
   text: string;
@@ -49,7 +49,7 @@ export interface ScribeResult {
 }
 
 export async function transcribeWithScribe(options: ScribeOptions): Promise<ScribeResult> {
-  const { apiKey, audioPath, keyterms = [], modelId = DEFAULT_MODEL_ID } = options;
+  const { apiKey, audioPath, keyterms = [], modelId = SCRIBE_MODEL_ID } = options;
 
   const audioBuffer = await readFile(audioPath);
   const form = new FormData();
