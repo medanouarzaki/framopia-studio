@@ -144,6 +144,7 @@ function checkWords(c: Checker, value: unknown): void {
       c.fail(`${p}.removedReason`, 'a removed word must say why');
     }
     c.boolean(`${p}.edited`, w.edited);
+    if (w.langDisagreement !== undefined) c.boolean(`${p}.langDisagreement`, w.langDisagreement);
   });
 }
 

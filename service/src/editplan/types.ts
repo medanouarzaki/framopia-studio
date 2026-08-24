@@ -76,6 +76,14 @@ export interface PlanWord {
   removedReason: RemovedReason | null;
   /** True once a human touched it. */
   edited: boolean;
+  /**
+   * Set only when the model's `lang` and the local derivation disagree, so a
+   * reviewer can find those words. Not in ARCHITECTURE §3: the schema has no
+   * place to say "these two sources conflict", and silently preferring one
+   * would throw away the only signal that either might be wrong. The
+   * derivation itself is not stored — it is recomputable from the text.
+   */
+  langDisagreement?: boolean;
 }
 
 export interface Transcript {

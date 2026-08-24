@@ -111,7 +111,7 @@ export async function transcribeVideo(
     log,
   });
 
-  const built = buildTranscript(transcript.words, transcript.draftWords);
+  const built = buildTranscript(transcript.words, transcript.draftWords, transcript.correctedWords);
   if (built.unjudged.length > 0) {
     log(
       `cleaning: ${built.unjudged.length} ya3ni/za3ma token(s) left in place — hesitation versus explanation is not decidable here`,

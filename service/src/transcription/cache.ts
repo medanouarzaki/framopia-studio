@@ -87,6 +87,13 @@ export interface TranscriptionCachePayload {
   scribeRaw: unknown;
   correctionRaw: { text: string; usageMetadata: unknown };
   correctedTexts: string[];
+  /**
+   * The corrected words with anything the model volunteered beyond text.
+   * Optional: entries written before prompt version 3 existed carry only
+   * `correctedTexts`, and rehydrating those without language tags is correct
+   * — that run genuinely produced none.
+   */
+  correctedWords?: { text: string; lang?: string; script?: string }[];
   costUsd: { scribeUsd: number; geminiUsd: number; totalUsd: number };
   wallTimeS: number;
   promptVersion: number;

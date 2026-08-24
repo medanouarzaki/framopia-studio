@@ -1,6 +1,6 @@
 import { findCleaningMarks } from './cleaning.js';
 import { groupWordsIntoSubtitles } from './grouping.js';
-import { tagWord } from './tagging.js';
+import { tagWord, type CorrectedWord } from './tagging.js';
 import type { PlanWord, SubtitleGroup } from '../editplan/types.js';
 import type { TranscriptWord } from './types.js';
 
@@ -26,13 +26,14 @@ function wordId(index: number): string {
 export function buildTranscript(
   words: TranscriptWord[],
   draftWords: TranscriptWord[] = [],
+  correctedWords: CorrectedWord[] = [],
 ): BuiltTranscript {
   const texts = words.map((w) => w.text);
   const { marks, unjudged } = findCleaningMarks(texts);
   const reasonByIndex = new Map(marks.map((m) => [m.index, m.reason]));
 
   const planWords: PlanWord[] = words.map((word, i) => {
-    const tags = tagWord({ text: word.text });
+    const tags = tagWord(correctedWords[i] ?? { text: word.text });
     const reason = reasonByIndex.get(i) ?? null;
     return {
       id: wordId(i),
@@ -46,6 +47,7 @@ export function buildTranscript(
       removed: reason !== null,
       removedReason: reason,
       edited: false,
+      ...(tags.langDisagreement ? { langDisagreement: true } : {}),
     };
   });
 

@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { tagWord, tagWords } from './tagging.js';
+import { deriveLang, tagWord, tagWords } from './tagging.js';
 import { parseCorrectionResponse } from './correction.js';
 
 const FIXTURES_DIR = path.resolve(
@@ -67,5 +67,74 @@ describe('tagWords on the recorded correction fixture', () => {
     // The vitasilk opening is entirely Arabizi and digits.
     expect(tags.every((t) => t.script === 'latin')).toBe(true);
     expect(tags.every((t) => t.lang === null)).toBe(true);
+  });
+});
+
+describe('deriveLang — the local cross-check', () => {
+  it('recognises French from a closed-class word', () => {
+    expect(deriveLang('la')).toBe('fr');
+    expect(deriveLang('des')).toBe('fr');
+  });
+
+  it('recognises French from an accent Arabizi never carries', () => {
+    expect(deriveLang('mésothérapie')).toBe('fr');
+    expect(deriveLang('dernière')).toBe('fr');
+  });
+
+  it('recognises French from an elided article', () => {
+    expect(deriveLang("l'effet")).toBe('fr');
+  });
+
+  it('recognises the English words the reels actually use', () => {
+    expect(deriveLang('the')).toBe('en');
+    expect(deriveLang('glow')).toBe('en');
+  });
+
+  it('has no opinion on Arabizi', () => {
+    for (const text of ['bzaf', 'ch3rk', 'l7loul', '3ndhom', 'katsnay']) {
+      expect(deriveLang(text)).toBeNull();
+    }
+  });
+
+  it('has no opinion on Arabic script, which could be msa or darija', () => {
+    expect(deriveLang('شعرك')).toBeNull();
+    expect(deriveLang('نتائج')).toBeNull();
+  });
+
+  it('ignores case and edge punctuation', () => {
+    expect(deriveLang('Cernes,')).toBe('fr');
+  });
+});
+
+describe('tagWord — disagreement between the model and the derivation', () => {
+  it('flags a conflict without overwriting either side', () => {
+    const tags = tagWord({ text: 'mésothérapie', lang: 'darija' });
+    expect(tags.lang).toBe('darija');
+    expect(tags.derivedLang).toBe('fr');
+    expect(tags.langDisagreement).toBe(true);
+  });
+
+  it('does not flag when they agree', () => {
+    const tags = tagWord({ text: 'mésothérapie', lang: 'fr' });
+    expect(tags.langDisagreement).toBe(false);
+  });
+
+  it('does not flag when the derivation has no opinion', () => {
+    const tags = tagWord({ text: 'bzaf', lang: 'darija' });
+    expect(tags.derivedLang).toBeNull();
+    expect(tags.langDisagreement).toBe(false);
+  });
+
+  it('does not flag when the model said nothing, and still does not guess', () => {
+    const tags = tagWord({ text: 'mésothérapie' });
+    expect(tags.lang).toBeNull();
+    expect(tags.derivedLang).toBe('fr');
+    expect(tags.langDisagreement).toBe(false);
+  });
+
+  it('carries an out-of-enum model value through as null, not as a conflict', () => {
+    const tags = tagWord({ text: 'la', lang: 'french' });
+    expect(tags.lang).toBeNull();
+    expect(tags.langDisagreement).toBe(false);
   });
 });

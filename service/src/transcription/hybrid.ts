@@ -5,6 +5,7 @@ import { correctTranscript, type CorrectionResult, type PromptVersion } from './
 import { driftWarning, measureTokenDrift, type TokenDrift } from './drift.js';
 import { transcribeWithScribe, type ScribeResult } from './scribe.js';
 import type { TranscriptionWarning, TranscriptWord } from './types.js';
+import type { CorrectedWord } from './tagging.js';
 
 export const SCRIBE_LEDGER_STAGE = 'transcribe-scribe';
 export const CORRECTION_LEDGER_STAGE = 'transcribe-gemini-correction';
@@ -38,6 +39,8 @@ export interface HybridTranscript {
   /** Kept so the cache can store and replay exactly what the APIs returned. */
   scribeRaw: unknown;
   correctionRaw: { text: string; usageMetadata: unknown };
+  /** The corrected words with whatever the model volunteered beyond text. */
+  correctedWords: CorrectedWord[];
   /** True when nothing was billed because the artifacts came from cache. */
   cached: boolean;
 }
@@ -126,6 +129,7 @@ export function assembleHybridResult(
     wallTimeS: scribe.wallTimeS + correction.wallTimeS,
     drift,
     warnings: warning === null ? [] : [warning],
+    correctedWords: correction.correctedWords,
     scribeRaw: scribe.raw,
     correctionRaw: { text: correction.rawText, usageMetadata: correction.usage },
     cached: false,

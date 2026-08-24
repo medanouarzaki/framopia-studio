@@ -19,6 +19,63 @@ const LANGS = new Set<WordLang>(['darija', 'msa', 'fr', 'en', 'mixed']);
 export interface WordTags {
   lang: WordLang | null;
   script: WordScript;
+  /**
+   * What the local derivation concluded independently, or null where it has
+   * no opinion. Never used to fill `lang`.
+   */
+  derivedLang: WordLang | null;
+  /**
+   * True when the model said one language and the derivation said another.
+   * Recorded for review; neither side overwrites the other, because the
+   * derivation is a wordlist and the model heard the audio.
+   */
+  langDisagreement: boolean;
+}
+
+const ACCENTED_RE = /[àâäçéèêëîïôöùûüÿœæ]/i;
+
+/**
+ * A deliberately small closed-class French and English lexicon plus the
+ * accent and elided-article giveaways. It exists to contradict the model, not
+ * to replace it: Arabizi never carries an accent or an `l'` elision, so a hit
+ * is strong evidence, while a miss says nothing at all — most Darija words
+ * are simply absent from any list. Anything not matched derives to null.
+ *
+ * Kept separate from the benchmark's ground-truth tagger, which defaults
+ * unmatched words to darija. That default is right for scoring a
+ * Darija-majority reference and wrong here, where a wrong guess would be
+ * recorded as a disagreement with the model.
+ */
+const FRENCH_LEXICON = new Set([
+  'le', 'la', 'les', 'un', 'une', 'des', 'du', 'de', 'et', 'ou', 'alors',
+  'donc', 'mais', 'pour', 'avec', 'sans', 'dans', 'par', 'non', 'aussi',
+  'est', "c'est", 'dernière', 'génération', 'marque', 'soin', 'filler',
+  'glow', 'salon', 'enzymes', 'vitamines', 'cocktail', 'saumon', 'cernes',
+  'visage', 'peau', 'cou', 'mains', 'acide', 'exemple', 'lissage',
+  'brésilien', 'mésothérapie', 'hyaluronique', 'polynucléotides',
+  'pigmentées', 'faiblement', 'réticulé', 'ridules', 'décolleté', 'profhilo',
+  'caféine', 'minutes', 'injections',
+]);
+
+const ENGLISH_LEXICON = new Set(['the', 'and', 'eyes', 'skin', 'face', 'glow']);
+
+const EDGE_PUNCTUATION_RE = /^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu;
+
+/**
+ * The local opinion, or null for "no opinion". Never a source for `lang`.
+ */
+export function deriveLang(text: string): WordLang | null {
+  if (ARABIC_SCRIPT_RE.test(text)) return null; // msa or darija; unknowable here
+  const bare = text
+    .toLowerCase()
+    .replace(/^l['\u2019]/, '')
+    .replace(EDGE_PUNCTUATION_RE, '');
+  if (bare.length === 0) return null;
+  // English before French: "glow" is on both lists and is English here.
+  if (ENGLISH_LEXICON.has(bare)) return 'en';
+  if (FRENCH_LEXICON.has(bare)) return 'fr';
+  if (ACCENTED_RE.test(bare) || /^l['\u2019]/.test(text)) return 'fr';
+  return null;
 }
 
 /**
@@ -46,7 +103,14 @@ export function tagWord(word: CorrectedWord): WordTags {
       ? (word.lang as WordLang)
       : null;
 
-  return { lang, script };
+  const derivedLang = deriveLang(word.text);
+
+  return {
+    lang,
+    script,
+    derivedLang,
+    langDisagreement: lang !== null && derivedLang !== null && lang !== derivedLang,
+  };
 }
 
 export function tagWords(words: CorrectedWord[]): WordTags[] {

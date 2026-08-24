@@ -112,6 +112,8 @@ export async function transcribeHybridCached(
           wallTimeS: payload.wallTimeS,
           drift,
           warnings: driftWarn === null ? warnings : [...warnings, driftWarn],
+          correctedWords:
+            payload.correctedWords ?? payload.correctedTexts.map((text) => ({ text })),
           scribeRaw: payload.scribeRaw,
           correctionRaw: payload.correctionRaw,
           cached: true,
@@ -128,6 +130,7 @@ export async function transcribeHybridCached(
     scribeRaw: transcript.scribeRaw,
     correctionRaw: transcript.correctionRaw,
     correctedTexts: transcript.words.map((w) => w.text),
+    correctedWords: transcript.correctedWords,
     costUsd: transcript.cost,
     wallTimeS: transcript.wallTimeS,
     promptVersion: transcript.promptVersion,
