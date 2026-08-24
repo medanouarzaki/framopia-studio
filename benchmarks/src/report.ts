@@ -48,7 +48,10 @@ export function buildReport(
       overallWer: overall ? fmtWer(overall.wer, overall.referenceCount) : null,
       darijaWer: darija ? fmtWer(darija.wer, darija.referenceCount) : null,
       codeSwitchedWer: codeSwitched ? fmtWer(codeSwitched.wer, codeSwitched.referenceCount) : null,
-      orthography: fmtPct(orthography.score),
+      orthography:
+        orthography.arabicScriptWords > 0
+          ? `${fmtPct(orthography.score)} (${orthography.arabicScriptWords} arabic-script words unscored)`
+          : fmtPct(orthography.score),
       deviation: deviation ? `${(deviation.medianAbsDeltaS * 1000).toFixed(0)}ms / ${(deviation.p90AbsDeltaS * 1000).toFixed(0)}ms` : '—',
       nullTimestamps: sanity.nullStartCount,
       costUsd: `$${result.costUsd.toFixed(4)}`,

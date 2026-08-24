@@ -82,3 +82,10 @@ describe('scoreOrthography — composite score', () => {
     expect(report.score).toBeLessThan(1);
   });
 });
+
+describe('scoreOrthography — arabic script', () => {
+  it('counts arabic-script words, which these latin rules cannot judge', () => {
+    const report = scoreOrthography(['عندك', 'les', 'chno']);
+    expect(report.arabicScriptWords).toBe(1);
+  });
+});

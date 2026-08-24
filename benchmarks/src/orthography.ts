@@ -38,6 +38,13 @@ export interface OrthographyReport {
   shDigraph: ShDigraphReport;
   freezeList: FreezeListReport;
   score: number;
+  /**
+   * Words written in Arabic script. These rules only govern Latin-script
+   * Darija, so a transcript that is mostly Arabic script scores near 100%
+   * without saying anything about its orthography — Scribe raw output is
+   * exactly that case.
+   */
+  arabicScriptWords: number;
 }
 
 function isLatinWord(word: string): boolean {
@@ -132,5 +139,7 @@ export function scoreOrthography(words: string[]): OrthographyReport {
   const violations = digitSubstitutions.count + shDigraph.count + freezeList.nearMiss;
   const score = totalWords === 0 ? 1 : Math.max(0, 1 - violations / totalWords);
 
-  return { digitSubstitutions, shDigraph, freezeList, score };
+  const arabicScriptWords = words.filter((word) => ARABIC_SCRIPT_RE.test(word)).length;
+
+  return { digitSubstitutions, shDigraph, freezeList, score, arabicScriptWords };
 }
