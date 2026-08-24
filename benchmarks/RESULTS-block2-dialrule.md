@@ -1,5 +1,10 @@
 # The `dial` rule (guide v1.0.5) against the measured noise floor
 
+> **The WER numbers in this section are scored against the old reference.**
+> See the addendum at the end for the same runs re-scored against
+> `v1.0.1-conformant`, where the floor is 3.7 points and the comparison
+> changes direction.
+
 ## Headline
 
 **The `dial` instability disappeared.** Across three identical calls under
@@ -176,3 +181,64 @@ detectable at this sample size.
 them. And it does not settle the conflict with the ground truth, which is now
 the more important open question: the reference this project scores every
 future run against does not follow the rule that was just added.
+
+---
+
+# Addendum (Block 2 session 6): re-scored against the corrected reference
+
+Everything above this line was scored against the **old** reference, which
+wrote `dl 7olol`, `dl 7essass`, `dl vitaminat`. Those three tokens have since
+been corrected to `dial l7olol`, `dial l7essass`, `dial lvitaminat`, and the
+reference is now versioned `v1.0.1-conformant`. The original numbers are left
+as recorded; these are the same outputs re-scored, with no new API calls.
+
+## Every recorded run, both references
+
+| run | old ref | new ref | delta | darija old → new | fr/en old → new |
+|---|---|---|---|---|---|
+| run C gemini | 21.0% | 14.8% | −6.2 | 21.7% → 13.3% | 12.5% → 12.5% |
+| run C hybrid | 22.2% | 16.0% | −6.2 | 25.0% → 16.7% | 12.5% → 12.5% |
+| session 3 prompt v2 | 22.2% | 16.0% | −6.2 | 26.7% → 18.3% | 6.3% → 6.3% |
+| noise floor run 1 (v1.0.4) | 21.0% | 14.8% | −6.2 | 25.0% → 16.7% | 6.3% → 6.3% |
+| noise floor run 2 (v1.0.4) | 21.0% | 16.0% | −4.9 | 23.3% → 16.7% | 12.5% → 12.5% |
+| noise floor run 3 (v1.0.4) | 18.5% | **18.5%** | **+0.0** | 21.7% → 21.7% | 6.3% → 6.3% |
+| dial run 1 (v1.0.5) | 22.2% | 16.0% | −6.2 | 26.7% → 18.3% | 6.3% → 6.3% |
+| dial run 2 (v1.0.5) | 21.0% | 14.8% | −6.2 | 25.0% → 16.7% | 6.3% → 6.3% |
+| dial run 3 (v1.0.5) | 21.0% | 14.8% | −6.2 | 25.0% → 16.7% | 6.3% → 6.3% |
+
+Eight of nine runs improve by 4.9–6.2 points, purely because the reference now
+spells three tokens the way the guide requires. The fr/en subset is untouched,
+as expected — the edit is entirely inside the darija subset.
+
+The exception is the whole point: **noise-floor run 3 is unchanged at 18.5%**.
+It was the run that produced `dl7loul`, `dl7essass`, `dlvitaminat`, and it was
+the best-scoring of the six only because it matched a reference that was
+itself non-conformant. Against the corrected reference it is now the **worst**
+of the nine.
+
+## The corrected noise floor
+
+**3.7 points**, from 14.8% to 18.5% across the three v1.0.4 noise-floor runs
+(run C hybrid at 16.0% sits inside that range and does not widen it).
+
+The floor got *wider*, not narrower: 2.5 → 3.7 points. Correcting the
+reference removed the accidental credit run 3 was getting, and run 3 was the
+outlier. **This 3.7-point figure supersedes the 2.5-point figure** for any
+comparison scored against the corrected reference.
+
+## v1.0.4 versus v1.0.5, both against the corrected reference
+
+| guide | run 1 | run 2 | run 3 | mean | spread |
+|---|---|---|---|---|---|
+| v1.0.4 | 14.8% | 16.0% | 18.5% | 16.4% | **3.7 pts** |
+| v1.0.5 | 16.0% | 14.8% | 14.8% | 15.2% | **1.2 pts** |
+
+Re-scoring changes the picture from the original section above. Under the old
+reference v1.0.5 looked very slightly worse (21.4% against 20.2%); under the
+corrected one it is slightly better (15.2% against 16.4%) and its spread is a
+third the size. Both differences remain inside the 3.7-point floor, so neither
+is measurable at three runs per arm — but the direction has flipped, and the
+reason is that the old reference was rewarding exactly the fused spelling the
+rule forbids.
+
+This addendum still does not rule on whether v1.0.5 stands.

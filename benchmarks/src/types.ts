@@ -23,5 +23,12 @@ export interface GroundTruthWord {
 }
 
 export interface GroundTruth {
+  /**
+   * Which revision of the reference this is. Absent on reels that have never
+   * been revised. Block 1 learned that changing the reference silently moves
+   * WER columns, so a scored result has to be able to name what it scored
+   * against.
+   */
+  version?: string;
   words: GroundTruthWord[];
 }

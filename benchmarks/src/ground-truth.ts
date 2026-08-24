@@ -32,7 +32,9 @@ export function parseGroundTruthJson(raw: string): GroundTruth {
     );
   }
 
-  return { words: record.words };
+  return typeof record.version === 'string'
+    ? { version: record.version, words: record.words }
+    : { words: record.words };
 }
 
 /**

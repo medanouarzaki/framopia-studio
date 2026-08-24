@@ -53,6 +53,13 @@ export function tagWord(raw: string): GroundTruthWord {
   return { text, lang: 'darija', script: 'latin' };
 }
 
+const REFERENCE_VERSION_RE = /^#\s*reference-version:\s*(\S+)\s*$/m;
+
+/** Read from the transcript's own header so regeneration cannot drop it. */
+export function parseReferenceVersion(source: string): string | undefined {
+  return REFERENCE_VERSION_RE.exec(source)?.[1];
+}
+
 export function tagTranscript(source: string): GroundTruthWord[] {
   return source
     .split('\n')

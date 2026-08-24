@@ -1,5 +1,12 @@
 # Run-to-run variance of the correction pass
 
+> **Superseded figures.** Every WER number here was scored against the
+> pre-`v1.0.1-conformant` reference, which wrote `dl 7olol`, `dl 7essass`,
+> `dl vitaminat`. Re-scored against the corrected reference the floor is
+> **3.7 points**, not 2.5 — see the addendum in
+> `benchmarks/RESULTS-block2-dialrule.md`. The outputs and the token-stability
+> findings below are unaffected; only the WER column moved.
+
 ## Headline
 
 Three identical calls — same recorded Scribe draft, same audio, same prompt
