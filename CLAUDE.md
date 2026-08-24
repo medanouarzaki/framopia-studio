@@ -22,7 +22,13 @@ AI-generated contextual images, SFX, and a watermark. Full spec in
 - `handoffs/` — session handoff documents
 - `reports/` — per-session work reports
 - `panel/` — After Effects CEP panel (not started)
-- `service/` — Node/TypeScript companion service
+- `core/` — `@framopia/core`, the shared workspace package: config loading,
+  the cost ledger, pricing constants and the Gemini model pin
+  (`core/src/model-config.json`), the token normalizer, the Levenshtein
+  aligner, and `SCRIPT_RULES`. Anything both `service/` and `benchmarks/`
+  need lives here; nothing is duplicated across the two any more.
+- `service/` — Node/TypeScript companion service. `service/src/transcription/`
+  holds the production hybrid module (see Status).
 - `benchmarks/` — transcription benchmark harness (Scribe, Gemini, local
   Whisper baseline, Scribe+Gemini hybrid), scored on WER, orthography
   conformance, and cross-engine timestamp deviation. See `benchmarks/README.md`.
@@ -33,10 +39,14 @@ AI-generated contextual images, SFX, and a watermark. Full spec in
 
 ## Commands
 
-- `npm run check` (repo root) — typecheck + lint + test for `service/` and
-  `benchmarks/`. This is the regression gate; it must pass before any
-  commit that touches code.
-- Start the service: `npm run build --prefix service && npm run start --prefix service`.
+- The repo is an npm workspace (`core`, `service`, `benchmarks`). Install
+  once at the root; there are no per-package lockfiles.
+- `npm run check` (repo root) — builds `@framopia/core`, then typecheck +
+  lint + test across every workspace. This is the regression gate; it must
+  pass before any commit that touches code. `core` builds to `core/dist/`
+  and the other packages import the built output, so anything that runs
+  workspace code builds core first.
+- Start the service: `npm run build:core && npm run build --prefix service && npm run start --prefix service`.
   On start it writes `.local/service.json` with `{ port, token }`.
 - Run the transcription benchmark: `npm run bench -- --audio <abs path>
   (--ground-truth <path.json> | --no-ground-truth)` (add `--dry-run` to
@@ -107,12 +117,32 @@ Three facts that shape everything downstream:
   hybrid.
 
 **Block 2 (transcription production pipeline) is in progress.** Done so far:
-the Block 1 handoff in `handoffs/block-1.md`, a ledger correction for the one
+the Block 1 handoff in `handoffs/block-1.md`; a ledger correction for the one
 understated Gemini entry from Block 1 session 4 (see the ledger note at the
 end of `benchmarks/RESULTS-block1.md` — the raw 19:50:06 line is known-low and
-must never be quoted as an actual cost), and the robustness run above. No
-production pipeline code yet. Panel, templates, and real job types are not
-started.
+must never be quoted as an actual cost); the robustness run above; the npm
+workspace and `@framopia/core`; three benchmark fixes (dry-run costs from the
+real input duration, dry runs no longer touch the stable spotcheck mirror,
+and an exact freeze-list hit is never reported as a near-miss of a
+neighbour); and the production hybrid module.
+
+`service/src/transcription/` — `scribe.ts` (Scribe v2 batch client),
+`correction.ts` (the Gemini correction pass), `align.ts` (anchor alignment of
+corrected text onto Scribe timings), `index.ts` (`transcribeHybrid`).
+**It is not wired to the HTTP job framework and nothing calls it yet** —
+integration is the next session. It has no fallback path: if the correction
+pass fails it throws a structured `TranscriptionError`, because returning the
+Scribe draft would hand back Arabic-script Darija labelled as a hybrid result.
+
+`PROMPT_VERSION` in `correction.ts` is the correction prompt's identity and
+will feed the cache fingerprint (ARCHITECTURE §6). It is `1`: the Block 1
+frozen prompt ported verbatim plus exactly one addition — an explicit rule
+that the conjunction `و` is written `w`, never French `ou`. **That rule is
+unvalidated**; no run has exercised it, so the Block 1 evidence describes a
+prompt that differs from this one by that paragraph. Validating it is the
+next session's job. Any prompt change means bumping `PROMPT_VERSION`.
+
+Panel, templates, and real job types are not started.
 
 See `docs/BLOCKS.md` for the full block plan and `handoffs/` for prior
 session context.
