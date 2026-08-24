@@ -8,6 +8,7 @@ import { normalizeToken } from '../normalize.js';
 import { align } from '../wer.js';
 import { computeGeminiCost, type GeminiUsage } from './gemini.js';
 import { estimateScribeCost, transcribeWithScribe } from './scribe.js';
+import { SCRIPT_RULES } from './script-rules.js';
 
 /**
  * Aligns Gemini-corrected word text onto the Scribe words' timings.
@@ -95,8 +96,12 @@ ${scribeText}
 Listen to the attached audio and correct the transcription to follow the
 orthography rules above exactly. You may fix misspellings, split or merge
 words, and add or remove words to match what is actually said — but never
-paraphrase or translate. Respond with strict JSON only, no prose, no
-markdown fences, in this shape: {"words":[{"text":"..."}]}${keytermsBlock}`;
+paraphrase or translate.
+
+${SCRIPT_RULES}
+
+Respond with strict JSON only, no prose, no markdown fences, in this shape:
+{"words":[{"text":"..."}]}${keytermsBlock}`;
 }
 
 interface CorrectionRawResponse {

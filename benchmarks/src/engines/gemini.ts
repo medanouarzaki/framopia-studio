@@ -7,6 +7,7 @@ import {
   GoogleGenAI,
 } from '@google/genai';
 import { benchConfig } from '../bench-config.js';
+import { SCRIPT_RULES } from './script-rules.js';
 import { REPO_ROOT } from '../paths.js';
 import type { TranscribedWord, TranscriptionResult } from '../types.js';
 
@@ -32,6 +33,9 @@ export async function buildGeminiPrompt(keyterms: string[] = []): Promise<string
 ---
 
 Transcribe the attached audio following the orthography rules above exactly.
+
+${SCRIPT_RULES}
+
 Respond with strict JSON only, no prose, no markdown fences, in this shape:
 {"words":[{"text":"...","startS":0.0,"endS":0.0}]}
 Word-level timestamps are required for every word.${keytermsBlock}`;
