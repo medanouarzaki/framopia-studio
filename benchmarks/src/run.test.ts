@@ -76,7 +76,7 @@ describe('runBenchmark --dry-run', () => {
     expect(report).toContain('| hybrid |');
   });
 
-  it('mirrors spotcheck HTML into latest-spotcheck for easy reach', async () => {
+  it('writes the per-run spotcheck but never touches the stable mirror', async () => {
     const resultsDir = await runBenchmark({
       audioPath: 'unused-in-dry-run.wav',
       groundTruthPath: path.join(FIXTURES_DIR, 'ground-truth.json'),
@@ -88,9 +88,7 @@ describe('runBenchmark --dry-run', () => {
     });
 
     expect(existsSync(path.join(resultsDir, 'spotcheck-scribe.html'))).toBe(true);
-    expect(existsSync(path.join(resultsRoot, 'latest-spotcheck', 'dry-run-scribe.html'))).toBe(
-      true,
-    );
+    expect(existsSync(path.join(resultsRoot, 'latest-spotcheck'))).toBe(false);
   });
 
   it('writes spotcheck HTML for every timestamp-bearing engine', async () => {

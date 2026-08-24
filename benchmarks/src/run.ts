@@ -241,13 +241,15 @@ export async function runBenchmark(options: RunBenchmarkOptions): Promise<string
       // Also under a fixed path, so checking timestamps by ear never means
       // hunting for the right timestamped directory first. Named per reel as
       // well as per engine, since a sweep covers several reels and they would
-      // otherwise overwrite each other.
-      const latestDir = path.join(options.resultsRoot ?? RESULTS_DIR, 'latest-spotcheck');
-      await mkdir(latestDir, { recursive: true });
-      const reel = options.dryRun
-        ? 'dry-run'
-        : path.basename(options.audioPath, path.extname(options.audioPath));
-      await writeFile(path.join(latestDir, `${reel}-${engine}.html`), html, 'utf8');
+      // otherwise overwrite each other. Dry runs are excluded: their words
+      // come from fixtures, and leaving that in the mirror puts a fake
+      // transcript next to real ones under a name that looks like a reel.
+      if (!options.dryRun) {
+        const latestDir = path.join(options.resultsRoot ?? RESULTS_DIR, 'latest-spotcheck');
+        await mkdir(latestDir, { recursive: true });
+        const reel = path.basename(options.audioPath, path.extname(options.audioPath));
+        await writeFile(path.join(latestDir, `${reel}-${engine}.html`), html, 'utf8');
+      }
     }
   }
 
