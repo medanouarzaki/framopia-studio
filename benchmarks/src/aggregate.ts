@@ -215,17 +215,32 @@ export function buildAggregateReport(resultsRoot = RESULTS_DIR): string {
 
   const totalCost = aggregateRows.reduce((n, [, s]) => n + s.costUsd, 0);
 
-  return `# Block 1 transcription benchmark — run B (guide v1.0.2 rescore)
+  return `# Block 1 transcription benchmark — run C (guide v1.0.3)
 
-Run A, scored under guide v1.0.1, is preserved in \`RESULTS-block1-runA.md\`.
-**Run B rescores the identical engine outputs** — no engine was re-run and
-none was re-prompted with the v1.0.2 rules, so nothing here measures how the
-engines would behave if told about the numeral rule or the widened
-Arabic-script scope. What changed is the scoring, in three ways: spelled-out numerals now compare
-equal to the digits the ground truth writes (§3a); edge punctuation is
-stripped from Arabic-script tokens, which it previously was not, so
-\`للوجه؟\` and \`للوجه\` no longer count as different words; and one ground
-truth typo (\`main\` for \`mabin\`) was corrected.
+The run of record for the Block 1 freeze decision. Earlier runs are kept
+beside it: run A (guide v1.0.1) in \`RESULTS-block1-runA.md\`, run B (a free
+rescore of run A's outputs under v1.0.2) in \`RESULTS-block1-runB.md\`.
+
+**Run C re-ran gemini and hybrid only**, under prompts carrying guide
+v1.0.3 — the term-level script rule, the numeral rule, and the widened
+medical/aesthetic domain. The scribe and whisper rows are the stored
+session-4 results, reused deliberately: Scribe takes no prompt, so its
+output cannot depend on the guide, and Whisper is a local baseline that
+translates Darija into MSA and was never a candidate. The ground truth also
+changed for v1.0.3: Arabic-script function words were converted to Arabizi,
+and two transcription defects the engines had gotten right (\`kids cabin\` for
+\`kidom mabin\`, \`7sessa\` for \`7essa\`) were corrected.
+
+## Timestamp spotcheck — by ear, on the ground-truth reel
+
+Checked by the user against the audio, 15 sampled words per engine:
+
+- **hybrid: 14/15 hits.**
+- **gemini: 9/15**, with accumulating drift through the reel — by the last
+  rows the next row's audio was playing under the current row.
+
+This is the evidence the WER table cannot carry. Hybrid inherits Scribe's
+word timings; Gemini self-reports them, and self-reported timings drift.
 
 Four reels, ${totalDurationS.toFixed(1)}s of code-switched Darija/French
 talking-head audio, scored against hand-written ground truth. Ground truth
@@ -241,7 +256,10 @@ set cannot speak to, which is the whole story for raw Scribe.
 
 ${table(aggregateRows)}
 
-Total billed: $${totalCost.toFixed(4)}.
+Cost column total: $${totalCost.toFixed(4)}. Note this mixes runs — the
+gemini and hybrid figures were billed by this run, the scribe and whisper
+figures are the session-4 charges for the outputs being reused, not a
+fresh spend.
 
 ## How to read these numbers
 
