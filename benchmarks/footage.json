@@ -1,0 +1,33 @@
+{
+  "note": "Source reels live on the external SSD and are never copied into the repo. Extracted audio lives in .local/bench-audio/ (gitignored) and is regenerated with: ffmpeg -vn -ac 1 -ar 16000 -c:a pcm_s16le.",
+  "reels": [
+    {
+      "label": "test-1",
+      "path": "/Volumes/T7 Shield/INSEA/Projects/framopia-studio/my files/test videos/test 1.mov",
+      "durationS": 21.988646,
+      "groundTruth": false,
+      "audioPath": ".local/bench-audio/test-1.wav"
+    },
+    {
+      "label": "test-2",
+      "path": "/Volumes/T7 Shield/INSEA/Projects/framopia-studio/my files/test videos/test 2.mov",
+      "durationS": 22.322313,
+      "groundTruth": false,
+      "audioPath": ".local/bench-audio/test-2.wav"
+    },
+    {
+      "label": "test-3",
+      "path": "/Volumes/T7 Shield/INSEA/Projects/framopia-studio/my files/test videos/test 3.mov",
+      "durationS": 21.187833,
+      "groundTruth": false,
+      "audioPath": ".local/bench-audio/test-3.wav"
+    },
+    {
+      "label": "ground-truth",
+      "path": "/Volumes/T7 Shield/INSEA/Projects/framopia-studio/my files/test videos/ground truth.mov",
+      "durationS": 23.256567,
+      "groundTruth": true,
+      "audioPath": ".local/bench-audio/ground-truth.wav"
+    }
+  ]
+}
