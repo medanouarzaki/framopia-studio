@@ -22,6 +22,48 @@ export async function probeDurationSeconds(mediaPath: string): Promise<number> {
   return seconds;
 }
 
+export interface MediaProbe {
+  durationS: number;
+  fps: number;
+  width: number;
+  height: number;
+}
+
+/**
+ * Video-stream geometry for the Edit Plan's `source` block. fps comes back as
+ * a rational (30000/1001), which is how ffprobe reports drop-frame rates.
+ */
+export async function probeVideo(mediaPath: string): Promise<MediaProbe> {
+  const { stdout } = await execFileAsync('ffprobe', [
+    '-v',
+    'error',
+    '-select_streams',
+    'v:0',
+    '-show_entries',
+    'stream=width,height,r_frame_rate',
+    '-show_entries',
+    'format=duration',
+    '-of',
+    'json',
+    mediaPath,
+  ]);
+  const parsed = JSON.parse(stdout) as {
+    streams?: { width?: number; height?: number; r_frame_rate?: string }[];
+    format?: { duration?: string };
+  };
+  const stream = parsed.streams?.[0];
+  if (stream?.width === undefined || stream.height === undefined) {
+    throw new Error(`ffprobe found no video stream in ${mediaPath}`);
+  }
+  const [num, den] = (stream.r_frame_rate ?? '0/1').split('/');
+  const fps = Number(num) / (Number(den) === 0 ? 1 : Number(den));
+  const durationS = Number.parseFloat(parsed.format?.duration ?? '');
+  if (Number.isNaN(durationS)) {
+    throw new Error(`ffprobe returned no duration for ${mediaPath}`);
+  }
+  return { durationS, fps, width: stream.width, height: stream.height };
+}
+
 /**
  * Extracts mono 16kHz PCM per ARCHITECTURE §5.1. A .wav input is used as-is;
  * re-encoding one would only lose information.

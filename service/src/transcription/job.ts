@@ -1,64 +1,131 @@
-import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { LOCAL_DIR, loadConfig } from '@framopia/core';
+import { appVersion, LOCAL_DIR, loadConfig } from '@framopia/core';
 import { registerJobRunner } from '../jobs.js';
-import { extractAudio, probeDurationSeconds } from './media.js';
-import { transcribeHybrid, type HybridTranscript } from './index.js';
+import {
+  createEditPlan,
+  editPlanPathFor,
+  writeEditPlan,
+  type EditPlan,
+} from '../editplan/index.js';
+import { transcribeHybridCached } from './cached.js';
+import { hashFile } from './fingerprint.js';
+import { extractAudio, probeVideo } from './media.js';
+import { buildTranscript } from './plan-builder.js';
+import type { HybridTranscript } from './hybrid.js';
 
 export const TRANSCRIBE_JOB_TYPE = 'transcribe';
+export const TRANSCRIPTION_CONFIG_LABEL = 'hybrid-v1';
 
 export interface TranscribeVideoOptions {
   videoPath: string;
-  outputPath?: string;
+  planPath?: string;
   keyterms?: string[];
+  bypassCache?: boolean;
+  cacheRoot?: string;
   log?: (message: string) => void;
+  /** Injected in tests so the composition can run without an API. */
+  runTranscription?: typeof transcribeHybridCached;
+  /** Injected in tests so the composition can run without ffmpeg. */
+  media?: {
+    hashFile?: typeof hashFile;
+    probeVideo?: typeof probeVideo;
+    extractAudio?: typeof extractAudio;
+  };
+  now?: () => string;
 }
 
 export interface TranscribeVideoResult {
   videoPath: string;
   audioPath: string;
-  durationS: number;
-  outputPath: string;
+  planPath: string;
+  plan: EditPlan;
   transcript: HybridTranscript;
+  cached: boolean;
 }
 
 /**
- * Video in, transcript artifact out. Deliberately not an Edit Plan — that
- * schema lands separately; this writes the transcript alone.
+ * Video in, validated Edit Plan out: hash, probe, extract audio, transcribe
+ * through the cache, then tag, clean and group, and write the plan beside the
+ * video. Keywords, images, zones, sfx and build stay empty — the stages that
+ * fill them do not exist yet.
  */
 export async function transcribeVideo(
   options: TranscribeVideoOptions,
 ): Promise<TranscribeVideoResult> {
-  const { videoPath, keyterms = [], log = console.log } = options;
+  const {
+    videoPath,
+    keyterms = [],
+    bypassCache = false,
+    cacheRoot,
+    log = console.log,
+    runTranscription = transcribeHybridCached,
+    media = {},
+    now = () => new Date().toISOString(),
+  } = options;
+  const hash = media.hashFile ?? hashFile;
+  const probeMedia = media.probeVideo ?? probeVideo;
+  const extract = media.extractAudio ?? extractAudio;
   const config = loadConfig();
 
-  const audioPath = await extractAudio(videoPath, path.join(LOCAL_DIR, 'audio'));
-  const durationS = await probeDurationSeconds(audioPath);
+  const videoSha256 = await hash(videoPath);
+  const probe = await probeMedia(videoPath);
+  const audioPath = await extract(videoPath, path.join(LOCAL_DIR, 'audio'));
 
-  const transcript = await transcribeHybrid({
+  const { transcript } = await runTranscription({
     elevenLabsApiKey: config.elevenLabsApiKey,
     googleApiKey: config.googleApiKey,
     audioPath,
-    durationS,
+    durationS: probe.durationS,
     keyterms,
+    videoSha256,
+    bypassCache,
+    cacheRoot,
     log,
   });
 
-  const outputPath =
-    options.outputPath ??
-    path.join(
-      LOCAL_DIR,
-      'transcripts',
-      `${path.basename(videoPath, path.extname(videoPath))}.json`,
+  const built = buildTranscript(transcript.words, transcript.draftWords);
+  if (built.unjudged.length > 0) {
+    log(
+      `cleaning: ${built.unjudged.length} ya3ni/za3ma token(s) left in place — hesitation versus explanation is not decidable here`,
     );
-  await mkdir(path.dirname(outputPath), { recursive: true });
-  await writeFile(
-    outputPath,
-    `${JSON.stringify({ videoPath, audioPath, durationS, ...transcript }, null, 2)}\n`,
-    'utf8',
-  );
+  }
+  for (const warning of transcript.warnings) {
+    log(`warning [${warning.stage}]: ${warning.cause}`);
+  }
 
-  return { videoPath, audioPath, durationS, outputPath, transcript };
+  const timestamp = now();
+  const plan = createEditPlan({
+    source: {
+      videoPath,
+      sha256: videoSha256,
+      durationS: probe.durationS,
+      fps: probe.fps,
+      width: probe.width,
+      height: probe.height,
+      audioPath,
+    },
+    appVersion: appVersion(),
+    now: timestamp,
+    id: videoSha256.slice(0, 32),
+  });
+  plan.transcript.words = built.words;
+  plan.subtitles.groups = built.groups;
+  plan.pipeline.transcription = {
+    status: 'done',
+    config: TRANSCRIPTION_CONFIG_LABEL,
+    costUsd: transcript.cached ? 0 : transcript.cost.totalUsd,
+    cached: transcript.cached,
+    completedAt: timestamp,
+    error: null,
+  };
+  plan.costs = transcript.cached
+    ? { totalUsd: 0, byStage: {} }
+    : { totalUsd: transcript.cost.totalUsd, byStage: { transcription: transcript.cost.totalUsd } };
+
+  const planPath = options.planPath ?? editPlanPathFor(videoPath);
+  await writeEditPlan(planPath, plan);
+
+  return { videoPath, audioPath, planPath, plan, transcript, cached: transcript.cached };
 }
 
 registerJobRunner(TRANSCRIBE_JOB_TYPE, async (params) => {
@@ -69,6 +136,7 @@ registerJobRunner(TRANSCRIBE_JOB_TYPE, async (params) => {
   const keyterms = Array.isArray(params?.keyterms)
     ? params.keyterms.filter((k): k is string => typeof k === 'string')
     : [];
-  const outputPath = typeof params?.outputPath === 'string' ? params.outputPath : undefined;
-  return transcribeVideo({ videoPath, keyterms, outputPath });
+  const planPath = typeof params?.planPath === 'string' ? params.planPath : undefined;
+  const bypassCache = params?.bypassCache === true;
+  return transcribeVideo({ videoPath, keyterms, planPath, bypassCache });
 });

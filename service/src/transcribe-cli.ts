@@ -5,6 +5,9 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { estimateGeminiCallCost, estimateScribeCost } from '@framopia/core';
 import { probeDurationSeconds } from './transcription/media.js';
+import { hashFile } from './transcription/fingerprint.js';
+import { readTranscriptionCache } from './transcription/cache.js';
+import { transcriptionCacheRef } from './transcription/cached.js';
 import { transcribeVideo } from './transcription/job.js';
 
 async function confirm(message: string): Promise<boolean> {
@@ -23,12 +26,13 @@ async function main(): Promise<void> {
       out: { type: 'string' },
       keyterms: { type: 'string' },
       yes: { type: 'boolean', default: false },
+      'no-cache': { type: 'boolean', default: false },
     },
   });
 
   if (!values.video) {
     console.error(
-      'Usage: npm run transcribe -- --video <path> [--out <path.json>] [--keyterms <path>] [--yes]',
+      'Usage: npm run transcribe -- --video <path> [--out <path.editplan.json>] [--keyterms <path>] [--yes] [--no-cache]',
     );
     process.exitCode = 1;
     return;
@@ -49,21 +53,44 @@ async function main(): Promise<void> {
   // Estimated from the container before any audio is extracted, so the gate
   // comes before the first billable call rather than after the work.
   const durationS = await probeDurationSeconds(values.video);
-  const estimate =
-    estimateScribeCost(durationS, keyterms.length > 0) + estimateGeminiCallCost(durationS);
-  console.log(`Estimated cost for ${durationS.toFixed(1)}s of video: ~$${estimate.toFixed(4)}`);
+  const bypassCache = values['no-cache'] ?? false;
 
-  if (!values.yes && !(await confirm(`Proceed with billable calls totaling ~$${estimate.toFixed(4)}? [y/N] `))) {
-    console.error('aborted: cost confirmation declined');
-    process.exitCode = 1;
-    return;
+  // A gate that asks for money on a run that will cost nothing teaches people
+  // to click through it, so the cache is consulted before the prompt.
+  const { ref } = await transcriptionCacheRef({
+    videoSha256: await hashFile(values.video),
+    keyterms,
+  });
+  const willHit = !bypassCache && (await readTranscriptionCache(ref)).payload !== null;
+
+  if (willHit) {
+    console.log('Cache hit — no billable calls for this run.');
+  } else {
+    const estimate =
+      estimateScribeCost(durationS, keyterms.length > 0) + estimateGeminiCallCost(durationS);
+    console.log(`Estimated cost for ${durationS.toFixed(1)}s of video: ~$${estimate.toFixed(4)}`);
+    if (
+      !values.yes &&
+      !(await confirm(`Proceed with billable calls totaling ~$${estimate.toFixed(4)}? [y/N] `))
+    ) {
+      console.error('aborted: cost confirmation declined');
+      process.exitCode = 1;
+      return;
+    }
   }
 
-  const result = await transcribeVideo({ videoPath: values.video, keyterms, outputPath: values.out });
+  const result = await transcribeVideo({
+    videoPath: values.video,
+    keyterms,
+    planPath: values.out,
+    bypassCache,
+  });
 
-  console.log(`Transcript written to ${result.outputPath}`);
+  console.log(`Edit plan written to ${result.planPath}`);
   console.log(
-    `Cost: scribe $${result.transcript.cost.scribeUsd.toFixed(4)} + gemini $${result.transcript.cost.geminiUsd.toFixed(4)} = $${result.transcript.cost.totalUsd.toFixed(4)}`,
+    result.cached
+      ? 'Cost: $0.0000 — served from cache, nothing billed'
+      : `Cost: scribe $${result.transcript.cost.scribeUsd.toFixed(4)} + gemini $${result.transcript.cost.geminiUsd.toFixed(4)} = $${result.transcript.cost.totalUsd.toFixed(4)}`,
   );
   console.log(
     `Prompt version ${result.transcript.promptVersion}, drift ${(result.transcript.drift.fraction * 100).toFixed(1)}% (${result.transcript.drift.draftCount} -> ${result.transcript.drift.correctedCount} tokens), ${result.transcript.wallTimeS.toFixed(1)}s`,

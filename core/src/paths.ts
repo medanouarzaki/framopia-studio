@@ -11,3 +11,5 @@ export const REPO_ROOT = path.resolve(
 
 export const LOCAL_DIR = path.join(REPO_ROOT, '.local');
 export const DOCS_DIR = path.join(REPO_ROOT, 'docs');
+
+export const ROOT_PACKAGE_JSON = path.join(REPO_ROOT, 'package.json');
