@@ -60,19 +60,24 @@ AI-generated contextual images, SFX, and a watermark. Full spec in
   hand-written transcript.
   `benchmarks/whisper/setup.sh` installs the local Whisper baseline
   (Apple Silicon only, not run by `npm run check`).
-- `npm run transcribe -- --video <abs path> [--out <path.json>] [--keyterms
-  <path>] [--yes]` — the production path end to end: ffmpeg audio extraction
-  (`-vn -ac 1 -ar 16000 -c:a pcm_s16le`), Scribe, the correction pass,
-  alignment, and a transcript artifact written to
-  `.local/transcripts/<name>.json`. Billable; prints an estimate and asks for
-  confirmation unless `--yes`. The same code runs behind the `transcribe` job
-  type on the HTTP path, so the two cannot diverge. It writes a plain
-  transcript, **not** an Edit Plan — that schema is not built yet.
-- The conformance scorer also flags a standalone `ou` (the conjunction و is
-  `w`, §2) and any Latin Arabizi token with no vowel at all (§3 wants an `e`
-  where dropping one leaves an unreadable cluster). The vowel rule currently
-  over-fires on ordinary Arabizi (`ymkn`, `ch3rk`, `jbt`) — see
-  `reports/block-2-session-4.md`; narrowing it is a pending user decision.
+- `npm run transcribe -- --video <abs path> [--out <path.editplan.json>]
+  [--keyterms <path>] [--yes] [--no-cache]` — the production path end to end:
+  hash the video, ffprobe its geometry, extract audio
+  (`-vn -ac 1 -ar 16000 -c:a pcm_s16le`), the cached hybrid transcription,
+  then tagging, cleaning and grouping, and a **validated Edit Plan** written
+  to `<video-dir>/<video-name>.editplan.json`. Billable on a cache miss;
+  prints an estimate and asks for confirmation unless `--yes`. It consults
+  the cache **before** prompting, so a run that will cost nothing says so
+  instead of asking for money. `--no-cache` forces fresh calls and still
+  repopulates the entry. The same code runs behind the `transcribe` job type
+  on the HTTP path, so the two cannot diverge.
+- The conformance scorer separates **violations** from **warnings**. Scored
+  violations: digit substitutions, `sh`-for-`ch`, freeze-list near-misses, a
+  standalone `ou` (§2 writes the conjunction `w`), and `dial` fused to the
+  word it governs (§4 since v1.0.5). Warnings, reported in their own section
+  and never in the percentage: vowel-less tokens — the check cannot tell a
+  correct dropped schwa (`jbt`, `ymkn`, `ch3rk`) from an unreadable cluster
+  (`7l`, `l7l`) without modelling syllables, so it is a human-review signal.
 - The Gemini cost **estimate** is deliberately pessimistic
   (`THINKING_TOKEN_MULTIPLIER = 15`) because it feeds a spend gate; observed
   thinking ratios run 5x–30.2x. Actuals always come from `usageMetadata` and
@@ -104,7 +109,7 @@ Block 1 definition-of-done evidence. `docs/PROJECT_SPEC.md` §7 points at it.
 
 Frozen config: **hybrid** — Scribe v2 batch for word timings and a first
 pass, then a Gemini `gemini-3.1-pro-preview` correction pass carrying
-`docs/ORTHOGRAPHY_GUIDE.md` (**v1.0.4, frozen**) plus the per-word script
+`docs/ORTHOGRAPHY_GUIDE.md` (**v1.0.5, frozen**) plus the per-word script
 rules, realigned onto Scribe's timings by Levenshtein anchoring with linear
 interpolation across inserted words.
 
@@ -173,6 +178,15 @@ things at once and run each arm once. The reversion is recorded as an
 amendment in `docs/DECISION-transcription-config.md`. The `ou` corruption is
 now caught by the conformance scorer instead of a prompt rule.
 
+**`dial` is written separate since guide v1.0.5** (`dial l7loul`, never
+`dl7loul`), because six of the twelve tokens that moved across identical calls
+were this one word. `benchmarks/RESULTS-block2-dialrule.md` measured it: the
+instability is gone (6/6 occurrences comply in all three runs, stability
+69/81 → 79/81) and WER stayed inside the floor. **Open**: the hand-written
+ground truth writes `dl 7olol` in the three positions the rule targets, so the
+reference is now non-conformant and §4's own "user's habit wins" tie-break
+points the other way. The user has not ruled on that.
+
 **The noise floor is 2.5 WER points.** Three identical correction calls — same
 recorded draft, same audio, same prompt — gave 21.0%, 21.0% and 18.5% overall
 WER, with 69 of 81 tokens identical and cost varying 41%
@@ -196,9 +210,24 @@ per-slot confidence onto anchored words and leaves interpolated words at
 ARCHITECTURE §3 shape), `validate.ts` (structural validation returning issues
 with dotted paths, plus `EditPlanVersionError` for an unknown
 `schemaVersion`), `io.ts` (`createEditPlan`, `readEditPlan`, `writeEditPlan`,
-and `<video-dir>/<video-name>.editplan.json`). Keywords, images, zones, sfx
-and build have types and empty containers only — the stages that fill them do
-not exist. Nothing writes a plan yet; the CLI still emits a plain transcript.
+and `<video-dir>/<video-name>.editplan.json`). The CLI now writes one:
+`source` and `pipeline.transcription` are filled, the transcript is tagged,
+cleaned and grouped, and the plan is validated before it hits disk. Keywords,
+images, zones, sfx and build have types and empty containers only — the stages
+that fill them do not exist. `meta.appVersion` is read from the root
+package.json, not supplied by a caller.
+
+**The cache** (ARCHITECTURE §6) is at `.local/cache/<video-sha256>/<stage>-<fingerprint>/`,
+holding the extracted audio, the raw Scribe JSON and the Gemini correction
+output. The transcription fingerprint covers `ACTIVE_PROMPT_VERSION`, the
+Gemini model pin, the ORTHOGRAPHY_GUIDE version (**read from the file**, so a
+guide bump invalidates on its own), the Scribe model id, and the keyterms; any
+one of them changing misses. A hit costs nothing and writes **no** ledger
+line; a miss records both legs as before. A corrupt, incomplete or
+audio-less entry is a miss with a warning, never a crash. Verified live: a
+second run on the same reel hit the cache, cost $0.0000, took 4 s against
+70 s, and produced a plan differing only in `createdAt`/`updatedAt`,
+`completedAt` and the cost bookkeeping.
 
 Two deliberate departures from ARCHITECTURE §3, both to avoid recording a
 guess as data: `transcript.words[].lang` is nullable, and `clientMode` and

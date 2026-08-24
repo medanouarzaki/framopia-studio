@@ -9,6 +9,10 @@ benchmarks/results/
 benchmarks/whisper/.venv/
 benchmarks/whisper/models/
 
+# generated edit plans: derived from footage that is itself gitignored, and
+# rewritten on every run
+*.editplan.json
+
 # video files (watermark master is committed explicitly)
 *.mp4
 *.mov
