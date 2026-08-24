@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { editDistance, scoreOrthography } from './orthography.js';
+import { editDistance, findFreezeListConformance, scoreOrthography } from './orthography.js';
 
 describe('editDistance', () => {
   it('is zero for identical strings', () => {
@@ -87,5 +87,47 @@ describe('scoreOrthography — arabic script', () => {
   it('counts arabic-script words, which these latin rules cannot judge', () => {
     const report = scoreOrthography(['عندك', 'les', 'chno']);
     expect(report.arabicScriptWords).toBe(1);
+  });
+});
+
+describe('freeze-list near-miss matching', () => {
+  it('never reports an exact freeze-list hit as a near-miss of a neighbour', () => {
+    // "bach" and "wach" are one edit apart and are different words. With both
+    // on the list, an exact hit must win outright.
+    const report = findFreezeListConformance(['bach', 'wach'], ['wach', 'bach']);
+    expect(report.nearMiss).toBe(0);
+    expect(report.conformant).toBe(2);
+    expect(report.examples).toEqual([]);
+  });
+
+  it('applies the same precedence to frozen spellings that sit one edit apart', () => {
+    const report = findFreezeListConformance(['dial', 'diali', 'kayn', 'kayna']);
+    expect(report.nearMiss).toBe(0);
+    expect(report.conformant).toBe(4);
+  });
+
+  it('still flags a genuine misspelling of a frozen word', () => {
+    const report = findFreezeListConformance(['bzzaf'], ['bzaf']);
+    expect(report.nearMiss).toBe(1);
+    expect(report.examples[0]?.detail).toContain('bzaf');
+  });
+
+  // "bach" is not on the freeze list, so the exact-match rule cannot reach it
+  // and it is still reported as a near-miss of "wach". Adding it to
+  // freeze-list.json is a pending user decision plus a guide version bump;
+  // this test pins today's behaviour so that decision is visible rather than
+  // silently assumed. See reports/block-2-session-2.md.
+  it('still flags bach against the real freeze list, which does not contain it', () => {
+    const report = findFreezeListConformance(['bach']);
+    expect(report.nearMiss).toBe(1);
+    expect(report.examples[0]).toEqual({
+      word: 'bach',
+      detail: 'near "wach" (edit distance 1)',
+    });
+  });
+
+  it('leaves words under four characters out of the matcher entirely', () => {
+    const report = findFreezeListConformance(['nta']);
+    expect(report.totalOccurrences).toBe(0);
   });
 });

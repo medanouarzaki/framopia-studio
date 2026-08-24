@@ -101,7 +101,11 @@ function findShDigraph(words: string[]): ShDigraphReport {
   return { count: examples.length, examples };
 }
 
-function findFreezeListConformance(words: string[]): FreezeListReport {
+export function findFreezeListConformance(
+  words: string[],
+  freezeList: string[] = FREEZE_LIST,
+): FreezeListReport {
+  const exact = new Set(freezeList);
   const examples: FlaggedExample[] = [];
   let totalOccurrences = 0;
   let conformant = 0;
@@ -110,21 +114,26 @@ function findFreezeListConformance(words: string[]): FreezeListReport {
     if (!isLatinWord(word)) continue;
     const lower = word.toLowerCase();
 
+    // An exact hit ends it. Several frozen spellings sit one edit apart
+    // (dial/diali, kayn/kayna), and a correctly spelled word must never be
+    // reported as a misspelling of its neighbour.
+    if (exact.has(lower)) {
+      totalOccurrences += 1;
+      conformant += 1;
+      continue;
+    }
+
     let best: { frozen: string; distance: number } | null = null;
-    for (const frozen of FREEZE_LIST) {
+    for (const frozen of freezeList) {
       const distance = editDistance(lower, frozen);
-      if (distance <= 1 && (best === null || distance < best.distance)) {
+      if (distance === 1 && best === null) {
         best = { frozen, distance };
       }
     }
 
     if (best === null) continue;
     totalOccurrences += 1;
-    if (best.distance === 0) {
-      conformant += 1;
-    } else {
-      examples.push({ word, detail: `near "${best.frozen}" (edit distance ${best.distance})` });
-    }
+    examples.push({ word, detail: `near "${best.frozen}" (edit distance ${best.distance})` });
   }
 
   return { totalOccurrences, conformant, nearMiss: totalOccurrences - conformant, examples };
