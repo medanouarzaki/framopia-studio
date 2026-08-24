@@ -28,6 +28,14 @@
       "durationS": 23.256567,
       "groundTruth": true,
       "audioPath": ".local/bench-audio/ground-truth.wav"
+    },
+    {
+      "label": "vitasilk",
+      "path": "/Volumes/T7 Shield/INSEA/Projects/framopia-studio/my files/test videos/vitasilk.mov",
+      "durationS": 25.692333,
+      "groundTruth": false,
+      "audioPath": ".local/bench-audio/vitasilk.wav",
+      "notes": "Second speaker (woman), hair-product domain, one-off test footage rather than a client. Added in Block 2 to widen an evidence base that was one speaker in one domain. No hand-written ground truth exists for this reel, so it is run with --no-ground-truth and is deliberately absent from the scored REELS list in aggregate.ts."
     }
   ]
 }
