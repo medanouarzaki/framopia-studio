@@ -12,20 +12,32 @@ export const REELS = ['ground-truth', 'test-1', 'test-2', 'test-3'];
 export const ENGINES = ['scribe', 'gemini', 'whisper', 'hybrid'];
 
 /**
- * Each `npm run bench` invocation writes its own timestamped directory, so a
- * four-reel sweep leaves four of them. Pair each reel with its newest run by
- * reading the audio filename back out of that run's report.
+ * Each `npm run bench` invocation writes its own timestamped directory, and a
+ * sweep may cover only some engines — the v1.0.3 sweep re-ran gemini and
+ * hybrid only, since Scribe's raw output does not depend on the prompt and
+ * Whisper is a dead baseline. So resolve per reel *and per engine*: the newest
+ * directory that actually holds that engine's result wins, which lets a
+ * partial sweep sit on top of an older full one.
  */
-export function findLatestRunPerReel(resultsRoot = RESULTS_DIR): Map<string, string> {
-  const found = new Map<string, string>();
-  const dirs = readdirSync(resultsRoot).filter((d) => !d.startsWith('.')).sort();
+export function findLatestRunPerReel(resultsRoot = RESULTS_DIR): Map<string, Map<string, string>> {
+  const found = new Map<string, Map<string, string>>();
+  const dirs = readdirSync(resultsRoot)
+    .filter((d) => !d.startsWith('.') && d !== 'latest-spotcheck')
+    .sort();
 
   for (const dir of dirs) {
-    const reportPath = path.join(resultsRoot, dir, 'report.md');
+    const runDir = path.join(resultsRoot, dir);
+    const reportPath = path.join(runDir, 'report.md');
     if (!existsSync(reportPath)) continue;
     const report = readFileSync(reportPath, 'utf8');
+
     for (const reel of REELS) {
-      if (report.includes(`${reel}.wav`)) found.set(reel, path.join(resultsRoot, dir));
+      if (!report.includes(`${reel}.wav`)) continue;
+      const perEngine = found.get(reel) ?? new Map<string, string>();
+      for (const engine of ENGINES) {
+        if (existsSync(path.join(runDir, `${engine}.json`))) perEngine.set(engine, runDir);
+      }
+      found.set(reel, perEngine);
     }
   }
 
@@ -97,13 +109,15 @@ export function scoreEngine(
   };
 }
 
-export function loadReel(runDir: string, reel: string): {
-  groundTruth: GroundTruth;
-  results: Map<string, TranscriptionResult>;
-} {
+export function loadReel(
+  runDirs: Map<string, string>,
+  reel: string,
+): { groundTruth: GroundTruth; results: Map<string, TranscriptionResult> } {
   const groundTruth = loadGroundTruth(path.join(LOCAL_DIR, 'ground-truth', `${reel}.json`));
   const results = new Map<string, TranscriptionResult>();
   for (const engine of ENGINES) {
+    const runDir = runDirs.get(engine);
+    if (runDir === undefined) continue;
     const file = path.join(runDir, `${engine}.json`);
     if (!existsSync(file)) continue;
     results.set(engine, JSON.parse(readFileSync(file, 'utf8')) as TranscriptionResult);
@@ -144,13 +158,13 @@ export function buildAggregateReport(resultsRoot = RESULTS_DIR): string {
   }
 
   for (const reel of REELS) {
-    const runDir = runs.get(reel);
-    if (runDir === undefined) {
+    const runDirs = runs.get(reel);
+    if (runDirs === undefined) {
       perReel.push(`### ${reel}\n\nNo run found.\n`);
       continue;
     }
     totalDurationS += durations[reel] ?? 0;
-    const { groundTruth, results } = loadReel(runDir, reel);
+    const { groundTruth, results } = loadReel(runDirs, reel);
     const scribe = results.get('scribe');
     const rows: [string, EngineScores][] = [];
     for (const engine of ENGINES) {

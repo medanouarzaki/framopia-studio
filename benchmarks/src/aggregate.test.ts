@@ -16,20 +16,41 @@ describe('findLatestRunPerReel', () => {
     rmSync(root, { recursive: true, force: true });
   });
 
-  it('keeps the newest run for a reel that was benchmarked twice', () => {
-    const runs: [string, string][] = [
-      ['2026-01-01', 'test-1'],
-      ['2026-01-02', 'test-1'],
-      ['2026-01-03', 'test-2'],
-    ];
-    for (const [dir, reel] of runs) {
-      mkdirSync(path.join(root, dir));
-      writeFileSync(path.join(root, dir, 'report.md'), `Audio: \`/x/${reel}.wav\``, 'utf8');
+  const writeRun = (dir: string, reel: string, engines: string[]): void => {
+    mkdirSync(path.join(root, dir));
+    writeFileSync(path.join(root, dir, 'report.md'), `Audio: \`/x/${reel}.wav\``, 'utf8');
+    for (const engine of engines) {
+      writeFileSync(path.join(root, dir, `${engine}.json`), '{}', 'utf8');
     }
+  };
+
+  it('keeps the newest run for a reel that was benchmarked twice', () => {
+    writeRun('2026-01-01', 'test-1', ['scribe']);
+    writeRun('2026-01-02', 'test-1', ['scribe']);
+    writeRun('2026-01-03', 'test-2', ['scribe']);
 
     const found = findLatestRunPerReel(root);
-    expect(found.get('test-1')).toBe(path.join(root, '2026-01-02'));
-    expect(found.get('test-2')).toBe(path.join(root, '2026-01-03'));
+    expect(found.get('test-1')?.get('scribe')).toBe(path.join(root, '2026-01-02'));
+    expect(found.get('test-2')?.get('scribe')).toBe(path.join(root, '2026-01-03'));
+  });
+
+  it('lets a partial re-run sit on top of an older full run, per engine', () => {
+    writeRun('2026-01-01', 'test-1', ['scribe', 'gemini', 'whisper', 'hybrid']);
+    writeRun('2026-01-02', 'test-1', ['gemini', 'hybrid']);
+
+    const found = findLatestRunPerReel(root).get('test-1');
+    expect(found?.get('gemini')).toBe(path.join(root, '2026-01-02'));
+    expect(found?.get('hybrid')).toBe(path.join(root, '2026-01-02'));
+    expect(found?.get('scribe')).toBe(path.join(root, '2026-01-01'));
+    expect(found?.get('whisper')).toBe(path.join(root, '2026-01-01'));
+  });
+
+  it('ignores the latest-spotcheck mirror directory', () => {
+    writeRun('2026-01-01', 'test-1', ['scribe']);
+    mkdirSync(path.join(root, 'latest-spotcheck'));
+    expect(findLatestRunPerReel(root).get('test-1')?.get('scribe')).toBe(
+      path.join(root, '2026-01-01'),
+    );
   });
 });
 
