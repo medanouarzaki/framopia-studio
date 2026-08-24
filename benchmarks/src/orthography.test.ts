@@ -199,13 +199,32 @@ describe('vowel-less cluster detection', () => {
   });
 });
 
-describe('scoreOrthography — new rules feed the score', () => {
-  it('counts an ou conjunction and a vowel-less cluster as violations', () => {
+describe('scoreOrthography — violations versus warnings', () => {
+  it('counts an ou conjunction against the score', () => {
     const clean = scoreOrthography(['yom', 'w', 'l7el']);
-    const dirty = scoreOrthography(['yom', 'ou', '7l']);
+    const dirty = scoreOrthography(['yom', 'ou', 'l7el']);
     expect(clean.score).toBe(1);
     expect(dirty.ouConjunction.count).toBe(1);
-    expect(dirty.vowellessClusters.count).toBe(1);
-    expect(dirty.score).toBeCloseTo(1 - 2 / 3, 12);
+    expect(dirty.score).toBeCloseTo(1 - 1 / 3, 12);
+  });
+
+  it('reports a vowel-less cluster as a warning without touching the score', () => {
+    const report = scoreOrthography(['yom', 'w', '7l']);
+    expect(report.warnings.vowellessClusters.count).toBe(1);
+    expect(report.warnings.vowellessClusters.examples[0]?.word).toBe('7l');
+    expect(report.score).toBe(1);
+  });
+
+  it('leaves a clean Arabizi transcript at 100% despite dropped schwas', () => {
+    // These are the correct spellings the rule used to penalise.
+    const report = scoreOrthography(['ymkn', 'lik', 'diri', 'ch3rk', 'jbt', 'msbsb']);
+    expect(report.score).toBe(1);
+    expect(report.warnings.vowellessClusters.count).toBeGreaterThan(0);
+  });
+
+  it('still scores an ou conjunction when a warning is also present', () => {
+    const report = scoreOrthography(['yom', 'ou', '7l']);
+    expect(report.score).toBeCloseTo(1 - 1 / 3, 12);
+    expect(report.warnings.vowellessClusters.count).toBe(1);
   });
 });

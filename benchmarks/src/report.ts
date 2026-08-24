@@ -56,6 +56,7 @@ export function buildReport(
       nullTimestamps: sanity.nullStartCount,
       costUsd: `$${result.costUsd.toFixed(4)}`,
       wallTimeS: `${result.wallTimeS.toFixed(1)}s`,
+      warnings: orthography.warnings.vowellessClusters.examples.map((e) => e.word),
     };
   });
 
@@ -76,6 +77,21 @@ export function buildReport(
     ? `Ground truth: \`${options.groundTruthPath ?? ''}\``
     : 'Ground truth: none — WER columns are omitted. Orthography conformance is still scored, since it reads only the hypothesis.';
 
+  // Warnings are not violations and never touch the score, so they get their
+  // own section rather than a column that would read as a penalty.
+  const warned = rows.filter((r) => r.warnings.length > 0);
+  const warningsSection =
+    warned.length === 0
+      ? ''
+      : `## Warnings — vowel-less tokens (not scored)
+
+Review signal only: the check cannot separate a correct dropped schwa from an
+unreadable cluster.
+
+${warned.map((r) => `- ${r.engine}: ${r.warnings.join(', ')}`).join('\n')}
+
+`;
+
   const transcripts = results
     .map((r) => `### ${r.engine}\n\n${r.words.map((w) => w.text).join(' ')}\n`)
     .join('\n');
@@ -92,6 +108,7 @@ ${header}
 ${separator}
 ${body}
 
+${warningsSection}
 ## Transcripts
 
 ${transcripts}`;

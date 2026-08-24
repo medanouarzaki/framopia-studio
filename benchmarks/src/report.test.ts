@@ -103,3 +103,27 @@ describe('buildReport', () => {
     expect(whisperLine).toMatch(/\dms \/ \dms/);
   });
 });
+
+describe('buildReport — vowel-less warnings', () => {
+  it('lists them in their own section, away from the score', () => {
+    const md = buildReport([result('hybrid', ['yom', 'w', '7l'])], null, {
+      title: 'Warnings',
+      audioPath: 'a.wav',
+      groundTruthPath: null,
+    });
+    expect(md).toContain('## Warnings — vowel-less tokens (not scored)');
+    expect(md).toContain('- hybrid: 7l');
+    // The score column is untouched by the warning.
+    const row = md.split('\n').find((l) => l.startsWith('| hybrid |')) ?? '';
+    expect(row).toContain('100.0%');
+  });
+
+  it('omits the section entirely when nothing is flagged', () => {
+    const md = buildReport([result('hybrid', ['yom', 'w', 'l7el'])], null, {
+      title: 'Clean',
+      audioPath: 'a.wav',
+      groundTruthPath: null,
+    });
+    expect(md).not.toContain('## Warnings');
+  });
+});

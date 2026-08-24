@@ -57,13 +57,27 @@ export interface FreezeListReport {
   examples: FlaggedExample[];
 }
 
+/**
+ * Findings that do not count against the score. A warning says "a human
+ * should look at this", not "this breaks a rule".
+ */
+export interface OrthographyWarnings {
+  /**
+   * Vowel-less tokens. Detection stays because 7l and l7l are real damage,
+   * but it cannot separate those from correct schwa-drops (jbt, ymkn, ch3rk,
+   * msbsb) without modelling syllables, and scoring it cost a clean vitasilk
+   * transcript 6.8 points for spellings that were right. Review signal only.
+   */
+  vowellessClusters: VowellessClusterReport;
+}
+
 export interface OrthographyReport {
   digitSubstitutions: DigitSubstitutionReport;
   shDigraph: ShDigraphReport;
   ouConjunction: OuConjunctionReport;
-  vowellessClusters: VowellessClusterReport;
   freezeList: FreezeListReport;
   score: number;
+  warnings: OrthographyWarnings;
   /**
    * Words written in Arabic script. These rules only govern Latin-script
    * Darija, so a transcript that is mostly Arabic script scores near 100%
@@ -229,12 +243,10 @@ export function scoreOrthography(words: string[]): OrthographyReport {
   const freezeList = findFreezeListConformance(words);
 
   const totalWords = words.length;
+  // vowellessClusters is deliberately absent: it is a warning, not a
+  // violation. See OrthographyWarnings.
   const violations =
-    digitSubstitutions.count +
-    shDigraph.count +
-    ouConjunction.count +
-    vowellessClusters.count +
-    freezeList.nearMiss;
+    digitSubstitutions.count + shDigraph.count + ouConjunction.count + freezeList.nearMiss;
   const score = totalWords === 0 ? 1 : Math.max(0, 1 - violations / totalWords);
 
   const arabicScriptWords = words.filter((word) => ARABIC_SCRIPT_RE.test(word)).length;
@@ -243,9 +255,9 @@ export function scoreOrthography(words: string[]): OrthographyReport {
     digitSubstitutions,
     shDigraph,
     ouConjunction,
-    vowellessClusters,
     freezeList,
     score,
+    warnings: { vowellessClusters },
     arabicScriptWords,
   };
 }
