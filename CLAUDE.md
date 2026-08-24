@@ -44,6 +44,10 @@ AI-generated contextual images, SFX, and a watermark. Full spec in
   skip the interactive cost confirmation). Paths resolve relative to
   `benchmarks/`, so pass absolute ones from the repo root. See
   `benchmarks/README.md` for the ground-truth format and full flag list.
+  `--no-ground-truth` is the unscored mode: engines run, orthography
+  conformance and spotchecks still happen, WER columns are dropped from the
+  report rather than filled with zeros. Use it for any reel with no
+  hand-written transcript.
   `benchmarks/whisper/setup.sh` installs the local Whisper baseline
   (Apple Silicon only, not run by `npm run check`).
 - `npm run bench:tag` — turn the hand-written `.local/ground-truth/*.txt`
@@ -78,11 +82,17 @@ rules, realigned onto Scribe's timings by Levenshtein anchoring with linear
 interpolation across inserted words.
 
 Also done: repo scaffold, docs, the `service/` skeleton, the `benchmarks/`
-harness, the four reels in `benchmarks/footage.json` with audio in
+harness, four scored reels in `benchmarks/footage.json` with audio in
 `.local/bench-audio/`, hand-written ground truth for all four in
 `.local/ground-truth/`, and three scoring passes recorded side by side —
 `RESULTS-block1-runA.md` (v1.0.1), `-runB.md` (v1.0.2 rescore),
 `RESULTS-block1.md` (**run C, v1.0.3, the run of record**).
+
+`benchmarks/footage.json` holds a fifth reel, `vitasilk` (25.7 s, second
+speaker, hair-product domain, one-off test footage rather than a client). It
+has **no ground truth**, so it runs with `--no-ground-truth` and is
+deliberately absent from `REELS` in `benchmarks/src/aggregate.ts`, which
+scores WER. Its unscored run is `benchmarks/RESULTS-block2-robustness.md`.
 
 Three facts that shape everything downstream:
 
@@ -96,7 +106,13 @@ Three facts that shape everything downstream:
   14/15, worsening through a reel. This, not WER, is why the config is
   hybrid.
 
-Next: Block 2. Panel, templates, and real job types are not started.
+**Block 2 (transcription production pipeline) is in progress.** Done so far:
+the Block 1 handoff in `handoffs/block-1.md`, a ledger correction for the one
+understated Gemini entry from Block 1 session 4 (see the ledger note at the
+end of `benchmarks/RESULTS-block1.md` — the raw 19:50:06 line is known-low and
+must never be quoted as an actual cost), and the robustness run above. No
+production pipeline code yet. Panel, templates, and real job types are not
+started.
 
 See `docs/BLOCKS.md` for the full block plan and `handoffs/` for prior
 session context.
