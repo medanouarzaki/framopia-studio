@@ -1,5 +1,6 @@
 import { execFile } from 'node:child_process';
 import { mkdir } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { promisify } from 'node:util';
 
@@ -65,15 +66,29 @@ export async function probeVideo(mediaPath: string): Promise<MediaProbe> {
 }
 
 /**
+ * Where extractAudio will put the audio for this input. Exposed so a caller
+ * can tell whether extraction is needed before committing to it.
+ */
+export function extractedAudioPath(inputPath: string, outputDir: string): string {
+  const ext = path.extname(inputPath).toLowerCase();
+  if (ext === '.wav') return inputPath;
+  return path.join(outputDir, `${path.basename(inputPath, ext)}.wav`);
+}
+
+/**
  * Extracts mono 16kHz PCM per ARCHITECTURE §5.1. A .wav input is used as-is;
- * re-encoding one would only lose information.
+ * re-encoding one would only lose information. An existing extraction is
+ * reused rather than redone: ffmpeg on a 2.8 GB ProRes reel is the slowest
+ * step in a run that otherwise hits the cache and costs nothing.
  */
 export async function extractAudio(inputPath: string, outputDir: string): Promise<string> {
   const ext = path.extname(inputPath).toLowerCase();
   if (ext === '.wav') return inputPath;
 
+  const outputPath = extractedAudioPath(inputPath, outputDir);
+  if (existsSync(outputPath)) return outputPath;
+
   await mkdir(outputDir, { recursive: true });
-  const outputPath = path.join(outputDir, `${path.basename(inputPath, ext)}.wav`);
   await execFileAsync('ffmpeg', [
     '-y',
     '-i',

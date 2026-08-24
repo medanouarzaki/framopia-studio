@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -68,6 +68,7 @@ describe('transcribeVideo — composition', () => {
       cacheRoot,
       log: () => {},
       now: () => '2026-08-25T00:00:00.000Z',
+      audioDir: dir,
       media: {
         hashFile: async () => 'c'.repeat(64),
         probeVideo: async () => ({ durationS: 25.692333, fps: 29.97, width: 2160, height: 3840 }),
@@ -177,6 +178,7 @@ describe('transcribeVideo — re-run on an unchanged video', () => {
       cacheRoot,
       log: () => {},
       now: () => now,
+      audioDir: dir,
       media: {
         hashFile: async () => 'c'.repeat(64),
         probeVideo: async () => ({ durationS: 25.692333, fps: 29.97, width: 2160, height: 3840 }),
@@ -272,5 +274,87 @@ describe('transcribe job registration', () => {
     await new Promise((resolve) => setTimeout(resolve, 10));
     expect(getJob(job.id)?.status).toBe('error');
     expect(getJob(job.id)?.error).toContain('videoPath');
+  });
+});
+
+describe('transcribeVideo — media work is not repeated', () => {
+  let dir: string;
+  let videoPath: string;
+  let audioDir: string;
+  let cacheRoot: string;
+  let hashes: number;
+  let extractions: number;
+
+  function options(overrides: Record<string, unknown> = {}) {
+    return {
+      videoPath,
+      cacheRoot,
+      audioDir,
+      log: () => {},
+      now: () => '2026-08-25T00:00:00.000Z',
+      media: {
+        hashFile: async () => {
+          hashes += 1;
+          return 'e'.repeat(64);
+        },
+        probeVideo: async () => ({ durationS: 25.692333, fps: 29.97, width: 2160, height: 3840 }),
+        extractAudio: async (_input: string, outDir: string) => {
+          extractions += 1;
+          const out = path.join(outDir, 'vitasilk.wav');
+          writeFileSync(out, 'extracted audio');
+          return out;
+        },
+      },
+      runTranscription: (async (opts: Parameters<typeof transcribeHybridCached>[0]) =>
+        transcribeHybridCached({ ...opts, runHybrid: async () => fixtureTranscript() })) as
+        typeof transcribeHybridCached,
+      ...overrides,
+    };
+  }
+
+  beforeEach(() => {
+    dir = mkdtempSync(path.join(tmpdir(), 'framopia-media-'));
+    videoPath = path.join(dir, 'vitasilk.mov');
+    audioDir = path.join(dir, 'audio');
+    cacheRoot = path.join(dir, 'cache');
+    mkdirSync(audioDir, { recursive: true });
+    writeFileSync(videoPath, 'not really a video');
+    hashes = 0;
+    extractions = 0;
+  });
+
+  afterEach(() => {
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('hashes the video once per run', async () => {
+    await transcribeVideo(options());
+    expect(hashes).toBe(1);
+  });
+
+  it('does not hash at all when the caller already did', async () => {
+    await transcribeVideo(options({ videoSha256: 'e'.repeat(64) }));
+    expect(hashes).toBe(0);
+  });
+
+  it('extracts audio once and reuses it on the cached re-run', async () => {
+    await transcribeVideo(options());
+    expect(extractions).toBe(1);
+    await transcribeVideo(options());
+    // Second run hits the cache; the audio it needs is already extracted.
+    expect(extractions).toBe(1);
+  });
+
+  it('restores audio from the cache rather than running ffmpeg again', async () => {
+    const first = await transcribeVideo(options());
+    expect(extractions).toBe(1);
+    // The extracted audio is gone, but the cache entry still holds a copy.
+    rmSync(first.plan.source.audioPath);
+    const logged: string[] = [];
+    const second = await transcribeVideo(options({ log: (m: string) => logged.push(m) }));
+    expect(extractions).toBe(1);
+    expect(second.cached).toBe(true);
+    expect(logged.join('\n')).toContain('restored extracted audio from the cache');
+    expect(second.plan.source.audioPath).toBe(first.plan.source.audioPath);
   });
 });

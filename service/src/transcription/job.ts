@@ -1,3 +1,5 @@
+import { copyFile } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { appVersion, LOCAL_DIR, loadConfig } from '@framopia/core';
 import { registerJobRunner } from '../jobs.js';
@@ -7,9 +9,10 @@ import {
   writeEditPlan,
   type EditPlan,
 } from '../editplan/index.js';
-import { transcribeHybridCached } from './cached.js';
+import { transcribeHybridCached, transcriptionCacheRef } from './cached.js';
+import { readTranscriptionCache } from './cache.js';
 import { hashFile } from './fingerprint.js';
-import { extractAudio, probeVideo } from './media.js';
+import { extractAudio, extractedAudioPath, probeVideo } from './media.js';
 import { buildTranscript } from './plan-builder.js';
 import type { HybridTranscript } from './hybrid.js';
 
@@ -20,8 +23,14 @@ export interface TranscribeVideoOptions {
   videoPath: string;
   planPath?: string;
   keyterms?: string[];
+  /** Supplied by a caller that has already hashed the file, so a 2.8 GB reel
+   * is not read twice per invocation. */
+  videoSha256?: string;
   bypassCache?: boolean;
   cacheRoot?: string;
+  /** Where extracted audio lives. Overridden in tests so a run cannot pick
+   * up a previous run's extraction from the shared .local directory. */
+  audioDir?: string;
   log?: (message: string) => void;
   /** Injected in tests so the composition can run without an API. */
   runTranscription?: typeof transcribeHybridCached;
@@ -57,6 +66,7 @@ export async function transcribeVideo(
     keyterms = [],
     bypassCache = false,
     cacheRoot,
+    audioDir = path.join(LOCAL_DIR, 'audio'),
     log = console.log,
     runTranscription = transcribeHybridCached,
     media = {},
@@ -67,9 +77,27 @@ export async function transcribeVideo(
   const extract = media.extractAudio ?? extractAudio;
   const config = loadConfig();
 
-  const videoSha256 = await hash(videoPath);
+  const videoSha256 = options.videoSha256 ?? (await hash(videoPath));
   const probe = await probeMedia(videoPath);
-  const audioPath = await extract(videoPath, path.join(LOCAL_DIR, 'audio'));
+
+  // ffmpeg on a large ProRes reel is the slowest step in an otherwise free
+  // run, so it happens only when neither a previous extraction nor a cache
+  // entry can supply the audio.
+  const canonicalAudio = extractedAudioPath(videoPath, audioDir);
+  let audioPath: string;
+  if (existsSync(canonicalAudio)) {
+    audioPath = canonicalAudio;
+  } else {
+    const { ref } = await transcriptionCacheRef({ videoSha256, keyterms, cacheRoot });
+    const cached = bypassCache ? null : (await readTranscriptionCache(ref)).payload;
+    if (cached !== null) {
+      await copyFile(cached.audioPath, canonicalAudio);
+      audioPath = canonicalAudio;
+      log('cache: restored extracted audio from the cache instead of running ffmpeg');
+    } else {
+      audioPath = await extract(videoPath, audioDir);
+    }
+  }
 
   const { transcript } = await runTranscription({
     elevenLabsApiKey: config.elevenLabsApiKey,
