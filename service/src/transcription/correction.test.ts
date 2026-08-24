@@ -97,7 +97,7 @@ describe('correction prompt versions', () => {
       version: ACTIVE_PROMPT_VERSION,
     });
     expect(active).toBe(explicit);
-    expect(ACTIVE_PROMPT_VERSION).toBe(2);
+    expect(ACTIVE_PROMPT_VERSION).toBe(1);
   });
 });
 

@@ -10,23 +10,25 @@ export type PromptVersion = 1 | 2;
  * Identity of the correction prompt, and part of the cache fingerprint per
  * ARCHITECTURE §6 — a change here must invalidate every cached correction.
  *
- * Version 1 is the Block 1 frozen prompt, verbatim: the prompt run C was
- * measured with, and the only version any evidence covers.
+ * Version 1 is active: the Block 1 frozen prompt, verbatim, and the only
+ * version any evidence describes.
  *
- * Version 2 is version 1 plus CONJUNCTION_RULE, with the keyterms block moved
- * ahead of the JSON-shape instruction so the output contract is the last
- * thing the model reads. Unvalidated as of this commit; validated against run
- * C in benchmarks/RESULTS-block2-promptv2.md later in the same session.
+ * Version 2 stays selectable as the record of the Block 2 session 3
+ * experiment, but is not active. That comparison
+ * (benchmarks/RESULTS-block2-promptv2.md) was inconclusive: it varied two
+ * things at once — the conjunction rule and the keyterms position — and ran
+ * each arm once, with no noise floor to judge the difference against.
  *
- * Rolling back is this constant and nothing else.
+ * Switching is this constant and nothing else.
  */
-export const ACTIVE_PROMPT_VERSION: PromptVersion = 2;
+export const ACTIVE_PROMPT_VERSION: PromptVersion = 1;
 
 /**
- * Added in version 2. The hybrid path rendered the Darija conjunction و as
- * French "ou" in run B (see docs/DECISION-transcription-config.md); it did
- * not recur in run C or on the vitasilk reel, but nothing in the prompt
- * prevented it either.
+ * Version 2 only. The hybrid path rendered the Darija conjunction و as French
+ * "ou" in run B (see docs/DECISION-transcription-config.md); it did not recur
+ * in run C, on vitasilk, or under either version in the session-3
+ * comparison, so this rule has never been observed to fix anything. The
+ * conformance scorer detects the corruption instead.
  */
 const CONJUNCTION_RULE = `The Arabic conjunction و is written w, never the French ou. "ou" appears
 only as the long vowel /uː/ per ORTHOGRAPHY_GUIDE §3, or inside a

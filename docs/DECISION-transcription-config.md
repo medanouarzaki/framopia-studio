@@ -95,9 +95,36 @@ unusable, and the drift compounds through a reel.
   The conformance scorer only judges Latin-script words, so the Arabic-script
   domain terms the guide now mandates are outside what it can check.
 
+## Amendment — prompt version 2, tried and reverted (2026-08-24)
+
+The freeze decision above is unchanged. This records a divergence from it and
+its reversal, per HANDOFF_PROTOCOL §6.
+
+Block 2 session 2 added one rule to the correction prompt — that the Arabic
+conjunction `و` is written `w`, never French `ou` — and session 3 moved the
+keyterms block ahead of the JSON-shape instruction and called the result
+prompt **version 2**. Session 3 measured it against the recorded run C output
+on the ground-truth reel: overall WER was unchanged at 22.2%, with the darija
+subset 1.7 points worse and the fr/en subset 6.2 points better, and no `ou`
+corruption appeared under either version. Full comparison in
+`benchmarks/RESULTS-block2-promptv2.md`.
+
+The user has reverted the active prompt to **version 1**. The comparison was
+inconclusive rather than negative: it varied two things at once and ran each
+arm once, with no measurement of run-to-run variance to judge a 1.7-point
+difference against. Version 1 is what the Block 1 evidence describes, so it is
+what runs.
+
+Version 2 stays selectable in `service/src/transcription/correction.ts` as the
+record of the experiment. The `ou` corruption is now detected by the
+conformance scorer rather than prevented by prompt wording.
+
 ## References
 
 - `benchmarks/RESULTS-block1.md` — run C, the run of record.
 - `benchmarks/RESULTS-block1-runA.md`, `-runB.md` — earlier scoring passes,
   kept so the effect of each guide revision stays visible.
-- `docs/ORTHOGRAPHY_GUIDE.md` v1.0.3 — injected verbatim into both prompts.
+- `docs/ORTHOGRAPHY_GUIDE.md` — injected verbatim into both prompts; v1.0.3
+  at the time of the freeze, v1.0.4 since (`bach` added to the §4 freeze list).
+- `benchmarks/RESULTS-block2-promptv2.md` — the version 2 comparison behind
+  the amendment above.
