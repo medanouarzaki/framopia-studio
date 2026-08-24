@@ -1,4 +1,4 @@
-import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { LOCAL_DIR } from '@framopia/core';
@@ -10,6 +10,9 @@ import { LOCAL_DIR } from '@framopia/core';
  * entry in place rather than overwriting it.
  */
 export const CACHE_ROOT = path.join(LOCAL_DIR, 'cache');
+
+const MANIFEST = 'manifest.json';
+const AUDIO = 'audio.wav';
 
 export interface CacheEntryRef {
   dir: string;
@@ -27,6 +30,56 @@ export function cacheEntryDir(
   return path.join(root, videoSha256, `${stage}-${fingerprint}`);
 }
 
+/**
+ * How many configurations to keep per video. Each entry copies the whole
+ * extracted audio, so the cost of keeping them is real, and the useful ones
+ * are the recent configurations — an entry for a prompt version from three
+ * guide revisions ago is never going to be hit again. Three leaves room to
+ * flip between two configurations while comparing them without either being
+ * evicted. Chosen, not measured.
+ */
+export const MAX_ENTRIES_PER_VIDEO = 3;
+
+/**
+ * Prunes a single video's entries down to the most recently written
+ * MAX_ENTRIES_PER_VIDEO. Scoped deliberately: it only ever reads the
+ * directory named by videoSha256 under the cache root, and only ever removes
+ * children of that directory, so it cannot reach a user asset.
+ */
+export async function evictStaleEntries(
+  videoSha256: string,
+  root = CACHE_ROOT,
+  keep = MAX_ENTRIES_PER_VIDEO,
+): Promise<string[]> {
+  const videoDir = path.join(root, videoSha256);
+  let names: string[];
+  try {
+    names = await readdir(videoDir);
+  } catch {
+    return [];
+  }
+
+  const entries: { dir: string; mtimeMs: number }[] = [];
+  for (const name of names) {
+    const dir = path.join(videoDir, name);
+    try {
+      const info = await stat(path.join(dir, MANIFEST));
+      entries.push({ dir, mtimeMs: info.mtimeMs });
+    } catch {
+      // No manifest: either a half-written entry or something that is not an
+      // entry at all. Left alone rather than deleted on a guess.
+    }
+  }
+
+  entries.sort((a, b) => b.mtimeMs - a.mtimeMs);
+  const doomed = entries.slice(keep);
+  for (const entry of doomed) {
+    if (!entry.dir.startsWith(path.join(root, videoSha256) + path.sep)) continue;
+    await rm(entry.dir, { recursive: true, force: true });
+  }
+  return doomed.map((e) => e.dir);
+}
+
 /** What the transcription stage stores, per the §6 artifact list. */
 export interface TranscriptionCachePayload {
   audioPath: string;
@@ -39,9 +92,6 @@ export interface TranscriptionCachePayload {
   promptVersion: number;
   model: string;
 }
-
-const MANIFEST = 'manifest.json';
-const AUDIO = 'audio.wav';
 
 export interface CacheReadResult {
   payload: TranscriptionCachePayload | null;

@@ -1,8 +1,17 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { transcribeHybridCached, transcriptionCacheRef } from './cached.js';
+import { evictStaleEntries, MAX_ENTRIES_PER_VIDEO } from './cache.js';
 import { fingerprintOf, readGuideVersion } from './fingerprint.js';
 import type { HybridTranscript } from './index.js';
 
@@ -216,5 +225,84 @@ describe('transcription cache', () => {
     writeFileSync(path.join(otherDir, 'manifest.json'), readFileSync(path.join(first.cacheDir, 'manifest.json')));
     await transcribeHybridCached(options({ keyterms: ['x'] }));
     expect(calls).toBe(2);
+  });
+});
+
+describe('cache eviction', () => {
+  let dir: string;
+  let cacheRoot: string;
+  let audioPath: string;
+
+  function options(keyterms: string[]) {
+    return {
+      elevenLabsApiKey: 'sk_test',
+      googleApiKey: 'AQ.test',
+      audioPath,
+      durationS: 1.1,
+      videoSha256: 'f'.repeat(64),
+      keyterms,
+      cacheRoot,
+      log: () => {},
+      runHybrid: async () => fakeTranscript(),
+    };
+  }
+
+  beforeEach(() => {
+    dir = mkdtempSync(path.join(tmpdir(), 'framopia-evict-'));
+    cacheRoot = path.join(dir, 'cache');
+    audioPath = path.join(dir, 'reel.wav');
+    writeFileSync(audioPath, 'not really audio');
+  });
+
+  afterEach(() => {
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('keeps the bound and drops the oldest beyond it', async () => {
+    const dirs: string[] = [];
+    for (let i = 0; i < MAX_ENTRIES_PER_VIDEO + 2; i += 1) {
+      const result = await transcribeHybridCached(options([`term-${i}`]));
+      dirs.push(result.cacheDir);
+      // Distinct manifest mtimes, so "most recent" is well defined.
+      await new Promise((resolve) => setTimeout(resolve, 12));
+    }
+
+    const videoDir = path.join(cacheRoot, 'f'.repeat(64));
+    const remaining = readdirSync(videoDir);
+    expect(remaining).toHaveLength(MAX_ENTRIES_PER_VIDEO);
+
+    // The survivors are the most recently written ones.
+    for (const kept of dirs.slice(-MAX_ENTRIES_PER_VIDEO)) {
+      expect(remaining).toContain(path.basename(kept));
+    }
+    for (const dropped of dirs.slice(0, dirs.length - MAX_ENTRIES_PER_VIDEO)) {
+      expect(existsSync(dropped)).toBe(false);
+    }
+  });
+
+  it('leaves other videos alone', async () => {
+    await transcribeHybridCached(options(['a']));
+    const other = { ...options(['a']), videoSha256: 'b'.repeat(64) };
+    const kept = await transcribeHybridCached(other);
+    for (let i = 0; i < MAX_ENTRIES_PER_VIDEO + 2; i += 1) {
+      await transcribeHybridCached(options([`churn-${i}`]));
+    }
+    expect(existsSync(kept.cacheDir)).toBe(true);
+    expect(readdirSync(path.join(cacheRoot, 'b'.repeat(64)))).toHaveLength(1);
+  });
+
+  it('does nothing for a video hash that has no entries', async () => {
+    expect(await evictStaleEntries('d'.repeat(64), cacheRoot)).toEqual([]);
+  });
+
+  it('never removes a directory with no manifest', async () => {
+    await transcribeHybridCached(options(['a']));
+    const stray = path.join(cacheRoot, 'f'.repeat(64), 'not-an-entry');
+    mkdirSync(stray, { recursive: true });
+    writeFileSync(path.join(stray, 'something.txt'), 'user data');
+    for (let i = 0; i < MAX_ENTRIES_PER_VIDEO + 2; i += 1) {
+      await transcribeHybridCached(options([`churn-${i}`]));
+    }
+    expect(existsSync(stray)).toBe(true);
   });
 });

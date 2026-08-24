@@ -1,6 +1,7 @@
 import { alignCorrectedOntoDraft } from './align.js';
 import {
   cacheEntryDir,
+  evictStaleEntries,
   readTranscriptionCache,
   writeTranscriptionCache,
   CACHE_ROOT,
@@ -132,6 +133,10 @@ export async function transcribeHybridCached(
     promptVersion: transcript.promptVersion,
     model: transcript.model,
   });
+
+  for (const dir of await evictStaleEntries(videoSha256, cacheRoot ?? CACHE_ROOT)) {
+    log(`cache: evicted stale entry ${dir}`);
+  }
 
   return {
     fingerprint: ref.fingerprint,
