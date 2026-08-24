@@ -11,9 +11,13 @@ import type { TranscriptWord } from './types.js';
  * linearly across the gap between the surviving anchors on either side.
  * Draft words the correction pass deleted simply do not appear.
  *
- * Confidence is not propagated: the anchor's confidence describes Scribe's
- * belief in a word the correction pass may have replaced, so carrying it over
- * would overstate what is known. Propagation is a separate decision.
+ * Confidence is Scribe's acoustic confidence for the slot the word anchored
+ * to, carried through unchanged. It describes how clearly that stretch of
+ * audio was heard, not how right the corrected spelling is — a substitution
+ * is almost always transliteration, and the slot was still measured. A word
+ * with no anchor was never measured, so its confidence is **null** rather
+ * than an interpolated number: interpolating a timing between two anchors is
+ * arithmetic, interpolating a confidence would be invention.
  */
 export function alignCorrectedOntoDraft(
   draftWords: TranscriptWord[],
@@ -35,7 +39,7 @@ export function alignCorrectedOntoDraft(
       text: correctedTexts[pair.hypIndex]!,
       start: anchor.start,
       end: anchor.end,
-      confidence: null,
+      confidence: anchor.confidence,
     };
   }
 

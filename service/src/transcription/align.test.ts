@@ -44,9 +44,9 @@ describe('alignCorrectedOntoDraft — one-to-one', () => {
     expect(words[0]).toMatchObject({ text: 'dial', start: 2.0, end: 2.4 });
   });
 
-  it('does not carry the draft confidence onto a corrected word', () => {
+  it('carries the anchor confidence onto a corrected word', () => {
     const words = alignCorrectedOntoDraft(draft(['dyal', 2.0, 2.4]), ['dial']);
-    expect(words[0]?.confidence).toBeNull();
+    expect(words[0]?.confidence).toBe(0.9);
   });
 });
 
@@ -170,6 +170,71 @@ describe('alignCorrectedOntoDraft — recorded vitasilk fixtures', () => {
     for (const word of words) {
       expect(word.start!).toBeGreaterThanOrEqual(firstStart);
       expect(word.start!).toBeLessThanOrEqual(lastEnd);
+    }
+  });
+});
+
+describe('alignCorrectedOntoDraft — confidence propagation', () => {
+  it('gives each matched word its own anchor confidence, not a shared one', () => {
+    const drafted: TranscriptWord[] = [
+      { text: 'a', start: 0, end: 1, confidence: 0.95 },
+      { text: 'b', start: 2, end: 3, confidence: 0.41 },
+      { text: 'c', start: 4, end: 5, confidence: 0.77 },
+    ];
+    const words = alignCorrectedOntoDraft(drafted, ['a', 'b', 'c']);
+    expect(words.map((w) => w.confidence)).toEqual([0.95, 0.41, 0.77]);
+  });
+
+  it('leaves an inserted word with no confidence at all', () => {
+    const drafted: TranscriptWord[] = [
+      { text: 'a', start: 0, end: 1, confidence: 0.95 },
+      { text: 'b', start: 2, end: 3, confidence: 0.41 },
+    ];
+    const words = alignCorrectedOntoDraft(drafted, ['a', 'x', 'b']);
+    expect(words[1]?.text).toBe('x');
+    // Interpolated timing, but no measurement behind the word itself.
+    expect(words[1]?.start).toBeCloseTo(1.5, 9);
+    expect(words[1]?.confidence).toBeNull();
+  });
+
+  it('carries a null draft confidence through as null', () => {
+    const drafted: TranscriptWord[] = [{ text: 'a', start: 0, end: 1, confidence: null }];
+    expect(alignCorrectedOntoDraft(drafted, ['a'])[0]?.confidence).toBeNull();
+  });
+
+  it('propagates real Scribe confidences from the recorded fixture', () => {
+    const raw = JSON.parse(
+      readFileSync(path.join(FIXTURES_DIR, 'scribe-response.json'), 'utf8'),
+    ) as ScribeRawResponse;
+    const draftWords = mapScribeResponse(raw);
+    // Correcting each word to itself: every word anchors, so every
+    // confidence must survive the round trip exactly.
+    const words = alignCorrectedOntoDraft(
+      draftWords,
+      draftWords.map((w) => w.text),
+    );
+    expect(words.map((w) => w.confidence)).toEqual(draftWords.map((w) => w.confidence));
+    expect(words.every((w) => w.confidence !== null)).toBe(true);
+  });
+
+  it('marks only the unanchored words of a real correction as unmeasured', () => {
+    const raw = JSON.parse(
+      readFileSync(path.join(FIXTURES_DIR, 'scribe-response.json'), 'utf8'),
+    ) as ScribeRawResponse;
+    const draftWords = mapScribeResponse(raw);
+    const correction = JSON.parse(
+      readFileSync(path.join(FIXTURES_DIR, 'correction-response.json'), 'utf8'),
+    ) as { text: string };
+    const words = alignCorrectedOntoDraft(draftWords, parseCorrectionResponseText(correction.text));
+
+    // Arabic script became Arabizi, so almost nothing anchors by text here;
+    // what matters is that no word without an anchor invented a number.
+    const measured = words.filter((w) => w.confidence !== null);
+    const unmeasured = words.filter((w) => w.confidence === null);
+    expect(measured.length + unmeasured.length).toBe(words.length);
+    for (const word of measured) {
+      expect(word.confidence!).toBeGreaterThan(0);
+      expect(word.confidence!).toBeLessThanOrEqual(1);
     }
   });
 });
