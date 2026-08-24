@@ -127,3 +127,58 @@ describe('parseCorrectionResponseText', () => {
     expect(() => parseCorrectionResponseText('{"text":"bzaf"}')).toThrow(TranscriptionError);
   });
 });
+
+describe('correction prompt version 3', () => {
+  let dir: string;
+  let guidePath: string;
+
+  beforeEach(() => {
+    dir = mkdtempSync(path.join(tmpdir(), 'framopia-guide-'));
+    guidePath = path.join(dir, 'ORTHOGRAPHY_GUIDE.md');
+    writeFileSync(guidePath, '# Guide v9.9.9 marker\n');
+  });
+
+  afterEach(() => {
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  const build = (version: 1 | 2 | 3): Promise<string> =>
+    buildCorrectionPrompt([{ text: 'chno', start: 0, end: 1, confidence: null }], {
+      keyterms: ['Vitasilk'],
+      guidePath,
+      version,
+    });
+
+  it('asks for a per-word lang', async () => {
+    const v3 = await build(3);
+    expect(v3).toContain('{"words":[{"text":"...","lang":"..."}]}');
+    expect(v3).toContain('Every word carries a lang');
+  });
+
+  it('defines exactly the five values ARCHITECTURE §3 allows', async () => {
+    const v3 = await build(3);
+    for (const lang of ['darija:', 'msa:', 'fr:', 'en:', 'mixed:']) {
+      expect(v3).toContain(`- ${lang}`);
+    }
+  });
+
+  it('does not take anything from version 2', async () => {
+    const v3 = await build(3);
+    expect(v3).not.toContain('The Arabic conjunction و is written w');
+    // Keyterms stay after the response shape, as in version 1.
+    expect(v3.indexOf('Keyterms')).toBeGreaterThan(v3.indexOf('Respond with strict JSON'));
+  });
+
+  it('differs from version 1 only in the response shape', async () => {
+    const strip = (prompt: string): string =>
+      prompt
+        .replace(/Respond with strict JSON[\s\S]*?(?=Keyterms|$)/, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+    expect(strip(await build(3))).toBe(strip(await build(1)));
+  });
+
+  it('is not the active version', async () => {
+    expect(ACTIVE_PROMPT_VERSION).toBe(1);
+  });
+});

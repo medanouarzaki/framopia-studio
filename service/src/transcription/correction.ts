@@ -5,7 +5,7 @@ import { computeGeminiCost, DOCS_DIR, modelConfig, SCRIPT_RULES, type GeminiUsag
 import { TranscriptionError, type TranscriptWord } from './types.js';
 import type { CorrectedWord } from './tagging.js';
 
-export type PromptVersion = 1 | 2;
+export type PromptVersion = 1 | 2 | 3;
 
 /**
  * Identity of the correction prompt, and part of the cache fingerprint per
@@ -19,6 +19,12 @@ export type PromptVersion = 1 | 2;
  * (benchmarks/RESULTS-block2-promptv2.md) was inconclusive: it varied two
  * things at once — the conjunction rule and the keyterms position — and ran
  * each arm once, with no noise floor to judge the difference against.
+ *
+ * Version 3 is version 1 plus a per-word `lang` in the response. Nothing
+ * else differs from version 1 — not the conjunction rule, not the keyterms
+ * position. ARCHITECTURE §3 requires the field and PROJECT_SPEC §5 depends on
+ * it; the frozen prompt asks for text only, so every word currently comes
+ * back untagged.
  *
  * Switching is this constant and nothing else.
  */
@@ -65,6 +71,21 @@ export async function buildCorrectionPrompt(
       : '';
   const jsonShape = `Respond with strict JSON only, no prose, no markdown fences, in this shape:
 {"words":[{"text":"..."}]}`;
+  // Version 3 only. The enum is ARCHITECTURE §3's, defined the way §3 defines
+  // it; "mixed" exists for a single token that genuinely belongs to two
+  // languages, not for a sentence that code-switches between them.
+  const langShape = `Respond with strict JSON only, no prose, no markdown fences, in this shape:
+{"words":[{"text":"...","lang":"..."}]}
+
+Every word carries a lang, one of exactly these five values:
+- darija: Moroccan Darija, whatever script it is written in.
+- msa: classical or Modern Standard Arabic — religious formulas, formal
+  quotations, fixed formal terms.
+- fr: French.
+- en: English.
+- mixed: a single token that genuinely belongs to two languages at once.
+  A sentence that switches between languages is not mixed; tag each of its
+  words with the language that word belongs to.`;
 
   const head = `${guide}
 
@@ -81,11 +102,14 @@ paraphrase or translate.
 
 ${SCRIPT_RULES}`;
 
-  if (version === 1) {
-    // Verbatim Block 1 ordering: JSON shape last, keyterms appended after it.
+  if (version === 1 || version === 3) {
+    // Verbatim Block 1 ordering: response shape last, keyterms appended after
+    // it. Version 3 differs from version 1 in the response shape and nothing
+    // else.
+    const shape = version === 3 ? langShape : jsonShape;
     return `${head}
 
-${jsonShape}${keytermsBlock === '' ? '' : `\n\n${keytermsBlock}`}`;
+${shape}${keytermsBlock === '' ? '' : `\n\n${keytermsBlock}`}`;
   }
 
   return `${head}
