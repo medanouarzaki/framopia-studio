@@ -57,10 +57,10 @@ async function main(): Promise<void> {
 
   // A gate that asks for money on a run that will cost nothing teaches people
   // to click through it, so the cache is consulted before the prompt.
-  const { ref } = await transcriptionCacheRef({
-    videoSha256: await hashFile(values.video),
-    keyterms,
-  });
+  // Hashed once here and handed to transcribeVideo: the reels are gigabytes
+  // and this used to read the file twice per invocation.
+  const videoSha256 = await hashFile(values.video);
+  const { ref } = await transcriptionCacheRef({ videoSha256, keyterms });
   const willHit = !bypassCache && (await readTranscriptionCache(ref)).payload !== null;
 
   if (willHit) {
@@ -82,6 +82,7 @@ async function main(): Promise<void> {
   const result = await transcribeVideo({
     videoPath: values.video,
     keyterms,
+    videoSha256,
     planPath: values.out,
     bypassCache,
   });
