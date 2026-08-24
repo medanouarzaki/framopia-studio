@@ -76,7 +76,7 @@ describe('runBenchmark --dry-run', () => {
     expect(report).toContain('| hybrid |');
   });
 
-  it('writes spotcheck HTML for scribe, whisper, and hybrid but not gemini', async () => {
+  it('writes spotcheck HTML for every timestamp-bearing engine', async () => {
     const resultsDir = await runBenchmark({
       audioPath: 'unused-in-dry-run.wav',
       groundTruthPath: path.join(FIXTURES_DIR, 'ground-truth.json'),
@@ -90,7 +90,7 @@ describe('runBenchmark --dry-run', () => {
     expect(existsSync(path.join(resultsDir, 'spotcheck-scribe.html'))).toBe(true);
     expect(existsSync(path.join(resultsDir, 'spotcheck-whisper.html'))).toBe(true);
     expect(existsSync(path.join(resultsDir, 'spotcheck-hybrid.html'))).toBe(true);
-    expect(existsSync(path.join(resultsDir, 'spotcheck-gemini.html'))).toBe(false);
+    expect(existsSync(path.join(resultsDir, 'spotcheck-gemini.html'))).toBe(true);
   });
 
   it('runs a single-engine subset when --engines is restricted', async () => {

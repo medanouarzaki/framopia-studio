@@ -18,7 +18,9 @@ import { buildReport } from './report.js';
 import type { TranscriptionResult } from './types.js';
 
 const ALL_ENGINES = ['scribe', 'gemini', 'whisper', 'hybrid'];
-const SPOTCHECK_ENGINES = new Set(['scribe', 'whisper', 'hybrid']);
+// Gemini's timestamps are self-reported by the model rather than derived from
+// alignment, which is exactly why they need eyeballing against the audio.
+const SPOTCHECK_ENGINES = new Set(['scribe', 'whisper', 'hybrid', 'gemini']);
 const DRY_RUN_AUDIO_LABEL = 'fixtures/ (dry run — no real audio file)';
 
 export interface RunBenchmarkOptions {
