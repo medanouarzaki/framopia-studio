@@ -68,6 +68,15 @@ AI-generated contextual images, SFX, and a watermark. Full spec in
   confirmation unless `--yes`. The same code runs behind the `transcribe` job
   type on the HTTP path, so the two cannot diverge. It writes a plain
   transcript, **not** an Edit Plan — that schema is not built yet.
+- The conformance scorer also flags a standalone `ou` (the conjunction و is
+  `w`, §2) and any Latin Arabizi token with no vowel at all (§3 wants an `e`
+  where dropping one leaves an unreadable cluster). The vowel rule currently
+  over-fires on ordinary Arabizi (`ymkn`, `ch3rk`, `jbt`) — see
+  `reports/block-2-session-4.md`; narrowing it is a pending user decision.
+- The Gemini cost **estimate** is deliberately pessimistic
+  (`THINKING_TOKEN_MULTIPLIER = 15`) because it feeds a spend gate; observed
+  thinking ratios run 5x–30.2x. Actuals always come from `usageMetadata` and
+  are never estimated.
 - `npm run bench:tag` — turn the hand-written `.local/ground-truth/*.txt`
   transcripts into tagged ground-truth JSON.
 - `npm run bench:aggregate` — rescore every reel's latest run from disk (no
@@ -137,7 +146,8 @@ neighbour); and the production hybrid module.
 `service/src/transcription/` — `scribe.ts` (Scribe v2 batch client),
 `correction.ts` (the Gemini correction pass), `align.ts` (anchor alignment of
 corrected text onto Scribe timings), `drift.ts`, `cost.ts`, `media.ts`,
-`job.ts` (the `transcribe` job runner), `index.ts` (`transcribeHybrid`).
+`job.ts` (the `transcribe` job runner), `index.ts` (`transcribeHybrid`), plus
+the post-processing stages `tagging.ts`, `cleaning.ts` and `grouping.ts`.
 It has no fallback path: if the correction pass fails it throws a structured
 `TranscriptionError`, because returning the Scribe draft would hand back
 Arabic-script Darija labelled as a hybrid result.
@@ -154,15 +164,45 @@ high-drift correction is flagged, never dropped.
 
 **Prompt versions.** `ACTIVE_PROMPT_VERSION` in `correction.ts` is the
 prompt's identity and will feed the cache fingerprint (ARCHITECTURE §6).
-Version 1 is the Block 1 frozen prompt, verbatim, and is the only version run
-C's evidence covers. Version 2 is version 1 plus the rule that the conjunction
-`و` is written `w` (never French `ou`), with the keyterms block moved ahead of
-the JSON-shape instruction. **Version 2 is active.** Rolling back is that one
-constant. Both are constructible at runtime by passing `version`.
-`benchmarks/RESULTS-block2-promptv2.md` records the comparison: overall WER on
-the ground-truth reel was **unchanged at 22.2%**, with darija 1.7 points worse
-and fr/en 6.2 points better, and no `ou` corruption under either version. The
-user has not yet ruled on whether version 2 stands.
+**Version 1 is active** — the Block 1 frozen prompt, verbatim, and the only
+version any evidence describes. Version 2 (version 1 plus a `و` → `w` rule,
+keyterms moved ahead of the JSON-shape instruction) stays selectable as the
+record of the session-3 experiment but is not used: that comparison
+(`benchmarks/RESULTS-block2-promptv2.md`) was inconclusive, having varied two
+things at once and run each arm once. The reversion is recorded as an
+amendment in `docs/DECISION-transcription-config.md`. The `ou` corruption is
+now caught by the conformance scorer instead of a prompt rule.
+
+**The noise floor is 2.5 WER points.** Three identical correction calls — same
+recorded draft, same audio, same prompt — gave 21.0%, 21.0% and 18.5% overall
+WER, with 69 of 81 tokens identical and cost varying 41%
+(`benchmarks/RESULTS-block2-noisefloor.md`). Any prompt comparison whose
+effect is smaller than that is not measurable at n=1 on this reel. Every
+moving token was an orthography choice, not a hearing disagreement.
+
+**Post-processing** (all pure, no API): `tagging.ts` derives `script` from the
+characters and leaves `lang` **null** when the correction pass does not report
+it — which is every word under the current prompt, and deliberately not
+defaulted to `darija`. `cleaning.ts` flags `euh`/`eh` fillers and immediate
+stutters with `removed`/`removedReason` and never deletes; `ya3ni`/`za3ma` are
+reported as unjudged rather than guessed, and non-repetition false starts are
+not attempted. `grouping.ts` builds 1–2 word subtitle groups from `wordIds`,
+pairing when the gap is ≤180 ms and the span ≤1.2 s, skipping removed words
+but still counting their audio in the gap. Alignment carries Scribe's
+per-slot confidence onto anchored words and leaves interpolated words at
+`null`.
+
+**Edit Plan v1** lives in `service/src/editplan/` — `types.ts` (the whole
+ARCHITECTURE §3 shape), `validate.ts` (structural validation returning issues
+with dotted paths, plus `EditPlanVersionError` for an unknown
+`schemaVersion`), `io.ts` (`createEditPlan`, `readEditPlan`, `writeEditPlan`,
+and `<video-dir>/<video-name>.editplan.json`). Keywords, images, zones, sfx
+and build have types and empty containers only — the stages that fill them do
+not exist. Nothing writes a plan yet; the CLI still emits a plain transcript.
+
+Two deliberate departures from ARCHITECTURE §3, both to avoid recording a
+guess as data: `transcript.words[].lang` is nullable, and `clientMode` and
+`watermark` are nullable because transcription runs before either is chosen.
 
 Panel, templates, and real job types are not started.
 
