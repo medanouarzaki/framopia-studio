@@ -76,6 +76,23 @@ describe('runBenchmark --dry-run', () => {
     expect(report).toContain('| hybrid |');
   });
 
+  it('mirrors spotcheck HTML into latest-spotcheck for easy reach', async () => {
+    const resultsDir = await runBenchmark({
+      audioPath: 'unused-in-dry-run.wav',
+      groundTruthPath: path.join(FIXTURES_DIR, 'ground-truth.json'),
+      engines: ['scribe'],
+      keyterms: [],
+      yes: false,
+      dryRun: true,
+      resultsRoot,
+    });
+
+    expect(existsSync(path.join(resultsDir, 'spotcheck-scribe.html'))).toBe(true);
+    expect(existsSync(path.join(resultsRoot, 'latest-spotcheck', 'dry-run-scribe.html'))).toBe(
+      true,
+    );
+  });
+
   it('writes spotcheck HTML for every timestamp-bearing engine', async () => {
     const resultsDir = await runBenchmark({
       audioPath: 'unused-in-dry-run.wav',

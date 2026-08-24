@@ -54,8 +54,10 @@ calls, useful for testing the harness itself.
 
 Results land in `results/<timestamp>/` (gitignored): per-engine normalized
 JSON, raw API responses, `report.md`, and spotcheck HTML pages for the
-timestamp-bearing engines (scribe, whisper, hybrid — Gemini's timestamps
-are self-reported by the model and not spot-checked separately here).
+timestamp-bearing engines. Every spotcheck is also mirrored to
+`results/latest-spotcheck/<reel>-<engine>.html`, overwritten on each run, so
+checking timings by ear never means hunting for the right timestamped
+directory.
 
 The reels this harness is calibrated against are catalogued in
 `footage.json`; the videos themselves live on an external drive and are
