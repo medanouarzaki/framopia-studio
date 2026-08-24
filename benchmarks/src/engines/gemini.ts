@@ -6,9 +6,8 @@ import {
   createUserContent,
   GoogleGenAI,
 } from '@google/genai';
-import { computeGeminiCost, modelConfig, REPO_ROOT, type GeminiUsage } from '@framopia/core';
+import { computeGeminiCost, modelConfig, REPO_ROOT, SCRIPT_RULES, type GeminiUsage } from '@framopia/core';
 import { generateWithOneRetry } from './generate-retry.js';
-import { SCRIPT_RULES } from './script-rules.js';
 import type { TranscribedWord, TranscriptionResult } from '../types.js';
 
 const MAX_INLINE_BYTES = 20 * 1024 * 1024;

@@ -1,13 +1,12 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { createPartFromBase64, createUserContent, GoogleGenAI } from '@google/genai';
-import { computeGeminiCost, modelConfig, REPO_ROOT, type GeminiUsage } from '@framopia/core';
+import { computeGeminiCost, modelConfig, REPO_ROOT, SCRIPT_RULES, type GeminiUsage } from '@framopia/core';
 import type { TranscribedWord, TranscriptionResult } from '../types.js';
 import { normalizeToken } from '../normalize.js';
 import { align } from '../wer.js';
 import { estimateScribeCost, transcribeWithScribe } from './scribe.js';
 import { generateWithOneRetry } from './generate-retry.js';
-import { SCRIPT_RULES } from './script-rules.js';
 
 /**
  * Aligns Gemini-corrected word text onto the Scribe words' timings.

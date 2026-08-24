@@ -1,0 +1,173 @@
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
+import { createPartFromBase64, createUserContent, GoogleGenAI } from '@google/genai';
+import { computeGeminiCost, DOCS_DIR, modelConfig, SCRIPT_RULES, type GeminiUsage } from '@framopia/core';
+import { TranscriptionError, type TranscriptWord } from './types.js';
+
+/**
+ * Identity of the correction prompt, and part of the cache fingerprint per
+ * ARCHITECTURE §6 — a change here must invalidate every cached correction.
+ *
+ * Version 1 is the Block 1 frozen prompt ported verbatim, with exactly one
+ * addition: CONJUNCTION_RULE below.
+ */
+export const PROMPT_VERSION = 1;
+
+/**
+ * The one deliberate divergence from the Block 1 frozen prompt. The hybrid
+ * path rendered the Darija conjunction و as French "ou" in run B (see
+ * docs/DECISION-transcription-config.md); it did not recur in run C or on the
+ * vitasilk reel, but nothing in the prompt prevented it either.
+ *
+ * Unvalidated as of this commit — no run has exercised it. Validation is
+ * scheduled for the next session, and until then the Block 1 evidence
+ * describes a prompt that differs from this one by this paragraph.
+ */
+const CONJUNCTION_RULE = `The Arabic conjunction و is written w, never the French ou. "ou" appears
+only as the long vowel /uː/ per ORTHOGRAPHY_GUIDE §3, or inside a
+recognizable French root per §5 (ynourri, nour).`;
+
+export const ORTHOGRAPHY_GUIDE_PATH = path.join(DOCS_DIR, 'ORTHOGRAPHY_GUIDE.md');
+
+/**
+ * The guide is read from disk on every call rather than inlined, so bumping
+ * its version is a file edit and never a code change.
+ */
+export async function buildCorrectionPrompt(
+  draftWords: TranscriptWord[],
+  keyterms: string[] = [],
+  guidePath = ORTHOGRAPHY_GUIDE_PATH,
+): Promise<string> {
+  const guide = await readFile(guidePath, 'utf8');
+  const scribeText = draftWords.map((w) => w.text).join(' ');
+  const keytermsBlock =
+    keyterms.length > 0
+      ? `\n\nKeyterms to recognize accurately if spoken: ${keyterms.join(', ')}.`
+      : '';
+
+  return `${guide}
+
+---
+
+A first-pass transcription (Scribe) produced this word sequence, which may
+contain spelling, code-switch, or recognition errors:
+${scribeText}
+
+Listen to the attached audio and correct the transcription to follow the
+orthography rules above exactly. You may fix misspellings, split or merge
+words, and add or remove words to match what is actually said — but never
+paraphrase or translate.
+
+${SCRIPT_RULES}
+
+${CONJUNCTION_RULE}
+
+Respond with strict JSON only, no prose, no markdown fences, in this shape:
+{"words":[{"text":"..."}]}${keytermsBlock}`;
+}
+
+interface CorrectionRawResponse {
+  words: { text: string }[];
+}
+
+export function parseCorrectionResponseText(text: string): string[] {
+  const stripped = text
+    .trim()
+    .replace(/^```(?:json)?/i, '')
+    .replace(/```$/, '')
+    .trim();
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(stripped);
+  } catch {
+    throw new TranscriptionError(
+      'correction',
+      'response was not valid JSON after stripping code fences',
+      true,
+    );
+  }
+
+  const record = parsed as Partial<CorrectionRawResponse>;
+  if (!Array.isArray(record.words)) {
+    throw new TranscriptionError('correction', 'response is missing a "words" array', true);
+  }
+
+  return record.words.map((w) => w.text);
+}
+
+const OVERLOAD_MARKERS = ['503', 'UNAVAILABLE', 'high demand', 'overloaded'];
+
+function isTransientOverload(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return OVERLOAD_MARKERS.some((marker) => message.includes(marker));
+}
+
+export interface CorrectionOptions {
+  apiKey: string;
+  audioPath: string;
+  draftWords: TranscriptWord[];
+  keyterms?: string[];
+  guidePath?: string;
+}
+
+export interface CorrectionResult {
+  correctedTexts: string[];
+  promptVersion: number;
+  model: string;
+  costUsd: number;
+  wallTimeS: number;
+  usage: GeminiUsage;
+}
+
+export async function correctTranscript(options: CorrectionOptions): Promise<CorrectionResult> {
+  const { apiKey, audioPath, draftWords, keyterms = [], guidePath } = options;
+
+  const ai = new GoogleGenAI({ apiKey });
+  const audioBuffer = await readFile(audioPath);
+  const prompt = await buildCorrectionPrompt(draftWords, keyterms, guidePath);
+  const request = {
+    model: modelConfig.geminiModel,
+    contents: createUserContent([
+      prompt,
+      createPartFromBase64(audioBuffer.toString('base64'), 'audio/wav'),
+    ]),
+  };
+
+  const startedAt = Date.now();
+  let response: Awaited<ReturnType<typeof ai.models.generateContent>>;
+  try {
+    response = await ai.models.generateContent(request);
+  } catch (error) {
+    // Gemini 3.1 Pro Preview returns 503 "high demand" often enough to be
+    // worth one retry; anything else is a real problem and surfaces at once.
+    if (!isTransientOverload(error)) {
+      throw new TranscriptionError(
+        'correction',
+        error instanceof Error ? error.message : String(error),
+        false,
+      );
+    }
+    try {
+      response = await ai.models.generateContent(request);
+    } catch (retryError) {
+      throw new TranscriptionError(
+        'correction',
+        retryError instanceof Error ? retryError.message : String(retryError),
+        true,
+      );
+    }
+  }
+  const wallTimeS = (Date.now() - startedAt) / 1000;
+
+  const usage = (response.usageMetadata ?? {}) as GeminiUsage;
+
+  return {
+    correctedTexts: parseCorrectionResponseText(response.text ?? ''),
+    promptVersion: PROMPT_VERSION,
+    model: modelConfig.geminiModel,
+    costUsd: computeGeminiCost(usage),
+    wallTimeS,
+    usage,
+  };
+}
