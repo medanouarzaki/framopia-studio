@@ -3,11 +3,11 @@ import { editDistance, scoreOrthography } from './orthography.js';
 
 describe('editDistance', () => {
   it('is zero for identical strings', () => {
-    expect(editDistance('bzzaf', 'bzzaf')).toBe(0);
+    expect(editDistance('bzaf', 'bzaf')).toBe(0);
   });
 
   it('is one for a single substitution', () => {
-    expect(editDistance('bezzaf', 'bzzaf')).toBe(1);
+    expect(editDistance('bzzaf', 'bzaf')).toBe(1);
   });
 });
 
@@ -48,17 +48,17 @@ describe('scoreOrthography — sh digraph', () => {
 
 describe('scoreOrthography — freeze list', () => {
   it('treats an exact frozen spelling as conformant', () => {
-    const report = scoreOrthography(['bzzaf']);
+    const report = scoreOrthography(['bzaf']);
     expect(report.freezeList.totalOccurrences).toBe(1);
     expect(report.freezeList.conformant).toBe(1);
     expect(report.freezeList.nearMiss).toBe(0);
   });
 
-  it('flags "bezzaf" as a near miss of frozen "bzzaf"', () => {
-    const report = scoreOrthography(['bezzaf']);
+  it('flags "bzzaf" as a near miss of frozen "bzaf"', () => {
+    const report = scoreOrthography(['bzzaf']);
     expect(report.freezeList.totalOccurrences).toBe(1);
     expect(report.freezeList.nearMiss).toBe(1);
-    expect(report.freezeList.examples[0]?.detail).toContain('bzzaf');
+    expect(report.freezeList.examples[0]?.detail).toContain('bzaf');
   });
 
   it('does not match unrelated words against the freeze list', () => {
