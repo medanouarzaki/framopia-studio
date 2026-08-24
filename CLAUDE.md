@@ -68,13 +68,17 @@ AI-generated contextual images, SFX, and a watermark. Full spec in
 
 Block 1 is benchmarked and awaiting the freeze decision. Done: repo
 scaffold, docs, the `service/` skeleton, the `benchmarks/` harness,
-`docs/ORTHOGRAPHY_GUIDE.md` frozen at **v1.0.1** (freeze list extended
-from all four ground-truth reels; §6 now puts aesthetic/medical procedure
-terms in Arabic script), the four reels catalogued in
+`docs/ORTHOGRAPHY_GUIDE.md` frozen at **v1.0.2** (freeze list extended from
+all four ground-truth reels; §3a writes numbers as digits; §6 puts the whole
+medical/aesthetic domain — procedures, anatomy, substances — in Arabic
+script, brands and French technical terms excepted), the four reels catalogued in
 `benchmarks/footage.json` with audio in `.local/bench-audio/`, hand-written
 ground truth for all four reels in `.local/ground-truth/`, and a full live
-sweep of all four engines over all four reels recorded in
-`benchmarks/RESULTS-block1.md`.
+sweep of all four engines over all four reels — scored under v1.0.1 in
+`benchmarks/RESULTS-block1-runA.md` and rescored under v1.0.2 in
+`benchmarks/RESULTS-block1.md`. The rescore is free (`npm run bench:aggregate`
+reads stored outputs); no engine has been re-prompted with the v1.0.2 rules,
+so the widened Arabic-script scope is not yet reflected in any engine output.
 
 Two facts that shape everything downstream:
 
