@@ -22,8 +22,8 @@ describe('crossEngineDeviation', () => {
     // deltas: 0.1, 0.5, 0.0 -> sorted [0, 0.1, 0.5]
     const result = crossEngineDeviation(a, b);
     expect(result.pairCount).toBe(3);
-    expect(result.medianAbsDeltaS).toBeCloseTo(0.1);
-    expect(result.p90AbsDeltaS).toBeCloseTo(0.5);
+    expect(result.medianAbsDeltaS).toBeCloseTo(0.1, 9);
+    expect(result.p90AbsDeltaS).toBeCloseTo(0.5, 9);
   });
 
   it('skips words with no timestamp on either side', () => {
@@ -36,7 +36,7 @@ describe('crossEngineDeviation', () => {
     const a = [word('daba', 5.0)];
     const b = [word('daba', 0.1), word('daba', 4.9)];
     const result = crossEngineDeviation(a, b);
-    expect(result.medianAbsDeltaS).toBeCloseTo(0.1);
+    expect(result.medianAbsDeltaS).toBeCloseTo(0.1, 9);
   });
 });
 

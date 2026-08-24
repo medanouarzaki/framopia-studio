@@ -13,21 +13,21 @@ describe('computeWer', () => {
     // reference: wach nta mzyan / hyp: wach nta zwina -> 1 sub / 3 ref words
     const result = computeWer(['wach', 'nta', 'mzyan'], ['wach', 'nta', 'zwina']);
     expect(result.substitutions).toBe(1);
-    expect(result.wer).toBeCloseTo(1 / 3);
+    expect(result.wer).toBeCloseTo(1 / 3, 12);
   });
 
   it('counts a single insertion', () => {
     // hyp has an extra word not in reference
     const result = computeWer(['wach', 'nta'], ['wach', 'daba', 'nta']);
     expect(result.insertions).toBe(1);
-    expect(result.wer).toBeCloseTo(1 / 2);
+    expect(result.wer).toBeCloseTo(1 / 2, 12);
   });
 
   it('counts a single deletion', () => {
     // hyp is missing a reference word
     const result = computeWer(['wach', 'nta', 'mzyan'], ['wach', 'mzyan']);
     expect(result.deletions).toBe(1);
-    expect(result.wer).toBeCloseTo(1 / 3);
+    expect(result.wer).toBeCloseTo(1 / 3, 12);
   });
 
   it('normalizes case and terminal punctuation before scoring', () => {
@@ -63,7 +63,7 @@ describe('computeSubsetWer', () => {
     const result = computeSubsetWer(referenceWords, hypothesis, ['fr']);
     expect(result.referenceCount).toBe(2);
     expect(result.substitutions).toBe(1);
-    expect(result.wer).toBeCloseTo(0.5);
+    expect(result.wer).toBeCloseTo(0.5, 12);
   });
 
   it('scores only the darija subset', () => {

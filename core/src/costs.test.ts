@@ -27,8 +27,8 @@ describe('cost ledger', () => {
     appendCost({ stage: 'images', model: 'nano-banana', unit: 'image', usd: 0.5 }, costsPath);
 
     const totals = readCosts(costsPath);
-    expect(totals.transcribe).toBeCloseTo(0.3);
-    expect(totals.images).toBeCloseTo(0.5);
+    expect(totals.transcribe).toBeCloseTo(0.3, 12);
+    expect(totals.images).toBeCloseTo(0.5, 12);
   });
 
   // The ledger is append-only and read back by hand and by scripts, so its

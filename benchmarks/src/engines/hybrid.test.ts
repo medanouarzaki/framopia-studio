@@ -39,7 +39,7 @@ describe('alignCorrectedOntoScribeTimings', () => {
     const result = alignCorrectedOntoScribeTimings(scribe, ['wach', 'nta', 'mzyan']);
     expect(result[0]).toMatchObject({ text: 'wach', startS: 0 });
     expect(result[1]?.text).toBe('nta');
-    expect(result[1]?.startS).toBeCloseTo(0.65);
+    expect(result[1]?.startS).toBeCloseTo(0.65, 9);
     expect(result[2]).toMatchObject({ text: 'mzyan', startS: 1.0 });
   });
 
@@ -54,9 +54,9 @@ describe('alignCorrectedOntoScribeTimings', () => {
     expect(timings[2]).toBeGreaterThan(timings[1] as number);
     expect(timings[3]).toBeGreaterThan(timings[2] as number);
     expect(timings[3]).toBeLessThan(2.0);
-    expect(timings[1]).toBeCloseTo(0.725);
-    expect(timings[2]).toBeCloseTo(1.15);
-    expect(timings[3]).toBeCloseTo(1.575);
+    expect(timings[1]).toBeCloseTo(0.725, 9);
+    expect(timings[2]).toBeCloseTo(1.15, 9);
+    expect(timings[3]).toBeCloseTo(1.575, 9);
   });
 
   it('extrapolates flush against the previous anchor when nothing follows', () => {

@@ -3,8 +3,14 @@ import { computeGeminiCost, estimateCosts, estimateGeminiCallCost } from './pric
 import { modelConfig } from './model-config.js';
 
 describe('estimateGeminiCallCost', () => {
-  it('is zero for zero-duration audio', () => {
-    expect(estimateGeminiCallCost(0)).toBeCloseTo(0);
+  // Not zero: the orthography guide goes into every prompt whatever the
+  // duration, so a zero-length call still costs those fixed input tokens.
+  // The old assertion said "is zero" and passed only because 0.004 falls
+  // inside toBeCloseTo's default tolerance of 0.005.
+  it('charges the fixed guide-prompt tokens even for zero-duration audio', () => {
+    const expected = (2000 / 1_000_000) * modelConfig.geminiPrices.textInputUsdPerMillionTokens;
+    expect(estimateGeminiCallCost(0)).toBeCloseTo(expected, 12);
+    expect(estimateGeminiCallCost(0)).toBeGreaterThan(0);
   });
 
   it('grows with duration', () => {

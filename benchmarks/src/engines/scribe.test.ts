@@ -2,7 +2,13 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { FIXTURES_DIR } from '../paths.js';
-import { estimateScribeCost, mapScribeResponse, type ScribeRawResponse } from './scribe.js';
+import {
+  estimateScribeCost,
+  mapScribeResponse,
+  SCRIBE_KEYTERM_SURCHARGE,
+  SCRIBE_USD_PER_AUDIO_HOUR,
+  type ScribeRawResponse,
+} from './scribe.js';
 
 function loadFixture(): ScribeRawResponse {
   const raw = readFileSync(path.join(FIXTURES_DIR, 'scribe-response.json'), 'utf8');
@@ -28,15 +34,24 @@ describe('mapScribeResponse', () => {
 });
 
 describe('estimateScribeCost', () => {
-  it('charges $0.22 per audio hour with no keyterms', () => {
-    expect(estimateScribeCost(3600, false)).toBeCloseTo(0.22);
+  it('charges the configured rate per audio hour with no keyterms', () => {
+    expect(estimateScribeCost(3600, false)).toBeCloseTo(SCRIBE_USD_PER_AUDIO_HOUR, 12);
   });
 
-  it('adds a 20% surcharge when keyterms are used', () => {
-    expect(estimateScribeCost(3600, true)).toBeCloseTo(0.264);
+  it('adds the keyterm surcharge on top of the hourly rate', () => {
+    expect(estimateScribeCost(3600, true)).toBeCloseTo(
+      SCRIBE_USD_PER_AUDIO_HOUR * (1 + SCRIBE_KEYTERM_SURCHARGE),
+      12,
+    );
   });
 
+  // A 30s clip costs ~$0.0018, which is inside toBeCloseTo's default
+  // tolerance of 0.005 — without an explicit precision this assertion would
+  // accept zero, or any wrong answer up to three times the right one.
   it('scales linearly with a short clip', () => {
-    expect(estimateScribeCost(30, false)).toBeCloseTo((30 / 3600) * 0.22);
+    expect(estimateScribeCost(30, false)).toBeCloseTo(
+      (30 / 3600) * SCRIBE_USD_PER_AUDIO_HOUR,
+      12,
+    );
   });
 });
