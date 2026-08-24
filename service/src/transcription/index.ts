@@ -1,17 +1,27 @@
+import { appendCost, estimateGeminiCallCost, estimateScribeCost } from '@framopia/core';
 import { alignCorrectedOntoDraft } from './align.js';
+import { computeHybridCost, type HybridCostBreakdown } from './cost.js';
 import { correctTranscript, type CorrectionResult, type PromptVersion } from './correction.js';
 import { driftWarning, measureTokenDrift, type TokenDrift } from './drift.js';
 import { transcribeWithScribe, type ScribeResult } from './scribe.js';
 import type { TranscriptionWarning, TranscriptWord } from './types.js';
 
+export const SCRIBE_LEDGER_STAGE = 'transcribe-scribe';
+export const CORRECTION_LEDGER_STAGE = 'transcribe-gemini-correction';
+
 export interface HybridTranscribeOptions {
   elevenLabsApiKey: string;
   googleApiKey: string;
   audioPath: string;
+  /** Audio duration in seconds. Required: Scribe bills per audio-hour and
+   * its response does not carry one, so without it the cost is unknowable. */
+  durationS: number;
   /** Mode vocabulary, passed to Scribe as keyterms and named in the prompt. */
   keyterms?: string[];
   guidePath?: string;
   version?: PromptVersion;
+  /** Where the pre-flight estimate goes. Defaults to stdout. */
+  log?: (message: string) => void;
 }
 
 export interface HybridTranscript {
@@ -20,7 +30,7 @@ export interface HybridTranscript {
   draftWords: TranscriptWord[];
   promptVersion: PromptVersion;
   model: string;
-  costUsd: number;
+  cost: HybridCostBreakdown;
   wallTimeS: number;
   drift: TokenDrift;
   /** Non-fatal problems. A flagged result is still a returned result. */
@@ -40,7 +50,22 @@ export interface HybridTranscript {
 export async function transcribeHybrid(
   options: HybridTranscribeOptions,
 ): Promise<HybridTranscript> {
-  const { elevenLabsApiKey, googleApiKey, audioPath, keyterms = [], guidePath, version } = options;
+  const {
+    elevenLabsApiKey,
+    googleApiKey,
+    audioPath,
+    durationS,
+    keyterms = [],
+    guidePath,
+    version,
+    log = console.log,
+  } = options;
+
+  const scribeEstimate = estimateScribeCost(durationS, keyterms.length > 0);
+  const geminiEstimate = estimateGeminiCallCost(durationS);
+  log(
+    `Estimated cost for ${durationS.toFixed(1)}s of audio: scribe $${scribeEstimate.toFixed(4)} (exact) + gemini correction $${geminiEstimate.toFixed(4)} (rough) = $${(scribeEstimate + geminiEstimate).toFixed(4)}`,
+  );
 
   const scribe = await transcribeWithScribe({ apiKey: elevenLabsApiKey, audioPath, keyterms });
 
@@ -53,7 +78,24 @@ export async function transcribeHybrid(
     version,
   });
 
-  return assembleHybridResult(scribe, correction);
+  const result = assembleHybridResult(scribe, correction, durationS, keyterms.length > 0);
+
+  // Both legs are billable and both are recorded (ARCHITECTURE §8). Written
+  // after the calls return, so a failed call is never billed to the ledger.
+  appendCost({
+    stage: SCRIBE_LEDGER_STAGE,
+    model: 'scribe_v2',
+    unit: 'run',
+    usd: result.cost.scribeUsd,
+  });
+  appendCost({
+    stage: CORRECTION_LEDGER_STAGE,
+    model: result.model,
+    unit: 'run',
+    usd: result.cost.geminiUsd,
+  });
+
+  return result;
 }
 
 /**
@@ -64,6 +106,8 @@ export async function transcribeHybrid(
 export function assembleHybridResult(
   scribe: ScribeResult,
   correction: CorrectionResult,
+  durationS: number,
+  keytermsUsed = false,
 ): HybridTranscript {
   const drift = measureTokenDrift(scribe.words.length, correction.correctedTexts.length);
   const warning = driftWarning(drift);
@@ -73,9 +117,7 @@ export function assembleHybridResult(
     draftWords: scribe.words,
     promptVersion: correction.promptVersion,
     model: correction.model,
-    // Scribe's cost is billed per audio-hour and is not known from the
-    // response, so the caller adds it alongside the duration it already has.
-    costUsd: correction.costUsd,
+    cost: computeHybridCost(durationS, keytermsUsed, correction.usage),
     wallTimeS: scribe.wallTimeS + correction.wallTimeS,
     drift,
     warnings: warning === null ? [] : [warning],
@@ -83,6 +125,8 @@ export function assembleHybridResult(
 }
 
 export { alignCorrectedOntoDraft } from './align.js';
+export { computeHybridCost, type HybridCostBreakdown } from './cost.js';
+export { extractAudio, probeDurationSeconds } from './media.js';
 export {
   buildCorrectionPrompt,
   correctTranscript,

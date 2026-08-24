@@ -78,14 +78,14 @@ describe('driftWarning', () => {
 
 describe('assembleHybridResult — drift reporting', () => {
   it('returns the transcript with no warning below the threshold', () => {
-    const result = assembleHybridResult(scribeResult(100), correctionResult(105));
+    const result = assembleHybridResult(scribeResult(100), correctionResult(105), 25);
     expect(result.warnings).toEqual([]);
     expect(result.words).toHaveLength(105);
     expect(result.drift).toMatchObject({ draftCount: 100, correctedCount: 105 });
   });
 
   it('still returns the transcript when drift is flagged', () => {
-    const result = assembleHybridResult(scribeResult(100), correctionResult(140));
+    const result = assembleHybridResult(scribeResult(100), correctionResult(140), 25);
     expect(result.warnings).toHaveLength(1);
     expect(result.warnings[0]?.stage).toBe('correction');
     // The flagged correction is returned in full, never dropped or replaced.
