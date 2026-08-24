@@ -3,6 +3,8 @@
   "private": true,
   "scripts": {
     "check": "npm run typecheck --prefix service && npm run lint --prefix service && npm run test --prefix service -- --run && npm run typecheck --prefix benchmarks && npm run lint --prefix benchmarks && npm run test --prefix benchmarks -- --run",
-    "bench": "npm run bench --prefix benchmarks --"
+    "bench": "npm run bench --prefix benchmarks --",
+    "bench:tag": "npm run tag --prefix benchmarks",
+    "bench:aggregate": "npm run aggregate --prefix benchmarks"
   }
 }

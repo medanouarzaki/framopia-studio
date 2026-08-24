@@ -61,6 +61,21 @@ The reels this harness is calibrated against are catalogued in
 `footage.json`; the videos themselves live on an external drive and are
 never copied into the repo.
 
+## Ground truth and aggregate scoring
+
+`npm run bench:tag` (repo root) reads the hand-written transcripts in
+`.local/ground-truth/<label>.txt` and writes `<label>.json` next to them,
+tagging each word's lang and script: Arabic script becomes `msa`/`arabic`,
+accents and elided articles plus a small embedded French/English lexicon
+mark `fr`/`en`, and everything else defaults to `darija`. It prints the
+fr/en words per reel so the tagging can be eyeballed in one pass.
+
+`npm run bench:aggregate` pairs each reel with its most recent run under
+`results/`, rescores every engine from the stored normalized JSON (no API
+calls), and writes `RESULTS-block1.md` — per-reel tables plus a pooled
+aggregate. Rescoring from disk means a scorer fix can be applied to an
+existing sweep without paying for it twice.
+
 ## Local Whisper baseline
 
 `whisper/setup.sh` creates `whisper/.venv` (gitignored) with `mlx-whisper`

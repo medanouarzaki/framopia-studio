@@ -8,7 +8,9 @@
     "lint": "eslint src",
     "test": "vitest",
     "build": "tsc",
-    "bench": "tsx src/run.ts"
+    "bench": "tsx src/run.ts",
+    "tag": "tsx src/tag-cli.ts",
+    "aggregate": "tsx src/aggregate-cli.ts"
   },
   "dependencies": {
     "@google/genai": "^2.16.0"
