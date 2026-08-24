@@ -1,10 +1,16 @@
 {
   "name": "framopia-studio",
   "private": true,
+  "workspaces": [
+    "core",
+    "service",
+    "benchmarks"
+  ],
   "scripts": {
-    "check": "npm run typecheck --prefix service && npm run lint --prefix service && npm run test --prefix service -- --run && npm run typecheck --prefix benchmarks && npm run lint --prefix benchmarks && npm run test --prefix benchmarks -- --run",
-    "bench": "npm run bench --prefix benchmarks --",
-    "bench:tag": "npm run tag --prefix benchmarks",
-    "bench:aggregate": "npm run aggregate --prefix benchmarks"
+    "build:core": "npm run build --workspace @framopia/core",
+    "check": "npm run build:core && npm run typecheck --workspaces --if-present && npm run lint --workspaces --if-present && npm run test --workspaces --if-present -- --run",
+    "bench": "npm run build:core && npm run bench --workspace framopia-benchmarks --",
+    "bench:tag": "npm run build:core && npm run tag --workspace framopia-benchmarks",
+    "bench:aggregate": "npm run build:core && npm run aggregate --workspace framopia-benchmarks"
   }
 }
