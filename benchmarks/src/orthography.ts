@@ -7,8 +7,22 @@ import freezeListData from './freeze-list.json' with { type: 'json' };
 const FREEZE_LIST: string[] = freezeListData.words.filter((w) => w.length >= 4);
 
 const ALLOWED_ARABIZI_DIGITS = new Set(['3', '7', '9']);
+// 3/7/9 are consonants in Arabizi (§2), so they do not satisfy the §3
+// readability rule that every syllable needs a vowel.
+const VOWEL_RE = /[aeiou]/i;
+// Words with no vowel at all that are nonetheless correct, so the §3 cluster
+// rule cannot apply to them. Derived from the freeze list rather than
+// hand-written, plus two the list does not carry: "f" (in), which §4 freezes
+// but freeze-list.json is missing, and "w", the §2 conjunction — flagging the
+// very form findOuConjunctions demands would be self-contradictory.
+const VOWELLESS_EXCEPTIONS = new Set<string>([
+  'f',
+  'w',
+  ...freezeListData.words.filter((word) => !VOWEL_RE.test(word)),
+]);
 const ARABIC_SCRIPT_RE = /[؀-ۿ]/;
 const LATIN_LETTER_RE = /\p{L}/u;
+const LATIN_ONLY_RE = /^[A-Za-z0-9'’-]+$/;
 const DIGIT_RE = /[0-9]/g;
 
 export interface FlaggedExample {
@@ -26,6 +40,16 @@ export interface ShDigraphReport {
   examples: FlaggedExample[];
 }
 
+export interface OuConjunctionReport {
+  count: number;
+  examples: FlaggedExample[];
+}
+
+export interface VowellessClusterReport {
+  count: number;
+  examples: FlaggedExample[];
+}
+
 export interface FreezeListReport {
   totalOccurrences: number;
   conformant: number;
@@ -36,6 +60,8 @@ export interface FreezeListReport {
 export interface OrthographyReport {
   digitSubstitutions: DigitSubstitutionReport;
   shDigraph: ShDigraphReport;
+  ouConjunction: OuConjunctionReport;
+  vowellessClusters: VowellessClusterReport;
   freezeList: FreezeListReport;
   score: number;
   /**
@@ -45,6 +71,12 @@ export interface OrthographyReport {
    * exactly that case.
    */
   arabicScriptWords: number;
+}
+
+const EDGE_PUNCTUATION_RE = /^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu;
+
+function stripEdgePunctuation(word: string): string {
+  return word.replace(EDGE_PUNCTUATION_RE, '');
 }
 
 function isLatinWord(word: string): boolean {
@@ -101,6 +133,56 @@ function findShDigraph(words: string[]): ShDigraphReport {
   return { count: examples.length, examples };
 }
 
+/**
+ * The Arabic conjunction و is w (§2), never the French ou. Only a standalone
+ * ou token is the corruption; ou inside a word is the /uː/ vowel (§3:
+ * l7loul, houa, nour) or a French root (§5: ynourri), both legitimate.
+ *
+ * This replaces the prompt rule tried and reverted in Block 2 sessions 2-4:
+ * detecting the corruption is cheaper and more honest than a prompt
+ * instruction whose effect was never measurable.
+ */
+export function findOuConjunctions(words: string[]): OuConjunctionReport {
+  const examples: FlaggedExample[] = [];
+
+  for (const word of words) {
+    if (!isLatinWord(word)) continue;
+    if (stripEdgePunctuation(word.toLowerCase()) !== 'ou') continue;
+    examples.push({ word, detail: 'standalone "ou" — the conjunction و is written w (§2)' });
+  }
+
+  return { count: examples.length, examples };
+}
+
+/**
+ * §3 drops barely-pronounced schwas but requires an "e" where dropping would
+ * leave an unreadable cluster. A Latin-script token with no vowel at all has
+ * gone past that line — the correction pass produced 7l and l7l for 7el and
+ * l7el in Block 2 session 3.
+ */
+export function findVowellessClusters(words: string[]): VowellessClusterReport {
+  const examples: FlaggedExample[] = [];
+
+  for (const word of words) {
+    if (!isLatinWord(word)) continue;
+    const stripped = stripEdgePunctuation(word);
+    if (stripped.length === 0) continue;
+    // isLatinWord only excludes Arabic script, so a stray CJK token (Scribe
+    // emitted 五 on the vitasilk reel) reaches here; the rule governs Latin
+    // Arabizi only.
+    if (!LATIN_ONLY_RE.test(stripped)) continue;
+    // Arabizi is written lower case, so an all-caps token is an acronym or a
+    // product name (le RRS eyes), not a Darija word with a dropped schwa.
+    if (!/[a-z]/.test(stripped)) continue;
+    const lower = stripped.toLowerCase();
+    if (VOWEL_RE.test(lower)) continue;
+    if (VOWELLESS_EXCEPTIONS.has(lower)) continue;
+    examples.push({ word, detail: 'no vowel — §3 requires an "e" where dropping one leaves an unreadable cluster' });
+  }
+
+  return { count: examples.length, examples };
+}
+
 export function findFreezeListConformance(
   words: string[],
   freezeList: string[] = FREEZE_LIST,
@@ -142,13 +224,28 @@ export function findFreezeListConformance(
 export function scoreOrthography(words: string[]): OrthographyReport {
   const digitSubstitutions = findDigitSubstitutions(words);
   const shDigraph = findShDigraph(words);
+  const ouConjunction = findOuConjunctions(words);
+  const vowellessClusters = findVowellessClusters(words);
   const freezeList = findFreezeListConformance(words);
 
   const totalWords = words.length;
-  const violations = digitSubstitutions.count + shDigraph.count + freezeList.nearMiss;
+  const violations =
+    digitSubstitutions.count +
+    shDigraph.count +
+    ouConjunction.count +
+    vowellessClusters.count +
+    freezeList.nearMiss;
   const score = totalWords === 0 ? 1 : Math.max(0, 1 - violations / totalWords);
 
   const arabicScriptWords = words.filter((word) => ARABIC_SCRIPT_RE.test(word)).length;
 
-  return { digitSubstitutions, shDigraph, freezeList, score, arabicScriptWords };
+  return {
+    digitSubstitutions,
+    shDigraph,
+    ouConjunction,
+    vowellessClusters,
+    freezeList,
+    score,
+    arabicScriptWords,
+  };
 }

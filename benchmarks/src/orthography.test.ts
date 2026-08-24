@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { editDistance, findFreezeListConformance, scoreOrthography } from './orthography.js';
+import {
+  editDistance,
+  findFreezeListConformance,
+  findOuConjunctions,
+  findVowellessClusters,
+  scoreOrthography,
+} from './orthography.js';
 
 describe('editDistance', () => {
   it('is zero for identical strings', () => {
@@ -125,5 +131,81 @@ describe('freeze-list near-miss matching', () => {
   it('leaves words under four characters out of the matcher entirely', () => {
     const report = findFreezeListConformance(['nta']);
     expect(report.totalOccurrences).toBe(0);
+  });
+});
+
+describe('ou conjunction detection', () => {
+  it('flags a standalone ou between two words', () => {
+    const report = findOuConjunctions(['yom', 'ou', "l'effet"]);
+    expect(report.count).toBe(1);
+    expect(report.examples[0]?.word).toBe('ou');
+  });
+
+  it('flags a standalone ou carrying edge punctuation', () => {
+    expect(findOuConjunctions(['yom', 'ou,', 'kay3tiw']).count).toBe(1);
+  });
+
+  it('does not flag ou as the long vowel inside a word', () => {
+    // l7loul and houa are how run C actually spelled these; both are §3 /uː/.
+    expect(findOuConjunctions(['l7loul', 'houa', 'nour', 'walou']).count).toBe(0);
+  });
+
+  it('does not flag ou inside a French root', () => {
+    // ynourri, from the vitasilk reel, is nourrir per §5.
+    expect(findOuConjunctions(['ynourri']).count).toBe(0);
+  });
+
+  it('leaves the correct w conjunction alone', () => {
+    expect(findOuConjunctions(['yom', 'w', 'kay3tiw']).count).toBe(0);
+  });
+
+  it('does not reach into Arabic-script tokens', () => {
+    expect(findOuConjunctions(['و', 'نتائج']).count).toBe(0);
+  });
+});
+
+describe('vowel-less cluster detection', () => {
+  it('flags the clusters the correction pass produced in session 3', () => {
+    const report = findVowellessClusters(['7l', 'l7l']);
+    expect(report.count).toBe(2);
+    expect(report.examples.map((e) => e.word)).toEqual(['7l', 'l7l']);
+  });
+
+  it('treats 3, 7 and 9 as consonants rather than vowels', () => {
+    expect(findVowellessClusters(['3ndhm']).count).toBe(1);
+  });
+
+  it('does not flag the vowel-bearing spellings of the same words', () => {
+    expect(findVowellessClusters(['7el', 'l7el', 'awal', 'khdma']).count).toBe(0);
+  });
+
+  it('exempts the vowel-less words the guide already sanctions', () => {
+    // f is frozen in §4; mn, nhdr and 3ndk are on the freeze list; w is the
+    // §2 conjunction that findOuConjunctions exists to demand.
+    expect(findVowellessClusters(['f', 'w', 'mn', 'nhdr', '3ndk']).count).toBe(0);
+  });
+
+  it('does not reach into Arabic script or bare digits', () => {
+    expect(findVowellessClusters(['شعرك', '15', '4']).count).toBe(0);
+  });
+
+  it('ignores tokens that are not Latin script at all', () => {
+    // Scribe emitted the CJK numeral 五 mid-sentence on the vitasilk reel.
+    expect(findVowellessClusters(['五']).count).toBe(0);
+  });
+
+  it('ignores all-caps acronyms and product names', () => {
+    expect(findVowellessClusters(['RRS']).count).toBe(0);
+  });
+});
+
+describe('scoreOrthography — new rules feed the score', () => {
+  it('counts an ou conjunction and a vowel-less cluster as violations', () => {
+    const clean = scoreOrthography(['yom', 'w', 'l7el']);
+    const dirty = scoreOrthography(['yom', 'ou', '7l']);
+    expect(clean.score).toBe(1);
+    expect(dirty.ouConjunction.count).toBe(1);
+    expect(dirty.vowellessClusters.count).toBe(1);
+    expect(dirty.score).toBeCloseTo(1 - 2 / 3, 12);
   });
 });
