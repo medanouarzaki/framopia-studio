@@ -31,6 +31,33 @@ describe('buildReport — no ground truth', () => {
     expect(md).toContain('orthography');
     expect(md).toContain('| scribe |');
   });
+
+  it('skips WER rather than reporting it as zero or NaN', () => {
+    const md = buildReport(
+      [result('scribe', ['wach', 'nta', 'mzyan']), result('hybrid', ['wach', 'nta', 'mzyan'])],
+      null,
+      { title: 'No GT', audioPath: 'a.wav', groundTruthPath: null },
+    );
+    const cells = (row: string): string[] =>
+      row
+        .split('|')
+        .slice(1, -1)
+        .map((c) => c.trim());
+    const header = md.split('\n').find((l) => l.startsWith('| engine |')) ?? '';
+    const hybridRow = md.split('\n').find((l) => l.startsWith('| hybrid |')) ?? '';
+
+    expect(header).not.toContain('WER');
+    expect(md).not.toContain('NaN');
+    // No placeholder cell stands in for the dropped WER columns: the row is
+    // genuinely narrower, so a skipped score can never be misread as 0%.
+    expect(cells(header)).toHaveLength(6);
+    expect(cells(hybridRow)).toHaveLength(6);
+    expect(cells(hybridRow)).not.toContain('0.0%');
+    expect(md).toContain('Ground truth: none');
+    // Orthography is the point of the unscored mode: it reads only the
+    // hypothesis, so it stays real while WER is absent entirely.
+    expect(cells(hybridRow)[1]).toBe('100.0%');
+  });
 });
 
 describe('buildReport', () => {
