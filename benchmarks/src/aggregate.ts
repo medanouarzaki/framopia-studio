@@ -219,6 +219,32 @@ ${table(aggregateRows)}
 
 Total billed: $${totalCost.toFixed(4)}.
 
+## How to read these numbers
+
+**Scribe's darija WER is not an accuracy measurement.** Scribe returns
+Darija in Arabic script and the ground truth is written in Latin Arabizi,
+so essentially every Darija word counts as a substitution. Its fr/en WER
+is the honest signal for raw Scribe, and it is the best of any engine.
+
+**Hybrid's 0ms median deviation is structural, not earned.** Hybrid takes
+Scribe's word timings by construction, so it can only agree with Scribe at
+the median; the p90 is where its realignment of inserted words shows up.
+
+**Two known scoring artifacts inflate the Darija WER of both Gemini rows**,
+and neither is a transcription error:
+
+- *Numerals.* The ground truth writes digits (\`4\`, \`15\`, \`18\`) where Gemini
+  spells the number out (\`rb3a\`, \`khmstachr\`, \`tmntach\`). The orthography
+  guide has no numeral rule, so neither form is wrong yet.
+- *Arabic-script scope.* The v1.0.1 §6 rule covers procedure and treatment
+  terms. The ground truth also puts anatomical regions and substance names
+  in Arabic script (\`المنطقة حول العينين\`, \`ومادة الكافيين\`) where Gemini
+  transliterated them (\`lmnti9a 7awl l3inin\`, \`wmaddat lcaféine\`).
+
+On the ground-truth reel these two account for roughly a tenth of the
+reference words. Closing both in the guide would move the Gemini and
+hybrid Darija numbers down without either engine changing.
+
 ## Per reel
 
 ${perReel.join('\n')}`;
