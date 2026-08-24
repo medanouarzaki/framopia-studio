@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   buildCorrectionPrompt,
   parseCorrectionResponseText,
-  PROMPT_VERSION,
+  ACTIVE_PROMPT_VERSION,
 } from './correction.js';
 import { TranscriptionError } from './types.js';
 
@@ -24,29 +24,80 @@ describe('buildCorrectionPrompt', () => {
   });
 
   it('reads the guide from disk rather than an inlined copy', async () => {
-    const prompt = await buildCorrectionPrompt([], [], guidePath);
+    const prompt = await buildCorrectionPrompt([], { guidePath });
     expect(prompt).toContain('Guide v9.9.9 marker');
-  });
-
-  it('carries the conjunction rule that version 1 added to the frozen prompt', async () => {
-    const prompt = await buildCorrectionPrompt([], [], guidePath);
-    expect(prompt).toContain('The Arabic conjunction و is written w, never the French ou.');
-    expect(PROMPT_VERSION).toBe(1);
   });
 
   it('includes the draft word sequence and any keyterms', async () => {
     const prompt = await buildCorrectionPrompt(
       [{ text: 'شعرك', start: 0, end: 1, confidence: null }],
-      ['Vitasilk'],
-      guidePath,
+      { keyterms: ['Vitasilk'], guidePath },
     );
     expect(prompt).toContain('شعرك');
     expect(prompt).toContain('Keyterms to recognize accurately if spoken: Vitasilk.');
   });
 
   it('omits the keyterms block entirely when there are none', async () => {
-    const prompt = await buildCorrectionPrompt([], [], guidePath);
+    const prompt = await buildCorrectionPrompt([], { guidePath });
     expect(prompt).not.toContain('Keyterms');
+  });
+});
+
+const CONJUNCTION_MARKER = 'The Arabic conjunction و is written w, never the French ou.';
+
+describe('correction prompt versions', () => {
+  let dir: string;
+  let guidePath: string;
+
+  beforeEach(() => {
+    dir = mkdtempSync(path.join(tmpdir(), 'framopia-guide-'));
+    guidePath = path.join(dir, 'ORTHOGRAPHY_GUIDE.md');
+    writeFileSync(guidePath, '# Guide v9.9.9 marker\n');
+  });
+
+  afterEach(() => {
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  const build = (version: 1 | 2): Promise<string> =>
+    buildCorrectionPrompt([{ text: 'chno', start: 0, end: 1, confidence: null }], {
+      keyterms: ['Vitasilk'],
+      guidePath,
+      version,
+    });
+
+  it('omits the conjunction rule from version 1 and includes it in version 2', async () => {
+    expect(await build(1)).not.toContain(CONJUNCTION_MARKER);
+    expect(await build(2)).toContain(CONJUNCTION_MARKER);
+  });
+
+  it('puts keyterms after the JSON shape in v1 and before it in v2', async () => {
+    const v1 = await build(1);
+    const v2 = await build(2);
+    expect(v1.indexOf('Keyterms')).toBeGreaterThan(v1.indexOf('Respond with strict JSON'));
+    expect(v2.indexOf('Keyterms')).toBeLessThan(v2.indexOf('Respond with strict JSON'));
+  });
+
+  it('differs only in the conjunction rule and the keyterms position', async () => {
+    // Structural check: strip both variable parts out of each version and the
+    // remainder must match exactly, so nothing else drifted between them.
+    const strip = (prompt: string): string =>
+      prompt
+        .replace(/The Arabic conjunction[\s\S]*?\(ynourri, nour\)\./, '')
+        .replace(/Keyterms to recognize accurately if spoken:[^\n]*/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+    expect(strip(await build(2))).toBe(strip(await build(1)));
+  });
+
+  it('defaults to the active version', async () => {
+    const active = await buildCorrectionPrompt([], { guidePath });
+    const explicit = await buildCorrectionPrompt([], {
+      guidePath,
+      version: ACTIVE_PROMPT_VERSION,
+    });
+    expect(active).toBe(explicit);
+    expect(ACTIVE_PROMPT_VERSION).toBe(2);
   });
 });
 

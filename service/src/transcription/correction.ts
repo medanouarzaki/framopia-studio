@@ -4,24 +4,29 @@ import { createPartFromBase64, createUserContent, GoogleGenAI } from '@google/ge
 import { computeGeminiCost, DOCS_DIR, modelConfig, SCRIPT_RULES, type GeminiUsage } from '@framopia/core';
 import { TranscriptionError, type TranscriptWord } from './types.js';
 
+export type PromptVersion = 1 | 2;
+
 /**
  * Identity of the correction prompt, and part of the cache fingerprint per
  * ARCHITECTURE §6 — a change here must invalidate every cached correction.
  *
- * Version 1 is the Block 1 frozen prompt ported verbatim, with exactly one
- * addition: CONJUNCTION_RULE below.
+ * Version 1 is the Block 1 frozen prompt, verbatim: the prompt run C was
+ * measured with, and the only version any evidence covers.
+ *
+ * Version 2 is version 1 plus CONJUNCTION_RULE, with the keyterms block moved
+ * ahead of the JSON-shape instruction so the output contract is the last
+ * thing the model reads. Unvalidated as of this commit; validated against run
+ * C in benchmarks/RESULTS-block2-promptv2.md later in the same session.
+ *
+ * Rolling back is this constant and nothing else.
  */
-export const PROMPT_VERSION = 1;
+export const ACTIVE_PROMPT_VERSION: PromptVersion = 2;
 
 /**
- * The one deliberate divergence from the Block 1 frozen prompt. The hybrid
- * path rendered the Darija conjunction و as French "ou" in run B (see
- * docs/DECISION-transcription-config.md); it did not recur in run C or on the
- * vitasilk reel, but nothing in the prompt prevented it either.
- *
- * Unvalidated as of this commit — no run has exercised it. Validation is
- * scheduled for the next session, and until then the Block 1 evidence
- * describes a prompt that differs from this one by this paragraph.
+ * Added in version 2. The hybrid path rendered the Darija conjunction و as
+ * French "ou" in run B (see docs/DECISION-transcription-config.md); it did
+ * not recur in run C or on the vitasilk reel, but nothing in the prompt
+ * prevented it either.
  */
 const CONJUNCTION_RULE = `The Arabic conjunction و is written w, never the French ou. "ou" appears
 only as the long vowel /uː/ per ORTHOGRAPHY_GUIDE §3, or inside a
@@ -29,23 +34,36 @@ recognizable French root per §5 (ynourri, nour).`;
 
 export const ORTHOGRAPHY_GUIDE_PATH = path.join(DOCS_DIR, 'ORTHOGRAPHY_GUIDE.md');
 
+export interface BuildPromptOptions {
+  keyterms?: string[];
+  guidePath?: string;
+  version?: PromptVersion;
+}
+
 /**
  * The guide is read from disk on every call rather than inlined, so bumping
  * its version is a file edit and never a code change.
  */
 export async function buildCorrectionPrompt(
   draftWords: TranscriptWord[],
-  keyterms: string[] = [],
-  guidePath = ORTHOGRAPHY_GUIDE_PATH,
+  options: BuildPromptOptions = {},
 ): Promise<string> {
+  const {
+    keyterms = [],
+    guidePath = ORTHOGRAPHY_GUIDE_PATH,
+    version = ACTIVE_PROMPT_VERSION,
+  } = options;
+
   const guide = await readFile(guidePath, 'utf8');
   const scribeText = draftWords.map((w) => w.text).join(' ');
   const keytermsBlock =
     keyterms.length > 0
-      ? `\n\nKeyterms to recognize accurately if spoken: ${keyterms.join(', ')}.`
+      ? `Keyterms to recognize accurately if spoken: ${keyterms.join(', ')}.`
       : '';
+  const jsonShape = `Respond with strict JSON only, no prose, no markdown fences, in this shape:
+{"words":[{"text":"..."}]}`;
 
-  return `${guide}
+  const head = `${guide}
 
 ---
 
@@ -58,12 +76,20 @@ orthography rules above exactly. You may fix misspellings, split or merge
 words, and add or remove words to match what is actually said — but never
 paraphrase or translate.
 
-${SCRIPT_RULES}
+${SCRIPT_RULES}`;
+
+  if (version === 1) {
+    // Verbatim Block 1 ordering: JSON shape last, keyterms appended after it.
+    return `${head}
+
+${jsonShape}${keytermsBlock === '' ? '' : `\n\n${keytermsBlock}`}`;
+  }
+
+  return `${head}
 
 ${CONJUNCTION_RULE}
-
-Respond with strict JSON only, no prose, no markdown fences, in this shape:
-{"words":[{"text":"..."}]}${keytermsBlock}`;
+${keytermsBlock === '' ? '' : `\n${keytermsBlock}\n`}
+${jsonShape}`;
 }
 
 interface CorrectionRawResponse {
@@ -109,11 +135,12 @@ export interface CorrectionOptions {
   draftWords: TranscriptWord[];
   keyterms?: string[];
   guidePath?: string;
+  version?: PromptVersion;
 }
 
 export interface CorrectionResult {
   correctedTexts: string[];
-  promptVersion: number;
+  promptVersion: PromptVersion;
   model: string;
   costUsd: number;
   wallTimeS: number;
@@ -121,11 +148,18 @@ export interface CorrectionResult {
 }
 
 export async function correctTranscript(options: CorrectionOptions): Promise<CorrectionResult> {
-  const { apiKey, audioPath, draftWords, keyterms = [], guidePath } = options;
+  const {
+    apiKey,
+    audioPath,
+    draftWords,
+    keyterms = [],
+    guidePath,
+    version = ACTIVE_PROMPT_VERSION,
+  } = options;
 
   const ai = new GoogleGenAI({ apiKey });
   const audioBuffer = await readFile(audioPath);
-  const prompt = await buildCorrectionPrompt(draftWords, keyterms, guidePath);
+  const prompt = await buildCorrectionPrompt(draftWords, { keyterms, guidePath, version });
   const request = {
     model: modelConfig.geminiModel,
     contents: createUserContent([
@@ -164,7 +198,7 @@ export async function correctTranscript(options: CorrectionOptions): Promise<Cor
 
   return {
     correctedTexts: parseCorrectionResponseText(response.text ?? ''),
-    promptVersion: PROMPT_VERSION,
+    promptVersion: version,
     model: modelConfig.geminiModel,
     costUsd: computeGeminiCost(usage),
     wallTimeS,

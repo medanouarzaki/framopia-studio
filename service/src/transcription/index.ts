@@ -1,5 +1,5 @@
 import { alignCorrectedOntoDraft } from './align.js';
-import { correctTranscript } from './correction.js';
+import { correctTranscript, type PromptVersion } from './correction.js';
 import { transcribeWithScribe } from './scribe.js';
 import type { TranscriptWord } from './types.js';
 
@@ -10,13 +10,14 @@ export interface HybridTranscribeOptions {
   /** Mode vocabulary, passed to Scribe as keyterms and named in the prompt. */
   keyterms?: string[];
   guidePath?: string;
+  version?: PromptVersion;
 }
 
 export interface HybridTranscript {
   words: TranscriptWord[];
   /** The uncorrected Scribe pass, kept so a reviewer can see what changed. */
   draftWords: TranscriptWord[];
-  promptVersion: number;
+  promptVersion: PromptVersion;
   model: string;
   costUsd: number;
   wallTimeS: number;
@@ -35,7 +36,7 @@ export interface HybridTranscript {
 export async function transcribeHybrid(
   options: HybridTranscribeOptions,
 ): Promise<HybridTranscript> {
-  const { elevenLabsApiKey, googleApiKey, audioPath, keyterms = [], guidePath } = options;
+  const { elevenLabsApiKey, googleApiKey, audioPath, keyterms = [], guidePath, version } = options;
 
   const scribe = await transcribeWithScribe({ apiKey: elevenLabsApiKey, audioPath, keyterms });
 
@@ -45,6 +46,7 @@ export async function transcribeHybrid(
     draftWords: scribe.words,
     keyterms,
     guidePath,
+    version,
   });
 
   return {
@@ -64,7 +66,8 @@ export {
   buildCorrectionPrompt,
   correctTranscript,
   parseCorrectionResponseText,
-  PROMPT_VERSION,
+  ACTIVE_PROMPT_VERSION,
+  type PromptVersion,
 } from './correction.js';
 export { mapScribeResponse, transcribeWithScribe } from './scribe.js';
 export { TranscriptionError, type TranscriptionStage, type TranscriptWord } from './types.js';
