@@ -41,11 +41,17 @@ AI-generated contextual images, SFX, and a watermark. Full spec in
 
 - The repo is an npm workspace (`core`, `service`, `benchmarks`). Install
   once at the root; there are no per-package lockfiles.
-- `npm run check` (repo root) — builds `@framopia/core`, then typecheck +
-  lint + test across every workspace. This is the regression gate; it must
-  pass before any commit that touches code. `core` builds to `core/dist/`
-  and the other packages import the built output, so anything that runs
-  workspace code builds core first.
+- `npm run check` (repo root) — `scripts/check.sh`: builds `@framopia/core`,
+  then typecheck + lint + test across every workspace. This is the regression
+  gate; it must pass before any commit that touches code. `core` builds to
+  `core/dist/` and the other packages import the built output, so anything
+  that runs workspace code builds core first.
+  **Read its exit status, never its output.** Session 5 committed on a red
+  check because the caller ran `npm run check | grep -E "Tests"` and grep
+  matched an error line. The script pipes nothing and prints `check: PASS`
+  only on success, so `grep -q "check: PASS"` is a correct test where
+  grepping for test counts is not — a failing test still prints a "Tests"
+  line.
 - Start the service: `npm run build:core && npm run build --prefix service && npm run start --prefix service`.
   On start it writes `.local/service.json` with `{ port, token }`.
 - Run the transcription benchmark: `npm run bench -- --audio <abs path>
@@ -178,26 +184,48 @@ things at once and run each arm once. The reversion is recorded as an
 amendment in `docs/DECISION-transcription-config.md`. The `ou` corruption is
 now caught by the conformance scorer instead of a prompt rule.
 
+**Version 3** is version 1 plus a per-word `lang` in the response, and nothing
+else. It is **not active**; the user has not ruled on it.
+`benchmarks/RESULTS-block2-langtagging.md` measured it over three runs:
+coverage 81/81 with no nulls and no out-of-enum values, tags identical across
+runs for 75 of 81 words, zero disagreements with the local derivation, and WER
+inside the floor (mean 16.9% against version 1's 15.2%, spread 3.7 = the whole
+floor). The six unstable words are every Arabic-script domain term, tagged
+`darija` twice and `msa` once — the guide says which script those take but not
+which language, so the model has no basis to choose. `mixed` and `en` were
+never produced.
+
 **`dial` is written separate since guide v1.0.5** (`dial l7loul`, never
 `dl7loul`), because six of the twelve tokens that moved across identical calls
 were this one word. `benchmarks/RESULTS-block2-dialrule.md` measured it: the
 instability is gone (6/6 occurrences comply in all three runs, stability
-69/81 → 79/81) and WER stayed inside the floor. **Open**: the hand-written
-ground truth writes `dl 7olol` in the three positions the rule targets, so the
-reference is now non-conformant and §4's own "user's habit wins" tie-break
-points the other way. The user has not ruled on that.
+69/81 → 79/81) and WER stayed inside the floor.
 
-**The noise floor is 2.5 WER points.** Three identical correction calls — same
-recorded draft, same audio, same prompt — gave 21.0%, 21.0% and 18.5% overall
-WER, with 69 of 81 tokens identical and cost varying 41%
-(`benchmarks/RESULTS-block2-noisefloor.md`). Any prompt comparison whose
-effect is smaller than that is not measurable at n=1 on this reel. Every
-moving token was an orthography choice, not a hearing disagreement.
+**The reference is versioned and was corrected to match.** The hand-written
+ground truth wrote `dl 7olol`, `dl 7essass`, `dl vitaminat` — the reduced form
+§4 has listed as deliberately not frozen since v1.0.1 — so it had been
+non-conformant since then and v1.0.5 only made it visible. Those three tokens
+are now `dial l7olol`, `dial l7essass`, `dial lvitaminat`; noun spellings are
+unchanged. `.local/ground-truth/ground-truth.txt` carries a
+`# reference-version:` header, `npm run bench:tag` copies it into the JSON, and
+`GroundTruth.version` exposes it, so a scored result can name what it scored
+against. The other three reels are unversioned and were not touched.
+
+**The noise floor is 3.7 WER points** against the corrected reference — 14.8%
+to 18.5% across the three identical correction calls. It got *wider* than the
+old 2.5-point figure because correcting the reference removed accidental
+credit the outlier run was getting for a fused spelling. **The 2.5-point
+figure is superseded** and every result scored against the old reference is
+labelled as such in the results files. Any prompt comparison whose effect is
+under 3.7 points is not measurable at n=1 on this reel.
 
 **Post-processing** (all pure, no API): `tagging.ts` derives `script` from the
 characters and leaves `lang` **null** when the correction pass does not report
-it — which is every word under the current prompt, and deliberately not
-defaulted to `darija`. `cleaning.ts` flags `euh`/`eh` fillers and immediate
+it — which is every word under the active prompt, and deliberately not
+defaulted to `darija`. `deriveLang` is a cross-check, never a source: a small
+French/English wordlist plus accents and elided articles, silent on Arabizi.
+Where it and the model disagree the word gets `langDisagreement: true` and
+neither side is overwritten. `cleaning.ts` flags `euh`/`eh` fillers and immediate
 stutters with `removed`/`removedReason` and never deletes; `ya3ni`/`za3ma` are
 reported as unjudged rather than guessed, and non-repetition false starts are
 not attempted. `grouping.ts` builds 1–2 word subtitle groups from `wordIds`,
@@ -224,7 +252,13 @@ Gemini model pin, the ORTHOGRAPHY_GUIDE version (**read from the file**, so a
 guide bump invalidates on its own), the Scribe model id, and the keyterms; any
 one of them changing misses. A hit costs nothing and writes **no** ledger
 line; a miss records both legs as before. A corrupt, incomplete or
-audio-less entry is a miss with a warning, never a crash. Verified live: a
+audio-less entry is a miss with a warning, never a crash. The cache is
+consulted **before** ffmpeg and an existing extraction is reused, so a repeat
+run does no audio work; the video is hashed once per invocation and the hash
+passed down. Entries are bounded at `MAX_ENTRIES_PER_VIDEO = 3` per video
+hash, evicting least-recently-written first — chosen, not measured, and
+scoped so it can only ever remove children of one directory under the cache
+root. Verified live: a
 second run on the same reel hit the cache, cost $0.0000, took 4 s against
 70 s, and produced a plan differing only in `createdAt`/`updatedAt`,
 `completedAt` and the cost bookkeeping.
