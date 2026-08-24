@@ -11,12 +11,10 @@ const ALLOWED_ARABIZI_DIGITS = new Set(['3', '7', '9']);
 // readability rule that every syllable needs a vowel.
 const VOWEL_RE = /[aeiou]/i;
 // Words with no vowel at all that are nonetheless correct, so the §3 cluster
-// rule cannot apply to them. Derived from the freeze list rather than
-// hand-written, plus two the list does not carry: "f" (in), which §4 freezes
-// but freeze-list.json is missing, and "w", the §2 conjunction — flagging the
-// very form findOuConjunctions demands would be self-contradictory.
+// rule cannot apply to them. Derived from the freeze list, plus "w": the §2
+// conjunction is not a §4 frozen spelling, and flagging the very form
+// findOuConjunctions demands would be self-contradictory.
 const VOWELLESS_EXCEPTIONS = new Set<string>([
-  'f',
   'w',
   ...freezeListData.words.filter((word) => !VOWEL_RE.test(word)),
 ]);
