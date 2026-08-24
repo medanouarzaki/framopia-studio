@@ -1,0 +1,20 @@
+{
+  "text": "```json\n{\n  \"words\": [\n    {\n      \"text\": \"5\"\n    },\n    {\n      \"text\": \"d9ay9?\"\n    },\n    {\n      \"text\": \"ayeh\"\n    },\n    {\n      \"text\": \"a\"\n    },\n    {\n      \"text\": \"lala\"\n    },\n    {\n      \"text\": \"5\"\n    },\n    {\n      \"text\": \"minutes\"\n    },\n    {\n      \"text\": \"ymkn\"\n    },\n    {\n      \"text\": \"lik\"\n    },\n    {\n      \"text\": \"diri\"\n    }\n  ]\n}\n```",
+  "usageMetadata": {
+    "promptTokenCount": 4329,
+    "candidatesTokenCount": 1096,
+    "totalTokenCount": 12858,
+    "promptTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 3686
+      },
+      {
+        "modality": "AUDIO",
+        "tokenCount": 643
+      }
+    ],
+    "thoughtsTokenCount": 7433,
+    "serviceTier": "standard"
+  }
+}
