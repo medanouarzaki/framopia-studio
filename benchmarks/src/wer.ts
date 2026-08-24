@@ -1,4 +1,4 @@
-import { normalizeToken } from './normalize.js';
+import { normalizeToken, normalizeWords, splitScriptBoundaries } from './normalize.js';
 import type { GroundTruthWord, Lang } from './types.js';
 
 export type AlignOp = 'match' | 'substitute' | 'insert' | 'delete';
@@ -88,9 +88,27 @@ export function scoreAlignment(pairs: AlignedPair[]): WerResult {
 }
 
 export function computeWer(reference: string[], hypothesis: string[]): WerResult {
-  const normRef = reference.map(normalizeToken).filter((w) => w.length > 0);
-  const normHyp = hypothesis.map(normalizeToken).filter((w) => w.length > 0);
-  return scoreAlignment(align(normRef, normHyp));
+  return scoreAlignment(align(normalizeWords(reference), normalizeWords(hypothesis)));
+}
+
+const ARABIC_SCRIPT_RE = /[؀-ۿ]/;
+
+/**
+ * Splits any reference word that joins two scripts into one entry per script,
+ * mirroring what normalizeWords does to the hypothesis. Each piece keeps the
+ * original lang tag unless it is Arabic script, which is msa by definition.
+ * The tagger already emits split words, so this is normally a no-op — it
+ * exists so a hand-edited ground truth cannot silently desynchronize the
+ * lang index mapping below.
+ */
+function splitReferenceWords(referenceWords: GroundTruthWord[]): GroundTruthWord[] {
+  return referenceWords.flatMap((word) =>
+    splitScriptBoundaries(word.text).map((piece) =>
+      ARABIC_SCRIPT_RE.test(piece)
+        ? { text: piece, lang: 'msa' as Lang, script: 'arabic' as const }
+        : { ...word, text: piece },
+    ),
+  );
 }
 
 /**
@@ -105,9 +123,9 @@ export function computeSubsetWer(
   hypothesis: string[],
   langs: Lang[],
 ): WerResult {
-  const reference = referenceWords.map((w) => w.text);
-  const normRef = reference.map(normalizeToken);
-  const normHyp = hypothesis.map(normalizeToken).filter((w) => w.length > 0);
+  const splitReference = splitReferenceWords(referenceWords);
+  const normRef = splitReference.map((w) => normalizeToken(w.text));
+  const normHyp = normalizeWords(hypothesis);
 
   // Track which normalized-reference indices survive the empty-token filter
   // used by computeWer, so refIndex from align() still maps to langs.
@@ -126,7 +144,7 @@ export function computeSubsetWer(
   const subsetPairs = pairs.filter((pair) => {
     if (pair.refIndex === null) return false;
     const originalIndex = keptRefIndices[pair.refIndex];
-    const word = referenceWords[originalIndex as number];
+    const word = splitReference[originalIndex as number];
     return word !== undefined && langSet.has(word.lang);
   });
 

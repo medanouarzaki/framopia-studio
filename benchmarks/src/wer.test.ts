@@ -81,3 +81,11 @@ describe('scoreAlignment', () => {
     expect(result.referenceCount).toBe(0);
   });
 });
+
+describe('computeWer — mixed-script joins', () => {
+  it('charges a joined token one error instead of derailing the alignment', () => {
+    const reference = ['wa7d', 'واحد', 'cocktail', 'dial'];
+    const joined = computeWer(reference, ['wa7d', 'واحدcocktail', 'dial']);
+    expect(joined.wer).toBe(0);
+  });
+});
