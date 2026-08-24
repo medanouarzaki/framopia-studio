@@ -106,3 +106,33 @@ describe('computeGeminiCost', () => {
     expect(cost).toBeCloseTo(0.155208, 9);
   });
 });
+
+describe('estimateGeminiCallCost — gating headroom', () => {
+  // The most expensive correction call recorded on a comparable workload:
+  // noise-floor run 1, 23.256567s, $0.162406 (RESULTS-block2-noisefloor.md).
+  const WORST_RECORDED_USD = 0.162406;
+  const WORST_RECORDED_DURATION_S = 23.256567;
+
+  it('estimates at or above the worst actual recorded for the same reel', () => {
+    expect(estimateGeminiCallCost(WORST_RECORDED_DURATION_S)).toBeGreaterThanOrEqual(
+      WORST_RECORDED_USD,
+    );
+  });
+
+  it('covers the worst recorded billed-output token count with headroom', () => {
+    // Run 1 billed 411 visible + 12396 thinking = 12807 output tokens.
+    const worstBilledOutputUsd =
+      (12807 / 1_000_000) * modelConfig.geminiPrices.outputUsdPerMillionTokens;
+    expect(estimateGeminiCallCost(WORST_RECORDED_DURATION_S)).toBeGreaterThan(
+      worstBilledOutputUsd,
+    );
+  });
+
+  it('stays a gate rather than a scare figure', () => {
+    // Pessimistic, but not so pessimistic that every real run looks free by
+    // comparison; if this ever fails the multiplier has drifted too high.
+    expect(estimateGeminiCallCost(WORST_RECORDED_DURATION_S)).toBeLessThan(
+      WORST_RECORDED_USD * 3,
+    );
+  });
+});

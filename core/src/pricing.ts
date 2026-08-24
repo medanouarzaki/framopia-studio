@@ -13,9 +13,21 @@ const ESTIMATED_WORDS_PER_SECOND = 2.5;
 const ESTIMATED_OUTPUT_TOKENS_PER_WORD = 20;
 const GUIDE_PROMPT_TEXT_TOKENS = 2000;
 // Gemini 3.1 Pro thinks before answering and bills those tokens at the output
-// rate. On the Block 1 reels thinking ran ~5x the visible output, so the
-// estimate has to carry the same multiplier or it lands 5x low.
-const THINKING_TOKEN_MULTIPLIER = 5;
+// rate. This multiplier is deliberately pessimistic: it feeds a pre-spend
+// gate, and a gate that under-estimates protects nobody. It is not a best
+// guess at typical cost — typical is well under it.
+//
+// Thinking-to-visible ratios observed so far, all on ~23-26s reels:
+//   ~5x    Block 1 run C            (benchmarks/RESULTS-block1.md)
+//    6.8x  Block 2 session 1        (benchmarks/RESULTS-block2-robustness.md)
+//   18.1x, 8.7x  Block 2 session 3  (benchmarks/RESULTS-block2-promptv2.md)
+//   30.2x, 20.4x, 8.3x  Block 2 session 4, three identical calls
+//                                   (benchmarks/RESULTS-block2-noisefloor.md)
+//
+// The three identical calls spanning 8.3x-30.2x are the reason this cannot be
+// a point estimate. 15 against the visible-output heuristic below yields a
+// billed-output figure about 1.45x the worst total actually recorded.
+const THINKING_TOKEN_MULTIPLIER = 15;
 
 export function estimateScribeCost(durationS: number, keytermsUsed: boolean): number {
   const hours = durationS / 3600;
