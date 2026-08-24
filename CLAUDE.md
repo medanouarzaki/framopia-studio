@@ -66,31 +66,37 @@ AI-generated contextual images, SFX, and a watermark. Full spec in
 
 ## Status
 
-Block 1 is benchmarked and awaiting the freeze decision. Done: repo
-scaffold, docs, the `service/` skeleton, the `benchmarks/` harness,
-`docs/ORTHOGRAPHY_GUIDE.md` frozen at **v1.0.2** (freeze list extended from
-all four ground-truth reels; §3a writes numbers as digits; §6 puts the whole
-medical/aesthetic domain — procedures, anatomy, substances — in Arabic
-script, brands and French technical terms excepted), the four reels catalogued in
-`benchmarks/footage.json` with audio in `.local/bench-audio/`, hand-written
-ground truth for all four reels in `.local/ground-truth/`, and a full live
-sweep of all four engines over all four reels — scored under v1.0.1 in
-`benchmarks/RESULTS-block1-runA.md` and rescored under v1.0.2 in
-`benchmarks/RESULTS-block1.md`. The rescore is free (`npm run bench:aggregate`
-reads stored outputs); no engine has been re-prompted with the v1.0.2 rules,
-so the widened Arabic-script scope is not yet reflected in any engine output.
+**Block 1 transcription is complete and the config is frozen.** The freeze
+record — chosen config, run C numbers, why each alternative lost, and the
+caveats it carries — is `docs/DECISION-transcription-config.md`, which is the
+Block 1 definition-of-done evidence. `docs/PROJECT_SPEC.md` §7 points at it.
 
-Two facts that shape everything downstream:
+Frozen config: **hybrid** — Scribe v2 batch for word timings and a first
+pass, then a Gemini `gemini-3.1-pro-preview` correction pass carrying
+`docs/ORTHOGRAPHY_GUIDE.md` (**v1.0.3, frozen**) plus the per-word script
+rules, realigned onto Scribe's timings by Levenshtein anchoring with linear
+interpolation across inserted words.
 
-- **Scribe returns Darija in Arabic script, not Arabizi.** Transliteration
-  is the Gemini pass's job; both Gemini prompts now carry explicit per-word
-  script rules (`benchmarks/src/engines/script-rules.ts`).
-- **Gemini bills thinking tokens at the output rate**, and on these reels
-  thinking ran ~5x the visible output. `computeGeminiCost` counts them; any
-  new Gemini caller must too, or it will under-report by ~5x.
+Also done: repo scaffold, docs, the `service/` skeleton, the `benchmarks/`
+harness, the four reels in `benchmarks/footage.json` with audio in
+`.local/bench-audio/`, hand-written ground truth for all four in
+`.local/ground-truth/`, and three scoring passes recorded side by side —
+`RESULTS-block1-runA.md` (v1.0.1), `-runB.md` (v1.0.2 rescore),
+`RESULTS-block1.md` (**run C, v1.0.3, the run of record**).
 
-Left in Block 1: pick and freeze a transcription config from the recorded
-results. Panel, templates, and real job types are not started yet.
+Three facts that shape everything downstream:
+
+- **Scribe returns Darija in Arabic script, not Arabizi.** Transliteration is
+  the Gemini pass's job (`benchmarks/src/engines/script-rules.ts`).
+- **Gemini bills thinking tokens at the output rate**, ~5x the visible
+  output on these reels. `computeGeminiCost` counts them; any new Gemini
+  caller must too, or it under-reports by that factor. Budget $0.35–0.55
+  per 90s reel.
+- **Gemini's self-reported timestamps drift** — 9/15 by ear against hybrid's
+  14/15, worsening through a reel. This, not WER, is why the config is
+  hybrid.
+
+Next: Block 2. Panel, templates, and real job types are not started.
 
 See `docs/BLOCKS.md` for the full block plan and `handoffs/` for prior
 session context.
