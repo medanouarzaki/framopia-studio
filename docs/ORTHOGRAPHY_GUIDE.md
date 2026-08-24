@@ -1,6 +1,6 @@
-# Framopia Studio — Darija Orthography Guide (v1.0.4)
+# Framopia Studio — Darija Orthography Guide (v1.0.5)
 
-Status: **v1.0.4 — frozen**. All §9 questions are resolved. v1.0.2 (2026-08-24) added the numeral rule in §3a and widened the §6 Arabic-script rule to the whole medical/aesthetic domain; v1.0.3 (2026-08-24) settled that the §6 switch is term-level; v1.0.4 (2026-08-24) added `bach` to the §4 freeze list, because the conformance scorer flagged it as a near-miss of `wach` while both were correctly spelled. This document is injected verbatim into every Gemini transcription/correction prompt, so it is written as rules, not prose. **Consistency across videos matters more than any single "correct" spelling.**
+Status: **v1.0.5 — frozen**. All §9 questions are resolved. v1.0.2 (2026-08-24) added the numeral rule in §3a and widened the §6 Arabic-script rule to the whole medical/aesthetic domain; v1.0.3 (2026-08-24) settled that the §6 switch is term-level; v1.0.4 (2026-08-24) added `bach` to the §4 freeze list, because the conformance scorer flagged it as a near-miss of `wach` while both were correctly spelled. v1.0.5 (2026-08-25) requires `dial` to be written separate from the following word: three identical correction calls produced both `dial l7loul` and `dl7loul`, and §4 froze the spelling without ever saying whether it attaches. This document is injected verbatim into every Gemini transcription/correction prompt, so it is written as rules, not prose. **Consistency across videos matters more than any single "correct" spelling.**
 
 ## 1. Scope
 
@@ -59,6 +59,8 @@ Added in v1.0.4:
 `bach` (so that, in order to — باش)
 
 v1.0.1 replaced `dyal`/`dyali` with `dial`/`diali`: the ground truth wrote `dial` eleven times and `dyal` never, and §4's own rule is that the user's habit wins. Confirmed by the user on 2026-08-24; `dial` is settled.
+
+`dial` is always written **separate** from the word it governs: `dial l7loul`, `dial l7essass`, `dial lvitaminat` — never `dl7loul`, `dl`, or `dla`. Its pronoun suffixes stay attached, as above: `diali`, `dialk`, `dialha`, `dialo`, `dialna`. §2's attachment rule covers the definite article only and never reached this word, and `dl`/`dla` were already listed below as reduced variants that are not frozen; measured instability across identical calls (Block 2 session 4) showed the gap was real, so it is closed here.
 
 Variants seen in the ground truth and deliberately **not** frozen, because the majority form above supersedes them: `dl`/`dla` (reduced `dial`), `main` (a typo for `mabin`, and it collides with French `les mains`), `ta` (reduced `tal`), `yawm` (→ `yom`), `7sessa` (→ `7essa`). Apostrophes are always straight (`l'ADN`, `l'effet`), never curly.
 
