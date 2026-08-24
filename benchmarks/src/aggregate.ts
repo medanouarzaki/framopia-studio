@@ -207,8 +207,10 @@ Run A, scored under guide v1.0.1, is preserved in \`RESULTS-block1-runA.md\`.
 **Run B rescores the identical engine outputs** — no engine was re-run and
 none was re-prompted with the v1.0.2 rules, so nothing here measures how the
 engines would behave if told about the numeral rule or the widened
-Arabic-script scope. What changed is the scoring: spelled-out numerals now
-compare equal to the digits the ground truth writes (§3a), and one ground
+Arabic-script scope. What changed is the scoring, in three ways: spelled-out numerals now compare
+equal to the digits the ground truth writes (§3a); edge punctuation is
+stripped from Arabic-script tokens, which it previously was not, so
+\`للوجه؟\` and \`للوجه\` no longer count as different words; and one ground
 truth typo (\`main\` for \`mabin\`) was corrected.
 
 Four reels, ${totalDurationS.toFixed(1)}s of code-switched Darija/French
@@ -240,8 +242,15 @@ the median; the p90 is where its realignment of inserted words shows up.
 
 **The numeral artifact is gone.** Guide v1.0.2 §3a settles numbers as digits
 and the WER normalizer maps the spelled-out Darija forms onto them, so
-\`khmstach\` and \`15\` now compare equal. This is what moved the Gemini rows
-between run A and run B.
+\`khmstach\` and \`15\` now compare equal. Together with the Arabic punctuation
+fix, this is what moved the rows between run A and run B.
+
+**The timestamp deviation columns moved too, and for the same reason.**
+Cross-engine deviation pairs words by their normalized text, so every Arabic
+word carrying a question mark used to fail to pair and drop out of the
+comparison. With punctuation stripped, hybrid's p90 against Scribe falls
+from 1794ms to single digits — which is what hybrid inheriting Scribe's
+timings should have looked like all along.
 
 **The Arabic-script scope artifact is still live in these numbers.** Guide
 v1.0.2 §6 now covers anatomical regions and substance names, matching what
