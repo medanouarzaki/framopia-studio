@@ -1,6 +1,6 @@
-# Framopia Studio — Darija Orthography Guide (v1.0)
+# Framopia Studio — Darija Orthography Guide (v1.0.1)
 
-Status: **v1.0 — frozen for Block 1**. The §9 open questions were resolved with the user; only the freeze-list extension remains, and it lands as v1.0.1 once the ground-truth transcript exists. This document is injected verbatim into every Gemini transcription/correction prompt, so it is written as rules, not prose. **Consistency across videos matters more than any single "correct" spelling.**
+Status: **v1.0.1 — frozen**. All §9 questions are resolved: the freeze list was extended from the four hand-written ground-truth transcripts, closing the last one. This document is injected verbatim into every Gemini transcription/correction prompt, so it is written as rules, not prose. **Consistency across videos matters more than any single "correct" spelling.**
 
 ## 1. Scope
 
@@ -40,9 +40,17 @@ Notes:
 
 ## 4. High-frequency words — fixed spellings (freeze list)
 
-One spelling per word, always. Starter list (extend in Block 1 from real transcripts):
+One spelling per word, always. Where the ground truth spelled a word more than one way, the majority spelling won.
 
-`wach` (question marker) · `chno` (what) · `3lach` (why) · `kifach` (how) · `fin` (where) · `daba` (now) · `ghadi` / prefix `gha-` (future) · `bghit` (I want) · `kayn` / `kayna` (there is) · `machi` (not) · `walou` (nothing) · `bzaf` (a lot) · `chwiya` (a little) · `mzyan` (good) · `hadchi` (this thing) · `dyal` / `dyali` (of/mine) · `f` (in) · `m3a` (with) · `7ta` (until/even) · `wakha` (okay) · `yallah` (let's go) · `nchaalah` (God willing) · `khassk` (you must) · `3ndi` (I have) · `rah` / `raha` (indeed/it is)
+`wach` (question marker) · `chno` (what) · `3lach` (why) · `kifach` (how) · `fin` (where) · `daba` (now) · `ghadi` / prefix `gha-` (future) · `bghit` / `bghiti` (I/you want) · `kayn` / `kayna` (there is) · `machi` (not) · `walou` (nothing) · `bzaf` (a lot) · `chwiya` (a little) · `mzyan` (good) · `hadchi` (this thing) · `f` (in) · `m3a` / `m3aya` (with/with me) · `7ta` (until/even) · `wakha` (okay) · `yallah` (let's go) · `nchaalah` (God willing) · `khassk` (you must) · `3ndi` / `3ndk` / `3ndhom` (I/you/they have) · `rah` / `raha` (indeed/it is)
+
+Added in v1.0.1, from the four ground-truth reels:
+
+`dial` / `diali` / `dialk` (of/mine/yours — the possessive takes its pronoun suffix attached, `dialha`, `dialo`, `dialna`) · `li` (which/who) · `houa` (he/it) · `joj` (two) · `wa7d` (one, also the indefinite article) · `7essa` / `7essass` (session / sessions) · `mabin` (between) · `tal` (up to, until) · `mn` (from) · `3la` (about, on) · `fa` (so, then) · `lyoma` (today) · `yom` (day) · `nhdr` (I talk) · `lik` / `likom` (to you sg/pl) · `lkher` (the end) · `tb3i` (follow — f. imperative) · `kat7taji` (you need — f.) · `kidom` (it lasts)
+
+v1.0.1 replaced `dyal`/`dyali` with `dial`/`diali`: the ground truth wrote `dial` eleven times and `dyal` never, and §4's own rule is that the user's habit wins.
+
+Variants seen in the ground truth and deliberately **not** frozen, because the majority form above supersedes them: `dl`/`dla` (reduced `dial`), `main` (a typo for `mabin`, and it collides with French `les mains`), `ta` (reduced `tal`), `yawm` (→ `yom`), `7sessa` (→ `7essa`). Apostrophes are always straight (`l'ADN`, `l'effet`), never curly.
 
 Verb prefixes attach without hyphen: `kan-` (present, 1sg/1pl per context), `kat-`, `kay-`, `gha-`: `kanakol`, `kaykhdem`, `ghanmchiw`.
 
@@ -54,7 +62,11 @@ Verb prefixes attach without hyphen: `kan-` (present, 1sg/1pl per context), `kat
 
 ## 6. Latin vs Arabic script — the decision rule
 
-Write in **Arabic script** only when the word/phrase is genuinely MSA/classical register as spoken: religious formulas (`بسم الله`, `إن شاء الله` when uttered formally — but casual "nchaalah" in flowing Darija stays Latin: `nchaalah`), Quran/hadith quotes, formal citations, deliberate formal-register switches. Everything conversational stays Latin, even MSA-origin vocabulary used casually. When unsure, prefer Latin and lower the word's confidence so the editor reviews it. The per-word script decision is always editable in the review UI.
+Write in **Arabic script** in two cases.
+
+**(a) Aesthetic and medical procedure/treatment terms**, even mid-Darija — this is how the terms are actually written and read in the clinic register, and it holds regardless of surrounding language: `شد طبيعي للوجه`, `محفزات الكولاجين`, `الإبرة الحريرية`, `حمض الهيالورونيك`, `ترطيب عميق للبشرة`, `نتائج جد فعالة`. Branded product names and French technical terms are **not** covered by this rule and keep their Latin spelling (`le profhilo`, `les polynucléotides`, `faiblement réticulé`, `la mésothérapie`).
+
+**(b) Genuinely MSA/classical register as spoken:** religious formulas (`بسم الله`, `إن شاء الله` when uttered formally — but casual "nchaalah" in flowing Darija stays Latin: `nchaalah`), Quran/hadith quotes, formal citations, deliberate formal-register switches. Everything conversational stays Latin, even MSA-origin vocabulary used casually. When unsure, prefer Latin and lower the word's confidence so the editor reviews it. The per-word script decision is always editable in the review UI.
 
 ## 7. Cleaning rules (applied as flags, never deletion)
 
@@ -74,5 +86,5 @@ Never remove content words. Never reorder. Never "improve" grammar.
 1. **Resolved — `9` vs `q` for ق.** Always `9`, never `q` (§2).
 2. **Resolved — definite article.** Always attached, no space, no hyphen: `lkhdma`, `lmochkil` (§2).
 3. **Resolved — frozen spellings.** `nchaalah` (not `nchallah`/`inchallah`) and `bzaf` (not `bzzaf`/`bezzaf`) (§4).
-4. **Open — extend the §4 freeze list from the ground-truth transcript.** This is the only thing left before the guide is fully closed; it ships as **v1.0.1**. Until then, v1.0 is binding for Block 1 benchmarking.
+4. **Resolved — the §4 freeze list was extended** from the four hand-written ground-truth reels in v1.0.1: every Darija word occurring at least twice and not already frozen was added, one spelling per word. See the v1.0.1 block in §4, including the one entry it overrode.
 5. **Resolved — French-influenced spellings.** §5 stands as written: French and English words keep proper spelling with accents (`déjà`, `donc`, `par exemple`); only French roots carrying Darija morphology are written Arabizi (`kanposti`, `tconnecta`).
