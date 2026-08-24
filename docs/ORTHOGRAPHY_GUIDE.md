@@ -1,6 +1,6 @@
-# Framopia Studio — Darija Orthography Guide (v1.0.2)
+# Framopia Studio — Darija Orthography Guide (v1.0.3)
 
-Status: **v1.0.2 — frozen**. All §9 questions are resolved. v1.0.2 (2026-08-24) added the numeral rule in §3a and widened the §6 Arabic-script rule to the whole medical/aesthetic domain, both from gaps the Block 1 benchmark exposed. This document is injected verbatim into every Gemini transcription/correction prompt, so it is written as rules, not prose. **Consistency across videos matters more than any single "correct" spelling.**
+Status: **v1.0.3 — frozen for Block 1**. All §9 questions are resolved. v1.0.2 (2026-08-24) added the numeral rule in §3a and widened the §6 Arabic-script rule to the whole medical/aesthetic domain; v1.0.3 (2026-08-24) settled that the §6 switch is term-level. This document is injected verbatim into every Gemini transcription/correction prompt, so it is written as rules, not prose. **Consistency across videos matters more than any single "correct" spelling.**
 
 ## 1. Scope
 
@@ -78,6 +78,8 @@ Write in **Arabic script** in two cases.
 - outcome phrases in the same register: `نتائج جد فعالة`
 
 Branded product names and French technical terms are **not** covered and keep their Latin/French spelling: `le profhilo`, `le RRS eyes`, `les polynucléotides`, `l'acide hyaluronique`, `faiblement réticulé`, `la mésothérapie`. Where the same substance has both a domain Arabic name and a French technical one, write the one actually spoken.
+
+**The switch is term-level, not clause-level.** Only the domain term itself renders in Arabic script; every connective, pronoun, copula, preposition and other function word around it stays Arabizi, even when the whole sentence is about the procedure. Write `محفزات الكولاجين hia 3ibara 3an إبر`, never `محفزات الكولاجين هي عبارة عن إبر`. A term that runs to several words (`المنطقة حول العينين`, `شد طبيعي للوجه`) switches as one unit, because those words are the term. The rejected alternative was clause-level switching — letting one domain term pull the whole surrounding clause into Arabic script — which was dropped because it makes the script of a word depend on its neighbours rather than on the word, and nothing downstream can predict it.
 
 **(b) Genuinely MSA/classical register as spoken:** religious formulas (`بسم الله`, `إن شاء الله` when uttered formally — but casual "nchaalah" in flowing Darija stays Latin: `nchaalah`), Quran/hadith quotes, formal citations, deliberate formal-register switches. Everything conversational stays Latin, even MSA-origin vocabulary used casually. When unsure, prefer Latin and lower the word's confidence so the editor reviews it. The per-word script decision is always editable in the review UI.
 
