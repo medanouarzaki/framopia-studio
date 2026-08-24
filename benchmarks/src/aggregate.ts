@@ -4,7 +4,7 @@ import { loadGroundTruth } from './ground-truth.js';
 import { scoreOrthography } from './orthography.js';
 import { crossEngineDeviation, sanityCheck } from './timestamps.js';
 import { align, computeSubsetWer, scoreAlignment, type WerResult } from './wer.js';
-import { normalizeWords } from './normalize.js';
+import { normalizeForWer } from './normalize.js';
 import { LOCAL_DIR, RESULTS_DIR } from './paths.js';
 import type { GroundTruth, TranscriptionResult } from './types.js';
 
@@ -74,7 +74,7 @@ export function scoreEngine(
 ): EngineScores {
   const hypothesis = result.words.map((w) => w.text);
   const reference = groundTruth.words.map((w) => w.text);
-  const overall = scoreAlignment(align(normalizeWords(reference), normalizeWords(hypothesis)));
+  const overall = scoreAlignment(align(normalizeForWer(reference), normalizeForWer(hypothesis)));
   const orthography = scoreOrthography(hypothesis);
   const sanity = sanityCheck(result.words);
   const deviation =

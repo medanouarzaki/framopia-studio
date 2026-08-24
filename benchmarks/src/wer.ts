@@ -1,4 +1,4 @@
-import { normalizeToken, normalizeWords, splitScriptBoundaries } from './normalize.js';
+import { normalizeForWer, splitScriptBoundaries } from './normalize.js';
 import type { GroundTruthWord, Lang } from './types.js';
 
 export type AlignOp = 'match' | 'substitute' | 'insert' | 'delete';
@@ -88,7 +88,7 @@ export function scoreAlignment(pairs: AlignedPair[]): WerResult {
 }
 
 export function computeWer(reference: string[], hypothesis: string[]): WerResult {
-  return scoreAlignment(align(normalizeWords(reference), normalizeWords(hypothesis)));
+  return scoreAlignment(align(normalizeForWer(reference), normalizeForWer(hypothesis)));
 }
 
 const ARABIC_SCRIPT_RE = /[؀-ۿ]/;
@@ -124,8 +124,11 @@ export function computeSubsetWer(
   langs: Lang[],
 ): WerResult {
   const splitReference = splitReferenceWords(referenceWords);
-  const normRef = splitReference.map((w) => normalizeToken(w.text));
-  const normHyp = normalizeWords(hypothesis);
+  // Each reference word maps to exactly one normalized slot here (empty ones
+  // filtered below), so the reference goes through normalizeForWer one word
+  // at a time — splitReference has already done the script splitting.
+  const normRef = splitReference.map((w) => normalizeForWer([w.text])[0] ?? '');
+  const normHyp = normalizeForWer(hypothesis);
 
   // Track which normalized-reference indices survive the empty-token filter
   // used by computeWer, so refIndex from align() still maps to langs.

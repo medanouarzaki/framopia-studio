@@ -12,9 +12,16 @@ export const SCRIPT_RULES = `Script rules, applied per word:
   before writing it out — Darija in Arabic script is wrong here.
 - French and English: proper spelling with accents (déjà, la vidéo,
   faiblement réticulé). Straight apostrophes only (l'ADN, never l’ADN).
-- Arabic script, and only these: aesthetic and medical procedure or
-  treatment terms (شد طبيعي للوجه, محفزات الكولاجين, حمض الهيالورونيك),
-  and genuinely formal or religious MSA. Branded product names and French
-  technical terms stay Latin even when they name a procedure.
+- Arabic script, and only these: the medical and aesthetic domain —
+  procedures and treatments (شد طبيعي للوجه, محفزات الكولاجين), anatomical
+  regions (المنطقة حول العينين, البشرة), substance names (مادة الكافيين,
+  الكولاجين), and outcome phrases in that register (نتائج جد فعالة) — plus
+  genuinely formal or religious MSA. Branded product names and French
+  technical terms stay Latin even when they name a procedure or a
+  substance: le profhilo, le RRS eyes, l'acide hyaluronique, la
+  mésothérapie, faiblement réticulé.
+- Numbers are digits, never spelled out: write 15, not khmstachr. Inside a
+  word 3/7/9 are still letters (3ndi, 7essa, so9); a digit standing alone
+  is a number.
 - Never join two words into one token, and never let a single token mix
   Arabic and Latin script — split at the boundary instead.`;

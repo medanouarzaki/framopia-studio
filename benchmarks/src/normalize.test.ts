@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { normalizeWords, splitScriptBoundaries } from './normalize.js';
+import { normalizeForWer, normalizeWords, splitScriptBoundaries } from './normalize.js';
 
 describe('splitScriptBoundaries', () => {
   it('splits a joined arabic/latin token, the real واحدcocktail case', () => {
@@ -24,5 +24,26 @@ describe('normalizeWords — script boundaries', () => {
       'cocktail',
       'dl',
     ]);
+  });
+});
+
+describe('normalizeForWer — numerals', () => {
+  it('maps the spelled-out forms the engines produced onto digits', () => {
+    expect(normalizeForWer(['khmstach', 'yom'])).toEqual(['15', 'yom']);
+    expect(normalizeForWer(['rb3a'])).toEqual(['4']);
+    expect(normalizeForWer(['tmentach', 'tal', '3chrin'])).toEqual(['18', 'tal', '20']);
+  });
+
+  it('leaves a digit the ground truth already wrote alone', () => {
+    expect(normalizeForWer(['15', 'yom'])).toEqual(['15', 'yom']);
+  });
+
+  it('does not touch wa7d or joj, which are articles here and not numerals', () => {
+    expect(normalizeForWer(['wa7d', 'le', 'cocktail'])).toEqual(['wa7d', 'le', 'cocktail']);
+    expect(normalizeForWer(['joj', 'dial', 'l7essass'])).toEqual(['joj', 'dial', 'l7essass']);
+  });
+
+  it('still splits mixed-script tokens on the way through', () => {
+    expect(normalizeForWer(['واحدcocktail'])).toEqual(['واحد', 'cocktail']);
   });
 });

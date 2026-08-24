@@ -11,8 +11,10 @@ const ACCENTED_RE = /[àâäçéèêëîïôöùûüÿœæ]/i;
 const FRENCH_LEXICON = new Set([
   'le', 'la', 'les', 'un', 'une', 'des', 'du', 'de', 'alors', 'et', 'ou',
   'donc', 'mais', 'pour', 'avec', 'sans', 'dans', 'par', 'exemple', 'deja',
-  // "mains" only in the plural: singular "main" in these reels is the user's
-  // spelling of Darija "mabin" (between), not the French for hand.
+  // "mains" only in the plural. Singular "main" is left out: the one place it
+  // appeared was a typo for Darija "mabin" (between), fixed in the ground
+  // truth for v1.0.2, and a bare singular is far likelier to be that typo
+  // again than the French for hand.
   'cou', 'mains', 'visage', 'peau', 'acide', 'non',
   'cernes', 'vidéo', 'effet', 'caféine', 'vitamines', 'injections',
   'polynucléotides', 'mésothérapie', 'hyaluronique', 'réticulé', 'ridules',
