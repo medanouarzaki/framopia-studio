@@ -1,6 +1,6 @@
-# Framopia Studio — Darija Orthography Guide (v1.0.3)
+# Framopia Studio — Darija Orthography Guide (v1.0.4)
 
-Status: **v1.0.3 — frozen for Block 1**. All §9 questions are resolved. v1.0.2 (2026-08-24) added the numeral rule in §3a and widened the §6 Arabic-script rule to the whole medical/aesthetic domain; v1.0.3 (2026-08-24) settled that the §6 switch is term-level. This document is injected verbatim into every Gemini transcription/correction prompt, so it is written as rules, not prose. **Consistency across videos matters more than any single "correct" spelling.**
+Status: **v1.0.4 — frozen**. All §9 questions are resolved. v1.0.2 (2026-08-24) added the numeral rule in §3a and widened the §6 Arabic-script rule to the whole medical/aesthetic domain; v1.0.3 (2026-08-24) settled that the §6 switch is term-level; v1.0.4 (2026-08-24) added `bach` to the §4 freeze list, because the conformance scorer flagged it as a near-miss of `wach` while both were correctly spelled. This document is injected verbatim into every Gemini transcription/correction prompt, so it is written as rules, not prose. **Consistency across videos matters more than any single "correct" spelling.**
 
 ## 1. Scope
 
@@ -53,6 +53,10 @@ One spelling per word, always. Where the ground truth spelled a word more than o
 Added in v1.0.1, from the four ground-truth reels:
 
 `dial` / `diali` / `dialk` (of/mine/yours — the possessive takes its pronoun suffix attached, `dialha`, `dialo`, `dialna`) · `li` (which/who) · `houa` (he/it) · `joj` (two) · `wa7d` (one, also the indefinite article) · `7essa` / `7essass` (session / sessions) · `mabin` (between) · `tal` (up to, until) · `mn` (from) · `3la` (about, on) · `fa` (so, then) · `lyoma` (today) · `yom` (day) · `nhdr` (I talk) · `lik` / `likom` (to you sg/pl) · `lkher` (the end) · `tb3i` (follow — f. imperative) · `kat7taji` (you need — f.) · `kidom` (it lasts)
+
+Added in v1.0.4:
+
+`bach` (so that, in order to — باش)
 
 v1.0.1 replaced `dyal`/`dyali` with `dial`/`diali`: the ground truth wrote `dial` eleven times and `dyal` never, and §4's own rule is that the user's habit wins. Confirmed by the user on 2026-08-24; `dial` is settled.
 

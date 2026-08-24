@@ -112,18 +112,14 @@ describe('freeze-list near-miss matching', () => {
     expect(report.examples[0]?.detail).toContain('bzaf');
   });
 
-  // "bach" is not on the freeze list, so the exact-match rule cannot reach it
-  // and it is still reported as a near-miss of "wach". Adding it to
-  // freeze-list.json is a pending user decision plus a guide version bump;
-  // this test pins today's behaviour so that decision is visible rather than
-  // silently assumed. See reports/block-2-session-2.md.
-  it('still flags bach against the real freeze list, which does not contain it', () => {
+  // "bach" was frozen in ORTHOGRAPHY_GUIDE v1.0.4 precisely because the
+  // matcher kept reporting it as a misspelling of "wach". Now that it is on
+  // the list, the exact-match rule reaches it.
+  it('counts bach as conformant now that v1.0.4 froze it', () => {
     const report = findFreezeListConformance(['bach']);
-    expect(report.nearMiss).toBe(1);
-    expect(report.examples[0]).toEqual({
-      word: 'bach',
-      detail: 'near "wach" (edit distance 1)',
-    });
+    expect(report.nearMiss).toBe(0);
+    expect(report.conformant).toBe(1);
+    expect(report.examples).toEqual([]);
   });
 
   it('leaves words under four characters out of the matcher entirely', () => {
