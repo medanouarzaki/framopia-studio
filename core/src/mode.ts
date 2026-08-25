@@ -18,6 +18,7 @@ import { REPO_ROOT } from './paths.js';
  * fonts              { status: "tbd", note } until the user supplies them,
  *                    then { status: "set", latin, arabic }
  * imageStyle         { stylePrompt: string[], negativePrompt: string[] }
+ * imageVariation     { note, axes: { <axis>: string[] } }
  * allowedTemplates   { subtitle: id[], keyword: id[], image: id[] }
  * vocabulary         client terms, fed to transcription as key terms
  * note               optional free text for the humans editing the file
@@ -29,10 +30,16 @@ import { REPO_ROOT } from './paths.js';
  * palette entry changes the prompt and no code has to be touched. A fragment
  * naming a colour literally is a validation failure.
  *
- * **There is deliberately no `imageVariation` field.** How much images may
- * vary within one reel is a user decision that has not been taken; a guessed
- * default would be indistinguishable from a decision. The gap is the record
- * that the question is open.
+ * **`imageStyle` is the invariant half of an image prompt and
+ * `imageVariation` is the varying half.** Every slot in a reel gets the whole
+ * of `stylePrompt`, which is what keeps the mode palette dominant across the
+ * set; each slot then draws one value from each `imageVariation` axis so the
+ * images read as designed rather than batched. The axes are mode data on
+ * purpose: no composition, lighting or crop term may be written in a source
+ * file, for the same reason no colour may be.
+ *
+ * Which value a given slot draws is not decided here — that is composition
+ * work, and it belongs to the stage that builds image slots.
  */
 export const MODE_SCHEMA_VERSION = 1;
 
@@ -56,6 +63,12 @@ export type ModeFonts =
   | { status: 'tbd'; note: string }
   | { status: 'set'; latin: string; arabic: string };
 
+export interface ImageVariation {
+  note: string;
+  /** Axis name to the values a slot may draw from. Order is significant. */
+  axes: Record<string, string[]>;
+}
+
 export interface ClientMode {
   id: string;
   name: string;
@@ -63,6 +76,7 @@ export interface ClientMode {
   palette: Record<PaletteRole, string>;
   fonts: ModeFonts;
   imageStyle: { stylePrompt: string[]; negativePrompt: string[] };
+  imageVariation: ImageVariation;
   allowedTemplates: Record<TemplateKind, string[]>;
   vocabulary: string[];
   note?: string;
@@ -224,6 +238,39 @@ function validateImageStyle(c: Checker, value: unknown): void {
   }
 }
 
+function validateImageVariation(c: Checker, value: unknown): void {
+  const variation = c.object('imageVariation', value);
+  if (variation === null) return;
+  c.string('imageVariation.note', variation.note);
+  const axes = c.object('imageVariation.axes', variation.axes);
+  if (axes === null) return;
+  const names = Object.keys(axes);
+  if (names.length === 0) {
+    c.fail('imageVariation.axes', 'expected at least one axis');
+    return;
+  }
+  for (const name of names) {
+    const path = `imageVariation.axes.${name}`;
+    const values = c.stringArray(path, axes[name]);
+    if (values === null) continue;
+    if (values.length < 2) {
+      c.fail(path, 'expected at least two values; an axis with one value does not vary');
+      continue;
+    }
+    if (new Set(values).size !== values.length) {
+      c.fail(path, 'values must be distinct');
+    }
+    values.forEach((v, i) => {
+      if (COLOR_LITERAL_RE.test(v)) {
+        c.fail(
+          `${path}[${i}]`,
+          'names a colour literally; the palette is carried by imageStyle, not by an axis',
+        );
+      }
+    });
+  }
+}
+
 function validateTemplates(c: Checker, value: unknown): void {
   const templates = c.object('allowedTemplates', value);
   if (templates === null) return;
@@ -274,12 +321,20 @@ export function validateMode(value: unknown): ModeValidationIssue[] {
   }
   if (mode.note !== undefined) c.string('note', mode.note);
 
-  for (const field of ['palette', 'fonts', 'imageStyle', 'allowedTemplates', 'vocabulary']) {
+  for (const field of [
+    'palette',
+    'fonts',
+    'imageStyle',
+    'imageVariation',
+    'allowedTemplates',
+    'vocabulary',
+  ]) {
     c.required(field, mode[field]);
   }
   if (mode.palette !== undefined) validatePalette(c, mode.palette);
   if (mode.fonts !== undefined) validateFonts(c, mode.fonts);
   if (mode.imageStyle !== undefined) validateImageStyle(c, mode.imageStyle);
+  if (mode.imageVariation !== undefined) validateImageVariation(c, mode.imageVariation);
   if (mode.allowedTemplates !== undefined) validateTemplates(c, mode.allowedTemplates);
   if (mode.vocabulary !== undefined) c.stringArray('vocabulary', mode.vocabulary);
 

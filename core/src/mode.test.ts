@@ -26,6 +26,10 @@ const valid = (): Record<string, unknown> => ({
     stylePrompt: ['a single clear idea', 'dominant palette of {{palette.primary}}'],
     negativePrompt: ['no background clutter'],
   },
+  imageVariation: {
+    note: 'axes vary slot to slot',
+    axes: { crop: ['wide', 'close'], lighting: ['hard', 'soft'] },
+  },
   allowedTemplates: { subtitle: ['sub_pop'], keyword: ['kw_slam'], image: ['img_float'] },
   vocabulary: [],
 });
@@ -104,6 +108,7 @@ describe('validateMode', () => {
       palette: { background: '#1A0000', primary: 'red', accent: '#C9A96E', light: '#F8F6F2' },
       fonts: { status: 'tbd', note: 'x' },
       imageStyle: { stylePrompt: ['ok'], negativePrompt: [] },
+      imageVariation: { note: 'x', axes: { crop: ['wide', 'wide'] } },
       allowedTemplates: { subtitle: ['sub_pop'], keyword: ['kw_slam'], image: ['bad id'] },
       vocabulary: 'nope',
     });
@@ -113,13 +118,45 @@ describe('validateMode', () => {
       'version',
       'palette.primary',
       'imageStyle.negativePrompt',
+      'imageVariation.axes.crop',
       'allowedTemplates.image[0]',
       'vocabulary',
     ]);
   });
 
-  it('does not require imageVariation, which is a deliberate gap', () => {
-    expect(validateMode(valid())).toEqual([]);
+  it('requires imageVariation now that the axes are settled', () => {
+    const mode = valid();
+    delete mode.imageVariation;
+    expect(paths(validateMode(mode))).toEqual(['imageVariation']);
+  });
+
+  it('rejects an axis with a single value, which does not vary', () => {
+    const mode = valid();
+    (mode.imageVariation as { axes: Record<string, string[]> }).axes.crop = ['wide'];
+    const issues = validateMode(mode);
+    expect(paths(issues)).toEqual(['imageVariation.axes.crop']);
+    expect(issues[0]?.message).toContain('does not vary');
+  });
+
+  it('rejects duplicate values on an axis', () => {
+    const mode = valid();
+    (mode.imageVariation as { axes: Record<string, string[]> }).axes.crop = ['wide', 'wide'];
+    expect(paths(validateMode(mode))).toEqual(['imageVariation.axes.crop']);
+  });
+
+  it('rejects an axis value naming a colour, which belongs to the palette', () => {
+    const mode = valid();
+    (mode.imageVariation as { axes: Record<string, string[]> }).axes.crop = [
+      'wide',
+      'close on #820000',
+    ];
+    expect(paths(validateMode(mode))).toEqual(['imageVariation.axes.crop[1]']);
+  });
+
+  it('rejects an axes block with no axes at all', () => {
+    const mode = valid();
+    (mode.imageVariation as { axes: Record<string, string[]> }).axes = {};
+    expect(paths(validateMode(mode))).toEqual(['imageVariation.axes']);
   });
 });
 
@@ -161,6 +198,14 @@ describe('the k2 stub on disk', () => {
 
   it('has no vocabulary yet', () => {
     expect(mode.vocabulary).toEqual([]);
+  });
+
+  it('varies composition, lighting and crop across a reel', () => {
+    expect(Object.keys(mode.imageVariation.axes).sort()).toEqual([
+      'composition',
+      'crop',
+      'lighting',
+    ]);
   });
 });
 

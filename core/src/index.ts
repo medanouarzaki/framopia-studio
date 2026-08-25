@@ -21,6 +21,7 @@ export {
   TEMPLATE_PREFIXES,
   validateMode,
   type ClientMode,
+  type ImageVariation,
   type ModeFonts,
   type ModeValidationIssue,
   type PaletteRole,
