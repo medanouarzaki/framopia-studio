@@ -21,6 +21,7 @@
     "recompose": "npm run build:core && npm run recompose --workspace framopia-service --",
     "cutouts": "npm run build:core && npm run cutouts --workspace framopia-service",
     "images": "npm run build:core && npm run images --workspace framopia-service --",
-    "plan-page": "npm run build:core && npm run plan-page --workspace framopia-service --"
+    "plan-page": "npm run build:core && npm run plan-page --workspace framopia-service --",
+    "frames": "npm run build:core && npm run frames --workspace framopia-service --"
   }
 }

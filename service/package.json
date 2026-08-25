@@ -16,7 +16,8 @@
     "recompose": "tsx src/analysis/recompose-cli.ts",
     "cutouts": "tsx src/images/cutouts-cli.ts",
     "images": "tsx src/images/images-cli.ts",
-    "plan-page": "tsx src/images/plan-page-cli.ts"
+    "plan-page": "tsx src/images/plan-page-cli.ts",
+    "frames": "tsx src/frames/frames-cli.ts"
   },
   "dependencies": {
     "@framopia/core": "*",
