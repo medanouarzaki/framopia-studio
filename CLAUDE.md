@@ -411,9 +411,11 @@ the module's own doc comment, plus `validateMode`, `parseMode`, `loadMode`,
   fonts status, a style fragment hardcoding a colour or naming a palette role
   that does not exist, and an id disagreeing with the filename.
 
-**Keyword detection** (Block 3 session 3) is `service/src/analysis/`, driven by
-`npm run analyse -- --plan <path.editplan.json> [--mode <id>]
-[--keywords auto|propose] [--yes] [--no-cache]`.
+**Analysis** is `service/src/analysis/`, driven by
+`npm run analyse -- --plan <path.editplan.json> [--stage keywords|slots]
+[--mode <id>] [--keywords auto|propose] [--yes] [--no-cache]`. Two stages,
+same shape: derive a count from duration, one structured Gemini call for
+candidates, then pure deterministic selection that imposes the count.
 
 - `count.ts` — `keywordCountFor(durationS)`: PROJECT_SPEC §5's 3–5 per 30 s
   taken at its midpoint of 4, pro-rata, rounded, floored at 1. Pure. All five
@@ -466,14 +468,100 @@ answer.
 resolution failures and 0 text mismatches** on both. Session spend $0.267718
 over 5 calls; ledger all-time $5.712720.
 
-**The CLI's cost estimate is not a forecast for this stage.**
-`estimateGeminiCallCost` is duration-based and this call sends no audio, so it
-is passed 0 and prints ~$0.0040 against a ~$0.05 actual. Actuals come from
-`usageMetadata` as always.
+**The cost estimate is stage-aware since Block 3 session 4.**
+`estimateGeminiTextCallCost` in `core/src/pricing.ts` estimates from the
+prompt that will actually be sent plus an expected answer size, using the same
+deliberately pessimistic thinking multiplier as transcription. It printed
+$0.0533 against a $0.0588 keyword actual and $0.0781 against a $0.0467 slot
+actual. The old duration-based call was fed 0 and printed $0.0040 against
+~$0.05, which is worse than printing nothing. Actuals still come only from
+`usageMetadata`.
 
-**Re-running `npm run transcribe` on a plan discards its keywords**, because
-`transcribeVideo` builds a fresh plan rather than merging into the existing
-one. Not fixed; it matters as soon as two stages both write a plan.
+**Transcription merges into an existing plan** since Block 3 session 4
+(`service/src/editplan/merge.ts`). It used to build a fresh plan and write it,
+silently deleting whatever keywords a later stage had added.
+
+- `transcriptContentHash` covers each word's id, text, timing and removed
+  flag — everything that can invalidate a block pointing at it. Stored on the
+  plan as `transcript.contentHash` (a **departure from ARCHITECTURE §3**,
+  which does not name the field), but the merge **recomputes it from the
+  existing plan's own words** rather than trusting the stored value, so a plan
+  written before the field existed is answered exactly instead of assumed
+  stale.
+- Transcript unchanged: `keywords`, `images` and `sfx` are kept as they are,
+  and `meta.id` and `meta.createdAt` survive.
+- Transcript changed: those three blocks are **cleared**, their pipeline
+  stages reset to `pending`, their `byStage` costs dropped, a `built` plan
+  marked `stale`, and the CLI says so on stdout. A stale word-id reference is
+  never re-resolved onto a neighbour — a keyword pointing at the wrong word is
+  worse than a missing one. `zones` survive: they come from computer vision
+  over frames and reference no word.
+- ARCHITECTURE §3's rule that a re-run never overwrites a human-flagged item
+  is enforced: a clear that would destroy a `keywords.items[].edited` item or
+  an image slot with a `chosenCandidateId` throws `PlanMergeBlockedError` and
+  demands `--force`. `KeywordItem.edited` is a **second schema departure**,
+  added because keywords had no way to carry that flag.
+
+**Keyword spans are capped at two words and must not repeat an idea**
+(`service/src/analysis/span.ts`), both enforced in the pure selector.
+TEMPLATE_LIBRARY_GUIDE §4 designs for "1–2 short words, our real case" and §8
+notes "best on 1 word"; session 3 put ten emphasized words on a 22 s reel.
+
+- An over-long candidate is **narrowed, not dropped**. The rule: drop
+  droppable tokens from both ends while more than one remains; if two or fewer
+  remain that is the span; otherwise keep the first token plus the second when
+  the second is not droppable. Head-initial is right for all three languages
+  here. Droppable = a function word or a bare number.
+- **This can break a §6 Arabic-script domain term** that the orthography guide
+  treats as one unit: `تحفيز طبيعي للكولاجين` narrows to `تحفيز طبيعي`. A real
+  tension between the guide and the template contract, resolved in favour of
+  the template because the text has to fit on screen.
+- Diversity: two keywords collide when their significant tokens share a stem.
+  `headStem` sees through the Arabic definite article and the single-letter
+  proclitics (`الكولاجين` and `للكولاجين` are the same idea) and through an
+  attached Latin article. It is a **heuristic used only for comparison** — it
+  never rewrites a word and refuses to strip down to a stub. A collision skips
+  the candidate and the next by score takes its place; a count the candidates
+  cannot fill is reported as a `shortfall`, never padded.
+- `ACTIVE_ANALYSIS_PROMPT_VERSION` is **2**: version 1 plus the span-length
+  preference and "do not return two candidates about the same thing".
+  Narrowing is the guarantee; the prompt makes it the exception.
+
+**The image slot planner** is `slots.ts` (prompt, call, parse) and
+`slot-select.ts` (pure), with `ACTIVE_SLOT_PROMPT_VERSION = 1` and its own
+cache stage `imageslots`. **No image is generated — that is Block 4.**
+
+- Count from duration at 5.5 per 30 s, PROJECT_SPEC §5's midpoint, same
+  rounding and floor as keywords. 4 for the Block 1 reels, 5 for vitasilk.
+- Spread is enforced by dividing the reel into `count` equal windows and
+  keeping at most one slot per window by midpoint, plus `MIN_SLOT_GAP_S = 0.5`
+  as an absolute floor (chosen, not measured). A window no candidate reached
+  is a shortfall, not a second slot crammed next to the first.
+- Slots must not overlap in time, word ids must resolve, and an unresolved
+  slot is dropped and counted rather than fuzzy-matched. Images are
+  **independent of keywords** per §5, so the planner is never told about them.
+- `prompt` = idea + all of `mode.imageStyle.stylePrompt` (the invariant half,
+  which is what keeps the palette dominant) + this slot's variation draw.
+  `negativePrompt` = mode negatives + the §5.3 globals. **No colour and no
+  composition term is written in code.**
+- The variation draw is deterministic from `meta.id` and the slot index: a
+  per-axis offset and a stride coprime to the axis length, so consecutive
+  slots never share a value and the walk covers the whole axis, plus a
+  per-cycle bump so a reel with more slots than an axis has values does not
+  repeat its first draw exactly. vitasilk's fifth slot was an exact copy of
+  its first on all three axes before the bump existed.
+- `ImageSlot` gained `wordIds` and `presentation` became nullable — two more
+  **schema departures**, both recorded in `service/src/editplan/types.ts`.
+
+Validation covers both blocks: a keyword or slot naming an unknown word,
+claiming a removed word, overlapping another, or scoring outside 0–1 cannot
+reach disk, because `writeEditPlan` validates first.
+
+**Live run** (`benchmarks/RESULTS-block3-slots.md`): 4 billable calls,
+$0.224164, ledger all-time $5.936884. test-1 went from ten emphasized words to
+four and lost its duplicate-idea pair. **Nothing needed narrowing and no
+diversity skip fired on either reel** — the prompt prevented both upstream, so
+those two selector rules are live but unexercised on real data.
 
 Panel, templates, and real job types are not started.
 
