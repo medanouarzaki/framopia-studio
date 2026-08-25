@@ -115,7 +115,7 @@ Block 1 definition-of-done evidence. `docs/PROJECT_SPEC.md` §7 points at it.
 
 Frozen config: **hybrid** — Scribe v2 batch for word timings and a first
 pass, then a Gemini `gemini-3.1-pro-preview` correction pass carrying
-`docs/ORTHOGRAPHY_GUIDE.md` (**v1.0.5, frozen**) plus the per-word script
+`docs/ORTHOGRAPHY_GUIDE.md` (**v1.0.6, frozen**) plus the per-word script
 rules, realigned onto Scribe's timings by Levenshtein anchoring with linear
 interpolation across inserted words.
 
@@ -144,7 +144,9 @@ Three facts that shape everything downstream:
   14/15, worsening through a reel. This, not WER, is why the config is
   hybrid.
 
-**Block 2 (transcription production pipeline) is in progress.** Done so far:
+**Block 2 (transcription production pipeline) is complete.** Its
+definition-of-done evidence is itemized in `reports/block-2-session-7.md`.
+What it built:
 the Block 1 handoff in `handoffs/block-1.md`; a ledger correction for the one
 understated Gemini entry from Block 1 session 4 (see the ledger note at the
 end of `benchmarks/RESULTS-block1.md` — the raw 19:50:06 line is known-low and
@@ -175,25 +177,26 @@ high-drift correction is flagged, never dropped.
 
 **Prompt versions.** `ACTIVE_PROMPT_VERSION` in `correction.ts` is the
 prompt's identity and will feed the cache fingerprint (ARCHITECTURE §6).
-**Version 1 is active** — the Block 1 frozen prompt, verbatim, and the only
-version any evidence describes. Version 2 (version 1 plus a `و` → `w` rule,
-keyterms moved ahead of the JSON-shape instruction) stays selectable as the
-record of the session-3 experiment but is not used: that comparison
-(`benchmarks/RESULTS-block2-promptv2.md`) was inconclusive, having varied two
-things at once and run each arm once. The reversion is recorded as an
-amendment in `docs/DECISION-transcription-config.md`. The `ou` corruption is
-now caught by the conformance scorer instead of a prompt rule.
+**Version 3 is active** — version 1 plus a per-word `lang` in the response,
+and nothing else. Activated in session 7 on the evidence in
+`benchmarks/RESULTS-block2-langtagging.md`: under guide v1.0.6, three runs
+tagged 81/81 words with no nulls and no out-of-enum values, agreed on
+**every** tag (81/81, up from 75/81 under v1.0.5), and moved WER by 0.4 points
+(mean 15.6% against version 1's 15.2%) against a 3.7-point floor. Recorded as
+an amendment in `docs/DECISION-transcription-config.md`.
 
-**Version 3** is version 1 plus a per-word `lang` in the response, and nothing
-else. It is **not active**; the user has not ruled on it.
-`benchmarks/RESULTS-block2-langtagging.md` measured it over three runs:
-coverage 81/81 with no nulls and no out-of-enum values, tags identical across
-runs for 75 of 81 words, zero disagreements with the local derivation, and WER
-inside the floor (mean 16.9% against version 1's 15.2%, spread 3.7 = the whole
-floor). The six unstable words are every Arabic-script domain term, tagged
-`darija` twice and `msa` once — the guide says which script those take but not
-which language, so the model has no basis to choose. `mixed` and `en` were
-never produced.
+**Version 1** is the Block 1 frozen prompt, verbatim, and stays selectable: it
+is what run C and every Block 1 figure were measured with. **Version 2**
+(version 1 plus a `و` → `w` rule, keyterms moved ahead of the response shape)
+stays selectable as the record of the session-3 experiment and is not used —
+that comparison (`benchmarks/RESULTS-block2-promptv2.md`) was inconclusive,
+having varied two things at once and run each arm once. The `ou` corruption is
+caught by the conformance scorer instead of a prompt rule.
+
+`mixed` has never been produced by any run. `en` first appeared on the live
+vitasilk plan (8 words), where `langDisagreement` also fired for the first
+time — on `filler` ×2, tagged `en` by the model and `fr` by `deriveLang`,
+whose French lexicon claims a word that is English in "le filler glow".
 
 **`dial` is written separate since guide v1.0.5** (`dial l7loul`, never
 `dl7loul`), because six of the twelve tokens that moved across identical calls
@@ -201,7 +204,13 @@ were this one word. `benchmarks/RESULTS-block2-dialrule.md` measured it: the
 instability is gone (6/6 occurrences comply in all three runs, stability
 69/81 → 79/81) and WER stayed inside the floor.
 
-**The reference is versioned and was corrected to match.** The hand-written
+**All four references are versioned.** `ground-truth` and `test-3` are
+`v1.0.1-conformant`; `test-1` and `test-2` are `v1.0-unrevised` because they
+still contain reduced `dl`/`dla` tokens (`dla vidéo` and `joj dl 7essass` in
+test-1, `joj dl 7essass` in test-2). Those were reported, not fixed —
+correcting a reference is a user decision.
+
+**The ground-truth reference was corrected to match the guide.** The hand-written
 ground truth wrote `dl 7olol`, `dl 7essass`, `dl vitaminat` — the reduced form
 §4 has listed as deliberately not frozen since v1.0.1 — so it had been
 non-conformant since then and v1.0.5 only made it visible. Those three tokens
@@ -209,7 +218,7 @@ are now `dial l7olol`, `dial l7essass`, `dial lvitaminat`; noun spellings are
 unchanged. `.local/ground-truth/ground-truth.txt` carries a
 `# reference-version:` header, `npm run bench:tag` copies it into the JSON, and
 `GroundTruth.version` exposes it, so a scored result can name what it scored
-against. The other three reels are unversioned and were not touched.
+against.
 
 **The noise floor is 3.7 WER points** against the corrected reference — 14.8%
 to 18.5% across the three identical correction calls. It got *wider* than the
