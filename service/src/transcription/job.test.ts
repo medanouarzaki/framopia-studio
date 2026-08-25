@@ -122,7 +122,7 @@ describe('transcribeVideo — composition', () => {
     const { plan } = await transcribeVideo(options());
     expect(plan.pipeline.transcription).toMatchObject({
       status: 'done',
-      config: 'hybrid-v1',
+      config: 'hybrid-prompt-v1',
       cached: false,
       costUsd: 0.07717,
     });

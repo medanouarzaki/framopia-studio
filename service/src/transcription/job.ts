@@ -17,7 +17,15 @@ import { buildTranscript } from './plan-builder.js';
 import type { HybridTranscript } from './hybrid.js';
 
 export const TRANSCRIBE_JOB_TYPE = 'transcribe';
-export const TRANSCRIPTION_CONFIG_LABEL = 'hybrid-v1';
+/**
+ * What produced this transcript, for the plan's pipeline block. Derived from
+ * the prompt version rather than hardcoded: the label read `hybrid-v1` while
+ * prompt version 3 was active, which is exactly the kind of stale provenance
+ * the Edit Plan exists to prevent.
+ */
+export function transcriptionConfigLabel(promptVersion: number): string {
+  return `hybrid-prompt-v${promptVersion}`;
+}
 
 export interface TranscribeVideoOptions {
   videoPath: string;
@@ -140,7 +148,7 @@ export async function transcribeVideo(
   plan.subtitles.groups = built.groups;
   plan.pipeline.transcription = {
     status: 'done',
-    config: TRANSCRIPTION_CONFIG_LABEL,
+    config: transcriptionConfigLabel(transcript.promptVersion),
     costUsd: transcript.cached ? 0 : transcript.cost.totalUsd,
     cached: transcript.cached,
     completedAt: timestamp,
