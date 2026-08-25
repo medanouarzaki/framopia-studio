@@ -1,11 +1,22 @@
 import { describe, expect, it } from 'vitest';
 import {
+  ALLOWED_IMAGE_RESOLUTIONS,
   computeGeminiCost,
+  computeImageCost,
+  estimateImageRunCost,
+  imageModelPrices,
+  isAllowedImageResolution,
+  UnknownImageModelError,
+  UnsupportedImageResolutionError,
   estimateCosts,
   estimateGeminiCallCost,
   estimateGeminiTextCallCost,
 } from './pricing.js';
-import { modelConfig } from './model-config.js';
+import {
+  GEMINI_IMAGE_MODEL_FLASH,
+  GEMINI_IMAGE_MODEL_PRO,
+  modelConfig,
+} from './model-config.js';
 
 describe('estimateGeminiCallCost', () => {
   // Not zero: the orthography guide goes into every prompt whatever the
@@ -162,5 +173,93 @@ describe('estimateGeminiTextCallCost', () => {
 
   it('is never zero for a real prompt', () => {
     expect(estimateGeminiTextCallCost({ promptChars: 1, expectedOutputTokens: 1 })).toBeGreaterThan(0);
+  });
+});
+
+describe('computeImageCost', () => {
+  it('prices each tier at the published per-image rate', () => {
+    expect(computeImageCost('gemini-3-pro-image', '1K')).toBe(0.134);
+    expect(computeImageCost('gemini-3-pro-image', '2K')).toBe(0.134);
+    expect(computeImageCost('gemini-3.1-flash-image', '1K')).toBe(0.067);
+    expect(computeImageCost('gemini-3.1-flash-image', '2K')).toBe(0.101);
+  });
+
+  // A spend gate that reads a typo as free is worse than no gate at all.
+  it('throws on an unknown model rather than returning zero', () => {
+    expect(() => computeImageCost('gemini-4-imaginary', '1K')).toThrow(UnknownImageModelError);
+    expect(() => computeImageCost('', '1K')).toThrow(UnknownImageModelError);
+  });
+
+  it('names the priced models in the error', () => {
+    expect(() => computeImageCost('nope', '1K')).toThrow(/gemini-3-pro-image/);
+  });
+
+  it('throws on a tier the model does not offer', () => {
+    expect(() => computeImageCost('gemini-3-pro-image', '0.5K')).toThrow(
+      UnsupportedImageResolutionError,
+    );
+  });
+});
+
+describe('image resolution policy', () => {
+  it('allows 1K and 2K only', () => {
+    expect(ALLOWED_IMAGE_RESOLUTIONS).toEqual(['1K', '2K']);
+    expect(isAllowedImageResolution('1K')).toBe(true);
+    expect(isAllowedImageResolution('2K')).toBe(true);
+  });
+
+  it('rejects 4K, which is paid-for pixels the comps scale away', () => {
+    expect(isAllowedImageResolution('4K')).toBe(false);
+    expect(isAllowedImageResolution('0.5K')).toBe(false);
+  });
+
+  // The tier is still priced even though it is not selectable, so the report
+  // can say what was avoided.
+  it('still prices 4K for both candidates', () => {
+    expect(computeImageCost('gemini-3-pro-image', '4K')).toBe(0.24);
+    expect(computeImageCost('gemini-3.1-flash-image', '4K')).toBe(0.151);
+  });
+});
+
+describe('estimateImageRunCost', () => {
+  it('multiplies slots by candidates by the per-image rate', () => {
+    const e = estimateImageRunCost({
+      modelId: 'gemini-3-pro-image', resolution: '1K', slots: 5, candidatesPerSlot: 3,
+    });
+    expect(e.images).toBe(15);
+    expect(e.usd).toBeCloseTo(15 * 0.134, 12);
+    expect(e.modelId).toBe('gemini-3-pro-image');
+  });
+
+  it('is zero images and zero dollars when there are no slots', () => {
+    const e = estimateImageRunCost({
+      modelId: 'gemini-3.1-flash-image', resolution: '2K', slots: 0, candidatesPerSlot: 3,
+    });
+    expect(e.images).toBe(0);
+    expect(e.usd).toBe(0);
+  });
+
+  it('throws before estimating anything for an unknown model', () => {
+    expect(() =>
+      estimateImageRunCost({
+        modelId: 'ghost', resolution: '1K', slots: 5, candidatesPerSlot: 3,
+      }),
+    ).toThrow(UnknownImageModelError);
+  });
+});
+
+describe('image model pins', () => {
+  it('names both candidates and neither is the retiring 2.5 model', () => {
+    expect(GEMINI_IMAGE_MODEL_PRO).toBe('gemini-3-pro-image');
+    expect(GEMINI_IMAGE_MODEL_FLASH).toBe('gemini-3.1-flash-image');
+    expect([GEMINI_IMAGE_MODEL_PRO, GEMINI_IMAGE_MODEL_FLASH]).not.toContain(
+      'gemini-2.5-flash-image',
+    );
+  });
+
+  it('records the shutdown date that rules gemini-2.5-flash-image out', () => {
+    expect(imageModelPrices('gemini-2.5-flash-image').retiresOn).toBe('2026-10-02');
+    expect(imageModelPrices(GEMINI_IMAGE_MODEL_PRO).retiresOn).toBeNull();
+    expect(imageModelPrices(GEMINI_IMAGE_MODEL_FLASH).retiresOn).toBeNull();
   });
 });

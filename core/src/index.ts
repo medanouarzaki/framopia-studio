@@ -3,7 +3,18 @@ export { appendCost, readCosts, COSTS_PATH, type CostEntry } from './costs.js';
 export { appVersion } from './app-version.js';
 export { align, type AlignedPair, type AlignOp } from './align.js';
 export { normalizeToken } from './normalize.js';
-export { modelConfig, type GeminiPrices, type ModelConfig } from './model-config.js';
+export {
+  GEMINI_IMAGE_MODEL_FLASH,
+  GEMINI_IMAGE_MODEL_PRO,
+  IMAGE_RESOLUTIONS,
+  modelConfig,
+  type GeminiImageModelPrices,
+  type GeminiImageModels,
+  type GeminiImagePrices,
+  type GeminiPrices,
+  type ImageResolution,
+  type ModelConfig,
+} from './model-config.js';
 export {
   GLOBAL_NEGATIVE_PROMPTS,
   loadMode,
@@ -49,7 +60,15 @@ export {
   type TemplateSfxBinding,
 } from './templates.js';
 export {
+  ALLOWED_IMAGE_RESOLUTIONS,
   computeGeminiCost,
+  computeImageCost,
+  estimateImageRunCost,
+  imageModelPrices,
+  isAllowedImageResolution,
+  UnknownImageModelError,
+  UnsupportedImageResolutionError,
+  type ImageRunEstimate,
   estimateCosts,
   estimateGeminiCallCost,
   estimateGeminiTextCallCost,

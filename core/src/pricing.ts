@@ -1,4 +1,8 @@
-import { modelConfig } from './model-config.js';
+import {
+  modelConfig,
+  type GeminiImageModelPrices,
+  type ImageResolution,
+} from './model-config.js';
 
 export const SCRIBE_USD_PER_AUDIO_HOUR = 0.22;
 export const SCRIBE_KEYTERM_SURCHARGE = 0.2;
@@ -165,4 +169,76 @@ export function estimateCosts(
   }
 
   return estimates;
+}
+
+export class UnknownImageModelError extends Error {}
+export class UnsupportedImageResolutionError extends Error {}
+
+/**
+ * 4K is rejected, not merely discouraged. The largest negative zone in a
+ * 2160x3840 frame measures roughly 1700 px across and TEMPLATE_LIBRARY_GUIDE
+ * §3 has image comps working at 1200x1200, so a 4K generation is paid-for
+ * pixels that get scaled away before anyone sees them.
+ */
+export const ALLOWED_IMAGE_RESOLUTIONS: readonly ImageResolution[] = ['1K', '2K'];
+
+export function isAllowedImageResolution(resolution: string): resolution is ImageResolution {
+  return (ALLOWED_IMAGE_RESOLUTIONS as readonly string[]).includes(resolution);
+}
+
+export function imageModelPrices(modelId: string): GeminiImageModelPrices {
+  const prices = modelConfig.geminiImagePrices.models[modelId];
+  if (prices === undefined) {
+    const known = Object.keys(modelConfig.geminiImagePrices.models).join(', ');
+    throw new UnknownImageModelError(
+      `No image pricing for model "${modelId}". Priced models: ${known}.`,
+    );
+  }
+  return prices;
+}
+
+/**
+ * Cost of one generated image. Google bills image output at a fixed token
+ * count per resolution tier, so this is a table lookup rather than a token
+ * computation — but it throws on an unpriced model instead of returning zero,
+ * because a spend gate that reads a typo as free is worse than no gate.
+ */
+export function computeImageCost(modelId: string, resolution: ImageResolution): number {
+  const usd = imageModelPrices(modelId).perImageUsd[resolution];
+  if (usd === undefined) {
+    const tiers = Object.keys(imageModelPrices(modelId).perImageUsd).join(', ');
+    throw new UnsupportedImageResolutionError(
+      `Model "${modelId}" has no price for resolution ${resolution}. Priced tiers: ${tiers}.`,
+    );
+  }
+  return usd;
+}
+
+export interface ImageRunEstimate {
+  modelId: string;
+  resolution: ImageResolution;
+  slots: number;
+  candidatesPerSlot: number;
+  images: number;
+  perImageUsd: number;
+  usd: number;
+}
+
+/**
+ * The pre-spend estimate for a whole generation run. Exact rather than
+ * pessimistic, unlike the text estimators: per-image billing means the only
+ * unknown is how many images get requested, and that is decided before the
+ * first call.
+ */
+export function estimateImageRunCost(options: {
+  modelId: string;
+  resolution: ImageResolution;
+  slots: number;
+  candidatesPerSlot: number;
+}): ImageRunEstimate {
+  const { modelId, resolution, slots, candidatesPerSlot } = options;
+  const perImageUsd = computeImageCost(modelId, resolution);
+  const images = slots * candidatesPerSlot;
+  return { modelId, resolution, slots, candidatesPerSlot, images, perImageUsd,
+    usd: images * perImageUsd };
 }

@@ -5,6 +5,54 @@
     "audioInputUsdPerMillionTokens": 2.0,
     "outputUsdPerMillionTokens": 12.0,
     "asOf": "2026-08",
-    "note": "gemini-2.5-pro was retired mid-Block-1 (the API returns 404 'no longer available to new users') so the model moved to gemini-3.1-pro-preview, the Pro tier the API itself points at. Prices are the paid-tier standard rates for prompts <= 200k tokens from ai.google.dev/gemini-api/docs/pricing; that page lists no separate audio input rate for this model, so audio and text input are priced identically — which is what the session-2 placeholder assumed, at the wrong absolute rate. Pinned rather than using the gemini-pro-latest alias so a run stays reproducible."
+    "note": "gemini-2.5-pro was retired mid-Block-1 (the API returns 404 'no longer available to new users') so the model moved to gemini-3.1-pro-preview, the Pro tier the API itself points at. Prices are the paid-tier standard rates for prompts <= 200k tokens from ai.google.dev/gemini-api/docs/pricing; that page lists no separate audio input rate for this model, so audio and text input are priced identically \u2014 which is what the session-2 placeholder assumed, at the wrong absolute rate. Pinned rather than using the gemini-pro-latest alias so a run stays reproducible."
+  },
+  "geminiImageModels": {
+    "pro": "gemini-3-pro-image",
+    "flash": "gemini-3.1-flash-image"
+  },
+  "geminiImagePrices": {
+    "asOf": "2026-08-25",
+    "source": "https://ai.google.dev/gemini-api/docs/pricing, read 2026-08-25",
+    "note": "Paid-tier standard rates. Image models bill output per image at a fixed token count per resolution tier, so the per-image figure is the published one rather than a token computation. Batch pricing halves the output rate and is not used: the pipeline generates interactively for a human review step. gemini-2.5-flash-image is listed for completeness only and must not be used anywhere -- ai.google.dev/gemini-api/docs/deprecations gives its shutdown as 2026-10-02, inside this project's build window. Which of the two candidate models wins is Block 4 session 2, decided by eye.",
+    "models": {
+      "gemini-3-pro-image": {
+        "inputUsdPerMillionTokens": 2.0,
+        "outputUsdPerMillionTokens": 120.0,
+        "perImageUsd": {
+          "1K": 0.134,
+          "2K": 0.134,
+          "4K": 0.24
+        },
+        "retiresOn": null
+      },
+      "gemini-3.1-flash-image": {
+        "inputUsdPerMillionTokens": 0.5,
+        "outputUsdPerMillionTokens": 60.0,
+        "perImageUsd": {
+          "0.5K": 0.045,
+          "1K": 0.067,
+          "2K": 0.101,
+          "4K": 0.151
+        },
+        "retiresOn": null
+      },
+      "gemini-3.1-flash-lite-image": {
+        "inputUsdPerMillionTokens": 0.5,
+        "outputUsdPerMillionTokens": 1.5,
+        "perImageUsd": {
+          "1K": 0.0336
+        },
+        "retiresOn": null
+      },
+      "gemini-2.5-flash-image": {
+        "inputUsdPerMillionTokens": 0.5,
+        "outputUsdPerMillionTokens": 30.0,
+        "perImageUsd": {
+          "1K": 0.039
+        },
+        "retiresOn": "2026-10-02"
+      }
+    }
   }
 }
