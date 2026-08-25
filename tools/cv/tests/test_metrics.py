@@ -181,3 +181,76 @@ class TestGate:
     def test_every_failing_metric_is_named(self):
         result = evaluate(CutoutMetrics(0.5, 0.5, 0.99, 0.5))
         assert len(result.failures) == 4
+
+
+class TestEdgeHaloAgainstTheOriginal:
+    """The distinction the metric exists to make.
+
+    Without the original, alpha outside a subject is alpha outside a subject
+    and the metric cannot tell a rim the model drew from a rim the remover
+    left. These build both cases with the same alpha and differing sources.
+    """
+
+    def source(self, brightness: float) -> np.ndarray:
+        """An HxWx3 image whose halo band carries `brightness`."""
+        rgb = np.zeros((SIZE, SIZE, 3))
+        rgb[:] = 0.02  # the mode grounds subjects against #1A0000
+        band = 10
+        rgb[50 - band : 150 + band, 50 - band : 150 + band] = brightness
+        rgb[50:150, 50:150] = 0.6  # the subject itself
+        return rgb
+
+    def test_a_rendered_rim_is_not_halo(self):
+        from framopia_cv.metrics import luminance_of
+
+        alpha = haloed_cutout(strength=0.5)
+        lit = luminance_of(self.source(0.9))
+        assert edge_halo(alpha, lit) == pytest.approx(0.0)
+        assert evaluate(compute_metrics(alpha, lit)).presentation == "cutout"
+
+    def test_retained_background_still_counts(self):
+        from framopia_cv.metrics import luminance_of
+
+        alpha = haloed_cutout(strength=0.5)
+        dark = luminance_of(self.source(0.02))
+        assert edge_halo(alpha, dark) > MAX_EDGE_HALO
+        assert evaluate(compute_metrics(alpha, dark)).presentation == "card"
+
+    def test_a_mixture_counts_only_the_dark_half(self):
+        from framopia_cv.metrics import luminance_of
+
+        alpha = haloed_cutout(strength=0.5)
+        rgb = self.source(0.9)
+        rgb[:, : SIZE // 2] = 0.02  # left half dark in the source
+        mixed = edge_halo(alpha, luminance_of(rgb))
+        assert 0.0 < mixed <= 0.5
+
+    # Omitting the source keeps the old behaviour, which is what every
+    # synthetic test above exercises: they build alpha with no image behind it.
+    def test_without_a_source_it_measures_alpha_alone(self):
+        alpha = haloed_cutout(strength=0.5)
+        assert edge_halo(alpha) == pytest.approx(0.5, abs=0.05)
+
+    def test_rejects_a_source_of_the_wrong_shape(self):
+        with pytest.raises(ValueError):
+            edge_halo(clean_cutout(), np.zeros((10, 10)))
+
+
+class TestLuminance:
+    def test_matches_the_mode_palette(self):
+        from framopia_cv.metrics import luminance_of
+
+        assert luminance_of(np.array([[[26, 0, 0]]]))[0, 0] == pytest.approx(0.0217, abs=1e-3)
+        assert luminance_of(np.array([[[248, 246, 242]]]))[0, 0] == pytest.approx(0.965, abs=1e-3)
+
+    def test_accepts_0_1_and_0_255_alike(self):
+        from framopia_cv.metrics import luminance_of
+
+        assert luminance_of(np.array([[[1.0, 1.0, 1.0]]]))[0, 0] == pytest.approx(1.0)
+        assert luminance_of(np.array([[[255, 255, 255]]]))[0, 0] == pytest.approx(1.0)
+
+    def test_rejects_a_non_image_array(self):
+        from framopia_cv.metrics import luminance_of
+
+        with pytest.raises(ValueError):
+            luminance_of(np.zeros((10, 10)))

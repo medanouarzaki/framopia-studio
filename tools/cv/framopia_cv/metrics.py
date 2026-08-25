@@ -116,21 +116,69 @@ SOFT_EDGE_SKIP_PX = 2
 HALO_BAND_PX = 3
 
 
+# Relative luminance at or above which a pixel counts as light the model
+# **rendered**, rather than background the remover failed to take.
+#
+# Declared before the corpus was measured, at the midpoint of the luminance
+# range, and not fitted to any image. The gap it has to sit in is wide: the K2
+# mode grounds every subject against `background` #1A0000, whose luminance is
+# 0.022, while a rendered highlight runs toward `light` #F8F6F2 at 0.96. Half
+# way is comfortably between them and is not a close call on this footage.
+RENDERED_LIGHT_LUMA = 0.5
+
+# Rec. 709 luma coefficients. Green dominates because the eye does; a
+# perceptual weighting is the right one when the question is "did the model
+# draw something bright here".
+_LUMA_WEIGHTS = np.array([0.2126, 0.7152, 0.0722])
+
+
+def luminance_of(rgb: np.ndarray) -> np.ndarray:
+    """Rec. 709 relative luminance in [0, 1] from an HxWx3 (or HxWx4) array."""
+    a = np.asarray(rgb, dtype=np.float64)
+    if a.ndim != 3 or a.shape[2] < 3:
+        raise ValueError(f"expected an HxWx3 image, got shape {a.shape}")
+    if a.max(initial=0.0) > 1.0:
+        a = a / 255.0
+    return np.clip(a[:, :, :3] @ _LUMA_WEIGHTS, 0.0, 1.0)
+
+
 def edge_halo(
     alpha: np.ndarray,
+    original_luma: np.ndarray | None = None,
     skip_px: int = SOFT_EDGE_SKIP_PX,
     band_px: int = HALO_BAND_PX,
 ) -> float:
-    """Partial alpha that persists beyond the subject's soft edge.
+    """Background the remover **retained**, beyond the subject's soft edge.
 
-    Takes the ring between `skip_px` and `skip_px + band_px` pixels **outside**
-    the solid subject and reports the mean alpha there. A clean matte, and a
-    matte with a legitimately soft edge, have both decayed to zero by then and
-    score 0; a matte carrying a rim of the old background scores the strength
-    of that rim where it should already be gone.
+    Takes the ring between `skip_px` and `skip_px + band_px` pixels outside the
+    solid subject. A clean matte, and a matte with a legitimately soft edge,
+    have both decayed to zero by then; a matte carrying a rim of the old
+    background scores the strength of that rim where it should already be gone.
 
-    Measured outside the solid mask only. Partial alpha further in is the
-    subject's own boundary and is wanted.
+    **`original_luma` is what makes this measure what it claims.** Without it
+    the metric sees alpha outside a subject and cannot tell a rim the model
+    *drew* from a rim the remover *left* — and under a mode whose lighting axis
+    asks for `rim light separating the subject from the ground`, a correct
+    render scores like a bad matte. The user settled that distinction by eye at
+    Block 4 session 5, comparing the original panel against the dark-ground
+    panel; this is the same comparison in code.
+
+    A ring pixel is excluded when the **original** image is bright there
+    (luminance >= RENDERED_LIGHT_LUMA): the light was in the source, so alpha
+    there is a rendered highlight, not retained background. A ring pixel dark
+    in the original but carrying alpha in the cutout is background that should
+    have gone, and it counts.
+
+    **The failure mode this accepts:** a subject genuinely lit against a bright
+    ground is excluded either way — the metric cannot tell a rendered rim from
+    a retained bright background, only a rendered rim from a retained *dark*
+    one. That is a real limit and it is the right trade for footage that
+    grounds every subject against #1A0000. On a mode with a light background
+    this metric would go blind, and that is a reason to revisit it there rather
+    than to trust it.
+
+    With `original_luma` omitted the old behaviour is kept, which is what the
+    synthetic tests exercise: they build alpha with no image behind it.
     """
     a = _as_alpha(alpha)
     solid = a >= SOLID
@@ -141,13 +189,28 @@ def edge_halo(
     ring = outer & ~inner
     if not ring.any():
         return 0.0
+
+    if original_luma is not None:
+        luma = np.asarray(original_luma, dtype=np.float64)
+        if luma.shape != a.shape:
+            raise ValueError(
+                f"original luminance {luma.shape} does not match alpha {a.shape}"
+            )
+        ring = ring & (luma < RENDERED_LIGHT_LUMA)
+        # Every ring pixel was bright in the source: all of it is rendered
+        # light and none of it is retained background.
+        if not ring.any():
+            return 0.0
+
     return float(a[ring].mean())
 
 
-def compute_metrics(alpha: np.ndarray) -> CutoutMetrics:
+def compute_metrics(
+    alpha: np.ndarray, original_luma: np.ndarray | None = None
+) -> CutoutMetrics:
     return CutoutMetrics(
         alpha_edge_noise=alpha_edge_noise(alpha),
         hole_ratio=hole_ratio(alpha),
         foreground_area=foreground_area(alpha),
-        edge_halo=edge_halo(alpha),
+        edge_halo=edge_halo(alpha, original_luma),
     )

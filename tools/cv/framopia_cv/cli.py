@@ -23,7 +23,7 @@ import traceback
 def _remove_bg(request: dict) -> dict:
     from .gate import evaluate
     from .metrics import compute_metrics
-    from .remove_bg import MODEL_NAME, alpha_of, remove_background
+    from .remove_bg import MODEL_NAME, alpha_of, original_luminance, remove_background
 
     image_path = request["imagePath"]
     out_path = request["outPath"]
@@ -35,7 +35,10 @@ def _remove_bg(request: dict) -> dict:
     )
     cutout.save(out_path, "PNG")
 
-    metrics = compute_metrics(alpha_of(cutout))
+    # The halo metric compares the cutout against the source, so it needs the
+    # source. Without it it cannot tell a rendered rim from retained
+    # background and a rim-lit render scores like a bad matte.
+    metrics = compute_metrics(alpha_of(cutout), original_luminance(image_path))
     gate = evaluate(metrics)
 
     payload: dict = {

@@ -145,3 +145,50 @@ class TestDegradationsAreIndependent:
 
     def test_specks_do_not_create_holes(self, alpha):
         assert compute_metrics(scatter_specks(alpha)).hole_ratio == 0.0
+
+
+class TestHaloStillFiresWithTheOriginalSupplied:
+    """The exclusion must not blind the metric.
+
+    `edge_halo` now drops ring pixels that are bright in the source, because
+    light the model rendered is not background the remover retained. A metric
+    that can be talked out of firing is worth less than no metric, so this
+    constructs retained background over genuinely dark ground from a real
+    cutout and confirms it still crosses the bound with the source supplied.
+    """
+
+    def test_dilated_alpha_over_dark_ground_still_fails(self, alpha):
+        from PIL import Image as PILImage
+        from framopia_cv.metrics import edge_halo, luminance_of
+
+        with PILImage.open(CUTOUT.parent.parent / "latest-imagebakeoff"
+                           / "gemini-3-pro-image-1.jpg") as handle:
+            luma = luminance_of(np.asarray(handle.convert("RGB"), dtype=np.float64))
+
+        degraded = dilate_alpha(alpha)
+        with_source = edge_halo(degraded, luma)
+        assert with_source > MAX_EDGE_HALO
+        assert evaluate(compute_metrics(degraded, luma)).presentation == "card"
+
+    def test_the_real_corpus_ring_is_dark_in_the_source(self, alpha):
+        """Why the fix changes nothing on this footage, asserted rather than
+        assumed: the ring outside the subject sits over #1A0000, so there is
+        no rendered light there to exclude. The rim the eye sees is inside the
+        solid mask, which this metric never measured."""
+        from PIL import Image as PILImage
+        from framopia_cv.metrics import (
+            HALO_BAND_PX, SOFT_EDGE_SKIP_PX, SOLID, luminance_of,
+        )
+
+        with PILImage.open(CUTOUT.parent.parent / "latest-imagebakeoff"
+                           / "gemini-3-pro-image-1.jpg") as handle:
+            luma = luminance_of(np.asarray(handle.convert("RGB"), dtype=np.float64))
+
+        solid = alpha >= SOLID
+        inner = ndimage.binary_dilation(solid, iterations=SOFT_EDGE_SKIP_PX)
+        ring = ndimage.binary_dilation(inner, iterations=HALO_BAND_PX) & ~inner
+        assert np.percentile(luma[ring], 50) < 0.1
+
+        # And the rim really is inside: the band just inside the edge is bright.
+        inside = solid & ~ndimage.binary_erosion(solid, iterations=4)
+        assert np.percentile(luma[inside], 50) > 0.5

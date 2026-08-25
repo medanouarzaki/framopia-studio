@@ -58,3 +58,16 @@ def remove_background(
 
 def alpha_of(image: Image.Image) -> np.ndarray:
     return np.asarray(image.getchannel("A"), dtype=np.float64) / 255.0
+
+
+def original_luminance(image_path: str) -> np.ndarray:
+    """Rec. 709 luminance of the source image, for the halo comparison.
+
+    Read from the file rather than from the cutout's own RGB: the remover may
+    premultiply or otherwise touch colour where alpha is partial, which is
+    exactly the region the halo metric looks at.
+    """
+    from .metrics import luminance_of
+
+    with Image.open(image_path) as handle:
+        return luminance_of(np.asarray(handle.convert("RGB"), dtype=np.float64))
