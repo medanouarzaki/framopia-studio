@@ -224,7 +224,7 @@ generated.
   run wrote` at the time of the final check; the docs commits follow.
 - Seven commits this session.
 - **`npm run check` exit 0**, `check: PASS`. core **93** (5 files), service
-  **447** (30 files), benchmarks **166** (17 files) — **706 total**, up from
+  **447** (30 files), benchmarks **166** (16 files) — **706 total**, up from
   665. `references: PASS` on all four at `v1.0.8-conformant`.
 - No commit carries an AI attribution trailer.
 - Pushed at session end.
