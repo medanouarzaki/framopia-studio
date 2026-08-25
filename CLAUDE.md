@@ -34,7 +34,9 @@ AI-generated contextual images, SFX, and a watermark. Full spec in
 - `benchmarks/` — transcription benchmark harness (Scribe, Gemini, local
   Whisper baseline, Scribe+Gemini hybrid), scored on WER, orthography
   conformance, and cross-engine timestamp deviation. See `benchmarks/README.md`.
-- `tools/cv/`, `tools/validate-templates/` — helper scripts (not started)
+- `tools/cv/` — the Python CV sidecar: repo-local venv, subprocess, JSON in
+  and JSON out. Background removal and the §5.4 cutout gate, plus local OCR.
+  `tools/validate-templates/` — not started
 - `templates/` — AE templates (not started)
 - `modes/` — per-client config. `k2-syndicalia.json` is a validated stub at
   version 2; the schema, loader and validation live in `core/src/mode.ts`
@@ -110,6 +112,10 @@ AI-generated contextual images, SFX, and a watermark. Full spec in
 - `npm run bakeoff --prefix service [-- --first-only]` — **billable.** The
   Block 4 image bake-off on `vitasilk` slot `img002`. `--first-only`
   generates one image and stops.
+- `npm run cutouts` — free, local. Runs the CV sidecar's cutout gate over
+  `benchmarks/results/latest-imagebakeoff/` and writes cutouts, metrics and a
+  review page to `benchmarks/results/latest-cutouts/`. Generates no images.
+  Needs `tools/cv/setup.sh` first.
 - `npm run recompose -- --plan <abs path.editplan.json> [--mode <id>]` — free.
   Re-composes an existing plan's image prompts against the current mode. No
   Gemini call and no analysis re-run. Paths must be absolute.
@@ -940,9 +946,9 @@ test asserts exactly that. Run on `vitasilk` and `test-1`.
   candidates or a chosen candidate** and demands `--force`
   (`SlotsReplaceBlockedError`). It set `plan.images = { slots }` wholesale
   before, destroying all three silently.
-- **Known divergence, accepted and unresolved:** the mode is at v3 while the
-  analysis cache entries are fingerprinted at v2. Ruled on next session. Not
-  papered over and the cache was deliberately not invalidated.
+- **The mode-version divergence is resolved** (session 4): analysis keys on a
+  content hash of the fields each call reads, not on `mode.version`, and the
+  four existing entries were migrated by rename. Both reels hit at $0.00.
 
 **The client reports what it received.** `image-dimensions.ts` reads width and
 height out of the returned bytes — PNG IHDR and the JPEG frame header, no
@@ -982,14 +988,123 @@ The bake-off's pro arm evicted the flash arm's three images, and the
 Fixed: `evictStaleEntries` takes a **protect list it never removes**, and the
 image budget is `MAX_IMAGE_ENTRIES_PER_VIDEO = 64` — an image costs ~$0.12 to
 regenerate and ~1.5MB to keep. The two-arm scenario is a test that fails
-against the old eviction and passes against the new. **Verified against the
-fake client only**; no live re-verification was run, the session being over
-its ceiling already.
+against the old eviction and passes against the new. Session 4 confirmed it on
+the four surviving entries and on a live `--first-only` hit at $0.00; **a full
+two-arm live run is still unverified**, because the same defect had already
+deleted two pro entries and re-running would have billed.
 
 The corpus at `benchmarks/results/latest-imagebakeoff/` (gitignored, kept for
 session 4) is six 2048x2048 JPEGs: the pro files from the first run, the flash
 files from the second, all the same model, prompt, resolution and aspect
 ratio. `candidates.json` was rebuilt to describe the files actually on disk.
+
+## Block 4 session 4 — the cutout gate and the text check
+
+**Spent $0.00.** Ledger 95 entries / $9.005328 / sha `66e02a42…` at both ends,
+byte-identical.
+
+**`npm run bakeoff` could not be run as the session asked.** Session 3's
+eviction defect had already deleted `gemini-3-pro-image` candidates 1 and 2
+before the fix landed, so a full run would have regenerated two images (~$0.30)
+against a $0.25 ceiling and a generate-nothing rule. A read-only probe showed
+**4 of 6 hit, 2 billable misses**; the live cache-hit path was verified instead
+on `--first-only`, which hit at $0.00 and wrote no ledger line. **The eviction
+fix is confirmed on the four surviving entries and still unverified across a
+full two-arm run.**
+
+**The ceiling is a running check.** It bounds a **session**, not a call: the
+caller captures the ledger's image total once and every arm shares it, and
+before each request the ledger is re-read and the run **aborts** — not
+truncates — if the next image would cross. Session 3's ceiling was evaluated
+once, pre-flight, against an estimate, and two arms each passed their own.
+The pre-flight check survives but measures against what is *left*, and
+estimates only the **billable** images: the cache is resolved first, so a fully
+cached re-run is never refused for want of budget.
+
+**`IMAGE_COST_MULTIPLIER = 1.35`** in `core/src/pricing.ts`, on the
+`THINKING_TOKEN_MULTIPLIER` precedent: a deliberately pessimistic **gate**, not
+a best estimate. Ten images at exact published pairs billed 1.113 to 1.261 over
+published, mean 1.166, **never once under**; 1.35 clears the worst by 7%. The
+estimate now carries both figures. Actuals still come only from
+`usageMetadata`.
+
+**Analysis is fingerprinted on mode *content*, not `mode.version`**
+(`keywordModeContentHash`, `slotModeContentHash`, `compositionContentHash` in
+`core/src/mode.ts`, each enumerating the fields its consumer reads). The
+keyword prompt reads client name and vocabulary; the slot prompt reads name
+alone; composition reads palette, both halves of `imageStyle` and the axes —
+and composition is pure, so nothing that bills keys on it. Session 3's v3 bump
+invalidated every entry for an edit the model never saw, and a font at Block 9
+would have done the same. **The four existing entries were migrated by rename,
+free and provable** — `name` and `vocabulary` are identical between v2 and v3,
+and the old fingerprint reproduces exactly from current inputs. **Verified:
+both reels hit at $0.00 on keywords and slots, ledger unchanged.**
+
+**`expectedDimensions` fails closed.** It returned null for a pair it could not
+derive and `generateImages` reads null as "no expectation", so allowing a
+non-square ratio would have silently disabled the dimension check — the
+`findProclitics` defect again. It throws now, resolved once before any request.
+
+### The sidecar
+
+**`tools/cv/`** — repo-local venv (`python3.11`, the system 3.14 has no wheels
+for this stack), pinned `requirements.txt`, `setup.sh`. Invoked as a
+subprocess: **JSON on stdin, JSON on stdout, nothing else on stdout ever**;
+progress and tracebacks to stderr; a failure is still valid JSON. Tasks
+`remove_bg` and `detect_text`. Its pytest suite runs inside `npm run check`,
+**skipped with a notice, never silently**, when the venv is absent.
+
+Background removal is rembg with **BiRefNet-general** (~1GB model, downloaded
+once to `~/.rembg/`). `service/src/images/sidecar.ts` is the client;
+`npm run cutouts` runs the corpus.
+
+**`post_process_mask` defaults OFF, and that is load-bearing.** It thresholds
+the matte to hard edges and returns an alpha channel with **literally zero**
+partial values, which reads as flawless to three of the four §5.4 metrics
+because they measure the transition band it just destroyed. Same image:
+`edge_halo` 0.0000 with the post-pass, **0.0749** without. A gate fed the
+post-passed matte is not gating.
+
+**All four metrics read the alpha channel alone**, so a dark subject scores the
+same as a light one — every image in the corpus is dark on dark. `edge_halo`
+skips the first 2 px outside the subject: hair and motion blur ramp to clear
+across a couple of pixels, and with no skip a genuinely soft matte is
+indistinguishable from a rim of old background. **That defect was found by a
+test**, not by reading.
+
+**Thresholds are provisional and were declared before the corpus was
+measured**: edge noise ≤ 0.02, holes ≤ 0.01, foreground area 0.05–0.92, halo
+≤ 0.10. Nothing was fitted to six images from one prompt on one slot.
+
+### What the corpus said
+
+**All six pass the gate** (`benchmarks/RESULTS-block4-cutouts.md`). Background
+removal survives dark-on-dark: every matte is a single blob, no holes,
+foreground area 11–22%, nowhere near either bound. **Two images sit within
+0.004 of the halo threshold** (0.0966 and 0.0965 against 0.10) — they pass, and
+a blind threshold landing that close to two of six is worth knowing. Nothing
+was moved to accommodate them.
+
+**Edge noise and hole ratio did not vary at all** across the six. Both are
+exercised only by synthetic tests and **neither is validated against real
+data**. Nothing has produced a `card` fallback on a real image, so that path is
+untested outside the suite.
+
+**Text detection: one true positive, five true negatives, no false
+positives.** `gemini-3-pro-image-1` reads `HAIR` (0.984) and `SERUM` (0.958);
+the other five read nothing. The negative prompt carrying
+`no text, no watermark, no logo` did not prevent it, which is the whole reason
+the check exists. RapidOCR, local and offline.
+
+`ImageCandidate.detectedText` is a **schema addition, optional with a
+default** — absent means the pass has not run, which is not the same as having
+run and found nothing. **Advisory, never a delete.** All five plans still open
+through `readEditPlan`.
+
+Review page: `benchmarks/results/latest-cutouts/index.html`, four views per
+image (original, checkerboard, on the mode's `light`, on its `background`),
+because a halo is invisible on a ground its own colour. Gitignored, regenerate
+with `npm run cutouts`.
 
 Panel and real job types are not started; templates exist only as a stub.
 
