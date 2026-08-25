@@ -15,8 +15,9 @@ describe('estimateRun', () => {
       modelId: GEMINI_IMAGE_MODEL_PRO, candidatesPerSlot: 3 }));
     expect(flash.images).toBe(15);
     // Budgeted figures carry the gate multiplier; published rates do not.
-    expect(flash.publishedUsd).toBe(0.067);
-    expect(flash.usd).toBeCloseTo(15 * 0.067 * IMAGE_COST_MULTIPLIER, 10);
+    // flash at the frozen 2K tier, not its 1K rate.
+    expect(flash.publishedUsd).toBe(0.101);
+    expect(flash.usd).toBeCloseTo(15 * 0.101 * IMAGE_COST_MULTIPLIER, 10);
     expect(pro.usd).toBeCloseTo(15 * 0.134 * IMAGE_COST_MULTIPLIER, 10);
     expect(pro.usd).toBeGreaterThan(flash.usd);
   });
@@ -42,9 +43,9 @@ describe('assertWithinCeiling', () => {
 describe('formatEstimate', () => {
   it('names the model and the per-image rate', () => {
     const text = formatEstimate(estimateRun(4, parseImageConfig()));
-    expect(text).toMatch(GEMINI_IMAGE_MODEL_FLASH);
-    expect(text).toMatch(/\$0\.0670 published per image/);
-    expect(text).toMatch(/budgeted at \$0\.0905/);
+    expect(text).toMatch(GEMINI_IMAGE_MODEL_PRO);
+    expect(text).toMatch(/\$0\.1340 published per image/);
+    expect(text).toMatch(/budgeted at \$0\.1809/);
     expect(text).toMatch(/8 images/);
   });
 

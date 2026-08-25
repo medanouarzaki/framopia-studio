@@ -53,13 +53,21 @@ export interface ImageGenerationConfig {
 }
 
 /**
- * 1K until session 2 says otherwise. The largest negative zone in a 2160x3840
- * frame is about 1700 px across and TEMPLATE_LIBRARY_GUIDE §3 has image comps
- * at 1200x1200, so anything above 2K is paid-for pixels that get scaled away.
+ * The frozen config, `docs/DECISION-image-config.md`: `gemini-3-pro-image` at
+ * 2K, 1:1, two candidates. Settled by the user on prompt fidelity across the
+ * Block 4 bake-off.
+ *
+ * 2K rather than 1K because pro prices the two identically, so 2K is free
+ * quality on this model. 4K stays rejected: the largest negative zone in a
+ * 2160x3840 frame is about 1700 px and TEMPLATE_LIBRARY_GUIDE §3 has image
+ * comps at 1200x1200, so it is paid-for pixels that get scaled away.
+ *
+ * `GEMINI_IMAGE_MODEL_FLASH` remains priced and selectable — it is the
+ * fallback if pro's cost or latency becomes the binding constraint.
  */
 export const DEFAULT_IMAGE_CONFIG: ImageGenerationConfig = {
-  modelId: GEMINI_IMAGE_MODEL_FLASH,
-  resolution: '1K',
+  modelId: GEMINI_IMAGE_MODEL_PRO,
+  resolution: '2K',
   aspectRatio: '1:1',
   candidatesPerSlot: DEFAULT_CANDIDATES_PER_SLOT,
   ceilingUsd: DEFAULT_CEILING_USD,

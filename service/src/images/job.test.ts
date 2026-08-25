@@ -18,8 +18,8 @@ class FakeClient implements ImageGenerationClient {
       mimeType: 'image/png',
       usage: { promptTokenCount: 10, candidatesTokenCount: 1120 },
       text: null,
-      width: 1024,
-      height: 1024,
+      width: 2048,
+      height: 2048,
     };
   }
 }
@@ -36,7 +36,7 @@ function fakeCutout(overrides: Partial<RemoveBgResult> = {}) {
       imagePath: options.imagePath, cutoutPath: options.outPath,
       model: 'birefnet-general', alphaMatting: false,
       postProcessMask: false,
-      width: 1024, height: 1024,
+      width: 2048, height: 2048,
       metrics: { alpha_edge_noise: 0, hole_ratio: 0, foreground_area: 0.15, edge_halo: 0.05 },
       gate: { presentation: 'cutout', passed: true, failures: [] },
       ocr: { hasText: false, detections: [], verdict: { hasText: false, expected: [], unexpected: [], ok: true } },

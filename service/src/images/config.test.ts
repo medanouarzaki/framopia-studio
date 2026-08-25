@@ -74,8 +74,12 @@ describe('parseImageConfig', () => {
     });
   });
 
-  it('defaults to a 1K tier, never 4K', () => {
-    expect(parseImageConfig().resolution).toBe('1K');
+  // The frozen config: pro prices 1K and 2K identically, so 2K is free
+  // quality on it. 4K stays rejected outright.
+  it('defaults to the frozen 2K tier, never 4K', () => {
+    expect(parseImageConfig().resolution).toBe('2K');
+    expect(parseImageConfig().modelId).toBe(GEMINI_IMAGE_MODEL_PRO);
+    expect(parseImageConfig().candidatesPerSlot).toBe(2);
   });
 
   it('throws on 4K rather than silently downgrading it', () => {

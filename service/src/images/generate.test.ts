@@ -31,8 +31,8 @@ class FakeClient implements ImageGenerationClient {
   constructor(
     private readonly mimeType = 'image/png',
     private readonly size: { width: number | null; height: number | null } = {
-      width: 1024,
-      height: 1024,
+      width: 2048,
+      height: 2048,
     },
   ) {}
   async generate(request: ImageGenerationRequest): Promise<GeneratedImage> {
@@ -87,7 +87,7 @@ describe('generateImages', () => {
     });
     expect(client.requests[0].prompt).toBe(SLOTS[0].prompt);
     expect(client.requests[0].negativePrompt).toBe(SLOTS[0].negativePrompt);
-    expect(client.requests[0].resolution).toBe('1K');
+    expect(client.requests[0].resolution).toBe(DEFAULT_IMAGE_CONFIG.resolution);
     expect(client.requests[0].aspectRatio).toBe('1:1');
   });
 
