@@ -200,7 +200,9 @@ Config frozen in Block 1. Hybrid presumption: Scribe v2 (timestamps, raw text, k
 One structured Gemini call over the corrected transcript + mode context → keyword candidates (scored, reasoned) and image slots (5–6/30 s, spread, non-overlapping windows, prompts composed from idea + mode style fragments + global negative prompts including "no text, no watermark, no logo").
 
 ### 5.4 Image generation + quality gate
-Nano Banana, paid tier, 2–4 candidates/slot (default 3; mode-overridable). Cutout gate: rembg/BiRefNet → metrics (alpha edge noise, hole ratio, foreground area sanity, edge halo) → below threshold ⇒ `presentation:"card"` fallback. Editor sees both and can override either way.
+Nano Banana, paid tier, 2–4 candidates/slot (**default 2** since Block 4 session 5; mode-overridable via `imageCandidates`).
+
+**Amendment (2026-08-25):** the default was 3. `gemini-3-pro-image` bills ~$0.151 per 2K image against a published $0.134, so three candidates on a five-slot reel is $2.26 — outside PROJECT_SPEC §5's $0.50–2.00 envelope before a single retry. Two puts the same reel at $1.50. The band is unchanged. Frozen config, evidence and caveats: `docs/DECISION-image-config.md`. Cutout gate: rembg/BiRefNet → metrics (alpha edge noise, hole ratio, foreground area sanity, edge halo) → below threshold ⇒ `presentation:"card"` fallback. Editor sees both and can override either way.
 
 ### 5.5 Zones and placement
 Sample frames at ~2 fps → person masks → per-frame free rectangles top/left/right → temporal intersection with hysteresis → stable zones + validity windows. Placement solver (service-side, deterministic): assign image slots to zones honoring validity windows, no overlap with subtitle band, keywords, or other concurrent images; deliberate slight jitter in offsets within safe bounds so placement doesn't look machine-uniform. Manual fallback: panel zone editor writes `manual:true` rects that the solver treats as ground truth.

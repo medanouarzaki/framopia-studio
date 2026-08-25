@@ -57,8 +57,9 @@ The output is **not a rendered video**. It is a fully built After Effects compos
 ### Images
 - 5–6 images per 30 s reel, illustrating ideas/sentences. Independent of the emphasized words.
 - Generated via Nano Banana (Gemini image API), one visual style per client mode (defined in the mode file). Paid API tier — no visible watermark (invisible SynthID is acceptable).
+- **The image config is frozen: `gemini-3-pro-image` at 2K, 1:1, 2 candidates per slot.** Evidence, costs and caveats in `docs/DECISION-image-config.md`. The candidate count is 2 rather than §5.4's 3 because pro's measured cost puts three on a five-slot reel outside the budget envelope below.
 - Background removal to transparent cutouts only when clean: quality gate (alpha-edge heuristics + editor preview), fallback to full-frame image in a framed/card template when doubtful.
-- Panel shows 2–4 candidates per slot with pick / regenerate-with-tweak / write-own-prompt controls before placement. Editor approval is part of the standard flow.
+- Panel shows 2–4 candidates per slot with pick / regenerate-with-tweak / write-own-prompt controls before placement. Editor approval is part of the standard flow. The generated default is 2 (`DECISION-image-config.md`); a mode may raise it via `imageCandidates`.
 
 ### SFX
 - ~5 local files (hits, whooshes) in a repo folder. Mapping is deterministic: each template's manifest declares which SFX fires at which offset. No AI at runtime. SFX set is global, not per-mode.
