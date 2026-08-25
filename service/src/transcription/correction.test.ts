@@ -97,7 +97,6 @@ describe('correction prompt versions', () => {
       version: ACTIVE_PROMPT_VERSION,
     });
     expect(active).toBe(explicit);
-    expect(ACTIVE_PROMPT_VERSION).toBe(3);
   });
 });
 
@@ -178,7 +177,62 @@ describe('correction prompt version 3', () => {
     expect(strip(await build(3))).toBe(strip(await build(1)));
   });
 
+  it('is no longer the active version', () => {
+    expect(ACTIVE_PROMPT_VERSION).not.toBe(3);
+  });
+});
+
+describe('correction prompt version 4', () => {
+  let dir: string;
+  let guidePath: string;
+
+  beforeEach(() => {
+    dir = mkdtempSync(path.join(tmpdir(), 'framopia-guide-'));
+    guidePath = path.join(dir, 'ORTHOGRAPHY_GUIDE.md');
+    writeFileSync(guidePath, '# Guide v9.9.9 marker\n');
+  });
+
+  afterEach(() => {
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  const build = async (version: PromptVersion): Promise<string> =>
+    buildCorrectionPrompt([], { guidePath, version });
+
   it('is the active version', () => {
-    expect(ACTIVE_PROMPT_VERSION).toBe(3);
+    expect(ACTIVE_PROMPT_VERSION).toBe(4);
+  });
+
+  it('states the conjunction rule with an example the corpus actually uses', async () => {
+    const v4 = await build(4);
+    expect(v4).toContain('The conjunction w attaches to the word that follows it');
+    expect(v4).toContain('Never');
+    expect(v4).toContain('write a standalone "w"');
+    expect(v4).toContain('ونضارة');
+  });
+
+  it('states the french article rule with both legal forms', async () => {
+    const v4 = await build(4);
+    expect(v4).toContain('"dial la vidéo", not "dial lvidéo"');
+    expect(v4).toContain('"dial lvitaminat"');
+  });
+
+  it('keeps version 3 response shape and asks for a lang per word', async () => {
+    expect(await build(4)).toContain('Every word carries a lang');
+  });
+
+  it('differs from version 3 only by the two spelling rules', async () => {
+    const strip = (prompt: string): string =>
+      prompt
+        .replace(/Two spelling rules[\s\S]*?most often missed:[\s\S]*?spoken\./, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+    expect(strip(await build(4))).toBe(strip(await build(3)));
+  });
+
+  it('leaves versions 1, 2 and 3 untouched, so past figures still reproduce', async () => {
+    for (const version of [1, 2, 3] as PromptVersion[]) {
+      expect(await build(version)).not.toContain('Two spelling rules');
+    }
   });
 });

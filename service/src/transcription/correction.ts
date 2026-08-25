@@ -5,13 +5,21 @@ import { computeGeminiCost, DOCS_DIR, modelConfig, SCRIPT_RULES, type GeminiUsag
 import { TranscriptionError, type TranscriptWord } from './types.js';
 import type { CorrectedWord } from './tagging.js';
 
-export type PromptVersion = 1 | 2 | 3;
+export type PromptVersion = 1 | 2 | 3 | 4;
 
 /**
  * Identity of the correction prompt, and part of the cache fingerprint per
  * ARCHITECTURE §6 — a change here must invalidate every cached correction.
  *
- * Version 3 is active: version 1 plus a per-word `lang` in the response, and
+ * **Version 4 is active**: version 3 plus the two spelling rules guide v1.0.7
+ * settles, stated in the prompt rather than left to be inferred from the
+ * guide text. The guide is injected verbatim either way, but the conjunction
+ * rule was new in v1.0.7 and every transcript in Block 3 wrote a standalone
+ * `w`; a rule the model has to find in a long document is a rule it follows
+ * by chance. This is the only difference from version 3 — Block 2 session 3
+ * varied two things at once and produced a result nobody could read.
+ *
+ * Version 3: version 1 plus a per-word `lang` in the response, and
  * nothing else. Activated in Block 2 session 7 on the evidence in
  * benchmarks/RESULTS-block2-langtagging.md — under guide v1.0.6 all three
  * runs tagged every word, agreed on every tag, and moved WER by 0.4 points
@@ -31,7 +39,7 @@ export type PromptVersion = 1 | 2 | 3;
  *
  * Switching is this constant and nothing else.
  */
-export const ACTIVE_PROMPT_VERSION: PromptVersion = 3;
+export const ACTIVE_PROMPT_VERSION: PromptVersion = 4;
 
 /**
  * Version 2 only. The hybrid path rendered the Darija conjunction و as French
@@ -90,6 +98,20 @@ Every word carries a lang, one of exactly these five values:
   A sentence that switches between languages is not mixed; tag each of its
   words with the language that word belongs to.`;
 
+  // Version 4 only. Both rules are in the guide above; they are repeated here
+  // because a rule stated once inside a long reference document is followed
+  // by chance, and these two are the ones the corpus actually gets wrong.
+  const spellingRules = `Two spelling rules from the guide above, repeated because they are the ones
+most often missed:
+
+1. The conjunction w attaches to the word that follows it, with no space:
+   write "w7essa", "wli", "Wki3tewna", and in Arabic script "ونضارة". Never
+   write a standalone "w".
+2. A French noun spoken with its French article keeps that article and its
+   French spelling: "dial la vidéo", not "dial lvidéo". A French root that
+   has taken Darija morphology is a Darija noun and takes the attached
+   article instead: "dial lvitaminat". Write whichever one is spoken.`;
+
   const head = `${guide}
 
 ---
@@ -113,6 +135,14 @@ ${SCRIPT_RULES}`;
     return `${head}
 
 ${shape}${keytermsBlock === '' ? '' : `\n\n${keytermsBlock}`}`;
+  }
+
+  if (version === 4) {
+    return `${head}
+
+${spellingRules}
+
+${langShape}${keytermsBlock === '' ? '' : `\n\n${keytermsBlock}`}`;
   }
 
   return `${head}
