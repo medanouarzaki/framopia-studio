@@ -114,6 +114,7 @@ export async function analyseKeywordsForPlan(
     templateId: null,
     start: item.start,
     end: item.end,
+    ...(item.kind === undefined ? {} : { kind: item.kind }),
   }));
 
   // Groups were derived during transcription, before any keyword existed, so

@@ -159,6 +159,14 @@ export interface KeywordItem {
    * flag. Optional, so plans written before Block 3 session 4 stay valid.
    */
   edited?: boolean;
+  /**
+   * Whether this keyword names the thing (`label`) or states what it does for
+   * the viewer (`promise`). Departure from ARCHITECTURE §3, which does not
+   * name the field; the selector forces a mix of both, and the panel needs to
+   * show which is which. **Optional with a default** — absent means a prompt
+   * version that never asked.
+   */
+  kind?: 'label' | 'promise';
 }
 
 export interface Keywords {

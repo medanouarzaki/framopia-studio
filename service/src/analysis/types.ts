@@ -10,12 +10,24 @@ export class AnalysisError extends Error {
   }
 }
 
+/**
+ * What a keyword is emphasising. Every keyword this pipeline has ever selected
+ * was a name — a product, a brand, a procedure — because a nameable noun reads
+ * as the word carrying the claim. A reel that only ever emphasises names never
+ * shows the viewer what they are being offered.
+ */
+export type KeywordKind = 'label' | 'promise';
+
+export const KEYWORD_KINDS: readonly KeywordKind[] = ['label', 'promise'];
+
 /** What the model returns per candidate, before any resolution or ranking. */
 export interface KeywordCandidate {
   wordIds: string[];
   text: string;
   score: number;
   reason: string;
+  /** Absent on a prompt version that did not ask for it. */
+  kind?: KeywordKind;
 }
 
 /** The subset of a plan word this stage reads. */
@@ -56,6 +68,7 @@ export interface SelectionResult {
     reason: string;
     start: number;
     end: number;
+    kind?: KeywordKind;
   }[];
   /** Every candidate that could not become a keyword, and why. */
   failures: ResolutionFailure[];
@@ -71,4 +84,10 @@ export interface SelectionResult {
    * one fewer emphasis moment.
    */
   shortfall: number;
+  /**
+   * Set when the candidate pool could not supply at least one label and one
+   * promise. Reported, never faked: a kind is a claim about what a word is
+   * doing, and inventing one would put it in the plan as data.
+   */
+  kindShortfall: KeywordKind[];
 }

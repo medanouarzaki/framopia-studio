@@ -1,10 +1,12 @@
 import { narrowSpan, significantStems } from './span.js';
-import type {
-  AnalysisWord,
-  KeywordCandidate,
-  NarrowedSpan,
-  ResolutionFailure,
-  SelectionResult,
+import {
+  KEYWORD_KINDS,
+  type AnalysisWord,
+  type KeywordCandidate,
+  type KeywordKind,
+  type NarrowedSpan,
+  type ResolutionFailure,
+  type SelectionResult,
 } from './types.js';
 
 /**
@@ -29,9 +31,16 @@ import type {
  *
  * - **At most two words per keyword** (`narrowSpan`). An over-long candidate
  *   is shortened, not dropped.
- * - **No two keywords on the same head term** (`significantStems`). A
- *   collision skips the candidate and the next by score takes its place, so
- *   the count is still met whenever the candidates allow it.
+ * - **No two keywords on the same head term** (`significantStems`), *unless*
+ *   one is a label and the other a promise. The rule exists to stop two
+ *   keywords saying the same thing; "Vita Silk" and "smooth for months" share
+ *   a subject and say different things. A collision skips the candidate and
+ *   the next by score takes its place, so the count is still met whenever the
+ *   candidates allow it.
+ * - **At least one label and one promise** among the selected keywords. Every
+ *   keyword this pipeline had ever picked was a name, because a nameable noun
+ *   reads as the word carrying the claim; the mix is forced here rather than
+ *   asked for in the prompt, so it holds whatever the model returns.
  */
 export function selectKeywords(
   candidates: KeywordCandidate[],
@@ -103,6 +112,9 @@ export function selectKeywords(
       end: kept[kept.length - 1]?.end ?? 0,
       firstId: kept[0]?.id ?? '',
       stems: significantStems(kept.map((w) => w.text)),
+      ...(candidate.kind === 'label' || candidate.kind === 'promise'
+        ? { kind: candidate.kind }
+        : {}),
     });
   }
 
@@ -112,25 +124,36 @@ export function selectKeywords(
 
   const items: SelectionResult['items'] = [];
   const taken = new Set<string>();
-  const claimedStems = new Set<string>();
-  for (const entry of resolved) {
-    if (items.length >= requestedCount) break;
-    const asCandidate: KeywordCandidate = {
-      wordIds: entry.wordIds,
-      text: entry.text,
-      score: entry.score,
-      reason: entry.reason,
-    };
-    if (entry.wordIds.some((id) => taken.has(id))) {
-      failures.push({ candidate: asCandidate, reason: 'overlaps-a-selected-keyword' });
-      continue;
+  // A stem is claimed per kind, so a label and a promise about one product do
+  // not collide with each other while two labels about it still do.
+  const claimedStems = new Map<string, Set<KeywordKind | 'unknown'>>();
+
+  const asCandidate = (entry: (typeof resolved)[number]): KeywordCandidate => ({
+    wordIds: entry.wordIds,
+    text: entry.text,
+    score: entry.score,
+    reason: entry.reason,
+    ...(entry.kind === undefined ? {} : { kind: entry.kind }),
+  });
+
+  const admissible = (entry: (typeof resolved)[number]): ResolutionFailure['reason'] | null => {
+    if (entry.wordIds.some((id) => taken.has(id))) return 'overlaps-a-selected-keyword';
+    const kind: KeywordKind | 'unknown' = entry.kind ?? 'unknown';
+    for (const stem of entry.stems) {
+      const kinds = claimedStems.get(stem);
+      if (kinds !== undefined && kinds.has(kind)) return 'shares-a-head-term';
     }
-    if ([...entry.stems].some((stem) => claimedStems.has(stem))) {
-      failures.push({ candidate: asCandidate, reason: 'shares-a-head-term' });
-      continue;
-    }
+    return null;
+  };
+
+  const take = (entry: (typeof resolved)[number]): void => {
     for (const id of entry.wordIds) taken.add(id);
-    for (const stem of entry.stems) claimedStems.add(stem);
+    const kind: KeywordKind | 'unknown' = entry.kind ?? 'unknown';
+    for (const stem of entry.stems) {
+      const kinds = claimedStems.get(stem) ?? new Set<KeywordKind | 'unknown'>();
+      kinds.add(kind);
+      claimedStems.set(stem, kinds);
+    }
     items.push({
       wordIds: entry.wordIds,
       text: entry.text,
@@ -138,8 +161,42 @@ export function selectKeywords(
       reason: entry.reason,
       start: entry.start,
       end: entry.end,
+      ...(entry.kind === undefined ? {} : { kind: entry.kind }),
     });
+  };
+
+  // The mix first: reserve a place for the best of each kind, so a run of
+  // strong labels cannot fill the whole selection before a promise is reached.
+  const kindShortfall: KeywordKind[] = [];
+  const used = new Set<(typeof resolved)[number]>();
+  if (requestedCount >= KEYWORD_KINDS.length) {
+    for (const kind of KEYWORD_KINDS) {
+      const best = resolved.find(
+        (e) => !used.has(e) && e.kind === kind && admissible(e) === null,
+      );
+      if (best === undefined) {
+        kindShortfall.push(kind);
+        continue;
+      }
+      used.add(best);
+      take(best);
+    }
   }
+
+  for (const entry of resolved) {
+    if (items.length >= requestedCount) break;
+    if (used.has(entry)) continue;
+    const rejection = admissible(entry);
+    if (rejection !== null) {
+      failures.push({ candidate: asCandidate(entry), reason: rejection });
+      continue;
+    }
+    used.add(entry);
+    take(entry);
+  }
+
+  // Selected in kind order above, so restore score order for the plan.
+  items.sort((a, b) => b.score - a.score || a.start - b.start);
 
   return {
     items,
@@ -148,5 +205,6 @@ export function selectKeywords(
     requestedCount,
     narrowed: narrowedSpans,
     shortfall: Math.max(0, requestedCount - items.length),
+    kindShortfall,
   };
 }

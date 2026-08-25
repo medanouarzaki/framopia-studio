@@ -206,6 +206,102 @@ describe('selectKeywords', () => {
     expect(result.failures.map((f) => f.reason)).toEqual(['shares-a-head-term']);
   });
 
+  it('reserves a place for a label and a promise, not just the top scores', () => {
+    const result = selectKeywords(
+      [
+        cand({ wordIds: ['w0'], text: 'bghiti', score: 0.99, kind: 'label' }),
+        cand({ wordIds: ['w1'], text: 'chd', score: 0.98, kind: 'label' }),
+        cand({ wordIds: ['w3'], text: 'tabi3i', score: 0.20, kind: 'promise' }),
+      ],
+      words,
+      2,
+    );
+    expect(result.items.map((i) => i.kind).sort()).toEqual(['label', 'promise']);
+    expect(result.kindShortfall).toEqual([]);
+  });
+
+  it('reports a kind shortfall rather than inventing a kind', () => {
+    const result = selectKeywords(
+      [
+        cand({ wordIds: ['w0'], text: 'bghiti', score: 0.9, kind: 'label' }),
+        cand({ wordIds: ['w1'], text: 'chd', score: 0.8, kind: 'label' }),
+      ],
+      words,
+      2,
+    );
+    expect(result.kindShortfall).toEqual(['promise']);
+    expect(result.items.every((i) => i.kind === 'label')).toBe(true);
+    expect(result.items).toHaveLength(2);
+  });
+
+  it('carries the kind through to the selected item', () => {
+    const result = selectKeywords(
+      [cand({ wordIds: ['w0'], text: 'bghiti', score: 0.9, kind: 'promise' })],
+      words,
+      1,
+    );
+    expect(result.items[0]?.kind).toBe('promise');
+  });
+
+  it('lets a label and a promise share a head term', () => {
+    const shared: AnalysisWord[] = [
+      { id: 'e0', text: 'lkolajin', start: 0, end: 0.5, removed: false },
+      { id: 'e1', text: 'kolajin', start: 1, end: 1.5, removed: false },
+    ];
+    const result = selectKeywords(
+      [
+        cand({ wordIds: ['e0'], text: 'lkolajin', score: 0.9, kind: 'label' }),
+        cand({ wordIds: ['e1'], text: 'kolajin', score: 0.8, kind: 'promise' }),
+      ],
+      shared,
+      2,
+    );
+    expect(result.items).toHaveLength(2);
+    expect(result.failures).toEqual([]);
+  });
+
+  it('still refuses two labels on one head term', () => {
+    const shared: AnalysisWord[] = [
+      { id: 'e0', text: 'lkolajin', start: 0, end: 0.5, removed: false },
+      { id: 'e1', text: 'kolajin', start: 1, end: 1.5, removed: false },
+    ];
+    const result = selectKeywords(
+      [
+        cand({ wordIds: ['e0'], text: 'lkolajin', score: 0.9, kind: 'label' }),
+        cand({ wordIds: ['e1'], text: 'kolajin', score: 0.8, kind: 'label' }),
+      ],
+      shared,
+      2,
+    );
+    expect(result.items).toHaveLength(1);
+    expect(result.failures[0]?.reason).toBe('shares-a-head-term');
+  });
+
+  it('leaves unkinded candidates working as they did before', () => {
+    const result = selectKeywords(
+      [
+        cand({ wordIds: ['w4'], text: 'lkolajin', score: 0.9 }),
+        cand({ wordIds: ['w0'], text: 'bghiti', score: 0.5 }),
+      ],
+      words,
+      2,
+    );
+    expect(result.items.map((i) => i.text)).toEqual(['lkolajin', 'bghiti']);
+    expect(result.kindShortfall).toEqual(['label', 'promise']);
+  });
+
+  it('returns items in score order even though kinds are reserved first', () => {
+    const result = selectKeywords(
+      [
+        cand({ wordIds: ['w0'], text: 'bghiti', score: 0.4, kind: 'promise' }),
+        cand({ wordIds: ['w1'], text: 'chd', score: 0.95, kind: 'label' }),
+      ],
+      words,
+      2,
+    );
+    expect(result.items.map((i) => i.score)).toEqual([0.95, 0.4]);
+  });
+
   it('is stable: the same candidates always give the same items', () => {
     const candidates = [
       cand({ wordIds: ['w4'], text: 'lkolajin', score: 0.9 }),

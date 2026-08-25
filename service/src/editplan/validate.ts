@@ -151,6 +151,7 @@ function checkWords(c: Checker, value: unknown): void {
 /** PROJECT_SPEC §5's fast-reel style. Absolute, and it predates every rule
  * that touches groups. */
 const MAX_GROUP_WORDS = 2;
+const KEYWORD_KINDS = new Set(['label', 'promise']);
 
 function checkSubtitles(c: Checker, value: unknown, wordIds: Set<string>): void {
   const subtitles = c.object('subtitles', value);
@@ -219,6 +220,7 @@ function checkKeywords(c: Checker, value: unknown, words: Map<string, Rec>): voi
     c.number(`${p}.start`, k.start);
     c.number(`${p}.end`, k.end);
     c.nullableString(`${p}.templateId`, k.templateId);
+    if (k.kind !== undefined) c.oneOf(`${p}.kind`, k.kind, KEYWORD_KINDS);
 
     if (typeof k.score !== 'number' || !Number.isFinite(k.score)) {
       c.fail(`${p}.score`, 'expected a number');

@@ -9,19 +9,26 @@ import {
 import { MAX_KEYWORD_WORDS } from './span.js';
 import { AnalysisError, type AnalysisWord, type KeywordCandidate } from './types.js';
 
-export type AnalysisPromptVersion = 1 | 2;
+export type AnalysisPromptVersion = 1 | 2 | 3;
 
 /**
  * Identity of the keyword prompt, and part of the analysis cache fingerprint
  * per ARCHITECTURE §6 — a change here must invalidate every cached analysis.
  * Switching is this constant and nothing else.
  *
+ * **Version 3 makes the label and the promise co-primary.** Every keyword
+ * selected in Block 3 was a name — a product, a brand, a procedure — because
+ * a nameable noun reads as the word carrying its sentence's claim. A reel that
+ * only ever emphasises names never puts the offer on screen. The mix itself is
+ * forced in the selector, not here; this asks for candidates of both kinds and
+ * makes the model label them.
+ *
  * Version 2 adds the span-length preference. Version 1's selections ran to
  * four words on a 22 s reel, which no keyword template can carry; the cap is
  * enforced in `narrowSpan` either way, and this asks the model to make
  * narrowing the exception rather than the rule.
  */
-export const ACTIVE_ANALYSIS_PROMPT_VERSION: AnalysisPromptVersion = 2;
+export const ACTIVE_ANALYSIS_PROMPT_VERSION: AnalysisPromptVersion = 3;
 
 /**
  * How many more candidates to ask for than will be kept. The count is imposed
@@ -73,7 +80,26 @@ The transcript below is one word per line, as "word_id<TAB>text". It is
 Moroccan Darija written in Latin Arabizi, mixed with French and English, and
 some words are in Arabic script. Do not translate it and do not rewrite it.
 
-SELECTION CRITERIA, in this priority order:
+${
+    version >= 3
+      ? `SELECTION CRITERIA. Two kinds of word matter, and they matter equally:
+
+- THE LABEL: the product, the brand, or the procedure being named. What the
+  thing is called.
+- THE PROMISE: the benefit, the result, or the claim being made about it.
+  What the viewer is being told they will get.
+
+A reel needs both. Naming a product without showing what it does, or showing a
+result without naming what produces it, each leaves half the message off the
+screen. Return strong candidates of BOTH kinds and mark each one with its
+"kind": "label" or "promise".
+
+Within each kind, prefer the word that carries the claim of its sentence — the
+thing being asserted, the thing a viewer must not miss.
+
+Delivery and vocal emphasis are NOT criteria. Nothing in this pipeline hears
+prosody.`
+      : `SELECTION CRITERIA, in this priority order:
 1. PRIMARY: semantic weight. The word that carries the claim of its sentence
    — the thing being asserted, the thing a viewer must not miss.
 2. SECONDARY (tiebreak only): brand and domain vocabulary — product names,
@@ -83,7 +109,8 @@ Delivery and vocal emphasis are NOT criteria. Nothing in this pipeline hears
 prosody.
 
 Criterion 2 breaks ties within criterion 1. It never promotes a word that
-carries no claim.
+carries no claim.`
+  }
 
 ${vocabularyBlock}
 
@@ -104,8 +131,9 @@ into an on-screen animation designed for one or two short words, and a longer
 span is shortened before it reaches the video. Do not include a leading
 article, a preposition, or a bare number in the span.
 
-Do not return two candidates about the same thing. If two spans name the same
-idea, return only the stronger one.`
+Do not return two candidates of the SAME KIND about the same thing. A label
+and a promise about one product are two different things and both are wanted;
+two labels for one product are not.`
       : ''
   }
 
@@ -113,7 +141,11 @@ idea, return only the stronger one.`
 0 to 1. "reason" is one clause, not a sentence and not a paragraph.
 
 Respond with strict JSON only, no prose, no markdown fences, in this shape:
-{"candidates":[{"wordIds":["w0000"],"text":"...","score":0.0,"reason":"..."}]}
+${
+    version >= 3
+      ? '{"candidates":[{"wordIds":["w0000"],"text":"...","kind":"label","score":0.0,"reason":"..."}]}'
+      : '{"candidates":[{"wordIds":["w0000"],"text":"...","score":0.0,"reason":"..."}]}'
+  }
 
 TRANSCRIPT:
 ${transcript}`;
@@ -151,6 +183,10 @@ export function parseKeywordResponse(text: string): KeywordCandidate[] {
     text: typeof c?.text === 'string' ? c.text : '',
     score: typeof c?.score === 'number' ? c.score : Number.NaN,
     reason: typeof c?.reason === 'string' ? c.reason : '',
+    // An unrecognised kind is dropped rather than coerced: the selector
+    // forces a mix of kinds, and a guessed one would satisfy that rule with
+    // something nobody claimed.
+    ...(c?.kind === 'label' || c?.kind === 'promise' ? { kind: c.kind } : {}),
   }));
 }
 

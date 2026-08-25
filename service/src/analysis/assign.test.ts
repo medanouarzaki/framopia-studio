@@ -170,6 +170,25 @@ describe('pickVariant', () => {
     expect(a).not.toEqual(b);
   });
 
+  it('does not lay the variants out as a visible repeating cycle', () => {
+    // Session 4's coprime walk gave A,B,C,A,B,C — even, but machine-uniform,
+    // which PROJECT_SPEC §1 rules out. A shuffled sequence must not repeat
+    // its own first block.
+    const variants = ['a', 'b', 'c', 'd'];
+    const assigned = Array.from({ length: 16 }, (_, i) => pickVariant(variants, 'p', 'sub', i));
+    const first = assigned.slice(0, 4).join('');
+    const blocks = [1, 2, 3].map((b) => assigned.slice(b * 4, b * 4 + 4).join(''));
+    expect(blocks.every((b) => b === first)).toBe(false);
+  });
+
+  it('still uses every variant exactly once per block', () => {
+    const variants = ['a', 'b', 'c', 'd'];
+    const assigned = Array.from({ length: 12 }, (_, i) => pickVariant(variants, 'p', 'sub', i));
+    for (const b of [0, 1, 2]) {
+      expect(new Set(assigned.slice(b * 4, b * 4 + 4)).size).toBe(4);
+    }
+  });
+
   it('draws differently for different element types on one plan', () => {
     const subs = Array.from({ length: 6 }, (_, i) => pickVariant(['a', 'b', 'c'], 'p', 'subtitle', i));
     const kws = Array.from({ length: 6 }, (_, i) => pickVariant(['a', 'b', 'c'], 'p', 'keyword', i));

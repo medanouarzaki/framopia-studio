@@ -40,11 +40,30 @@ describe('buildKeywordPrompt', () => {
   const prompt = (vocabulary: string[] = []): string =>
     buildKeywordPrompt({ words, mode: mode(vocabulary), candidateCount: 9 });
 
-  it('states the criteria in priority order', () => {
+  it('made the criteria a priority list up to version 2', () => {
+    const v2 = buildKeywordPrompt({ words, mode: mode(), candidateCount: 9, version: 2 });
+    expect(v2).toContain('1. PRIMARY: semantic weight.');
+    expect(v2).toContain('2. SECONDARY (tiebreak only): brand and domain vocabulary');
+    expect(v2.indexOf('1. PRIMARY')).toBeLessThan(v2.indexOf('2. SECONDARY'));
+  });
+
+  it('makes the label and the promise co-primary from version 3', () => {
     const p = prompt();
-    expect(p).toContain('1. PRIMARY: semantic weight.');
-    expect(p).toContain('2. SECONDARY (tiebreak only): brand and domain vocabulary');
-    expect(p.indexOf('1. PRIMARY')).toBeLessThan(p.indexOf('2. SECONDARY'));
+    expect(p).toContain('Two kinds of word matter, and they matter equally');
+    expect(p).toContain('THE LABEL');
+    expect(p).toContain('THE PROMISE');
+    expect(p).not.toContain('SECONDARY (tiebreak only)');
+  });
+
+  it('asks the model to mark each candidate with its kind', () => {
+    expect(prompt()).toContain('"kind": "label" or "promise"');
+    expect(prompt()).toContain('"kind":"label"');
+  });
+
+  it('forbids two candidates of the same kind about one thing, not two kinds', () => {
+    const p = prompt();
+    expect(p).toContain('Do not return two candidates of the SAME KIND about the same thing');
+    expect(p).toContain('both are wanted');
   });
 
   it('rules out prosody, which nothing in this pipeline can hear', () => {
@@ -69,11 +88,10 @@ describe('buildKeywordPrompt', () => {
     expect(prompt()).not.toContain("client's own vocabulary");
   });
 
-  it('asks for short spans and against duplicate ideas under version 2', () => {
+  it('asks for short spans from version 2 on', () => {
     const p = prompt();
     expect(p).toContain('Prefer a span of ONE word.');
     expect(p).toContain('Never return more than 2 words');
-    expect(p).toContain('Do not return two candidates about the same thing.');
   });
 
   it('leaves version 1 exactly as it was measured', () => {

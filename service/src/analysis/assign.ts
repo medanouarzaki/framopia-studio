@@ -16,36 +16,63 @@ export class NoTemplateVariantError extends Error {
 }
 
 /**
- * PROJECT_SPEC §5: "Deterministic: no AI style-picking, no randomness." The
- * same walk the image variation draw uses, and for the same reason — an
- * offset and a stride seeded from the plan id, with the stride taken from the
- * values coprime to the variant count so consecutive elements never repeat
- * and the walk covers every variant, plus a per-cycle bump so a sequence
- * longer than the variant list does not repeat its opening run.
+ * PROJECT_SPEC §5: "Deterministic: no AI style-picking, no randomness."
  *
- * Session 4 shipped a variation draw whose fifth slot was an exact copy of
- * its first; the bump is the fix generalised, and `variantDistribution` below
- * exists so a whole sequence can be inspected rather than only its adjacent
- * pairs.
+ * Session 4's coprime-stride walk satisfied that and produced 14/14/14 with a
+ * longest run of 1 — which is a visible A, B, C cycle, and PROJECT_SPEC §1
+ * rules out machine-uniform output. So the walk is a **seeded shuffle**
+ * instead: each block of variants is permuted by a hash of the plan id, the
+ * element type and the block number, and a permutation whose first element
+ * repeats the previous block's last is rotated until it does not.
+ *
+ * Determinism is unchanged — the same plan and element type always produce the
+ * same sequence — and the no-adjacent-repeat constraint from session 4
+ * survives, without the sequence announcing its own period.
  */
-function gcd(a: number, b: number): number {
-  return b === 0 ? a : gcd(b, a % b);
+function shuffle<T>(items: T[], seed: string): T[] {
+  const out = [...items];
+  // Fisher-Yates driven by a hash chain, so the permutation is a pure
+  // function of the seed.
+  let digest = createHash('sha256').update(seed).digest();
+  let cursor = 0;
+  for (let i = out.length - 1; i > 0; i -= 1) {
+    if (cursor + 4 > digest.length) {
+      digest = createHash('sha256').update(digest).digest();
+      cursor = 0;
+    }
+    const j = digest.readUInt32BE(cursor) % (i + 1);
+    cursor += 4;
+    [out[i], out[j]] = [out[j] as T, out[i] as T];
+  }
+  return out;
+}
+
+/**
+ * The permutation actually used for a block, which depends on the block before
+ * it: a block whose first variant repeats the previous block's last is rotated
+ * until it does not. Chained from block 0 so the comparison is against what
+ * was really emitted, not against an unrotated draft.
+ */
+function blockPermutation(variants: string[], planId: string, kind: string, block: number): string[] {
+  let previousLast: string | undefined;
+  let permuted: string[] = [];
+  for (let b = 0; b <= block; b += 1) {
+    permuted = shuffle(variants, `${planId}:${kind}:${b}`);
+    // Rotate rather than reshuffle: a reshuffle could collide again, and a
+    // rotation is bounded and still deterministic.
+    for (let r = 0; r < permuted.length && permuted[0] === previousLast; r += 1) {
+      permuted.push(permuted.shift() as string);
+    }
+    previousLast = permuted[permuted.length - 1];
+  }
+  return permuted;
 }
 
 export function pickVariant(variants: string[], planId: string, kind: string, index: number): string {
   if (variants.length === 1) return variants[0] as string;
-  const digest = createHash('sha256').update(`${planId}:${kind}`).digest();
-  const offset = digest.readUInt32BE(0) % variants.length;
-  const strides = Array.from({ length: variants.length - 1 }, (_, i) => i + 1).filter(
-    (s) => gcd(s, variants.length) === 1,
-  );
-  const stride = strides[digest.readUInt32BE(4) % strides.length] as number;
-  const bumps = Array.from({ length: variants.length - 1 }, (_, i) => i + 1).filter(
-    (b) => (stride + b) % variants.length !== 0,
-  );
-  const bump = bumps.length === 0 ? 0 : (bumps[digest.readUInt32BE(8) % bumps.length] as number);
-  const cycle = Math.floor(index / variants.length);
-  return variants[(offset + stride * index + bump * cycle) % variants.length] as string;
+  const block = Math.floor(index / variants.length);
+  const permuted = blockPermutation(variants, planId, kind, block);
+  return permuted[index % variants.length] as string;
 }
 
 /** How often each variant was actually used, for the report. */

@@ -184,9 +184,14 @@ async function main(): Promise<void> {
   for (const skip of diversitySkips) {
     console.log(`  diversity skip: "${skip.candidate.text}"`);
   }
+  if (selection.kindShortfall.length > 0) {
+    console.log(
+      `  kind shortfall: the candidates supplied no ${selection.kindShortfall.join(' and no ')}`,
+    );
+  }
   for (const item of result.plan.keywords.items) {
     console.log(
-      `  ${item.id} ${item.text} (${item.score.toFixed(2)}) [${item.start.toFixed(2)}-${item.end.toFixed(2)}s] approved=${item.approved} — ${item.reason}`,
+      `  ${item.id} [${item.kind ?? 'unkinded'}] ${item.text} (${item.score.toFixed(2)}) [${item.start.toFixed(2)}-${item.end.toFixed(2)}s] approved=${item.approved} — ${item.reason}`,
     );
   }
 }
