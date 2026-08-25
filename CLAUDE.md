@@ -112,6 +112,10 @@ AI-generated contextual images, SFX, and a watermark. Full spec in
 - `npm run bakeoff --prefix service [-- --first-only]` — **billable.** The
   Block 4 image bake-off on `vitasilk` slot `img002`. `--first-only`
   generates one image and stops.
+- `npm run images -- --plan <abs path.editplan.json> [--mode <id>]
+  [--ceiling <usd>] [--no-cache] [--force]` — **billable.** The production
+  image stage: candidates, cutouts, metrics, gate and text verdict onto a
+  plan. Takes the session spend baseline once so every arm shares one ceiling.
 - `npm run cutouts` — free, local. Runs the CV sidecar's cutout gate over
   `benchmarks/results/latest-imagebakeoff/` and writes cutouts, metrics and a
   review page to `benchmarks/results/latest-cutouts/`. Generates no images.
@@ -1074,7 +1078,9 @@ test**, not by reading.
 
 **Thresholds are provisional and were declared before the corpus was
 measured**: edge noise ≤ 0.02, holes ≤ 0.01, foreground area 0.05–0.92, halo
-≤ 0.10. Nothing was fitted to six images from one prompt on one slot.
+≤ 0.10. Nothing was fitted to six images from one prompt on one slot, and
+none has been changed since — the halo bound was examined at session 5 and
+held.
 
 ### What the corpus said
 
@@ -1105,6 +1111,107 @@ Review page: `benchmarks/results/latest-cutouts/index.html`, four views per
 image (original, checkerboard, on the mode's `light`, on its `background`),
 because a halo is invisible on a ground its own colour. Gitignored, regenerate
 with `npm run cutouts`.
+
+## Block 4 session 5 — rulings implemented, generation blocked
+
+**Spent $0.00. The Gemini account's prepayment credits are depleted**
+(HTTP 429 `RESOURCE_EXHAUSTED`, "Your prepayment credits are depleted"), so
+the ten-image production run did not happen and **the block's definition of
+done is not met**. Ledger 95 / $9.005328 / sha `66e02a42…` at both ends.
+Everything that does not need the API is done.
+
+**The image config is frozen**: `docs/DECISION-image-config.md` —
+`gemini-3-pro-image`, 2K, 1:1, **2 candidates per slot**. PROJECT_SPEC §5 and
+ARCHITECTURE §5.4 point at it. It says plainly that **the cutout metrics did
+not separate the two models** — all six passed, two metrics were identically
+zero, the other two differed by less than the spread within each arm — so the
+decision rests on the user's judgement of prompt fidelity and must not be
+defended with the metrics.
+
+The candidate default is **2, amending §5.4's 3**: pro bills ~$0.151 per 2K
+image, so three on a five-slot reel is $2.26 against PROJECT_SPEC's $2.00
+envelope. `DEFAULT_IMAGE_CONFIG` now carries the frozen config; a pre-flight
+caught that it still said flash-at-1K, which would have generated ten images
+on the wrong model.
+
+**Mode v4**, three rulings:
+
+- **`no text` is out of the global negatives.** It never worked — one corpus
+  image rendered a legible label straight through it — and the thing guarded
+  against was uncontrolled labelling. `no watermark` and `no logo` stay, and
+  **whether *those* are obeyed has never been tested.**
+- **The flat/frontal/unmodelled lighting entry is pruned.** Its effect is
+  unmeasured and the mode note says so: all six images carried it and pro
+  rendered dramatic rim light regardless, so the axis is not reliably obeyed.
+  `soft diffuse light` was kept — neither flat nor frontal, and it declares
+  shadows — and is the next candidate if separation turns out to be the issue.
+- **`imageCandidates: 2`** on the mode. §5.4 called the count mode-overridable
+  and nothing carried it until now.
+
+Recomposed both plans free; **all four analysis cache entries still hit at
+$0.00** after the bump, which is session 4's content-hashed fingerprints
+working as designed.
+
+**The halo threshold stands at 0.10.** The user compared originals against
+cutouts: the bright edge is **in the original**. It is rim light the model
+rendered, not background the matte retained, so the two near-misses are
+correct renders. Recorded at `MAX_EDGE_HALO` with the limit it exposes —
+`edge_halo` cannot tell a rim the model drew from a rim the remover left, and
+runs high by construction wherever the lighting axis calls for rim light.
+
+**OCR is a correctness check, not a presence check.** Detected words are
+compared against the slot's own `idea` plus the mode vocabulary, casefolded
+and accent-stripped so `caféine` matches `CAFEINE`. Unexpected words are an
+**advisory warning** — never a delete, because a false positive on a stylised
+texture must not drop a good candidate. The regression case passes:
+`gemini-3-pro-image-1`'s `HAIR SERUM` is now **clean** against a hair-serum
+slot, where the presence check called it a failure. All six corpus images
+re-checked; one has text and it is correct, five have none.
+
+**The two silent metrics can fire.** `alpha_edge_noise` and `hole_ratio` read
+0.00000 on all six images, which could not be told from a metric that cannot
+fire. A real cutout degraded deterministically produces the pipeline's **first
+`card` outcomes**:
+
+| degradation | metric | before → after | gate |
+|---|---|---|---|
+| hole punched | `hole_ratio` | 0.00000 → 0.04972 | **card** |
+| specks scattered | `alpha_edge_noise` | 0.00000 → 0.02721 | **card** |
+| alpha dilated ~3 px | `edge_halo` | 0.07489 → 0.60043 | **card** |
+
+Each moves its own metric and leaves the others alone, so a `card` can be
+attributed to a cause.
+
+**The BiRefNet model is pinned by sha256** (`tools/cv/models.json`,
+`verify-models.sh`, inside `npm run check`). It was a ~928 MiB unpinned
+download and Block 10's DoD is a golden run green on two machines. A mismatch
+fails the build; a model not yet downloaded exits 2 and does not.
+
+**`service/src/images/job.ts` is the production stage** — generate per slot,
+cut out, gate, check text, write onto the plan. `npm run images -- --plan
+<abs path> [--ceiling <usd>]`. `chosenCandidateId` is **left null**: the editor
+picks in Block 8. `presentation` is set **only when every candidate agrees**,
+because it follows whichever candidate is picked. `cutoutQuality` is the
+**minimum** headroom across the metrics, not the mean — a matte with one bad
+metric and three perfect ones is a bad matte — and a test pins its thresholds
+to the Python gate's so the two cannot drift. A re-run does not block on
+candidates (they return from cache free and identical) but does block on a
+chosen candidate.
+
+**The stage is verified end to end against the real sidecar** — real cutouts,
+metrics, gate, OCR verdict and plan write, with only the paid generation
+substituted (`job.integration.test.ts`, a temp plan, never a real one).
+**What has never run is the paid generation itself**, and with it the cache
+re-run check, the ten-image review page, and every DoD item.
+
+### Block 4 definition of done — not met
+
+| item | state |
+|---|---|
+| every slot has candidates | **no** — no plan has a candidate on it |
+| gated cutouts on disk with metrics | **no** on a plan; the six-image corpus has them |
+| costs recorded | code path proven by test, never exercised live |
+| cache prevents regeneration | proven for analysis, **unproven for images across a full run** |
 
 Panel and real job types are not started; templates exist only as a stub.
 
