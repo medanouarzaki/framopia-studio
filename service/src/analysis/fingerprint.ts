@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { modelConfig, type ClientMode } from '@framopia/core';
 import { ACTIVE_ANALYSIS_PROMPT_VERSION, type AnalysisPromptVersion } from './keywords.js';
+import { ACTIVE_SLOT_PROMPT_VERSION, type SlotPromptVersion } from './slots.js';
 import type { AnalysisWord } from './types.js';
 
 /**
@@ -52,6 +53,48 @@ export function analysisFingerprintInputs(options: {
 }
 
 export function analysisFingerprintOf(inputs: AnalysisFingerprintInputs): string {
+  const canonical = JSON.stringify([
+    inputs.promptVersion,
+    inputs.geminiModel,
+    inputs.modeId,
+    inputs.modeVersion,
+    inputs.transcriptHash,
+    inputs.candidateCount,
+  ]);
+  return createHash('sha256').update(canonical).digest('hex').slice(0, 16);
+}
+
+/**
+ * The slot stage keys on the same things for the same reasons: its prompt
+ * version, the model pin, the mode identity (its style fragments and
+ * variation axes both reach the composed prompt) and the transcript.
+ */
+export interface SlotFingerprintInputs {
+  promptVersion: SlotPromptVersion;
+  geminiModel: string;
+  modeId: string;
+  modeVersion: number;
+  transcriptHash: string;
+  candidateCount: number;
+}
+
+export function slotFingerprintInputs(options: {
+  mode: ClientMode;
+  words: AnalysisWord[];
+  candidateCount: number;
+  promptVersion?: SlotPromptVersion;
+}): SlotFingerprintInputs {
+  return {
+    promptVersion: options.promptVersion ?? ACTIVE_SLOT_PROMPT_VERSION,
+    geminiModel: modelConfig.geminiModel,
+    modeId: options.mode.id,
+    modeVersion: options.mode.version,
+    transcriptHash: hashTranscript(options.words),
+    candidateCount: options.candidateCount,
+  };
+}
+
+export function slotFingerprintOf(inputs: SlotFingerprintInputs): string {
   const canonical = JSON.stringify([
     inputs.promptVersion,
     inputs.geminiModel,

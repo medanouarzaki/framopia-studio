@@ -147,6 +147,13 @@ export interface ImageCandidate {
 
 export interface ImageSlot {
   id: string;
+  /**
+   * The transcript span this slot illustrates. Departure from ARCHITECTURE
+   * §3, which gives a slot only start/end: without the ids there is no way to
+   * tell after a re-transcription whether the span still exists, and the
+   * merge would have to guess from timings.
+   */
+  wordIds: string[];
   start: number;
   end: number;
   contextText: string;
@@ -155,8 +162,12 @@ export interface ImageSlot {
   negativePrompt: string;
   candidates: ImageCandidate[];
   chosenCandidateId: string | null;
-  /** Quality-gate outcome, editor-overridable. */
-  presentation: 'cutout' | 'card';
+  /**
+   * Quality-gate outcome, editor-overridable. **Null until the gate runs**,
+   * which is Block 4 — §3 types it as always set, but the planner has no
+   * image to judge and a guessed `cutout` would read as a decision.
+   */
+  presentation: 'cutout' | 'card' | null;
   zoneId: string | null;
   templateId: string | null;
   status: 'pending' | 'generated' | 'approved';

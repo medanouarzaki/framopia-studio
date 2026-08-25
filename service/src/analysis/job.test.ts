@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { assertValidEditPlan, EditPlanValidationError } from '../editplan/validate.js';
 import { createEditPlan } from '../editplan/io.js';
 import type { EditPlan, TranscriptWord } from '../editplan/types.js';
-import { analysisConfigLabel, planWordsForAnalysis } from './job.js';
+import { analysisConfigLabel, planWordsForAnalysis, slotConfigLabel } from './job.js';
 
 const word = (id: string, text: string, start: number, removed = false): TranscriptWord => ({
   id,
@@ -112,6 +112,81 @@ describe('keyword validation', () => {
   });
 });
 
+const imageSlot = (o: Record<string, unknown> = {}): Record<string, unknown> => ({
+  id: 'img001',
+  wordIds: ['w0'],
+  start: 0,
+  end: 0.4,
+  contextText: 'bghiti',
+  idea: 'a bottle on a plinth',
+  prompt: 'p',
+  negativePrompt: 'n',
+  candidates: [],
+  chosenCandidateId: null,
+  presentation: null,
+  zoneId: null,
+  templateId: null,
+  status: 'pending',
+  ...o,
+});
+
+function planWithSlots(slots: unknown[]): EditPlan {
+  const p = planWith([]);
+  p.images = { slots: slots as EditPlan['images']['slots'] };
+  return p;
+}
+
+describe('image slot validation', () => {
+  it('accepts a well-formed slot', () => {
+    expect(paths(planWithSlots([imageSlot()]))).toEqual([]);
+  });
+
+  it('accepts presentation left null until the quality gate runs', () => {
+    expect(paths(planWithSlots([imageSlot({ presentation: null })]))).toEqual([]);
+    expect(paths(planWithSlots([imageSlot({ presentation: 'sideways' })]))).toEqual([
+      'images.slots[0].presentation',
+    ]);
+  });
+
+  it('keeps a slot naming an unknown word off disk', () => {
+    expect(paths(planWithSlots([imageSlot({ wordIds: ['w99'] })]))).toEqual([
+      'images.slots[0].wordIds[0]',
+    ]);
+  });
+
+  it('keeps two overlapping slots off disk', () => {
+    expect(
+      paths(
+        planWithSlots([
+          imageSlot({ id: 'img001', start: 0, end: 2 }),
+          imageSlot({ id: 'img002', wordIds: ['w1'], start: 1, end: 3 }),
+        ]),
+      ),
+    ).toEqual(['images.slots[1].start']);
+  });
+
+  it('keeps a backwards window off disk', () => {
+    expect(paths(planWithSlots([imageSlot({ start: 2, end: 1 })]))).toEqual([
+      'images.slots[0].end',
+    ]);
+  });
+
+  it('rejects an empty wordIds list and a missing field', () => {
+    expect(paths(planWithSlots([imageSlot({ wordIds: [] })]))).toEqual([
+      'images.slots[0].wordIds',
+    ]);
+    const missing = imageSlot();
+    delete missing.prompt;
+    expect(paths(planWithSlots([missing]))).toEqual(['images.slots[0].prompt']);
+  });
+
+  it('rejects an unknown slot status', () => {
+    expect(paths(planWithSlots([imageSlot({ status: 'done' })]))).toEqual([
+      'images.slots[0].status',
+    ]);
+  });
+});
+
 describe('planWordsForAnalysis', () => {
   it('carries the removed flag through so the prompt can drop those words', () => {
     const words = planWordsForAnalysis(planWith([]));
@@ -120,10 +195,13 @@ describe('planWordsForAnalysis', () => {
   });
 });
 
-describe('analysisConfigLabel', () => {
-  it('names the prompt version and the mode version', () => {
-    expect(
-      analysisConfigLabel(1, { id: 'k2-syndicalia', version: 2 } as never),
-    ).toBe('keywords-prompt-v1-k2-syndicalia-v2');
+describe('stage config labels', () => {
+  it('name the prompt version and the mode version', () => {
+    expect(analysisConfigLabel(2, { id: 'k2-syndicalia', version: 2 } as never)).toBe(
+      'keywords-prompt-v2-k2-syndicalia-v2',
+    );
+    expect(slotConfigLabel(1, { id: 'k2-syndicalia', version: 2 } as never)).toBe(
+      'slots-prompt-v1-k2-syndicalia-v2',
+    );
   });
 });

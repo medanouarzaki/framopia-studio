@@ -13,6 +13,9 @@ export const KEYWORD_WINDOW_S = 30;
 /** No reel gets zero emphasized words, however short it is. */
 export const MIN_KEYWORDS = 1;
 
+/** Same floor for image slots: a reel with no image is not a reel we build. */
+export const MIN_IMAGE_SLOTS = MIN_KEYWORDS;
+
 /**
  * How many keywords a reel of this length gets. Pure and total: the model is
  * never asked how many keywords exist, only which words are the strongest
@@ -28,4 +31,20 @@ export function keywordCountFor(durationS: number): number {
   }
   const exact = (durationS / KEYWORD_WINDOW_S) * KEYWORDS_PER_30S;
   return Math.max(MIN_KEYWORDS, Math.sign(exact) * Math.round(Math.abs(exact)));
+}
+
+/**
+ * PROJECT_SPEC §5 states 5–6 images per 30 s reel. Same treatment as
+ * keywords: the spec gives a band, the pipeline needs one number, so it takes
+ * the middle of the band and scales it pro-rata.
+ */
+export const IMAGE_SLOTS_PER_30S = 5.5;
+
+/** Images are independent of keywords (§5), so this shares only the rule. */
+export function imageSlotCountFor(durationS: number): number {
+  if (!Number.isFinite(durationS) || durationS < 0) {
+    throw new RangeError(`image slot count needs a non-negative duration, got ${durationS}`);
+  }
+  const exact = (durationS / KEYWORD_WINDOW_S) * IMAGE_SLOTS_PER_30S;
+  return Math.max(MIN_IMAGE_SLOTS, Math.sign(exact) * Math.round(Math.abs(exact)));
 }

@@ -1,7 +1,7 @@
 /** A failure in the analysis stage, shaped like TranscriptionError. */
 export class AnalysisError extends Error {
   constructor(
-    readonly stage: 'keywords',
+    readonly stage: 'keywords' | 'slots',
     readonly cause: string,
     readonly retryable: boolean,
   ) {

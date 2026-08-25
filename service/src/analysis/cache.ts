@@ -2,6 +2,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { CACHE_MANIFEST, type CacheEntryRef } from '../transcription/cache.js';
+import type { SlotCandidate } from './slot-select.js';
 import type { KeywordCandidate } from './types.js';
 
 export const ANALYSIS_CACHE_STAGE = 'analysis';
@@ -56,5 +57,56 @@ export async function writeAnalysisCache(
     `${JSON.stringify(payload, null, 2)}\n`,
     'utf8',
   );
+  return payload;
+}
+
+export const SLOT_CACHE_STAGE = 'imageslots';
+
+/** The slot stage's entry. Same shape and same rules as the keyword one. */
+export interface SlotCachePayload {
+  rawText: string;
+  candidates: SlotCandidate[];
+  costUsd: number;
+  wallTimeS: number;
+  promptVersion: number;
+  model: string;
+  modeId: string;
+  modeVersion: number;
+}
+
+export interface SlotCacheReadResult {
+  payload: SlotCachePayload | null;
+  warning: string | null;
+}
+
+export async function readSlotCache(ref: CacheEntryRef): Promise<SlotCacheReadResult> {
+  const manifestPath = path.join(ref.dir, CACHE_MANIFEST);
+  if (!existsSync(manifestPath)) return { payload: null, warning: null };
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(await readFile(manifestPath, 'utf8'));
+  } catch {
+    return { payload: null, warning: `cache entry at ${ref.dir} is not valid JSON; recomputing` };
+  }
+
+  const payload = parsed as Partial<SlotCachePayload>;
+  if (
+    typeof payload.rawText !== 'string' ||
+    !Array.isArray(payload.candidates) ||
+    typeof payload.costUsd !== 'number'
+  ) {
+    return { payload: null, warning: `cache entry at ${ref.dir} is incomplete; recomputing` };
+  }
+
+  return { payload: payload as SlotCachePayload, warning: null };
+}
+
+export async function writeSlotCache(
+  ref: CacheEntryRef,
+  payload: SlotCachePayload,
+): Promise<SlotCachePayload> {
+  await mkdir(ref.dir, { recursive: true });
+  await writeFile(path.join(ref.dir, CACHE_MANIFEST), `${JSON.stringify(payload, null, 2)}\n`, 'utf8');
   return payload;
 }

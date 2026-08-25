@@ -1,13 +1,18 @@
 import { loadConfig, loadMode, type ClientMode } from '@framopia/core';
 import { readEditPlan, writeEditPlan } from '../editplan/io.js';
-import type { EditPlan, KeywordItem } from '../editplan/types.js';
-import { analyseKeywordsCached, type CachedKeywordResult } from './cached.js';
+import type { EditPlan, ImageSlot, KeywordItem } from '../editplan/types.js';
+import { analyseKeywordsCached, planSlotsCached, type CachedKeywordResult, type CachedSlotResult } from './cached.js';
 import { ACTIVE_ANALYSIS_PROMPT_VERSION } from './keywords.js';
+import { ACTIVE_SLOT_PROMPT_VERSION } from './slots.js';
 import type { AnalysisWord, KeywordMode } from './types.js';
 
 /** Mirrors transcriptionConfigLabel: the prompt version is the identity. */
 export function analysisConfigLabel(promptVersion: number, mode: ClientMode): string {
   return `keywords-prompt-v${promptVersion}-${mode.id}-v${mode.version}`;
+}
+
+export function slotConfigLabel(promptVersion: number, mode: ClientMode): string {
+  return `slots-prompt-v${promptVersion}-${mode.id}-v${mode.version}`;
 }
 
 export function planWordsForAnalysis(plan: EditPlan): AnalysisWord[] {
@@ -113,6 +118,102 @@ export async function analyseKeywordsForPlan(
   // as a pipeline change.
   const stageCost = analysis.cached ? 0 : analysis.costUsd;
   plan.costs.byStage.analysis = stageCost;
+  plan.costs.totalUsd = Object.values(plan.costs.byStage).reduce((n, v) => n + v, 0);
+  plan.meta.updatedAt = timestamp;
+
+  await writeEditPlan(planPath, plan);
+
+  return { planPath, plan, analysis, cached: analysis.cached };
+}
+
+export interface PlanImageSlotsOptions {
+  planPath: string;
+  modeId: string;
+  bypassCache?: boolean;
+  cacheRoot?: string;
+  log?: (message: string) => void;
+  now?: () => string;
+  /** Injected in tests, so a plan can be enriched without an API key. */
+  runCached?: typeof planSlotsCached;
+}
+
+export interface PlanImageSlotsResult {
+  planPath: string;
+  plan: EditPlan;
+  analysis: CachedSlotResult;
+  cached: boolean;
+}
+
+/**
+ * Reads a plan, plans its image slots, and writes the result back.
+ * **No image is generated here** — that is Block 4. This stage decides which
+ * moments get one, what it should show, and the exact prompt that will be
+ * sent when the time comes.
+ */
+export async function planImageSlotsForPlan(
+  options: PlanImageSlotsOptions,
+): Promise<PlanImageSlotsResult> {
+  const {
+    planPath,
+    modeId,
+    bypassCache = false,
+    cacheRoot,
+    log = (): void => undefined,
+    now = () => new Date().toISOString(),
+    runCached = planSlotsCached,
+  } = options;
+
+  const plan = await readEditPlan(planPath);
+  const mode = loadMode(modeId);
+  const config = loadConfig();
+  const words = planWordsForAnalysis(plan);
+
+  const analysis = await runCached({
+    apiKey: config.googleApiKey,
+    videoSha256: plan.source.sha256,
+    durationS: plan.source.durationS,
+    planId: plan.meta.id,
+    words,
+    mode,
+    bypassCache,
+    cacheRoot,
+    log,
+  });
+
+  for (const warning of analysis.warnings) log(`warning [slots]: ${warning}`);
+  for (const failure of analysis.selection.failures) {
+    log(`slots: dropped candidate ${JSON.stringify(failure.candidate.wordIds)} (${failure.reason})`);
+  }
+
+  const slots: ImageSlot[] = analysis.selection.slots.map((slot, i) => ({
+    id: `img${String(i + 1).padStart(3, '0')}`,
+    wordIds: slot.wordIds,
+    start: slot.start,
+    end: slot.end,
+    contextText: slot.contextText,
+    idea: slot.idea,
+    prompt: slot.prompt,
+    negativePrompt: slot.negativePrompt,
+    candidates: [],
+    chosenCandidateId: null,
+    presentation: null,
+    zoneId: null,
+    templateId: null,
+    status: 'pending',
+  }));
+
+  const timestamp = now();
+  plan.images = { slots };
+  plan.pipeline.images = {
+    status: 'done',
+    config: slotConfigLabel(ACTIVE_SLOT_PROMPT_VERSION, mode),
+    costUsd: analysis.cached ? 0 : analysis.costUsd,
+    cached: analysis.cached,
+    completedAt: timestamp,
+    error: null,
+  };
+  const stageCost = analysis.cached ? 0 : analysis.costUsd;
+  plan.costs.byStage.images = stageCost;
   plan.costs.totalUsd = Object.values(plan.costs.byStage).reduce((n, v) => n + v, 0);
   plan.meta.updatedAt = timestamp;
 

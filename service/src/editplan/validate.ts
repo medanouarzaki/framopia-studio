@@ -233,10 +233,64 @@ function checkKeywords(c: Checker, value: unknown, words: Map<string, Rec>): voi
   });
 }
 
+const PRESENTATIONS = new Set(['cutout', 'card']);
+const SLOT_STATUSES = new Set(['pending', 'generated', 'approved']);
+
+/**
+ * Slots point at transcript words like keywords do, so the same id check
+ * applies, plus the two rules the planner enforces: a slot's window must be
+ * ordered, and two slots must not overlap in time.
+ */
+function checkImages(c: Checker, value: unknown, words: Map<string, Rec>): void {
+  const images = c.object('images', value);
+  if (images === null) return;
+  const slots = c.array('images.slots', images.slots);
+  if (slots === null) return;
+
+  let previousEnd: number | null = null;
+  slots.forEach((raw, i) => {
+    const p = `images.slots[${i}]`;
+    const slot = c.object(p, raw);
+    if (slot === null) return;
+    c.string(`${p}.id`, slot.id);
+    c.string(`${p}.contextText`, slot.contextText);
+    c.string(`${p}.idea`, slot.idea);
+    c.string(`${p}.prompt`, slot.prompt);
+    c.string(`${p}.negativePrompt`, slot.negativePrompt);
+    c.array(`${p}.candidates`, slot.candidates);
+    c.nullableString(`${p}.chosenCandidateId`, slot.chosenCandidateId);
+    c.nullableString(`${p}.zoneId`, slot.zoneId);
+    c.nullableString(`${p}.templateId`, slot.templateId);
+    c.oneOf(`${p}.status`, slot.status, SLOT_STATUSES);
+    if (slot.presentation !== null) {
+      c.oneOf(`${p}.presentation`, slot.presentation, PRESENTATIONS);
+    }
+
+    c.number(`${p}.start`, slot.start);
+    c.number(`${p}.end`, slot.end);
+    if (typeof slot.start === 'number' && typeof slot.end === 'number') {
+      if (slot.end < slot.start) c.fail(`${p}.end`, 'a slot cannot end before it starts');
+      if (previousEnd !== null && slot.start < previousEnd) {
+        c.fail(`${p}.start`, `slot overlaps the previous slot, which ends at ${previousEnd}`);
+      }
+      previousEnd = slot.end;
+    }
+
+    const ids = c.array(`${p}.wordIds`, slot.wordIds);
+    if (ids === null) return;
+    if (ids.length === 0) c.fail(`${p}.wordIds`, 'a slot must reference at least one word');
+    ids.forEach((id, j) => {
+      if (typeof id !== 'string') {
+        c.fail(`${p}.wordIds[${j}]`, 'expected a string');
+      } else if (!words.has(id)) {
+        c.fail(`${p}.wordIds[${j}]`, `no transcript word has id ${id}`);
+      }
+    });
+  });
+}
+
 function checkContainers(c: Checker, plan: Rec): void {
 
-  const images = c.object('images', plan.images);
-  if (images !== null) c.array('images.slots', images.slots);
 
   const zones = c.object('zones', plan.zones);
   if (zones !== null) {
@@ -327,6 +381,7 @@ export function validateEditPlan(value: unknown): PlanValidationIssue[] {
   }
   checkSubtitles(c, plan.subtitles, new Set(byId.keys()));
   checkKeywords(c, plan.keywords, byId);
+  checkImages(c, plan.images, byId);
   checkContainers(c, plan);
 
   return c.issues;

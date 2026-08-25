@@ -4,11 +4,12 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { estimateGeminiCallCost, loadMode, readCosts } from '@framopia/core';
 import { readEditPlan } from './editplan/io.js';
-import { analyseKeywordsForPlan, planWordsForAnalysis } from './analysis/job.js';
-import { analysisCacheRef } from './analysis/cached.js';
-import { readAnalysisCache } from './analysis/cache.js';
+import { analyseKeywordsForPlan, planImageSlotsForPlan, planWordsForAnalysis } from './analysis/job.js';
+import { analysisCacheRef, slotCacheRef } from './analysis/cached.js';
+import { readAnalysisCache, readSlotCache } from './analysis/cache.js';
 import { candidateCountFor } from './analysis/keywords.js';
-import { keywordCountFor } from './analysis/count.js';
+import { slotCandidateCountFor } from './analysis/slots.js';
+import { imageSlotCountFor, keywordCountFor } from './analysis/count.js';
 import type { KeywordMode } from './analysis/types.js';
 
 async function confirm(message: string): Promise<boolean> {
@@ -26,6 +27,7 @@ async function main(): Promise<void> {
       plan: { type: 'string' },
       mode: { type: 'string', default: 'k2-syndicalia' },
       keywords: { type: 'string', default: 'auto' },
+      stage: { type: 'string', default: 'keywords' },
       yes: { type: 'boolean', default: false },
       'no-cache': { type: 'boolean', default: false },
     },
@@ -33,7 +35,7 @@ async function main(): Promise<void> {
 
   if (!values.plan || !existsSync(values.plan)) {
     console.error(
-      'Usage: npm run analyse -- --plan <path.editplan.json> [--mode <id>] [--keywords auto|propose] [--yes] [--no-cache]',
+      'Usage: npm run analyse -- --plan <path.editplan.json> [--stage keywords|slots] [--mode <id>] [--keywords auto|propose] [--yes] [--no-cache]',
     );
     process.exitCode = 1;
     return;
@@ -45,26 +47,40 @@ async function main(): Promise<void> {
   }
   const keywordMode = values.keywords as KeywordMode;
 
+  const stage = values.stage as string;
+  if (stage !== 'keywords' && stage !== 'slots') {
+    console.error(`--stage must be keywords or slots, got ${stage}`);
+    process.exitCode = 1;
+    return;
+  }
+
   const plan = await readEditPlan(values.plan);
   const mode = loadMode(values.mode as string);
   const words = planWordsForAnalysis(plan);
-  const keywordCount = keywordCountFor(plan.source.durationS);
-  const candidateCount = candidateCountFor(keywordCount);
   const bypassCache = values['no-cache'] ?? false;
 
+  const count =
+    stage === 'keywords'
+      ? keywordCountFor(plan.source.durationS)
+      : imageSlotCountFor(plan.source.durationS);
+  const candidateCount =
+    stage === 'keywords' ? candidateCountFor(count) : slotCandidateCountFor(count);
+
   console.log(
-    `${plan.source.durationS.toFixed(1)}s reel -> ${keywordCount} keyword(s), asking for ${candidateCount} candidates`,
+    `${plan.source.durationS.toFixed(1)}s reel -> ${count} ${stage === 'keywords' ? 'keyword' : 'image slot'}(s), asking for ${candidateCount} candidates`,
   );
   const allTime = Object.values(readCosts()).reduce((n, v) => n + v, 0);
   console.log(`All-time ledger total: $${allTime.toFixed(6)}`);
 
-  const { ref } = analysisCacheRef({
-    videoSha256: plan.source.sha256,
-    mode,
-    words,
-    candidateCount,
-  });
-  const willHit = !bypassCache && (await readAnalysisCache(ref)).payload !== null;
+  const ref =
+    stage === 'keywords'
+      ? analysisCacheRef({ videoSha256: plan.source.sha256, mode, words, candidateCount }).ref
+      : slotCacheRef({ videoSha256: plan.source.sha256, mode, words, candidateCount }).ref;
+  const willHit =
+    !bypassCache &&
+    (stage === 'keywords'
+      ? (await readAnalysisCache(ref)).payload !== null
+      : (await readSlotCache(ref)).payload !== null);
 
   if (willHit) {
     console.log('Cache hit — no billable calls for this run.');
@@ -80,14 +96,53 @@ async function main(): Promise<void> {
     }
   }
 
+  const log = (m: string): void => {
+    console.log(m);
+  };
+
+  if (stage === 'slots') {
+    const result = await planImageSlotsForPlan({
+      planPath: values.plan,
+      modeId: mode.id,
+      bypassCache,
+      log,
+    });
+    const { selection } = result.analysis;
+    console.log(
+      result.cached
+        ? 'Cost: $0.0000 — served from cache, nothing billed'
+        : `Cost: $${result.analysis.costUsd.toFixed(4)}`,
+    );
+    const unresolved = selection.failures.filter((f) => f.reason === 'unknown-word-id' || f.reason === 'empty-word-ids');
+    console.log(
+      `${selection.slots.length}/${selection.requestedCount} slot(s), ` +
+        `${unresolved.length} resolution failure(s), ` +
+        `${selection.failures.length - unresolved.length} spread/overlap rejection(s), ` +
+        `${result.analysis.wallTimeS.toFixed(1)}s`,
+    );
+    if (selection.shortfall > 0) {
+      console.log(`  shortfall: ${selection.shortfall} slot(s) the candidates could not supply`);
+    }
+    console.log(
+      `  gaps between slots: ${selection.gaps.map((g) => `${g.toFixed(2)}s`).join(', ') || 'n/a'}`,
+    );
+    console.log(`  uncovered reel time: ${selection.uncoveredS.toFixed(2)}s`);
+    for (const slot of result.plan.images.slots) {
+      const planned = selection.slots.find((sl) => sl.wordIds.join() === slot.wordIds.join());
+      console.log(`  ${slot.id} [${slot.start.toFixed(2)}-${slot.end.toFixed(2)}s] ${slot.idea}`);
+      console.log(`      variation: ${JSON.stringify(planned?.variation ?? {})}`);
+      console.log(`      prompt: ${slot.prompt}`);
+      console.log(`      negative: ${slot.negativePrompt}`);
+    }
+    return;
+  }
+
   const result = await analyseKeywordsForPlan({
     planPath: values.plan,
     modeId: mode.id,
     keywordMode,
     bypassCache,
-    log: (m) => {
-      console.log(m);
-    },
+    log,
   });
 
   const { selection } = result.analysis;
