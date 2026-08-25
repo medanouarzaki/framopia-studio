@@ -19,6 +19,8 @@ const VOWELLESS_EXCEPTIONS = new Set<string>([
   ...freezeListData.words.filter((word) => !VOWEL_RE.test(word)),
 ]);
 const ARABIC_SCRIPT_RE = /[؀-ۿ]/;
+// The conjunction as written in Arabic script (§2, v1.0.8).
+const ARABIC_CONJUNCTION = '\u0648';
 const LATIN_LETTER_RE = /\p{L}/u;
 const LATIN_ONLY_RE = /^[A-Za-z0-9'’-]+$/;
 const DIGIT_RE = /[0-9]/g;
@@ -199,12 +201,22 @@ export function findOuConjunctions(words: string[]): OuConjunctionReport {
 export function findProclitics(words: string[]): ProcliticReport {
   const examples: FlaggedExample[] = [];
 
-  for (const word of words) {
+  for (const [index, word] of words.entries()) {
     const bare = stripEdgePunctuation(word).toLowerCase();
-    if (bare === 'w' || bare === '\u0648') {
+    if (bare === 'w' || bare === ARABIC_CONJUNCTION) {
+      // The required fix differs by what follows, so the message has to say
+      // which. Before an Arabic-script term (§6) the conjunction fuses *in
+      // Arabic script* — `ومادة`, not `wمادة` — so telling a human to
+      // "attach it" without saying that invites a mixed-script token, which
+      // §8 forbids.
+      const next = words[index + 1];
+      const arabicNext = next !== undefined && ARABIC_SCRIPT_RE.test(next);
       examples.push({
         word,
-        detail: `standalone "${word}" — the conjunction attaches to the next word (§2)`,
+        detail: arabicNext
+          ? `standalone "${word}" before Arabic-script "${next}" — fuse in Arabic script as ` +
+            `"${ARABIC_CONJUNCTION}${stripEdgePunctuation(next as string)}" (§2, v1.0.8)`
+          : `standalone "${word}" — the conjunction attaches to the next word (§2)`,
       });
     } else if (bare === 'l') {
       examples.push({

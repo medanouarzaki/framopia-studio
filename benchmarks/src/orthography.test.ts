@@ -295,9 +295,30 @@ describe('findProclitics', () => {
     expect(findProclitics(['wa7d', 'l', 'cocktail']).count).toBe(1);
   });
 
+  // v1.0.8: the conjunction before an Arabic-script term fuses in Arabic
+  // script. The message has to name that, because "attach it" applied
+  // literally would produce the mixed-script token §8 forbids.
+  it('names the arabic fusion when the next token is arabic script', () => {
+    const report = findProclitics(['réticulé', 'w', 'مادة', 'الكافيين']);
+    expect(report.count).toBe(1);
+    expect(report.examples[0]?.detail).toContain('ومادة');
+    expect(report.examples[0]?.detail).toContain('v1.0.8');
+  });
+
+  it('does not name the arabic fusion when the next token is latin', () => {
+    const report = findProclitics(['Mabin', 'w', '7essa']);
+    expect(report.count).toBe(1);
+    expect(report.examples[0]?.detail).not.toContain('ومادة');
+  });
+
+  it('flags a standalone w at the very end, with nothing following', () => {
+    expect(findProclitics(['7essa', 'w']).count).toBe(1);
+  });
+
   it('passes the attached forms the guide asks for', () => {
     expect(findProclitics(['Mabin', '7essa', 'w7essa', '15', 'yom']).count).toBe(0);
     expect(findProclitics(['إشراقة', 'ونضارة']).count).toBe(0);
+    expect(findProclitics(['réticulé', 'ومادة', 'الكافيين']).count).toBe(0);
     expect(findProclitics(['wa7d', 'lcocktail', 'dial', 'lvitaminat']).count).toBe(0);
     expect(findProclitics(['Wl’effet', 'dialha']).count).toBe(0);
   });
