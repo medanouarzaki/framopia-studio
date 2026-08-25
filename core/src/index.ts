@@ -30,6 +30,25 @@ export {
 export { DOCS_DIR, LOCAL_DIR, REPO_ROOT, ROOT_PACKAGE_JSON } from './paths.js';
 export { SCRIPT_RULES } from './script-rules.js';
 export {
+  assertRenderable,
+  loadSfxIndex,
+  loadTemplateManifest,
+  SFX_INDEX_PATH,
+  StubTemplatesError,
+  TEMPLATE_MANIFEST_PATH,
+  TEMPLATE_MANIFEST_SCHEMA_VERSION,
+  TemplateManifestError,
+  templatesById,
+  validateSfxIndex,
+  validateTemplateManifest,
+  type ManifestIssue,
+  type SfxEntry,
+  type SfxIndex,
+  type TemplateEntry,
+  type TemplateManifest,
+  type TemplateSfxBinding,
+} from './templates.js';
+export {
   computeGeminiCost,
   estimateCosts,
   estimateGeminiCallCost,

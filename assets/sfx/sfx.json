@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "stub": true,
+  "stubNote": "Ids and default gains only. No audio file exists in this directory yet; every `file` below names what Block 6 supplies. Code that renders must refuse to run while `stub` is true.",
+  "sfx": [
+    { "id": "hit_01", "file": "hit_01.wav", "defaultGainDb": -6, "notes": "short percussive hit for keyword slams" },
+    { "id": "whoosh_01", "file": "whoosh_01.wav", "defaultGainDb": -9, "notes": "short whoosh for image entrances" }
+  ]
+}

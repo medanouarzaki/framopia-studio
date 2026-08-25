@@ -1,5 +1,11 @@
 import { readdirSync } from 'node:fs';
 import { loadMode, MODES_DIR, ModeValidationError } from './mode.js';
+import {
+  loadTemplateManifest,
+  TEMPLATE_MANIFEST_PATH,
+  TemplateManifestError,
+  templatesById,
+} from './templates.js';
 
 /**
  * Every mode in `modes/` must parse and validate. Wired into the regression
@@ -27,6 +33,55 @@ for (const file of files.sort()) {
       }
     } else {
       console.error(`mode ${id}: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+}
+
+let manifest;
+try {
+  manifest = loadTemplateManifest();
+  console.log(
+    `templates: ${manifest.templates.length} entries, ok${manifest.stub ? ' (stub — Block 6 replaces it)' : ''}`,
+  );
+} catch (err) {
+  failed += 1;
+  if (err instanceof TemplateManifestError) {
+    console.error(`${err.manifestPath}: FAILED`);
+    for (const issue of err.issues) {
+      console.error(`  ${issue.path === '' ? '<root>' : issue.path}: ${issue.message}`);
+    }
+  } else {
+    console.error(err instanceof Error ? err.message : String(err));
+  }
+}
+
+// Every id a mode allows must exist in the manifest, or the assignment stage
+// would hand the builder a template that is not there.
+if (manifest !== undefined) {
+  const known = templatesById(manifest);
+  for (const file of files.sort()) {
+    const id = file.replace(/\.json$/, '');
+    let mode;
+    try {
+      mode = loadMode(id);
+    } catch {
+      continue;
+    }
+    for (const [kind, ids] of Object.entries(mode.allowedTemplates)) {
+      for (const templateId of ids) {
+        const entry = known.get(templateId);
+        if (entry === undefined) {
+          failed += 1;
+          console.error(
+            `mode ${id}: allowedTemplates.${kind} names ${templateId}, which ${TEMPLATE_MANIFEST_PATH} does not define`,
+          );
+        } else if (entry.type !== kind) {
+          failed += 1;
+          console.error(
+            `mode ${id}: allowedTemplates.${kind} names ${templateId}, which the manifest types as ${entry.type}`,
+          );
+        }
+      }
     }
   }
 }

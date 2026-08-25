@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "stub": true,
+  "stubNote": "Placeholder entries only. No .aep exists yet: `file` names the library After Effects project that Block 6 creates, and every timing below is a plausible default rather than a measurement taken from a built comp. Code that renders must refuse to run while `stub` is true. TEMPLATE_LIBRARY_GUIDE §8 is the schema; §10 names the first real set.",
+  "templates": [
+    {
+      "id": "sub_pop",
+      "file": "library.aep",
+      "type": "subtitle",
+      "placeholders": ["TXT_MAIN"],
+      "introS": 0.2,
+      "outroS": 0.2,
+      "minHoldS": 0.2,
+      "anchor": "center",
+      "imagePresentation": null,
+      "sfx": [],
+      "notes": "default subtitle pop; subtitles carry no SFX per §10, they are too frequent"
+    },
+    {
+      "id": "kw_slam",
+      "file": "library.aep",
+      "type": "keyword",
+      "placeholders": ["TXT_MAIN"],
+      "introS": 0.2,
+      "outroS": 0.15,
+      "minHoldS": 0.3,
+      "anchor": "center",
+      "imagePresentation": null,
+      "sfx": [{ "sfxId": "hit_01", "offsetS": 0.1, "gainDb": -6 }],
+      "notes": "hard slam, best on 1 word"
+    },
+    {
+      "id": "img_slide_left",
+      "file": "library.aep",
+      "type": "image",
+      "placeholders": ["IMG_MAIN"],
+      "introS": 0.3,
+      "outroS": 0.25,
+      "minHoldS": 0.6,
+      "anchor": "center",
+      "imagePresentation": "cutout",
+      "sfx": [{ "sfxId": "whoosh_01", "offsetS": 0.0, "gainDb": -9 }],
+      "notes": "slides in from the left; expects a clean cutout"
+    },
+    {
+      "id": "img_float",
+      "file": "library.aep",
+      "type": "image",
+      "placeholders": ["IMG_MAIN"],
+      "introS": 0.35,
+      "outroS": 0.3,
+      "minHoldS": 0.6,
+      "anchor": "center",
+      "imagePresentation": "card",
+      "sfx": [{ "sfxId": "whoosh_01", "offsetS": 0.05, "gainDb": -12 }],
+      "notes": "card-framed fallback for when the cutout gate says no"
+    }
+  ]
+}
