@@ -95,13 +95,32 @@ They do not overlap.
 renders. The ruling session 6 asked for now has one fewer option: the metric
 has been fixed and the failures survived it.
 
-**`img001-c1` decides at the fourth decimal** — 0.1004 against a 0.1000 bound,
-a margin of 0.4 per cent. A threshold resolving a case that finely is not
-doing real work on that image, whichever side it lands. Two corpus images sit
-at 0.0966 and 0.0965, also inside half a per cent. **Four of sixteen images
-are within one per cent of the bound**, which says the bound is near the
-middle of this footage's distribution rather than safely above it. Nothing was
-moved; it is worth knowing.
+### The bound is deciding at the fifth decimal
+
+Asked to check whether any candidate decides at the fourth decimal, the answer
+is worse than that. Every image within one per cent of the bound:
+
+| image | halo | margin | verdict |
+|---|---|---|---|
+| `img001-c1` | 0.1004224016 | **+0.000422** | fails |
+| `img005-c1` | 0.0999574013 | **−0.000043** | passes |
+| `img004-c1` | 0.0978757628 | −0.002124 | passes |
+| `gemini-3-pro-image-2` | 0.0965631087 | −0.003437 | passes |
+| `gemini-3.1-flash-image-2` | 0.0965196302 | −0.003480 | passes |
+
+**`img005-c1` passes by 43 parts in a million.** `img001-c1` fails by 422.
+Five of sixteen images sit within 0.35 per cent of the bound, and two of them
+are decided at the **fifth** decimal.
+
+A threshold resolving cases that finely is not doing real work on those
+images: the difference between `img005-c1` and `img001-c1` is 0.0005 of mean
+alpha in a ring, and nothing suggests a human could see it. The bound is
+sitting in the middle of this footage's distribution rather than above it.
+
+**Nothing was moved.** Refitting is out of scope and would be fitting to
+sixteen images from two reels. But a gate whose outcome turns on the fifth
+decimal is reporting a coin-flip as a verdict, and that is the more useful
+thing to know than which side any one image landed.
 
 ## The metric can still fail
 
