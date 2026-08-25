@@ -1,5 +1,15 @@
 # Block 1 transcription benchmark — run C (guide v1.0.3)
 
+**Every WER column here is scored against the `v1.0.1-conformant`
+references.** The engine outputs are unchanged — they are the same recorded
+run-C responses — but the references they are measured against were corrected
+after run C was first written: the ground-truth reel in Block 2 session 6, and
+test-1 and test-2 in Block 3 session 1 (`dla vidéo` → `dial lvidéo`,
+`joj dl 7essass` → `joj dial l7essass`). **Any run-C WER figure quoted
+elsewhere from before those corrections is superseded by this table.** Nothing
+but the WER columns moved; cost, wall time and timestamp deviation are
+untouched.
+
 The run of record for the Block 1 freeze decision. Earlier runs are kept
 beside it: run A (guide v1.0.1) in `RESULTS-block1-runA.md`, run B (a free
 rescore of run A's outputs under v1.0.2) in `RESULTS-block1-runB.md`.
@@ -40,9 +50,9 @@ set cannot speak to, which is the whole story for raw Scribe.
 | engine | overall WER | darija WER | fr/en WER | orthography | ts dev vs scribe (med/p90) | null ts | cost | wall |
 |---|---|---|---|---|---|---|---|---|
 | scribe | 71.6% | 98.4% | 6.5% | 100.0% (223 ar unscored) | — / — | 0 | $0.0054 | 11.2s |
-| gemini | 26.6% | 27.7% | 8.7% | 97.3% (48 ar unscored) | 466ms / 1462ms | 0 | $0.5625 | 387.1s |
+| gemini | 24.5% | 23.9% | 10.9% | 97.3% (48 ar unscored) | 466ms / 1462ms | 0 | $0.5625 | 387.1s |
 | whisper | 87.4% | 96.3% | 95.7% | 100.0% (223 ar unscored) | 145ms / 484ms | 0 | $0.0000 | 50.2s |
-| hybrid | 24.8% | 26.1% | 6.5% | 97.3% (48 ar unscored) | 0ms / 5ms | 0 | $0.5430 | 459.5s |
+| hybrid | 21.9% | 21.3% | 8.7% | 97.3% (48 ar unscored) | 0ms / 5ms | 0 | $0.5430 | 459.5s |
 
 Cost column total: $1.1109. Note this mixes runs — the
 gemini and hybrid figures were billed by this run, the scribe and whisper
@@ -88,27 +98,27 @@ prompt, which would cost another sweep.
 | engine | overall WER | darija WER | fr/en WER | orthography | ts dev vs scribe (med/p90) | null ts | cost | wall |
 |---|---|---|---|---|---|---|---|---|
 | scribe | 75.3% | 98.3% | 6.3% | 100.0% (61 ar unscored) | — / — | 0 | $0.0014 | 2.9s |
-| gemini | 21.0% | 21.7% | 12.5% | 97.6% (7 ar unscored) | 240ms / 1300ms | 0 | $0.1398 | 82.8s |
+| gemini | 14.8% | 13.3% | 12.5% | 97.6% (7 ar unscored) | 240ms / 1300ms | 0 | $0.1398 | 82.8s |
 | whisper | 92.6% | 95.0% | 100.0% | 100.0% (60 ar unscored) | 159ms / 319ms | 0 | $0.0000 | 13.5s |
-| hybrid | 22.2% | 25.0% | 12.5% | 97.5% (6 ar unscored) | 0ms / 0ms | 0 | $0.1627 | 105.9s |
+| hybrid | 16.0% | 16.7% | 12.5% | 97.5% (6 ar unscored) | 0ms / 0ms | 0 | $0.1627 | 105.9s |
 
 ### test-1 — 22.0s, 67 reference words
 
 | engine | overall WER | darija WER | fr/en WER | orthography | ts dev vs scribe (med/p90) | null ts | cost | wall |
 |---|---|---|---|---|---|---|---|---|
 | scribe | 74.6% | 100.0% | 33.3% | 100.0% (62 ar unscored) | — / — | 0 | $0.0013 | 2.8s |
-| gemini | 29.9% | 28.3% | 0.0% | 98.6% (19 ar unscored) | 811ms / 3331ms | 0 | $0.1592 | 99.3s |
+| gemini | 29.9% | 26.1% | 33.3% | 98.6% (19 ar unscored) | 811ms / 3331ms | 0 | $0.1592 | 99.3s |
 | whisper | 79.1% | 95.7% | 100.0% | 100.0% (56 ar unscored) | 120ms / 659ms | 0 | $0.0000 | 12.1s |
-| hybrid | 26.9% | 28.3% | 0.0% | 98.6% (19 ar unscored) | 0ms / 20ms | 0 | $0.1439 | 117.7s |
+| hybrid | 23.9% | 21.7% | 33.3% | 98.6% (19 ar unscored) | 0ms / 20ms | 0 | $0.1439 | 117.7s |
 
 ### test-2 — 22.3s, 70 reference words
 
 | engine | overall WER | darija WER | fr/en WER | orthography | ts dev vs scribe (med/p90) | null ts | cost | wall |
 |---|---|---|---|---|---|---|---|---|
 | scribe | 75.7% | 98.0% | 0.0% | 100.0% (59 ar unscored) | — / — | 0 | $0.0014 | 3.3s |
-| gemini | 31.4% | 30.6% | 0.0% | 96.1% (11 ar unscored) | 581ms / 720ms | 0 | $0.1330 | 130.0s |
+| gemini | 30.0% | 28.6% | 0.0% | 96.1% (11 ar unscored) | 581ms / 720ms | 0 | $0.1330 | 130.0s |
 | whisper | 91.4% | 100.0% | 100.0% | 100.0% (65 ar unscored) | 140ms / 299ms | 0 | $0.0000 | 13.0s |
-| hybrid | 30.0% | 28.6% | 0.0% | 97.3% (12 ar unscored) | 0ms / 0ms | 0 | $0.1636 | 193.8s |
+| hybrid | 28.6% | 26.5% | 0.0% | 97.3% (12 ar unscored) | 0ms / 0ms | 0 | $0.1636 | 193.8s |
 
 ### test-3 — 21.2s, 60 reference words
 
@@ -118,6 +128,7 @@ prompt, which would cost another sweep.
 | gemini | 25.0% | 33.3% | 12.5% | 96.6% (11 ar unscored) | 231ms / 499ms | 0 | $0.1306 | 75.0s |
 | whisper | 85.0% | 93.9% | 87.5% | 100.0% (42 ar unscored) | 159ms / 659ms | 0 | $0.0000 | 11.6s |
 | hybrid | 20.0% | 21.2% | 6.3% | 95.2% (11 ar unscored) | 0ms / 0ms | 0 | $0.0727 | 42.1s |
+
 
 ## Ledger note — one understated cost entry from session 4
 

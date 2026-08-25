@@ -32,10 +32,18 @@ speaker, scored against hand-written ground truth under guide v1.0.3.
 
 | engine | overall WER | darija WER | fr/en WER | orthography | ts dev vs scribe (med/p90) | null ts | cost |
 |---|---|---|---|---|---|---|---|
-| **hybrid** | **24.8%** | **26.1%** | **6.5%** | 97.3% (48 ar unscored) | 0ms / 5ms | 0 | $0.5430 |
-| gemini | 26.6% | 27.7% | 8.7% | 97.3% (48 ar unscored) | 466ms / 1462ms | 0 | $0.5625 |
+| **hybrid** | **21.9%** | **21.3%** | **8.7%** | 97.3% (48 ar unscored) | 0ms / 5ms | 0 | $0.5430 |
+| gemini | 24.5% | 23.9% | 10.9% | 97.3% (48 ar unscored) | 466ms / 1462ms | 0 | $0.5625 |
 | scribe | 71.6% | 98.4% | 6.5% | 100.0% (223 ar unscored) | — | 0 | $0.0054 |
 | whisper | 87.4% | 96.3% | 95.7% | 100.0% (223 ar unscored) | 145ms / 484ms | 0 | $0.0000 |
+
+The WER columns above are **re-scored against the `v1.0.1-conformant`
+references** and supersede the figures this table carried before — hybrid
+24.8% / 26.1% / 6.5%, gemini 26.6% / 27.7% / 8.7%. No engine was re-run: the
+outputs are the same recorded run-C responses, and only the references moved
+(ground-truth in Block 2 session 6, test-1 and test-2 in Block 3 session 1).
+Scribe and Whisper are unchanged. The ranking that decided the freeze is
+unchanged; see `benchmarks/RESULTS-block1.md` for the live table.
 
 Hybrid wins every reel in run C, including test-1, where it had lost to
 Gemini in runs A and B.

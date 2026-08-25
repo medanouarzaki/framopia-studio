@@ -218,6 +218,16 @@ export function buildAggregateReport(resultsRoot = RESULTS_DIR): string {
 
   return `# Block 1 transcription benchmark — run C (guide v1.0.3)
 
+**Every WER column here is scored against the \`v1.0.1-conformant\`
+references.** The engine outputs are unchanged — they are the same recorded
+run-C responses — but the references they are measured against were corrected
+after run C was first written: the ground-truth reel in Block 2 session 6, and
+test-1 and test-2 in Block 3 session 1 (\`dla vidéo\` → \`dial lvidéo\`,
+\`joj dl 7essass\` → \`joj dial l7essass\`). **Any run-C WER figure quoted
+elsewhere from before those corrections is superseded by this table.** Nothing
+but the WER columns moved; cost, wall time and timestamp deviation are
+untouched.
+
 The run of record for the Block 1 freeze decision. Earlier runs are kept
 beside it: run A (guide v1.0.1) in \`RESULTS-block1-runA.md\`, run B (a free
 rescore of run A's outputs under v1.0.2) in \`RESULTS-block1-runB.md\`.
@@ -296,5 +306,36 @@ prompt, which would cost another sweep.
 
 ## Per reel
 
-${perReel.join('\n')}`;
+${perReel.join('\n')}
+
+## Ledger note — one understated cost entry from session 4
+
+The \`.local/costs.jsonl\` entry
+
+\`\`\`
+{"stage":"benchmark-gemini","model":"gemini","unit":"run","usd":0.031668,"timestamp":"2026-08-24T19:50:06.011Z"}
+\`\`\`
+
+is **known-low and must never be quoted as an actual cost**. It was written
+before \`computeGeminiCost\` billed \`thoughtsTokenCount\` at the output rate, so
+it counts only the 2084 visible output tokens and omits 10295 thinking tokens.
+
+The raw response survives at
+\`benchmarks/results/2026-08-24T19-48-01-202Z/raw/gemini.json\`
+(\`promptTokensDetails\` 2748 TEXT + 582 AUDIO, \`candidatesTokenCount\` 2084,
+\`thoughtsTokenCount\` 10295). Re-costed with the current constants
+($2.00/M input, $12.00/M output) the call was **$0.155208**, not $0.031668 —
+4.9x. Reconstructing the old formula from the same usage reproduces
+$0.031668 exactly, which is what identifies this raw response as that call.
+
+The ledger is append-only, so the original line stands. A delta-only entry of
+$0.123540 (\`stage: benchmark-gemini-correction\`) was appended with a \`note\`
+naming the corrected timestamp. Ledger totals are therefore correct in sum;
+the single 19:50:06 line is not correct on its own.
+
+No other entry needed correcting. 19:50:06 is the first Gemini line in the
+ledger, and the next one (19:54:06, $0.156060) reproduces exactly from its own
+raw \`usageMetadata\` **with** thinking tokens included, so the fix was already
+in place from that call onward.
+`;
 }

@@ -1,5 +1,13 @@
 # Block 1 transcription benchmark — run B (guide v1.0.2 rescore)
 
+> **Superseded figures.** Every WER number here was scored against
+> pre-`v1.0.1-conformant` references — the ground-truth reel still wrote
+> `dl 7olol`, `dl 7essass`, `dl vitaminat`, and test-1 and test-2 still wrote
+> `dla vidéo` and `joj dl 7essass`. The corrected references are scored in
+> `RESULTS-block1.md`. This file is preserved verbatim as the record of what
+> was measured at the time and is not re-scored; nothing in it should be
+> quoted as a current WER figure.
+
 Preserved verbatim from the session-5 commit, alongside run A in
 `RESULTS-block1-runA.md`. Run C supersedes it.
 
