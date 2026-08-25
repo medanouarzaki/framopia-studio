@@ -7,6 +7,8 @@ merely clutter a log.
 
     {"task": "remove_bg", "imagePath": "...", "outPath": "...",
      "alphaMatting": false, "ocr": true}
+    {"task": "segment_person", "framePaths": ["..."], "outDir": "...",
+     "threshold": 0.5}
 
 Exit status is 0 with `{"ok": true, ...}` on success and 1 with
 `{"ok": false, "error": "..."}` on failure. A failure is still valid JSON: the
@@ -94,7 +96,53 @@ def _detect_text(request: dict) -> dict:
     }
 
 
-TASKS = {"remove_bg": _remove_bg, "detect_text": _detect_text}
+def _segment_person(request: dict) -> dict:
+    from .segment_person import DEFAULT_THRESHOLD, MODEL_NAME, MODEL_PATH, segment_frames
+
+    frame_paths = request["framePaths"]
+    if not isinstance(frame_paths, list) or not frame_paths:
+        raise ValueError("framePaths must be a non-empty list")
+    threshold = float(request.get("threshold", DEFAULT_THRESHOLD))
+
+    frames = segment_frames(frame_paths, request["outDir"], threshold)
+    return {
+        "ok": True,
+        "task": "segment_person",
+        "model": MODEL_NAME,
+        "modelPath": str(MODEL_PATH),
+        "threshold": threshold,
+        "outDir": request["outDir"],
+        "frames": frames,
+    }
+
+
+def _segment_overlay(request: dict) -> dict:
+    """Debug renders for a pass that has already run.
+
+    Separate from segmentation so that looking at a reel again costs a
+    composite rather than an inference over every frame.
+    """
+    from .overlay import close_ups, contact_sheet
+
+    frames = request["frames"]
+    out_dir = request["outDir"]
+    prefix = request["prefix"]
+
+    sheet = contact_sheet(frames, f"{out_dir}/{prefix}-contactsheet.png")
+    return {
+        "ok": True,
+        "task": "segment_overlay",
+        "contactSheet": sheet,
+        "closeUps": close_ups(frames, out_dir, prefix),
+    }
+
+
+TASKS = {
+    "remove_bg": _remove_bg,
+    "detect_text": _detect_text,
+    "segment_person": _segment_person,
+    "segment_overlay": _segment_overlay,
+}
 
 
 def main() -> int:

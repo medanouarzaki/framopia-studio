@@ -21,4 +21,9 @@ scipy==1.17.1
 # has to be detected rather than requested away.
 rapidocr-onnxruntime==1.4.4
 
+# Person segmentation for frame analysis (ARCHITECTURE §5.5). The weights are
+# not shipped with the wheel; tools/cv/setup.sh downloads them into
+# tools/cv/models/ and verify-models.sh pins them by sha256.
+mediapipe==1.0.1
+
 pytest==9.1.1

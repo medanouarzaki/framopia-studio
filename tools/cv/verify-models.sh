@@ -7,8 +7,11 @@
 #
 # Exit 0 when every pinned model matches, 1 on a mismatch, 2 when a model has
 # not been downloaded yet (run the sidecar once, or tools/cv/setup.sh).
+# FRAMOPIA_MODELS_DIR points the check at a different models.json. It exists so
+# the test suite can prove the mismatch branch rejects a tampered file, rather
+# than reimplementing the comparison and asserting against itself.
 set -uo pipefail
-cd "$(dirname "${BASH_SOURCE[0]}")"
+cd "${FRAMOPIA_MODELS_DIR:-$(dirname "${BASH_SOURCE[0]}")}"
 
 status=0
 while IFS=$'\t' read -r name file expected; do

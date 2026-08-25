@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { parseShowinfo } from './sample.js';
+import { summarise } from './segment.js';
 
 const SHOWINFO = `[Parsed_showinfo_2 @ 0x1] config in time_base: 1/30000, frame_rate: 30000/1001
 [Parsed_showinfo_2 @ 0x1] n:   0 pts:      0 pts_time:0       duration:1001 fmt:yuv422p10le sar:1/1 s:540x960 i:P iskey:1 type:I
@@ -26,5 +27,30 @@ describe('parseShowinfo', () => {
 
   it('returns nothing when showinfo was not in the chain', () => {
     expect(parseShowinfo('frame=  44 fps=1.2 q=-0.0 Lsize=N/A')).toEqual([]);
+  });
+});
+
+describe('summarise', () => {
+  const frame = (personPixelRatio: number, bbox: { x: number } | null = { x: 0 }) =>
+    ({ personPixelRatio, bbox }) as never;
+
+  it('reports the extremes and the median of an odd-length run', () => {
+    expect(summarise([frame(0.3), frame(0.1), frame(0.2)])).toMatchObject({
+      min: 0.1,
+      median: 0.2,
+      max: 0.3,
+    });
+  });
+
+  it('averages the middle pair of an even-length run', () => {
+    expect(summarise([frame(0.4), frame(0.1), frame(0.2), frame(0.3)]).median).toBeCloseTo(0.25);
+  });
+
+  it('counts the frames that found nobody', () => {
+    expect(summarise([frame(0.2), frame(0, null)]).nullBoxes).toBe(1);
+  });
+
+  it('refuses an empty run rather than reporting NaN', () => {
+    expect(() => summarise([])).toThrow(/no frames/);
   });
 });

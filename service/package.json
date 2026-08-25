@@ -17,7 +17,8 @@
     "cutouts": "tsx src/images/cutouts-cli.ts",
     "images": "tsx src/images/images-cli.ts",
     "plan-page": "tsx src/images/plan-page-cli.ts",
-    "frames": "tsx src/frames/frames-cli.ts"
+    "frames": "tsx src/frames/frames-cli.ts",
+    "segment": "tsx src/frames/segment-cli.ts"
   },
   "dependencies": {
     "@framopia/core": "*",

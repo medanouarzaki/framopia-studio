@@ -5,6 +5,8 @@ dist/
 .DS_Store
 .env
 tools/cv/.venv/
+# Downloaded model weights, pinned by sha256 in tools/cv/models.json.
+tools/cv/models/
 benchmarks/results/
 benchmarks/whisper/.venv/
 benchmarks/whisper/models/
