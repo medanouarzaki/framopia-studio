@@ -269,7 +269,7 @@ writes to a temp plan, never a real one.
   real sidecar` at the last code commit; docs commits follow.
 - Ten commits this session.
 - **`npm run check` exit 0**, `check: PASS`. core **113** (5 files), service
-  **497** (34 files), benchmarks **166** (16 files) — **776** TypeScript tests,
+  **497** (33 files), benchmarks **166** (16 files) — **776** TypeScript tests,
   plus **48** sidecar pytest tests. `references: PASS`, `models: birefnet-general ok`.
 - No commit carries an AI attribution trailer.
 - Pushed at session end.
