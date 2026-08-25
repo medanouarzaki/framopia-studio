@@ -56,6 +56,12 @@ export interface GenerateImagesForPlanOptions {
   /** Image spend already in the ledger when the session began. */
   spendBaselineUsd?: number;
   ceilingUsd?: number;
+  /**
+   * Stop after this many candidates in total. The probe uses it to generate
+   * one image and halt: the frozen config has never been sent to the API, and
+   * a defect found on image 1 costs $0.15 where image 10 costs $1.51.
+   */
+  limit?: number;
   /** Injected in tests, so the whole path runs without an API key. */
   client?: ImageGenerationClient;
   /** Injected in tests, so the sidecar is not required. */
@@ -98,6 +104,7 @@ export async function generateImagesForPlan(
     cacheRoot,
     costsPath,
     ceilingUsd,
+    limit,
     client = new GeminiImageClient(),
     cutout = removeBackground,
     log = (): void => undefined,
@@ -131,6 +138,7 @@ export async function generateImagesForPlan(
     useCache,
     bill: true,
     spendBaselineUsd,
+    limit,
     log,
   });
 
@@ -195,6 +203,17 @@ export async function generateImagesForPlan(
       presentation: slotPresentation(gates),
       status: candidates.length > 0 ? 'generated' : slot.status,
     });
+  }
+
+  if (limit !== undefined) {
+    return {
+      planPath, plan, config,
+      generated: result.candidates,
+      totalUsd: result.totalUsd,
+      billedImages: result.billedImages,
+      cachedImages: result.cachedImages,
+      warnings: result.warnings,
+    };
   }
 
   plan.images = { slots };

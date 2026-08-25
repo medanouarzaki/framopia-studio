@@ -25,6 +25,7 @@ if (planPath === undefined) {
 
 const baseline = readCosts()[IMAGE_LEDGER_STAGE] ?? 0;
 const ceiling = flag('ceiling');
+const probe = process.argv.includes('--probe');
 
 const result = await generateImagesForPlan({
   planPath,
@@ -33,8 +34,31 @@ const result = await generateImagesForPlan({
   useCache: !process.argv.includes('--no-cache'),
   spendBaselineUsd: baseline,
   ceilingUsd: ceiling === undefined ? undefined : Number(ceiling),
+  limit: probe ? 1 : undefined,
   log: (m) => console.log(m),
 });
+
+if (probe) {
+  for (const c of result.generated) {
+    console.log(
+      `\nPROBE ${c.id}\n` +
+        `  model      ${c.modelId}\n` +
+        `  dimensions ${c.width ?? '?'}x${c.height ?? '?'}\n` +
+        `  mime       ${c.mimeType}\n` +
+        `  bytes      ${c.bytes}\n` +
+        `  wall       ${c.wallTimeS.toFixed(1)}s\n` +
+        `  estimate   $${c.estimatedUsd.toFixed(6)} published\n` +
+        `  actual     $${c.costUsd.toFixed(6)}\n` +
+        `  cached     ${c.cached}\n` +
+        `  text       ${c.text === null ? '(none)' : JSON.stringify(c.text)}`,
+    );
+  }
+  console.log(
+    `\nbilled ${result.billedImages}, this run $${result.totalUsd.toFixed(6)}. ` +
+      'Plan not written: a probe covers one candidate.',
+  );
+  process.exit(0);
+}
 
 console.log();
 for (const slot of result.plan.images.slots) {
