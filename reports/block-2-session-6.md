@@ -224,7 +224,7 @@ Estimated $0.6863. No Scribe calls; the recorded draft was replayed. Goals 2,
 - Branch `main`, pushed to `origin/main`.
 - HEAD: `docs: update operating memory for language tagging`.
 - Ten commits this session.
-- `npm run check`: **green, exit 0, 324 tests** — core 23, service 165,
+- `npm run check`: **green, exit 0, 327 tests** — core 23, service 168,
   benchmarks 136. Baseline was 302.
 
 ## Suggested next step
