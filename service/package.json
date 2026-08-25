@@ -9,7 +9,8 @@
     "test": "vitest",
     "build": "tsc",
     "start": "node dist/server.js",
-    "transcribe": "tsx src/transcribe-cli.ts"
+    "transcribe": "tsx src/transcribe-cli.ts",
+    "analyse": "tsx src/analyse-cli.ts"
   },
   "dependencies": {
     "@framopia/core": "*",

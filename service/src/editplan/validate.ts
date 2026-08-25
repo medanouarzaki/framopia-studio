@@ -175,12 +175,65 @@ function checkSubtitles(c: Checker, value: unknown, wordIds: Set<string>): void 
   });
 }
 
+/**
+ * A keyword points at transcript words, so the same id check the subtitle
+ * groups get applies here. Two rules beyond shape, both of which would
+ * otherwise reach a client's build: a keyword may not name a removed word,
+ * and two keywords may not claim the same word.
+ */
+function checkKeywords(c: Checker, value: unknown, words: Map<string, Rec>): void {
+  const keywords = c.object('keywords', value);
+  if (keywords === null) return;
+  c.oneOf('keywords.mode', keywords.mode, new Set(['auto', 'propose']));
+  const items = c.array('keywords.items', keywords.items);
+  if (items === null) return;
+
+  const claimed = new Map<string, number>();
+  items.forEach((raw, i) => {
+    const p = `keywords.items[${i}]`;
+    const k = c.object(p, raw);
+    if (k === null) return;
+    c.string(`${p}.id`, k.id);
+    c.string(`${p}.text`, k.text);
+    c.string(`${p}.reason`, k.reason);
+    c.boolean(`${p}.approved`, k.approved);
+    c.number(`${p}.start`, k.start);
+    c.number(`${p}.end`, k.end);
+    c.nullableString(`${p}.templateId`, k.templateId);
+
+    if (typeof k.score !== 'number' || !Number.isFinite(k.score)) {
+      c.fail(`${p}.score`, 'expected a number');
+    } else if (k.score < 0 || k.score > 1) {
+      c.fail(`${p}.score`, `expected a score between 0 and 1, found ${k.score}`);
+    }
+
+    const ids = c.array(`${p}.wordIds`, k.wordIds);
+    if (ids === null) return;
+    if (ids.length === 0) c.fail(`${p}.wordIds`, 'a keyword must reference at least one word');
+    ids.forEach((id, j) => {
+      if (typeof id !== 'string') {
+        c.fail(`${p}.wordIds[${j}]`, 'expected a string');
+        return;
+      }
+      const word = words.get(id);
+      if (word === undefined) {
+        c.fail(`${p}.wordIds[${j}]`, `no transcript word has id ${id}`);
+        return;
+      }
+      if (word.removed === true) {
+        c.fail(`${p}.wordIds[${j}]`, `word ${id} is removed and cannot be a keyword`);
+      }
+      const owner = claimed.get(id);
+      if (owner !== undefined) {
+        c.fail(`${p}.wordIds[${j}]`, `word ${id} is already claimed by keywords.items[${owner}]`);
+      } else {
+        claimed.set(id, i);
+      }
+    });
+  });
+}
+
 function checkContainers(c: Checker, plan: Rec): void {
-  const keywords = c.object('keywords', plan.keywords);
-  if (keywords !== null) {
-    c.oneOf('keywords.mode', keywords.mode, new Set(['auto', 'propose']));
-    c.array('keywords.items', keywords.items);
-  }
 
   const images = c.object('images', plan.images);
   if (images !== null) c.array('images.slots', images.slots);
@@ -264,14 +317,16 @@ export function validateEditPlan(value: unknown): PlanValidationIssue[] {
   checkWords(c, plan.transcript);
 
   const words = (plan.transcript as Rec | undefined)?.words;
-  const wordIds = new Set(
-    Array.isArray(words)
-      ? words
-          .map((w) => (typeof w === 'object' && w !== null ? (w as Rec).id : undefined))
-          .filter((id): id is string => typeof id === 'string')
-      : [],
-  );
-  checkSubtitles(c, plan.subtitles, wordIds);
+  const byId = new Map<string, Rec>();
+  if (Array.isArray(words)) {
+    for (const w of words) {
+      if (typeof w !== 'object' || w === null) continue;
+      const record = w as Rec;
+      if (typeof record.id === 'string') byId.set(record.id, record);
+    }
+  }
+  checkSubtitles(c, plan.subtitles, new Set(byId.keys()));
+  checkKeywords(c, plan.keywords, byId);
   checkContainers(c, plan);
 
   return c.issues;
