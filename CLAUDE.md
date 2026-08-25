@@ -38,8 +38,8 @@ AI-generated contextual images, SFX, and a watermark. Full spec in
   and JSON out. Background removal and the §5.4 cutout gate, local OCR,
   person segmentation and zone derivation for frame analysis. Tasks:
   `remove_bg`, `detect_text`, `segment_person`, `segment_overlay`,
-  `compute_zones`, `component_stats`, `zone_overlay`, `component_overlay`.
-  Downloaded weights live in
+  `compute_zones`, `component_stats`, `zone_overlay`, `component_overlay`,
+  `short_edge_overlay`. Downloaded weights live in
   `tools/cv/models/` (gitignored) and are pinned by sha256 in
   `tools/cv/models.json`.
   `tools/validate-templates/` — not started
@@ -141,12 +141,14 @@ AI-generated contextual images, SFX, and a watermark. Full spec in
   Person segmentation over an already-sampled reel into
   `.local/cv/<video-basename>/masks-2fps/`, plus contact sheets and close-ups
   under `benchmarks/results/latest-segmentation/`. Needs `tools/cv/setup.sh`.
-- `npm run zones -- (--reel <label> | --all) [--threshold <t>] [--no-debug]` —
+- `npm run zones -- (--reel <label> | --all) [--threshold <t>] [--write-plan]
+  [--no-debug]` —
   free, local, **no inference**: it reads the masks already on disk. Writes
   `zones.json` beside them and contact sheets, close-ups and a validity
   timeline under `benchmarks/results/latest-zones/`. `--threshold` re-reads the
   stored **confidence** masks at that value instead of the binary ones, which
-  is how the sensitivity sweep varies one thing.
+  is how the sensitivity sweep varies one thing. `--write-plan` persists the
+  zones onto the reel's Edit Plan, preserving every `manual: true` zone.
 - `npm run components -- [--floor <f>]` — free, local. Connected-component
   analysis over every stored binary mask, plus the twelve frames with the
   largest dropped component rendered to `benchmarks/results/latest-components/`.
@@ -1568,6 +1570,103 @@ the pre-existing `benchmarks/results/` ignore.
 
 **Not done and not attempted:** the placement solver, any Edit Plan read or
 write, and any schema change. Zones exist only as `zones.json` beside the masks.
+
+## Block 5 session 3 — the short-edge predicate, zones on the plan
+
+**Spent $0.00; no API was called.** Ledger 105 entries / $10.555772 /
+sha `a7e85e4b…` at both ends, byte-identical.
+
+**`MIN_ZONE_AREA` is gone, replaced by `MIN_ZONE_SHORT_EDGE = 0.15` of frame
+width (324 px of 2160).** Generated images are 1:1, so the largest square a
+zone can hold is bounded by its short edge alone; area let one long dimension
+pay for a fatally short one, and vitasilk's 0.052 x 0.800 left zone cleared a
+0.03 area floor at **113 px wide**. The two are not kept as an AND: a 324x324
+region is area 0.0127, under the old floor, and is exactly what the predicate
+must admit. **CHOSEN, NOT MEASURED.**
+
+**Normalized units are anisotropic and the constant names its basis.** The
+frames are 2160x3840, so `w` is a fraction of 2160 and `h` of 3840; the short
+edge is compared in units of frame **width**, converting `h` through the aspect
+ratio. A bare `min(w, h)` would have been wrong by 1.78x on one axis.
+
+**The predicate re-cuts windows rather than deleting zones**, because it is
+applied per frame before the temporal reduction. Two reels gained a zone:
+
+| reel | under area (0.03) | under short edge (0.15) |
+|---|---|---|
+| test-1 | 3 zones, 64.56 s | unchanged |
+| test-2 | 3 zones, 66.07 s | unchanged |
+| test-3 | left 253 px, 21.02 s | left **449 px**, two windows, 20.02 s |
+| ground-truth | right 285 px, 23.02 s | right **393/437 px**, two windows, 22.02 s |
+| vitasilk | left 113 px, 25.53 s | left **361 px**, one window, **1.00 s** |
+
+Every emitted zone now has a short edge of at least 345 px; the old set ran
+down to 113 px.
+
+**This is the first time hysteresis has opened and closed on real footage.**
+Session 2 recorded the reduction as live but unexercised — every reel gave one
+unbroken window. Under the new predicate a zone narrows below the floor
+mid-reel and the window splits, on test-3 and ground-truth.
+
+**vitasilk has effectively one usable zone against five image slots**: top for
+the whole 25.53 s, plus a left zone valid for 1.00 s. Its total valid seconds
+fall 51.05 → 26.53. **Session 4's solver has to handle a reel with fewer zones
+than slots**, and this is not a defect in the predicate — the subject fills the
+frame below the head.
+
+**`BOTTOM_EXCLUSION`'s recorded reason was wrong and is corrected.** It was
+written as compensation for a mask that under-covers low-contrast fabric;
+session 2 measured coverage in that band as *higher* than over the rest of the
+frame on all five reels, which refutes it. It is a **product rule** — no image
+is ever placed at the bottom of a 9:16 frame — and the comment now says that
+and nothing else. It still costs 0.0% of valid seconds.
+
+**`CLOSE_SAMPLES` stays 1**, ruled. The asymmetry is deliberately in the
+direction of not placing an image: a closed zone costs a placement
+opportunity, a zone left open through a real intrusion puts a generated image
+on a hand. The `close_samples=2` test is kept as documentation of the
+alternative.
+
+### Zones on the Edit Plan
+
+**The `zones` container already existed** in ARCHITECTURE §3 and in
+`createEditPlan`, and every plan carries `{ sampleFps: 2, zones: [] }`. What
+this session added is **item** validation, which cannot make an older plan
+unopenable because there are no items in one to reject. **Proven, not
+asserted:** all five plans reopened through `readEditPlan` after the change —
+vitasilk 73 words / 5 slots / 3 keywords / 41 groups, test-1 67 / 4 / 3 / 38,
+and the three transcription-only plans intact.
+
+`service/src/frames/plan-zones.ts` holds the writer. Writing zones onto
+vitasilk changed exactly **three top-level keys: `meta`, `pipeline`, `zones`**
+— none added, none removed, and every other key byte-identical. It does not
+route through any cache API.
+
+**Manual zones are ground truth and survive a recomputation byte-identical.**
+`mergeZones` replaces the automatic zones and carries every `manual: true` one
+across by reference, listing them first. A computed zone whose id a manual zone
+claims is **dropped rather than renamed**, because the id is what the panel and
+the solver refer to. Proven end to end on vitasilk through the live service: a
+manual right zone was set, zone computation re-run, and the manual zone came
+back identical while the two automatic zones were refreshed.
+
+**Service endpoints**, following the existing token-auth and `{ error }`
+conventions: `POST /zones/manual` with `{ planPath, zone }`, and
+`DELETE /zones/manual?planPath=&zoneId=`. The set route forces `manual: true`
+whatever the caller sends. Refusing to clear a non-manual zone is a 400, an
+out-of-frame rect is a 400, an unreadable plan is a 404, no token is a 401 —
+all four exercised live.
+
+A manual zone is deliberately allowed to break `MIN_ZONE_SHORT_EDGE`: the
+predicate exists to stop the *derivation* offering an unusable rectangle, and
+an editor who places one anyway has decided something the derivation cannot.
+
+Debug output gained `benchmarks/results/latest-zones/<reel>-shortedge.png`, one
+frame per reel with each zone's short edge dimensioned and labelled in source
+pixels, so the constant is judged by eye rather than from a table.
+
+**Not done and not attempted:** the placement solver, jitter, and
+slot-to-zone assignment. Session 4.
 
 Panel and real job types are not started; templates exist only as a stub.
 
