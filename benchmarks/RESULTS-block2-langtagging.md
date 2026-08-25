@@ -169,3 +169,107 @@ leaves the one question the tags were wanted for partly unanswered: the
 darija-versus-msa call on Arabic-script domain terms is exactly where the
 model is unstable, and no amount of re-running will fix that without the guide
 saying which it wants.
+
+---
+
+# Re-measurement under guide v1.0.6 (Block 2 session 7)
+
+Everything above was measured under guide v1.0.5, which said which script a
+domain term takes and never which language it is. v1.0.6 §6 settles it: an
+Arabic-script term is `msa`. This section re-runs the same experiment against
+the same recorded draft with only that guide change. WER is against the
+`v1.0.1-conformant` reference throughout.
+
+## Verdict: both criteria met, version 3 is now active
+
+**Criterion 1 — the six terms are `msa` in all three runs.** Met, unanimously.
+
+| term | run 1 | run 2 | run 3 |
+|---|---|---|---|
+| `الإبرة` | msa | msa | msa |
+| `الحريرية` | msa | msa | msa |
+| `الكافيين` | msa | msa | msa |
+| `نتائج` | msa | msa | msa |
+| `جد` | msa | msa | msa |
+| `فعالة` | msa | msa | msa |
+
+Eighteen of eighteen, against six of eighteen under v1.0.5.
+
+**Criterion 2 — WER mean stays inside the 3.7-point floor.** Met with room:
+**0.4 points**.
+
+| arm | run 1 | run 2 | run 3 | mean | spread |
+|---|---|---|---|---|---|
+| v1 (dial experiment) | 16.0% | 14.8% | 14.8% | **15.2%** | 1.2 pts |
+| v3, guide v1.0.5 | 17.3% | 14.8% | 18.5% | 16.9% | 3.7 pts |
+| **v3, guide v1.0.6** | 14.8% | 17.3% | 14.8% | **15.6%** | 2.5 pts |
+
+The v1.0.5 measurement's 1.7-point gap has closed to 0.4. Both figures were
+always inside the floor, so neither is a measurement — but the guide fix moved
+version 3 from the wrong side of the coin flip to the right one, and the
+spread narrowed from 3.7 to 2.5 at the same time.
+
+## Tag stability: 81 of 81
+
+**Every word carries the same tag in all three runs.** Session 6 managed 75 of
+81, and every one of the six that moved was an Arabic-script term. With the
+language of those terms stated in the guide, nothing wavers.
+
+| | session 6 (v1.0.5) | session 7 (v1.0.6) |
+|---|---|---|
+| identical tag across three runs | 75/81 | **81/81** |
+
+## Coverage and distribution
+
+| run | words | tagged | null | out-of-enum | darija | fr | msa |
+|---|---|---|---|---|---|---|---|
+| 1 | 81 | 81 | 0 | 0 | 60 | 15 | 6 |
+| 2 | 81 | 81 | 0 | 0 | 60 | 15 | 6 |
+| 3 | 81 | 81 | 0 | 0 | 60 | 15 | 6 |
+| **reference** | 81 | 81 | 0 | 0 | **60** | **16** | **5** |
+
+Identical in all three runs, and the darija count now matches the reference
+exactly. The one-word difference in the fr/msa split is not a tagging
+disagreement: the reference transcribes the substance as French `caféine`
+where the model heard and wrote `الكافيين`. Tagged against what each actually
+wrote, both are right.
+
+**`mixed` and `en` were not produced by any run**, here or in session 6. On
+this reel there is no English and nothing bilingual at token level, so the two
+values remain exercised by unit tests only.
+
+## Text stability
+
+**77 of 81** identical across the three runs, against 74/81 for version 3
+under v1.0.5 and 79/81 for version 1. The four that move — `awel`, `lmodat`,
+`tani`, `katdiri` — are the same schwas and verb prefixes that have moved in
+every experiment on this reel. Version 3 remains slightly less
+text-stable than version 1, by two tokens, which is inside what three runs can
+resolve.
+
+## Derivation cross-check
+
+15 agree, 66 no-opinion, **0 disagreements** — unchanged from session 6, and
+unchanged in what it is worth: the derivation only speaks for French and
+English, so it confirms the easy cases and nothing more.
+
+## Cost and thinking ratio
+
+Estimated $0.6863; actual **$0.475900**.
+
+| run | cost | wall | thinking ratio |
+|---|---|---|---|
+| 1 | $0.150036 | 79.7 s | 13.6x |
+| 2 | $0.154318 | 87.6 s | 5.2x |
+| 3 | $0.171546 | 90.5 s | 6.0x |
+
+Cost varied 14% and wall-clock 14%, the tightest of any three-run set so far.
+
+## Decision
+
+Both conditions in the session-7 brief hold, so **`ACTIVE_PROMPT_VERSION = 3`**.
+The activation is recorded as an amendment in
+`docs/DECISION-transcription-config.md`. `lang` remains nullable in the schema
+— a model omission or a cache entry written before version 3 existed still
+produces null, and null must stay representable — but it is no longer the
+normal case, and the plan now carries a language on every word.
