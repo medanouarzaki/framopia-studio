@@ -257,7 +257,7 @@ mine. Restructured so they precede the amendments.
 - Branch `main`, HEAD `6aca993` — `docs: sweep the block 4 amendments and
   record the halo precision` at the last commit before the report.
 - Seven commits this session.
-- **`npm run check` exit 0**, `check: PASS`. core **121** (6 files), service
+- **`npm run check` exit 0**, `check: PASS`. core **121** (5 files), service
   **512** (35 files), benchmarks **166** (16 files) — **799** TypeScript tests,
   plus **58** sidecar pytest tests. `references: PASS`,
   `models: birefnet-general ok`.
