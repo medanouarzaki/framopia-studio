@@ -153,10 +153,17 @@ The four checks:
 Checks 2 and 3 are one defect. `GeminiImageClient` sent
 `imageConfig: { imageSize: '2K' }` and **no `aspectRatio`**; the API does not
 default to square and chose 16:9. Requested 2048x2048 = 4,194,304 px; received
-2752x1536 = 4,227,072 px. Billing is per output token and tokens track area,
-so a differently-shaped image of nearly the same area bills nearly the same
-amount — about 2,042 output tokens against the 1,680 Google publishes for 2K.
-The tier served was not the tier requested and the 21.4% is the measure of it.
+2752x1536 = 4,227,072 px — **0.78% more pixels, and 21.4% more cost**: about
+2,042 output tokens against the 1,680 Google publishes for 2K.
+
+Those two figures do not go together, so **the token count for a served aspect
+ratio is not derivable from area.** 2,042 sits between the published 2K count
+(1,680) and the 4K count (2,520) and matches neither. The price table gives a
+figure per *published (size, aspect) pair*, and nothing else: **a request whose
+served dimensions do not match a published pair is an unpriced request**, and
+its cost cannot be predicted from the table at all. The tier served was not the
+tier requested, and the 21.4% is the measure of that — not of the area
+difference.
 
 `ImageConfig.aspectRatio` is in the SDK's own type, documented as supporting
 `"1:1"`. It was simply never set — session 1 wrote the client against the API

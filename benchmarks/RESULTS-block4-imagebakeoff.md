@@ -26,13 +26,17 @@ requested   2K, 1:1   = 2048 x 2048 = 4,194,304 px
 received              = 2752 x 1536 = 4,227,072 px
 ```
 
-The pixel counts are within 0.8% of each other, which is why the cost is close
-but wrong: billing is per output token and the token count tracks area, so a
-differently-shaped image of nearly the same area bills nearly the same amount.
-Working backwards from $0.122593 at $60/M output and a ~120-token prompt gives
-about **2,042 output tokens**, against the **1,680** Google publishes for the
-2K tier. The tier served was not the tier requested, and the 21.4% overage is
-the measure of that.
+That is **0.78% more pixels for 21.4% more cost**. Working backwards from
+$0.122593 at $60/M output and a ~120-token prompt gives about **2,042 output
+tokens**, against the **1,680** Google publishes for the 2K tier.
+
+Those two figures cannot be reconciled by area, so **the token count for a
+served aspect ratio is not derivable from area.** 2,042 falls between the
+published 2K count (1,680) and the 4K count (2,520) and matches neither. The
+price table prices *published (size, aspect) pairs*; **a request whose served
+dimensions match no published pair is an unpriced request**, and the table
+cannot predict its cost. The tier served was not the tier requested, and the
+21.4% overage is the measure of that.
 
 This is exactly the failure the sequencing was for. At image 6 it would have
 cost $0.705 and produced six landscape images for a square comp.

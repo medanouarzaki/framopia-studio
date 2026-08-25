@@ -857,9 +857,14 @@ Two of four post-image-1 checks failed, and both are one defect:
   1200x1200), and it **joins the cache fingerprint** because it changes both
   the pixels and the price.
 - **The call billed $0.122593 against a $0.101 estimate, 21.4% over** — about
-  2,042 output tokens against the 1,680 Google publishes for 2K. The tier
-  served was not the tier requested. **Every per-reel cost projection is a
-  floor until a call is confirmed to land on the requested tier.**
+  2,042 output tokens against the 1,680 Google publishes for 2K, for 0.78%
+  more pixels. **The token count for a served aspect ratio is not derivable
+  from area**: 2,042 sits between the published 2K and 4K counts and matches
+  neither. The price table prices *published (size, aspect) pairs*, so a
+  request whose served dimensions match no published pair is an **unpriced
+  request** whose cost the table cannot predict. **Every per-reel cost
+  projection is a floor until a call is confirmed to land on the requested
+  tier.**
 - **The response is `image/jpeg`, not PNG.** The cache layer handled it; the
   bake-off writer did not, and named JPEG bytes `.png`. Extensions follow the
   returned mime type now.
