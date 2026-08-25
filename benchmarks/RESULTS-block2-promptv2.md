@@ -1,5 +1,13 @@
 # Correction prompt version 2 against the Block 1 baseline
 
+> **Superseded WER figures (Block 4 session 1).** The `ground-truth` reel's
+> reference was corrected again: five standalone conjunction and article
+> tokens were fused per guide §2, taking it from 81 reference words to 76.
+> Every ground-truth WER number below is scored against the old text. The
+> re-scored figures and the token list are in
+> `RESULTS-block4-refcorrection.md`. The findings here are unaffected; only
+> the WER column moved.
+
 ## Headline
 
 **Overall WER on the Block 1 reel did not move: 22.2% under both versions.**

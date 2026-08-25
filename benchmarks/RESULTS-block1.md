@@ -1,7 +1,14 @@
 # Block 1 transcription benchmark — run C (guide v1.0.3)
 
 **Every WER column here is scored against the `v1.0.7-conformant`
-references.** The engine outputs are unchanged — they are the same recorded
+references, and the ground-truth reel's reference was corrected again in
+Block 4 session 1.** That correction fused the five standalone conjunction and
+article tokens §2 forbids, taking the reel's reference from 81 words to 76 and
+moving every ground-truth row and every pooled row in this file. The
+before/after is `RESULTS-block4-refcorrection.md`. Any ground-truth or
+aggregate figure quoted from this file before that regeneration is superseded.
+
+**The rest of the original notice still stands.** The engine outputs are unchanged — they are the same recorded
 run-C responses — but the references they are measured against have been
 corrected three times since run C was first written: the ground-truth reel in
 Block 2 session 6, test-1 and test-2 in Block 3 session 1 (`dla vidéo` →
@@ -52,10 +59,10 @@ set cannot speak to, which is the whole story for raw Scribe.
 
 | engine | overall WER | darija WER | fr/en WER | orthography | ts dev vs scribe (med/p90) | null ts | cost | wall |
 |---|---|---|---|---|---|---|---|---|
-| scribe | 71.3% | 98.4% | 6.4% | 100.0% (223 ar unscored) | — / — | 0 | $0.0054 | 11.2s |
-| gemini | 23.3% | 23.9% | 6.4% | 97.3% (48 ar unscored) | 466ms / 1462ms | 0 | $0.5625 | 387.1s |
-| whisper | 87.5% | 96.3% | 95.7% | 100.0% (223 ar unscored) | 145ms / 484ms | 0 | $0.0000 | 50.2s |
-| hybrid | 20.8% | 21.3% | 4.3% | 97.3% (48 ar unscored) | 0ms / 5ms | 0 | $0.5430 | 459.5s |
+| scribe | 72.6% | 98.4% | 6.7% | 100.0% (223 ar unscored) | — / — | 0 | $0.0054 | 11.2s |
+| gemini | 26.3% | 25.4% | 6.7% | 97.3% (48 ar unscored) | 466ms / 1462ms | 0 | $0.5625 | 387.1s |
+| whisper | 87.2% | 96.2% | 95.6% | 100.0% (223 ar unscored) | 145ms / 484ms | 0 | $0.0000 | 50.2s |
+| hybrid | 23.0% | 22.2% | 4.4% | 97.3% (48 ar unscored) | 0ms / 5ms | 0 | $0.5430 | 459.5s |
 
 Cost column total: $1.1109. Note this mixes runs — the
 gemini and hybrid figures were billed by this run, the scribe and whisper
@@ -96,14 +103,14 @@ prompt, which would cost another sweep.
 
 ## Per reel
 
-### ground-truth — 23.3s, 81 reference words
+### ground-truth — 23.3s, 76 reference words
 
 | engine | overall WER | darija WER | fr/en WER | orthography | ts dev vs scribe (med/p90) | null ts | cost | wall |
 |---|---|---|---|---|---|---|---|---|
-| scribe | 75.3% | 98.3% | 6.3% | 100.0% (61 ar unscored) | — / — | 0 | $0.0014 | 2.9s |
-| gemini | 14.8% | 13.3% | 12.5% | 97.6% (7 ar unscored) | 240ms / 1300ms | 0 | $0.1398 | 82.8s |
-| whisper | 92.6% | 95.0% | 100.0% | 100.0% (60 ar unscored) | 159ms / 319ms | 0 | $0.0000 | 13.5s |
-| hybrid | 16.0% | 16.7% | 12.5% | 97.5% (6 ar unscored) | 0ms / 0ms | 0 | $0.1627 | 105.9s |
+| scribe | 80.3% | 98.2% | 7.1% | 100.0% (61 ar unscored) | — / — | 0 | $0.0014 | 2.9s |
+| gemini | 25.0% | 17.5% | 14.3% | 97.6% (7 ar unscored) | 240ms / 1300ms | 0 | $0.1398 | 82.8s |
+| whisper | 92.1% | 94.7% | 100.0% | 100.0% (60 ar unscored) | 159ms / 319ms | 0 | $0.0000 | 13.5s |
+| hybrid | 23.7% | 19.3% | 14.3% | 97.5% (6 ar unscored) | 0ms / 0ms | 0 | $0.1627 | 105.9s |
 
 ### test-1 — 22.0s, 68 reference words
 

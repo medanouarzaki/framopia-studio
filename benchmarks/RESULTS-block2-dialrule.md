@@ -1,5 +1,13 @@
 # The `dial` rule (guide v1.0.5) against the measured noise floor
 
+> **Superseded WER figures (Block 4 session 1).** The `ground-truth` reel's
+> reference was corrected again: five standalone conjunction and article
+> tokens were fused per guide §2, taking it from 81 reference words to 76.
+> Every ground-truth WER number below is scored against the old text. The
+> re-scored figures and the token list are in
+> `RESULTS-block4-refcorrection.md`. The findings here are unaffected; only
+> the WER column moved.
+
 > **The WER numbers in this section are scored against the old reference.**
 > See the addendum at the end for the same runs re-scored against
 > `v1.0.1-conformant`, where the floor is 3.7 points and the comparison

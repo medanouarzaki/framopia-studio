@@ -1,5 +1,13 @@
 # Inserted and deleted tokens against the four references
 
+> **Superseded WER figures (Block 4 session 1).** The `ground-truth` reel's
+> reference was corrected again: five standalone conjunction and article
+> tokens were fused per guide §2, taking it from 81 reference words to 76.
+> Every ground-truth WER number below is scored against the old text. The
+> re-scored figures and the token list are in
+> `RESULTS-block4-refcorrection.md`. The findings here are unaffected; only
+> the WER column moved.
+
 Production WER came out 1.7–7.4 points worse than run C on every reel, and the
 correction pass added tokens on every one. WER cannot tell a word the
 reference omitted from a word the model invented, and only one of those two
