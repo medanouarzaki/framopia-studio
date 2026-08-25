@@ -174,7 +174,9 @@ describe('generateImages', () => {
     });
     const printed = lines.join('\n');
     expect(printed).toMatch(DEFAULT_IMAGE_CONFIG.modelId);
-    expect(printed).toMatch(/6 images/);
+    expect(printed).toMatch(
+      new RegExp(`${SLOTS.length * DEFAULT_IMAGE_CONFIG.candidatesPerSlot} images`),
+    );
   });
 });
 

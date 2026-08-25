@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   compositionContentHash,
+  GLOBAL_NEGATIVE_PROMPTS,
   keywordModeContentHash,
   loadMode,
   slotModeContentHash,
@@ -203,8 +204,23 @@ describe('the k2 stub on disk', () => {
     expect(mode.vocabulary).toEqual([]);
   });
 
-  it('is at version 3', () => {
-    expect(mode.version).toBe(3);
+  it('is at version 4', () => {
+    expect(mode.version).toBe(4);
+  });
+
+  // §5.4's candidate default dropped from 3 to 2 at Block 4 session 5:
+  // pro bills ~$0.151 per 2K image, so three on a five-slot reel is $2.26
+  // against PROJECT_SPEC's $2.00 envelope.
+  it('overrides the candidate count to two', () => {
+    expect(mode.imageCandidates).toBe(2);
+  });
+
+  // A cutout needs the subject separated from its ground.
+  it('has no flat or unmodelled lighting entry', () => {
+    for (const value of mode.imageVariation.axes.lighting ?? []) {
+      expect(value.toLowerCase()).not.toContain('flat');
+      expect(value.toLowerCase()).not.toContain('no modelling');
+    }
   });
 
   it('varies camera angle, framing tightness and lighting across a reel', () => {
@@ -428,5 +444,40 @@ describe('compositionContentHash', () => {
     expect(compositionContentHash({ ...mode, version: 99 } as ClientMode)).toBe(
       compositionContentHash(mode),
     );
+  });
+});
+
+describe('GLOBAL_NEGATIVE_PROMPTS', () => {
+  /**
+   * `no text` was removed at Block 4 session 5. It never worked as a control
+   * — one corpus image rendered a legible product label straight through it —
+   * and what was being guarded against was uncontrolled labelling, which is
+   * now checked after the fact by a check that can actually fail.
+   */
+  it('no longer forbids text', () => {
+    expect(GLOBAL_NEGATIVE_PROMPTS).not.toContain('no text');
+  });
+
+  it('still forbids watermarks and logos', () => {
+    expect(GLOBAL_NEGATIVE_PROMPTS).toContain('no watermark');
+    expect(GLOBAL_NEGATIVE_PROMPTS).toContain('no logo');
+  });
+});
+
+describe('validateMode — imageCandidates', () => {
+  it('accepts 2 to 4, and absence', () => {
+    for (const n of [undefined, 2, 3, 4]) {
+      const mode = valid();
+      if (n !== undefined) mode.imageCandidates = n;
+      expect(validateMode(mode)).toEqual([]);
+    }
+  });
+
+  it('rejects a count outside the §5.4 band', () => {
+    for (const n of [0, 1, 5, 2.5, 'two']) {
+      const mode = valid();
+      mode.imageCandidates = n;
+      expect(paths(validateMode(mode))).toEqual(['imageCandidates']);
+    }
   });
 });

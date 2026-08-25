@@ -10,11 +10,18 @@ import {
 export class ImageConfigError extends Error {}
 
 /**
- * ARCHITECTURE §5.4: 2-4 candidates per slot, default 3, mode-overridable.
+ * ARCHITECTURE §5.4: 2-4 candidates per slot, mode-overridable.
+ *
+ * **The default is 2, an amendment to §5.4's 3**, made at Block 4 session 5
+ * on measured cost. `gemini-3-pro-image` bills ~$0.151 per 2K image against a
+ * published $0.134, so three candidates on a five-slot reel is $2.26 — outside
+ * PROJECT_SPEC's $2.00 per-reel envelope before a single retry. Two puts the
+ * same reel at $1.51. The band is unchanged: a mode may still ask for 3 or 4
+ * and pay for them.
  */
 export const MIN_CANDIDATES_PER_SLOT = 2;
 export const MAX_CANDIDATES_PER_SLOT = 4;
-export const DEFAULT_CANDIDATES_PER_SLOT = 3;
+export const DEFAULT_CANDIDATES_PER_SLOT = 2;
 
 /**
  * Aborts a run before the first call. Chosen, not measured: five slots at

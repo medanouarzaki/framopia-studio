@@ -140,9 +140,11 @@ describe('composePrompt', () => {
     expect(composePrompt(mode(), 'x', {})).toContain('#820000');
   });
 
+  // `no text` left the globals at Block 4 session 5: it never worked as a
+  // control and text is now checked after the fact instead.
   it('adds the global negatives to the mode ones', () => {
     expect(composeNegativePrompt(mode())).toBe(
-      'no background clutter, nothing in frame that is not carrying the idea, no text, no watermark, no logo',
+      'no background clutter, nothing in frame that is not carrying the idea, no watermark, no logo',
     );
   });
 });

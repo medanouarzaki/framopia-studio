@@ -9,8 +9,10 @@ import { assertWithinCeiling, estimateRun, formatEstimate, ImageBudgetExceededEr
 
 describe('estimateRun', () => {
   it('costs a five-slot reel at three candidates on each model', () => {
-    const flash = estimateRun(5, parseImageConfig({ modelId: GEMINI_IMAGE_MODEL_FLASH }));
-    const pro = estimateRun(5, parseImageConfig({ modelId: GEMINI_IMAGE_MODEL_PRO }));
+    const flash = estimateRun(5, parseImageConfig({
+      modelId: GEMINI_IMAGE_MODEL_FLASH, candidatesPerSlot: 3 }));
+    const pro = estimateRun(5, parseImageConfig({
+      modelId: GEMINI_IMAGE_MODEL_PRO, candidatesPerSlot: 3 }));
     expect(flash.images).toBe(15);
     // Budgeted figures carry the gate multiplier; published rates do not.
     expect(flash.publishedUsd).toBe(0.067);
@@ -43,12 +45,32 @@ describe('formatEstimate', () => {
     expect(text).toMatch(GEMINI_IMAGE_MODEL_FLASH);
     expect(text).toMatch(/\$0\.0670 published per image/);
     expect(text).toMatch(/budgeted at \$0\.0905/);
-    expect(text).toMatch(/12 images/);
+    expect(text).toMatch(/8 images/);
   });
 
   it('discounts what is already cached', () => {
     const e = estimateRun(4, parseImageConfig());
-    expect(formatEstimate(e, 12)).toMatch(/\$0\.0000/);
-    expect(formatEstimate(e, 12)).toMatch(/12 already cached, 0 to generate/);
+    expect(formatEstimate(e, 8)).toMatch(/\$0\.0000/);
+    expect(formatEstimate(e, 8)).toMatch(/8 already cached, 0 to generate/);
+  });
+});
+
+describe('the §5.4 candidate default', () => {
+  /**
+   * Amended from 3 to 2 at Block 4 session 5. pro bills ~$0.151 per 2K image,
+   * so three candidates on a five-slot reel is $2.26 — outside PROJECT_SPEC's
+   * $2.00 per-reel envelope before a single retry.
+   */
+  it('puts a five-slot pro reel inside the per-reel envelope', () => {
+    const published = estimateRun(5, parseImageConfig({ modelId: GEMINI_IMAGE_MODEL_PRO }));
+    expect(published.candidatesPerSlot).toBe(2);
+    expect(published.images).toBe(10);
+    expect(published.publishedUsd * published.images).toBeLessThan(2.0);
+  });
+
+  it('would not have at three', () => {
+    const three = estimateRun(5, parseImageConfig({
+      modelId: GEMINI_IMAGE_MODEL_PRO, candidatesPerSlot: 3 }));
+    expect(three.publishedUsd * three.images).toBeGreaterThan(2.0);
   });
 });

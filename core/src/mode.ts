@@ -20,6 +20,9 @@ import { REPO_ROOT } from './paths.js';
  *                    then { status: "set", latin, arabic }
  * imageStyle         { stylePrompt: string[], negativePrompt: string[] }
  * imageVariation     { note, axes: { <axis>: string[] } }
+ * imageCandidates    optional 2-4; §5.4's mode override for how many
+ *                    candidates a slot generates. Absent means the code
+ *                    default.
  * allowedTemplates   { subtitle: id[], keyword: id[], image: id[] }
  * vocabulary         client terms, fed to transcription as key terms
  * note               optional free text for the humans editing the file
@@ -70,8 +73,20 @@ export const TEMPLATE_PREFIXES: Record<TemplateKind, string> = {
   image: 'img_',
 };
 
-/** ARCHITECTURE §5.3. Global, so they live in code and not in any mode. */
-export const GLOBAL_NEGATIVE_PROMPTS = ['no text', 'no watermark', 'no logo'];
+/**
+ * ARCHITECTURE §5.3. Global, so they live in code and not in any mode.
+ *
+ * `no text` was removed at Block 4 session 5 by the user's ruling. It never
+ * worked as a control — one of the six corpus images rendered a legible
+ * product label straight through it — and the thing being guarded against was
+ * uncontrolled labelling, not lettering as such. Text is now permitted and
+ * checked after the fact against what the slot is supposed to depict
+ * (`analysis`/OCR verdict), which is a check that can actually fail.
+ *
+ * `no watermark` and `no logo` stay: those are about model watermarks and
+ * invented brand marks, which the ruling did not touch.
+ */
+export const GLOBAL_NEGATIVE_PROMPTS = ['no watermark', 'no logo'];
 
 export type ModeFonts =
   | { status: 'tbd'; note: string }
@@ -91,6 +106,12 @@ export interface ClientMode {
   fonts: ModeFonts;
   imageStyle: { stylePrompt: string[]; negativePrompt: string[] };
   imageVariation: ImageVariation;
+  /**
+   * §5.4 calls the candidate count mode-overridable and nothing carried it
+   * until Block 4 session 5. Optional: absent means the code default, so
+   * every mode written before this stays valid.
+   */
+  imageCandidates?: number;
   allowedTemplates: Record<TemplateKind, string[]>;
   vocabulary: string[];
   note?: string;
@@ -433,6 +454,12 @@ export function validateMode(value: unknown): ModeValidationIssue[] {
   if (mode.fonts !== undefined) validateFonts(c, mode.fonts);
   if (mode.imageStyle !== undefined) validateImageStyle(c, mode.imageStyle);
   if (mode.imageVariation !== undefined) validateImageVariation(c, mode.imageVariation);
+  if (mode.imageCandidates !== undefined) {
+    const n = mode.imageCandidates;
+    if (typeof n !== 'number' || !Number.isInteger(n) || n < 2 || n > 4) {
+      c.fail('imageCandidates', 'expected an integer between 2 and 4 (ARCHITECTURE §5.4)');
+    }
+  }
   validateVariationAgainstStyle(c, mode);
   if (mode.allowedTemplates !== undefined) validateTemplates(c, mode.allowedTemplates);
   if (mode.vocabulary !== undefined) c.stringArray('vocabulary', mode.vocabulary);
