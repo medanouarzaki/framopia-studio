@@ -6,7 +6,12 @@ reference omitted from a word the model invented, and only one of those two
 reaches a client's subtitles. This file separates them by name so a human ear
 can rule on each.
 
-**Scored against the `v1.0.6-conformant` references.** The reference sweep
+**Scored against the `v1.0.7-conformant` references.** The listening pass in
+Block 3 session 6 settled every token below as really spoken; twelve of them
+turn out to be already present in the references in attached form, so only the
+article changed. See `benchmarks/RESULTS-block3-references-v107.md`.
+
+**Previously scored against the `v1.0.6-conformant` references.** The reference sweep
 later in this session straightened one curly apostrophe in test-3, which
 turned one substitution into a match there (10 → 9); the inserted and deleted
 token sets are unchanged by it.

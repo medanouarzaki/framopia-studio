@@ -1,12 +1,14 @@
 # Block 1 transcription benchmark — run C (guide v1.0.3)
 
-**Every WER column here is scored against the `v1.0.6-conformant`
+**Every WER column here is scored against the `v1.0.7-conformant`
 references.** The engine outputs are unchanged — they are the same recorded
 run-C responses — but the references they are measured against have been
 corrected three times since run C was first written: the ground-truth reel in
 Block 2 session 6, test-1 and test-2 in Block 3 session 1 (`dla vidéo` →
 `dial lvidéo`, `joj dl 7essass` → `joj dial l7essass`), and all four in
-Block 3 session 2, which straightened the curly apostrophes §4 forbids.
+Block 3 session 2, which straightened the curly apostrophes §4 forbids, and
+test-1 again in Block 3 session 6, where the user listened and settled the
+French article as `dial la vidéo`.
 **Any run-C WER figure quoted elsewhere from before those corrections is
 superseded by this table.** Nothing but the WER columns moved; cost, wall time
 and timestamp deviation are untouched.
@@ -50,10 +52,10 @@ set cannot speak to, which is the whole story for raw Scribe.
 
 | engine | overall WER | darija WER | fr/en WER | orthography | ts dev vs scribe (med/p90) | null ts | cost | wall |
 |---|---|---|---|---|---|---|---|---|
-| scribe | 71.2% | 98.4% | 4.3% | 100.0% (223 ar unscored) | — / — | 0 | $0.0054 | 11.2s |
-| gemini | 24.1% | 23.9% | 8.7% | 97.3% (48 ar unscored) | 466ms / 1462ms | 0 | $0.5625 | 387.1s |
-| whisper | 87.4% | 96.3% | 95.7% | 100.0% (223 ar unscored) | 145ms / 484ms | 0 | $0.0000 | 50.2s |
-| hybrid | 21.6% | 21.3% | 6.5% | 97.3% (48 ar unscored) | 0ms / 5ms | 0 | $0.5430 | 459.5s |
+| scribe | 71.3% | 98.4% | 6.4% | 100.0% (223 ar unscored) | — / — | 0 | $0.0054 | 11.2s |
+| gemini | 23.3% | 23.9% | 6.4% | 97.3% (48 ar unscored) | 466ms / 1462ms | 0 | $0.5625 | 387.1s |
+| whisper | 87.5% | 96.3% | 95.7% | 100.0% (223 ar unscored) | 145ms / 484ms | 0 | $0.0000 | 50.2s |
+| hybrid | 20.8% | 21.3% | 4.3% | 97.3% (48 ar unscored) | 0ms / 5ms | 0 | $0.5430 | 459.5s |
 
 Cost column total: $1.1109. Note this mixes runs — the
 gemini and hybrid figures were billed by this run, the scribe and whisper
@@ -103,14 +105,14 @@ prompt, which would cost another sweep.
 | whisper | 92.6% | 95.0% | 100.0% | 100.0% (60 ar unscored) | 159ms / 319ms | 0 | $0.0000 | 13.5s |
 | hybrid | 16.0% | 16.7% | 12.5% | 97.5% (6 ar unscored) | 0ms / 0ms | 0 | $0.1627 | 105.9s |
 
-### test-1 — 22.0s, 67 reference words
+### test-1 — 22.0s, 68 reference words
 
 | engine | overall WER | darija WER | fr/en WER | orthography | ts dev vs scribe (med/p90) | null ts | cost | wall |
 |---|---|---|---|---|---|---|---|---|
-| scribe | 74.6% | 100.0% | 33.3% | 100.0% (62 ar unscored) | — / — | 0 | $0.0013 | 2.8s |
-| gemini | 29.9% | 26.1% | 33.3% | 98.6% (19 ar unscored) | 811ms / 3331ms | 0 | $0.1592 | 99.3s |
-| whisper | 79.1% | 95.7% | 100.0% | 100.0% (56 ar unscored) | 120ms / 659ms | 0 | $0.0000 | 12.1s |
-| hybrid | 23.9% | 21.7% | 33.3% | 98.6% (19 ar unscored) | 0ms / 20ms | 0 | $0.1439 | 117.7s |
+| scribe | 75.0% | 100.0% | 50.0% | 100.0% (62 ar unscored) | — / — | 0 | $0.0013 | 2.8s |
+| gemini | 26.5% | 26.1% | 0.0% | 98.6% (19 ar unscored) | 811ms / 3331ms | 0 | $0.1592 | 99.3s |
+| whisper | 79.4% | 95.7% | 100.0% | 100.0% (56 ar unscored) | 120ms / 659ms | 0 | $0.0000 | 12.1s |
+| hybrid | 20.6% | 21.7% | 0.0% | 98.6% (19 ar unscored) | 0ms / 20ms | 0 | $0.1439 | 117.7s |
 
 ### test-2 — 22.3s, 70 reference words
 

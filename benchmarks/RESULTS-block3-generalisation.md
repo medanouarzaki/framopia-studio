@@ -150,7 +150,12 @@ The adapter fit: `benchmarks/src/score-editplan.ts`, 39 lines, reads only the
 word texts out of a plan and hands them to the existing scorer, so it has no
 dependency on the service package.
 
-**All figures below are scored against the `v1.0.6-conformant` references.**
+**All figures below are scored against the `v1.0.7-conformant` references.**
+Superseded once more in Block 3 session 6: test-1 moved from 31.3% to 27.9%
+overall and 33.3% to 0.0% fr/en when the user's listening pass settled the
+French article as `dial la vidéo`. The run-C test-1 row it is compared against
+moved from 23.9% to 20.6% for the same reason, so **the delta is unchanged**.
+The other three reels did not move at all.
 They supersede the `v1.0.1-conformant` figures this section carried when it
 was written: test-3 was 21.7% overall / 21.2% darija / 12.5% fr/en, and the
 run-C test-3 row it is compared against was 20.0%. Straightening one curly

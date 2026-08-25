@@ -32,18 +32,21 @@ speaker, scored against hand-written ground truth under guide v1.0.3.
 
 | engine | overall WER | darija WER | fr/en WER | orthography | ts dev vs scribe (med/p90) | null ts | cost |
 |---|---|---|---|---|---|---|---|
-| **hybrid** | **21.6%** | **21.3%** | **6.5%** | 97.3% (48 ar unscored) | 0ms / 5ms | 0 | $0.5430 |
-| gemini | 24.1% | 23.9% | 8.7% | 97.3% (48 ar unscored) | 466ms / 1462ms | 0 | $0.5625 |
-| scribe | 71.2% | 98.4% | 4.3% | 100.0% (223 ar unscored) | — | 0 | $0.0054 |
+| **hybrid** | **20.8%** | **21.3%** | **4.3%** | 97.3% (48 ar unscored) | 0ms / 5ms | 0 | $0.5430 |
+| gemini | 23.3% | 23.9% | 6.4% | 97.3% (48 ar unscored) | 466ms / 1462ms | 0 | $0.5625 |
+| scribe | 71.3% | 98.4% | 6.4% | 100.0% (223 ar unscored) | — | 0 | $0.0054 |
 | whisper | 87.4% | 96.3% | 95.7% | 100.0% (223 ar unscored) | 145ms / 484ms | 0 | $0.0000 |
 
-The WER columns above are **re-scored against the `v1.0.6-conformant`
+The WER columns above are **re-scored against the `v1.0.7-conformant`
 references** and supersede every earlier figure this table carried — hybrid
 24.8% / 26.1% / 6.5% then 21.9% / 21.3% / 8.7%, gemini 26.6% / 27.7% / 8.7%
 then 24.5% / 23.9% / 10.9%, scribe 71.6% / 98.4% / 6.5%. No engine was ever
 re-run: the outputs are the same recorded run-C responses, and only the
 references moved (ground-truth in Block 2 session 6, test-1 and test-2 in
-Block 3 session 1, the curly apostrophes in all four in Block 3 session 2).
+Block 3 session 1, the curly apostrophes in all four in Block 3 session 2,
+and the French article in test-1 in Block 3 session 6). The immediately
+preceding figures this table carried were hybrid 21.6% / 21.3% / 6.5%,
+gemini 24.1% / 23.9% / 8.7% and scribe 71.2% / 98.4% / 4.3%.
 Whisper is unchanged. The ranking that decided the freeze is unchanged; see
 `benchmarks/RESULTS-block1.md` for the live table.
 
