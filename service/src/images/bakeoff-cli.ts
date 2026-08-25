@@ -94,6 +94,7 @@ for (const arm of arms) {
   for (const c of result.candidates) {
     console.log(
       `  ${c.id} idx=${c.candidateIndex} cached=${c.cached} ` +
+        `dims=${c.width ?? '?'}x${c.height ?? '?'} ` +
         `actual=$${c.costUsd.toFixed(6)} est=$${c.estimatedUsd.toFixed(4)} ` +
         `bytes=${c.bytes} mime=${c.mimeType} wall=${c.wallTimeS.toFixed(1)}s`,
     );

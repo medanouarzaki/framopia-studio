@@ -44,6 +44,13 @@ export class ImageDimensionMismatchError extends Error {
 
 export const IMAGE_LEDGER_STAGE = 'images-generate';
 
+/**
+ * Image entries kept per video. Sized for several models x several
+ * candidates over the slots of one reel, because regenerating one is ~$0.12
+ * and keeping one is ~1.5MB.
+ */
+export const MAX_IMAGE_ENTRIES_PER_VIDEO = 64;
+
 export interface GeneratedCandidate {
   slotId: string;
   candidateIndex: number;
@@ -116,6 +123,8 @@ export async function generateImages(options: {
   let totalUsd = 0;
   let billedImages = 0;
   let cachedImages = 0;
+  // Every entry this run touched, hit or miss. Eviction may never remove one.
+  const writtenDirs: string[] = [];
 
   for (const slot of slots) {
     for (let index = 0; index < config.candidatesPerSlot; index += 1) {
@@ -138,6 +147,8 @@ export async function generateImages(options: {
         fingerprint,
       };
       const id = `${slot.id}-c${index + 1}`;
+
+      writtenDirs.push(ref.dir);
 
       if (useCache) {
         const hit = await readImageCache(ref);
@@ -223,14 +234,21 @@ export async function generateImages(options: {
     }
   }
 
-  // Stage-scoped, so an image write can never evict the transcription entry.
-  // Keeps one entry per image rather than three per video: the budget below
-  // is candidates-worth, not configurations-worth.
+  // Stage-scoped, so an image write can never evict the transcription entry,
+  // and every entry this run wrote is protected outright.
+  //
+  // The budget used to be this call's own image count. That is wrong for any
+  // run that calls twice over one video — the two arms of the Block 4 model
+  // bake-off did exactly that, and the second arm evicted the first arm's
+  // three entries, so the cache-hit check regenerated six images at $0.51.
+  // An image costs ~$0.12 to regenerate and ~1.5MB to keep, so the trade is
+  // heavily toward keeping.
   await evictStaleEntries(
     videoSha256,
     cacheRoot,
-    Math.max(slots.length * config.candidatesPerSlot, 1),
+    MAX_IMAGE_ENTRIES_PER_VIDEO,
     IMAGE_CACHE_STAGE,
+    writtenDirs,
   );
 
   return { candidates, warnings, totalUsd, billedImages, cachedImages };

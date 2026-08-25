@@ -2,7 +2,12 @@ import { mkdtempSync, existsSync, readFileSync, readdirSync, writeFileSync } fro
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { COSTS_PATH, loadMode } from '@framopia/core';
+import {
+  COSTS_PATH,
+  GEMINI_IMAGE_MODEL_FLASH,
+  GEMINI_IMAGE_MODEL_PRO,
+  loadMode,
+} from '@framopia/core';
 import type { ImageSlot } from '../editplan/types.js';
 import type { GeneratedImage, ImageGenerationClient, ImageGenerationRequest } from './client.js';
 import { DEFAULT_IMAGE_CONFIG, parseImageConfig } from './config.js';
@@ -284,5 +289,64 @@ describe('dimension checking', () => {
         videoSha256: VIDEO, cacheRoot,
       }),
     ).rejects.toThrow(/dimensions could not be read/);
+  });
+});
+
+describe('cache eviction across two arms of one run', () => {
+  /**
+   * The Block 4 session 3 defect, as a test. The eviction budget was this
+   * call's own image count, so a second call over the same video and stage
+   * evicted the first call's entries. The bake-off ran flash then pro over
+   * one slot; the pro arm deleted the three flash entries, and the
+   * "second invocation is a cache hit" check regenerated six images for
+   * $0.51 instead of costing nothing.
+   */
+  it('does not evict the first model arm when the second arm runs', async () => {
+    const flashFirst = new FakeClient();
+    await generateImages({
+      slots: [SLOTS[0]], mode,
+      config: parseImageConfig({ modelId: GEMINI_IMAGE_MODEL_FLASH, candidatesPerSlot: 3 }),
+      client: flashFirst, videoSha256: VIDEO, cacheRoot,
+    });
+    expect(flashFirst.requests).toHaveLength(3);
+
+    await generateImages({
+      slots: [SLOTS[0]], mode,
+      config: parseImageConfig({ modelId: GEMINI_IMAGE_MODEL_PRO, candidatesPerSlot: 3 }),
+      client: new FakeClient(), videoSha256: VIDEO, cacheRoot,
+    });
+
+    // Re-running the first arm must now cost nothing.
+    const flashAgain = new FakeClient();
+    const result = await generateImages({
+      slots: [SLOTS[0]], mode,
+      config: parseImageConfig({ modelId: GEMINI_IMAGE_MODEL_FLASH, candidatesPerSlot: 3 }),
+      client: flashAgain, videoSha256: VIDEO, cacheRoot,
+    });
+    expect(flashAgain.requests).toHaveLength(0);
+    expect(result.cachedImages).toBe(3);
+    expect(result.totalUsd).toBe(0);
+  });
+
+  it('keeps both arms of a full bake-off on disk', async () => {
+    for (const modelId of [GEMINI_IMAGE_MODEL_FLASH, GEMINI_IMAGE_MODEL_PRO]) {
+      await generateImages({
+        slots: [SLOTS[0]], mode, config: parseImageConfig({ modelId, candidatesPerSlot: 3 }),
+        client: new FakeClient(), videoSha256: VIDEO, cacheRoot,
+      });
+    }
+    const entries = readdirSync(path.join(cacheRoot, VIDEO)).filter((d) => d.startsWith('images-'));
+    expect(entries).toHaveLength(6);
+  });
+
+  it('never evicts an entry the current run touched', async () => {
+    // A budget far below what this run writes must still leave them all.
+    const client = new FakeClient();
+    await generateImages({
+      slots: SLOTS, mode, config: parseImageConfig({ candidatesPerSlot: 4 }),
+      client, videoSha256: VIDEO, cacheRoot,
+    });
+    const entries = readdirSync(path.join(cacheRoot, VIDEO)).filter((d) => d.startsWith('images-'));
+    expect(entries).toHaveLength(8);
   });
 });

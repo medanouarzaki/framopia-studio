@@ -58,6 +58,14 @@ export async function evictStaleEntries(
   root = CACHE_ROOT,
   keep = MAX_ENTRIES_PER_VIDEO,
   stage?: string,
+  /**
+   * Entry directories this run just wrote, which are never evicted whatever
+   * the budget says. Block 4 session 3 paid $0.51 to learn why: the image
+   * stage sized `keep` from one call's image count, so the second arm of a
+   * two-model run evicted the first arm's entries and the "cache hit"
+   * verification regenerated all of them.
+   */
+  protect: readonly string[] = [],
 ): Promise<string[]> {
   const videoDir = path.join(root, videoSha256);
   let names: string[];
@@ -81,7 +89,10 @@ export async function evictStaleEntries(
   }
 
   entries.sort((a, b) => b.mtimeMs - a.mtimeMs);
-  const doomed = entries.slice(keep);
+  const protectedDirs = new Set(protect.map((d) => path.resolve(d)));
+  const doomed = entries
+    .slice(keep)
+    .filter((e) => !protectedDirs.has(path.resolve(e.dir)));
   for (const entry of doomed) {
     if (!entry.dir.startsWith(path.join(root, videoSha256) + path.sep)) continue;
     await rm(entry.dir, { recursive: true, force: true });
