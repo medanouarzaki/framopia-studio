@@ -33,7 +33,9 @@ AI-generated contextual images, SFX, and a watermark. Full spec in
   Whisper baseline, Scribe+Gemini hybrid), scored on WER, orthography
   conformance, and cross-engine timestamp deviation. See `benchmarks/README.md`.
 - `tools/cv/`, `tools/validate-templates/` — helper scripts (not started)
-- `templates/`, `modes/` — AE templates and per-client config (not started)
+- `templates/` — AE templates (not started)
+- `modes/` — per-client config. `k2-syndicalia.json` is a validated stub; the
+  schema, loader and validation live in `core/src/mode.ts`
 - `assets/brand/`, `assets/watermark/`, `assets/sfx/` — shared assets (not started)
 - `.local/` — machine-local config, secrets, run state (gitignored, never committed)
 
@@ -42,7 +44,8 @@ AI-generated contextual images, SFX, and a watermark. Full spec in
 - The repo is an npm workspace (`core`, `service`, `benchmarks`). Install
   once at the root; there are no per-package lockfiles.
 - `npm run check` (repo root) — `scripts/check.sh`: builds `@framopia/core`,
-  then typecheck + lint + test across every workspace. This is the regression
+  then typecheck + lint + test across every workspace, then validates every
+  file in `modes/`. This is the regression
   gate; it must pass before any commit that touches code. `core` builds to
   `core/dist/` and the other packages import the built output, so anything
   that runs workspace code builds core first.
@@ -90,6 +93,9 @@ AI-generated contextual images, SFX, and a watermark. Full spec in
   are never estimated.
 - `npm run bench:tag` — turn the hand-written `.local/ground-truth/*.txt`
   transcripts into tagged ground-truth JSON.
+- `npm run validate:modes` — parse and validate every `modes/*.json`, printing
+  a dotted path per problem. Part of `npm run check`; run it alone while
+  editing a mode.
 - `npm run bench:aggregate` — rescore every reel's latest run from disk (no
   API calls) into `benchmarks/RESULTS-block1.md`.
 
@@ -202,6 +208,18 @@ was right and the cross-check was wrong**, so Block 3 session 1 removed
 nothing) and removed `glow`, which was on both lists and only came out English
 because the English check ran first.
 
+**The lexicons now carry only spelling-decisive words**, as of Block 3
+session 2: an entry may only be a word whose spelling settles its language, so
+anything spelled the same in French and English derives to null rather than
+being claimed. Removed on that rule: `cocktail`, `enzymes`, `minutes`,
+`injections`, `salon`, `mains`, `marque` (French list) and `face` (English
+list); `profhilo` went because a brand name is not a language claim, and `ou`
+because a standalone `ou` is a scored §2 violation more often than it is the
+French "or". The nine accented entries went too — `ACCENTED_RE` already
+answered them, and a word listed twice invites the two to drift. Re-deriving
+over all five live plans afterwards produced **zero** disagreements, so
+nothing that was working stopped working.
+
 **`dial` is written separate since guide v1.0.5** (`dial l7loul`, never
 `dl7loul`), because six of the twelve tokens that moved across identical calls
 were this one word. `benchmarks/RESULTS-block2-dialrule.md` measured it: the
@@ -209,21 +227,41 @@ instability is gone (6/6 occurrences comply in all three runs, stability
 69/81 → 79/81) and WER stayed inside the floor.
 
 **All four references are versioned, and all four are now
-`v1.0.1-conformant`.** `ground-truth` and `test-3` were already; `test-1` and
-`test-2` were corrected in Block 3 session 1 — `dla vidéo` → `dial lvidéo` and
-`joj dl 7essass` → `joj dial l7essass` (once in each file). Word counts are
-unchanged (67 and 70), so the corrections are token-for-token. Every result
-scored against the old text is superseded: `RESULTS-block1.md` was
-regenerated from the recorded engine outputs with no API calls, runs A and B
-carry a supersession notice, and the evidence table in
-`docs/DECISION-transcription-config.md` was re-scored (hybrid 24.8% → 21.9%
-overall, gemini 26.6% → 24.5%; the freeze ranking is unchanged).
+`v1.0.6-conformant`.** Two corrections got them there. Block 3 session 1 fixed
+`test-1` and `test-2` — `dla vidéo` → `dial lvidéo`, `joj dl 7essass` →
+`joj dial l7essass`. Block 3 session 2 swept all four against the current guide
+with the conformance scorer and straightened the three curly apostrophes §4
+forbids (`Wl’effet` ×2, `l’acide`); the record is
+`benchmarks/RESULTS-block3-references.md`. Word counts never moved (81 / 67 /
+70 / 60), so every correction is token-for-token.
 
-The one open question the correction raises: §2 attaches the definite article
-(`lvidéo`) while §5 says a French word keeps its own spelling (`la vidéo`).
-`dial lvidéo` follows the `dial lvitaminat` precedent already in the
-ground-truth reference, but the guide does not settle it and no engine writes
-it that way — test-1's fr/en WER went 0.0% → 33.3% on that single token.
+That apostrophe was costing real WER — normalization does not fold `’` onto
+`'` and every engine writes the straight form, so the reference was scoring a
+correct transcription as a substitution. Fixing it moved test-3's hybrid row
+from 20.0% to 18.3% and the aggregate hybrid row from 21.9% to 21.6%.
+
+Every result scored against superseded text carries a notice:
+`RESULTS-block1.md` is regenerated from recorded engine outputs with **no API
+calls**, runs A and B carry a supersession block, and
+`docs/DECISION-transcription-config.md`, `RESULTS-block3-generalisation.md`
+and `RESULTS-block3-insertions.md` all name the reference version they used.
+The freeze ranking is unchanged throughout.
+
+**The conformance scorer has no rule for apostrophe shape**, so it found none
+of those; they were found by grep. Everything the scorer *did* flag on the
+references — 11 items — is a freeze-list near-miss false positive
+(`l7essass`, `dialo`, `hadi`, `homa` are all correct as written).
+
+**Two open reference questions, both user decisions, both untouched.**
+`dial lvidéo`: §2 attaches the definite article while §5 says a French word
+keeps its own spelling (`la vidéo`). It follows the `dial lvitaminat`
+precedent, but the guide does not settle it and no engine writes it that way —
+test-1's fr/en WER went 0.0% → 33.3% on that one token, and the insertion
+analysis shows the model writing `la` as a separate word at 3.74s.
+**The `w` conjunction written attached** (`Wmabin`, `w7essa`, `Wl'effet`): §2's
+attachment rule is stated for the definite article only, so there is no rule
+to conform to. It matters because `w` is the single most-inserted token in the
+production transcripts.
 
 **The ground-truth reference was corrected to match the guide.** The hand-written
 ground truth wrote `dl 7olol`, `dl 7essass`, `dl vitaminat` — the reduced form
@@ -291,7 +329,10 @@ scoped so it can only ever remove children of one directory under the cache
 root. Verified live: a
 second run on the same reel hit the cache, cost $0.0000, took 4 s against
 70 s, and produced a plan differing only in `createdAt`/`updatedAt`,
-`completedAt` and the cost bookkeeping.
+`completedAt` and the cost bookkeeping. A cache hit now writes
+`costs.byStage.transcription: 0` rather than dropping the key, so `byStage` is
+diffable across runs — a key that appears and vanishes reads as a pipeline
+change.
 
 Two deliberate departures from ARCHITECTURE §3, both to avoid recording a
 guess as data: `transcript.words[].lang` is nullable, and `clientMode` and
@@ -309,6 +350,60 @@ prompt comparison, are in `benchmarks/RESULTS-block3-generalisation.md`.
 `benchmarks/src/score-editplan.ts` is the 39-line adapter that scores a
 production Edit Plan with the existing benchmark scorer; it reads word texts
 only and does not import from `service/`.
+
+**Block 3 session 2** pushed the five local-only commits to GitHub (the repo
+had never been pushed from this drive), then:
+
+- **Inserted and deleted tokens extracted** against all four references, with
+  no API calls — `benchmarks/RESULTS-block3-insertions.md`, built by
+  `benchmarks/src/insertions.ts` and `insertions-cli.ts`. 15 insertions and 2
+  deletions across 291 production words. **8 of the 15 are the conjunction
+  `w`**; 5 of the remaining 7 are on the §4 freeze list; nothing was inserted
+  in Arabic script and nothing was tagged `msa`/`en`/`mixed`. Three carry
+  interpolated timings. Alignment reports edits in normalized space, so
+  `normalizeWithProvenance` rebuilds the mapping back to source tokens;
+  `mapNumeral` is exported from `normalize.ts` so the analysis compares the
+  same tokens WER does.
+- **A spotcheck page per reel**, listing only that reel's insertions, at
+  `benchmarks/results/latest-spotcheck/<reel>-insertions.html` (gitignored;
+  regenerate with `npx tsx src/insertions-cli.ts` from `benchmarks/`). The
+  existing spotcheck tool was extended, not replaced: it gained an optional
+  context column, a configurable lead-in and play length, and configurable
+  answer labels. Its timestamp pages are unchanged.
+  **The listening pass has not been done** — every row is unjudged, so nothing
+  yet says whether the pipeline invents words.
+- The client mode machinery below.
+
+**Client modes** (PROJECT_SPEC §5) live in `core/src/mode.ts`: the schema is
+the module's own doc comment, plus `validateMode`, `parseMode`, `loadMode`,
+`renderStylePrompt`, `renderNegativePrompt` and `requireFonts`.
+`modes/k2-syndicalia.json` is version 1 and validates.
+
+- The four palette colours are **locked** and carry roles read off the values:
+  `background #1A0000`, `primary #820000`, `accent #C9A96E`, `light #F8F6F2`.
+- **Fonts are `{ status: "tbd" }`** and must stay that way. PROJECT_SPEC §5
+  forbids inventing them; the user supplies them at Block 9. `requireFonts`
+  throws `ModeFontsUnresolvedError` rather than substituting a default, so a
+  stage that needs a real font fails loudly instead of shipping a placeholder.
+- **No colour is ever written in code.** `imageStyle.stylePrompt` references
+  the palette as `{{palette.<role>}}` and `renderStylePrompt` substitutes at
+  compose time; a fragment naming a colour literally is a validation failure.
+  `GLOBAL_NEGATIVE_PROMPTS` (no text, no watermark, no logo — ARCHITECTURE
+  §5.3) is global and lives in code, never in a mode.
+- **There is deliberately no `imageVariation` field.** How much images may
+  vary within a reel is an open user decision; the gap is the record that the
+  question has not been answered, and a guessed default would be
+  indistinguishable from a decision.
+- `vocabulary` is empty on purpose. Block 2 saw one brand name rendered three
+  ways across three identical calls, so these terms are load-bearing as
+  transcription key terms once the user supplies them at Block 9.
+- `allowedTemplates` holds stub ids matching TEMPLATE_LIBRARY_GUIDE §3
+  (`sub_`/`kw_`/`img_`). Real templates arrive in Block 6.
+- Validation fails with a dotted path per problem and reports them all at
+  once: unknown colour format, missing required field, a template id breaking
+  the naming convention or carrying the wrong element prefix, an unknown
+  fonts status, a style fragment hardcoding a colour or naming a palette role
+  that does not exist, and an id disagreeing with the filename.
 
 Panel, templates, and real job types are not started.
 
