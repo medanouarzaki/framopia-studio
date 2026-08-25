@@ -167,6 +167,39 @@ measured with. `lang` stays nullable in the Edit Plan schema: a model omission
 or a cache entry written before version 3 existed still produces null, and
 null must remain representable rather than be filled with a guess.
 
+## Amendment — prompt version 4 activated (2026-08-25)
+
+Recorded here in Block 4 session 6. It was activated in Block 3 session 6 and
+recorded in `CLAUDE.md` and `reports/block-3-session-6.md`, but not in this
+file, so the freeze record named version 3 while the code ran version 4 for
+three sessions. A test now reads this file and fails when the two diverge
+(`service/src/decisions.test.ts`).
+
+The freeze decision above is unchanged: the engine chain, the model pin and
+the alignment method are as frozen.
+
+**`ACTIVE_PROMPT_VERSION = 4`.** Version 4 is version 3 plus two spelling
+rules stated outright in the prompt rather than left to be found in the guide:
+the conjunction `w` attaches to the word that follows it, and a French noun
+spoken with its French article keeps that article (`dial la vidéo`) while a
+French root carrying Darija morphology takes the attached one
+(`dial lvitaminat`). Both are ORTHOGRAPHY_GUIDE v1.0.7 rules the user settled
+by ear over a listening pass.
+
+**The rule took completely: 22 attached conjunctions and 0 standalone across
+all five reels**, including Arabic-script `ونضارة` and `ومادة`.
+
+WER against the v1.0.7 references inverted on three of four reels — production
+beat run C hybrid on test-1 (14.7% against 20.6%), test-2 (22.9% against
+28.6%) and test-3 (16.7% against 18.3%). The fourth, ground-truth, was a
+reference defect corrected in Block 4 session 1; production now beats run C on
+all four. Numbers in `benchmarks/RESULTS-block3-final.md` and
+`benchmarks/RESULTS-block4-refcorrection.md`.
+
+Both the prompt bump and the guide bump invalidate the transcription cache by
+design, which is why the session that made them cost more than the rest of
+Block 3 together.
+
 ## References
 
 - `benchmarks/RESULTS-block1.md` — run C, the run of record.
