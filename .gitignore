@@ -21,3 +21,9 @@ benchmarks/whisper/models/
 # After Effects
 Adobe After Effects Auto-Save/
 *.aep~
+
+# Generated images and cutouts live in the cache under .local/, which is
+# already ignored; these cover a candidate written anywhere else.
+*.generated.png
+*.generated.jpg
+*.cutout.png
