@@ -1,0 +1,13 @@
+{
+  "note": "Model weights the sidecar downloads at first use. They are not in the repo (BiRefNet is ~928 MiB) and rembg fetches them to ~/.rembg/ with no integrity check of its own. Pinned by sha256 here on the same principle as footage-by-hash: Block 10's definition of done is a golden run green on two machines, and an unpinned model means machine #2 can produce different mattes from identical input with nothing in the repo able to explain it. Verify with tools/cv/verify-models.sh.",
+  "models": {
+    "birefnet-general": {
+      "file": "~/.rembg/models/birefnet-general/birefnet-general.onnx",
+      "url": "https://github.com/danielgatis/rembg/releases/download/v0.0.0/BiRefNet-general-epoch_244.onnx",
+      "sha256": "58f621f00f5d756097615970a88a791584600dcf7c45b18a0a6267535a1ebd3c",
+      "bytes": 972666916,
+      "recordedOn": "2026-08-25",
+      "recordedBy": "block 4 session 5"
+    }
+  }
+}

@@ -30,6 +30,9 @@ npm run verify-refs --workspace framopia-benchmarks
 # TypeScript workspaces. It is never skipped silently.
 if [ -x tools/cv/.venv/bin/python ]; then
   (cd tools/cv && ./.venv/bin/python -m pytest -q)
+  # Model weights against their pinned checksums. A not-yet-downloaded model
+  # exits 2 and is not a failure; a mismatch exits 1 and is.
+  tools/cv/verify-models.sh || [ "$?" -eq 2 ]
 else
   echo "check: SKIPPING sidecar tests — tools/cv/.venv missing, run tools/cv/setup.sh"
 fi
