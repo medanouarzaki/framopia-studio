@@ -114,7 +114,25 @@ describe('composePrompt', () => {
   it('puts the idea first, then the invariant style, then the variation', () => {
     const prompt = composePrompt(mode(), 'a bottle on a plinth', { crop: 'close' });
     expect(prompt).toBe(
-      'a bottle on a plinth. a single clear idea. dominant palette of #820000. close',
+      'a bottle on a plinth. a single clear idea. dominant palette of #820000. close.',
+    );
+  });
+
+  it('never doubles terminal punctuation or whitespace', () => {
+    const prompt = composePrompt(mode(), 'A stopwatch showing five minutes.', {
+      crop: 'close, filling the frame ',
+      lighting: '  hard directional light,',
+    });
+    expect(prompt).not.toMatch(/[.,;:]{2}/);
+    expect(prompt).not.toMatch(/\s{2}/);
+    expect(prompt).not.toMatch(/\s[.,;:]/);
+    expect(prompt.endsWith('.')).toBe(true);
+    expect(prompt).toContain('A stopwatch showing five minutes. a single clear idea');
+  });
+
+  it('drops a fragment that is only punctuation or whitespace', () => {
+    expect(composePrompt(mode(), '.', { crop: '   ' })).toBe(
+      'a single clear idea. dominant palette of #820000.',
     );
   });
 

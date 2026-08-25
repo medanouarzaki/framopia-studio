@@ -106,12 +106,29 @@ export function drawVariation(
  * palette dominant across the set — followed by this slot's variation draw.
  * No colour and no composition term is written here.
  */
+/**
+ * Joins fragments into one sentence-per-clause prompt. Each fragment is
+ * stripped of its own terminal punctuation and surrounding whitespace before
+ * the separator is added, because the fragments come from three places that
+ * cannot agree on it: the model's idea usually ends in a full stop, the mode's
+ * style fragments never do, and the variation values never do. Session 4 sent
+ * every prompt to disk reading "...five minutes.. a single clear idea".
+ */
+const TERMINAL_PUNCTUATION_RE = /[.,;:\s]+$/;
+
+function joinFragments(fragments: string[]): string {
+  const cleaned = fragments
+    .map((f) => f.replace(/\s+/g, ' ').trim().replace(TERMINAL_PUNCTUATION_RE, ''))
+    .filter((f) => f.length > 0);
+  return cleaned.length === 0 ? '' : `${cleaned.join('. ')}.`;
+}
+
 export function composePrompt(
   mode: ClientMode,
   idea: string,
   variation: Record<string, string>,
 ): string {
-  return [idea, ...renderStylePrompt(mode), ...Object.values(variation)].join('. ');
+  return joinFragments([idea, ...renderStylePrompt(mode), ...Object.values(variation)]);
 }
 
 export function composeNegativePrompt(mode: ClientMode): string {
