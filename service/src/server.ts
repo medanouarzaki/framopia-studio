@@ -4,6 +4,9 @@ import http, { type IncomingMessage, type ServerResponse } from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createJob, getJob, UnknownJobTypeError } from './jobs.js';
+import { readEditPlan, writeEditPlan } from './editplan/io.js';
+import { clearManualZone, ManualZoneError, setManualZone } from './frames/plan-zones.js';
+import type { Zone } from './editplan/types.js';
 import { LOCAL_DIR } from '@framopia/core';
 
 const SERVICE_JSON_PATH = path.join(LOCAL_DIR, 'service.json');
@@ -28,6 +31,36 @@ function readBody(req: IncomingMessage): Promise<string> {
     req.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
     req.on('error', reject);
   });
+}
+
+/**
+ * Read a plan, apply one edit, write it back. A plan that will not open is a
+ * 404 rather than a 500: the caller supplied the path.
+ */
+async function withPlan(
+  res: ServerResponse,
+  planPath: string,
+  edit: (plan: import('./editplan/types.js').EditPlan) => void,
+): Promise<void> {
+  let plan;
+  try {
+    plan = await readEditPlan(planPath);
+  } catch (err) {
+    sendJson(res, 404, { error: `could not read ${planPath}: ${(err as Error).message}` });
+    return;
+  }
+  try {
+    edit(plan);
+  } catch (err) {
+    if (err instanceof ManualZoneError) {
+      sendJson(res, 400, { error: err.message });
+      return;
+    }
+    throw err;
+  }
+  plan.meta.updatedAt = new Date().toISOString();
+  await writeEditPlan(planPath, plan);
+  sendJson(res, 200, { zones: plan.zones });
 }
 
 export function createApp(token: string): http.Server {
@@ -69,6 +102,45 @@ export function createApp(token: string): http.Server {
           }
           throw err;
         }
+        return;
+      }
+
+      // Manual zones, ARCHITECTURE §5.5: the panel's zone editor writes rects
+      // the solver treats as ground truth. Both routes rewrite only the zones
+      // block and meta.updatedAt.
+      if (req.method === 'POST' && url.pathname === '/zones/manual') {
+        let body: { planPath?: unknown; zone?: unknown };
+        try {
+          body = JSON.parse((await readBody(req)) || '{}') as typeof body;
+        } catch {
+          sendJson(res, 400, { error: 'invalid JSON body' });
+          return;
+        }
+        if (typeof body.planPath !== 'string') {
+          sendJson(res, 400, { error: '"planPath" is required' });
+          return;
+        }
+        if (typeof body.zone !== 'object' || body.zone === null) {
+          sendJson(res, 400, { error: '"zone" is required' });
+          return;
+        }
+        await withPlan(res, body.planPath, (plan) => {
+          plan.zones = setManualZone(plan.zones, body.zone as Zone);
+        });
+        return;
+      }
+
+      const clearMatch = req.method === 'DELETE' && url.pathname === '/zones/manual';
+      if (clearMatch) {
+        const planPath = url.searchParams.get('planPath');
+        const zoneId = url.searchParams.get('zoneId');
+        if (!planPath || !zoneId) {
+          sendJson(res, 400, { error: '"planPath" and "zoneId" are required' });
+          return;
+        }
+        await withPlan(res, planPath, (plan) => {
+          plan.zones = clearManualZone(plan.zones, zoneId);
+        });
         return;
       }
 

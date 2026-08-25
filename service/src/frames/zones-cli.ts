@@ -1,6 +1,8 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { runSidecar } from '../images/sidecar.js';
+import { editPlanPathFor } from '../editplan/io.js';
+import { writeZonesToPlan } from './plan-zones.js';
 import { loadReels, reelByLabel } from './footage.js';
 import { reelMasksDir } from './segment.js';
 import { SAMPLE_FPS } from './sample.js';
@@ -24,6 +26,7 @@ import {
 const argv = process.argv.slice(2);
 const all = argv.includes('--all');
 const noDebug = argv.includes('--no-debug');
+const writePlan = argv.includes('--write-plan');
 const reelIndex = argv.indexOf('--reel');
 const label = reelIndex === -1 ? undefined : argv[reelIndex + 1];
 const thresholdIndex = argv.indexOf('--threshold');
@@ -31,7 +34,8 @@ const threshold = thresholdIndex === -1 ? undefined : Number(argv[thresholdIndex
 
 if (!all && !label) {
   console.error(
-    'usage: npm run zones -- (--reel <label> | --all) [--threshold <t>] [--no-debug]',
+    'usage: npm run zones -- (--reel <label> | --all) [--threshold <t>] ' +
+      '[--write-plan] [--no-debug]',
   );
   process.exit(2);
 }
@@ -109,6 +113,25 @@ for (const reel of reels) {
           .map((zone) => ({ kind: zone.kind, rect: zone.rect })),
       });
     }
+  }
+
+  if (writePlan) {
+    // Persisted onto the plan, never through a cache API: zones derive from
+    // frames under .local/cv/, which is not a cache entry.
+    const written = await writeZonesToPlan(
+      editPlanPathFor(reel.path),
+      result.zones,
+      SAMPLE_FPS,
+      new Date().toISOString(),
+    );
+    console.log(
+      `${reel.label}: plan updated, keys changed ` +
+        `[${written.changedTopLevelKeys.join(', ')}], ` +
+        `${written.manualKept} manual kept, ${written.automaticWritten} automatic written` +
+        (written.droppedForCollision.length
+          ? `, dropped for id collision: ${written.droppedForCollision.join(', ')}`
+          : ''),
+    );
   }
 
   console.log(

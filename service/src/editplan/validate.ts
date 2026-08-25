@@ -47,6 +47,7 @@ const REMOVED_REASONS = new Set(['filler', 'stutter', 'falseStart']);
 // image comps work at 1200x1200, so it is paid-for pixels that get scaled
 // away, and config validation rejects it before anything is generated.
 const CANDIDATE_RESOLUTIONS = new Set(['1K', '2K']);
+const ZONE_KINDS = new Set(['top', 'left', 'right']);
 
 class Checker {
   readonly issues: PlanValidationIssue[] = [];
@@ -448,13 +449,81 @@ function checkSupersession(c: Checker, plan: Rec): void {
 
 }
 
+/**
+ * Zone items, ARCHITECTURE §3. The container has existed since the schema was
+ * written and every plan carries it as an empty array, so validating the items
+ * cannot make an older plan unopenable: there are no items in one to reject.
+ */
+function checkZones(c: Checker, items: unknown[]): void {
+  const seen = new Set<string>();
+  items.forEach((item, index) => {
+    const path = `zones.zones[${index}]`;
+    const zone = c.object(path, item);
+    if (zone === null) return;
+
+    c.string(`${path}.id`, zone.id);
+    if (typeof zone.id === 'string') {
+      if (seen.has(zone.id)) c.fail(`${path}.id`, `duplicate zone id ${zone.id}`);
+      seen.add(zone.id);
+    }
+    if (typeof zone.kind !== 'string' || !ZONE_KINDS.has(zone.kind)) {
+      c.fail(`${path}.kind`, `expected one of ${[...ZONE_KINDS].join(', ')}`);
+    }
+    if (typeof zone.manual !== 'boolean') c.fail(`${path}.manual`, 'expected a boolean');
+
+    const rect = c.object(`${path}.rect`, zone.rect);
+    if (rect !== null) {
+      const axes: number[] = [];
+      for (const axis of ['x', 'y', 'w', 'h'] as const) {
+        const value = rect[axis];
+        if (typeof value !== 'number' || !Number.isFinite(value)) {
+          c.fail(`${path}.rect.${axis}`, 'expected a number');
+          continue;
+        }
+        // Normalized against the frame, so a rect outside the unit square is
+        // a coordinate-basis mistake rather than an unusual zone.
+        if (value < 0 || value > 1) c.fail(`${path}.rect.${axis}`, 'expected 0-1');
+        axes.push(value);
+      }
+      if (axes.length === 4) {
+        const [x = 0, y = 0, w = 0, h = 0] = axes;
+        if (w <= 0 || h <= 0) c.fail(`${path}.rect`, 'expected a positive width and height');
+        // A float sum of normalized edges lands a hair over 1 often enough
+        // that an exact comparison would reject correct rectangles.
+        if (x + w > 1.0000001 || y + h > 1.0000001) {
+          c.fail(`${path}.rect`, 'extends past the frame');
+        }
+      }
+    }
+
+    const valid = c.array(`${path}.valid`, zone.valid);
+    if (valid !== null) {
+      valid.forEach((window, w) => {
+        const wPath = `${path}.valid[${w}]`;
+        if (!Array.isArray(window) || window.length !== 2) {
+          c.fail(wPath, 'expected a [startS, endS] pair');
+          return;
+        }
+        const [start, end] = window as unknown[];
+        if (typeof start !== 'number' || typeof end !== 'number') {
+          c.fail(wPath, 'expected two numbers');
+          return;
+        }
+        if (start < 0) c.fail(wPath, 'starts before the reel');
+        if (end < start) c.fail(wPath, 'ends before it starts');
+      });
+    }
+  });
+}
+
 function checkContainers(c: Checker, plan: Rec): void {
 
 
   const zones = c.object('zones', plan.zones);
   if (zones !== null) {
     c.number('zones.sampleFps', zones.sampleFps);
-    c.array('zones.zones', zones.zones);
+    const items = c.array('zones.zones', zones.zones);
+    if (items !== null) checkZones(c, items);
   }
 
   const sfx = c.object('sfx', plan.sfx);
