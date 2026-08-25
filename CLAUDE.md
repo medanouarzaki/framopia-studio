@@ -625,6 +625,71 @@ documented at their definition in `service/src/editplan/types.ts`:
 | `subtitles.groups[].edited` | `boolean?` | Same reason as the keyword flag: the re-grouping pass is an automated re-run over groups. |
 | `images.slots[].wordIds` | `string[]` | §3 gives a slot only start/end, which leaves a merge unable to tell whether the span it illustrates still exists. |
 | `images.slots[].presentation` | `'cutout' \| 'card' \| null` | §3 types it as always set; the quality gate is Block 4, and a guessed `cutout` would read as a decision. |
+| `subtitles.groups[].displayStart` / `.displayEnd` | `number?` each | How long the card is on screen, which is not when the words were spoken. §3 gives a group only start/end, and those stay the single timing authority. Optional with a default: absent means the display window is the speech window. |
+| `keywords.items[].kind` | `'label' \| 'promise'` (optional) | The selector forces a mix of the thing being named and the claim made about it, and the panel has to show which is which. Optional so a plan from an earlier prompt version stays readable. |
+
+**Block 3 session 6 closed the block.** The user settled four things by ear
+and the pipeline was changed to match:
+
+- **The conjunction `w` attaches** (guide §2, v1.0.7). Every Block 3 transcript
+  had written it standalone; the references had been writing it attached all
+  along, so the references were right and the transcripts were wrong.
+- **A French noun keeps its French article** (§2/§5): `dial la vidéo`. A French
+  root carrying Darija morphology takes the attached article: `dial lvitaminat`.
+  Both legal — write what was spoken.
+- **A §6 term is never broken in the subtitle track** (new §6c). The keyword
+  layer selects a *subset* of a long term because keyword templates hold one or
+  two words; that is a pointer into the term, not a spelling of it.
+- **Keywords must cover the label and the promise**, at the same count of 3.
+
+`ACTIVE_PROMPT_VERSION` is **4** (version 3 plus the two spelling rules stated
+explicitly rather than left to be found in the guide) and
+`ACTIVE_ANALYSIS_PROMPT_VERSION` is **3** (label and promise co-primary, each
+candidate marked with its kind). The guide bump and the prompt bump both
+invalidate the transcription cache by design, which is why session 6 cost more
+than the rest of the block together.
+
+**The rule took, completely: 22 attached conjunctions and 0 standalone across
+all five reels**, including Arabic-script `ونضارة` and `ومادة`.
+
+**WER inverted on three of four reels.** Against the v1.0.7 references,
+production now beats run C hybrid on test-1 (14.7% against 20.6%), test-2
+(22.9% against 28.6%) and test-3 (16.7% against 18.3%). test-1 halved from
+31.3%. The gap that had stood since session 1 is gone on those three.
+ground-truth is the exception at 22.2% against 16.0%, and that is **a reference
+defect**: its own reference writes the conjunction standalone on four lines and
+the article standalone on two, so the transcript is penalised for being right.
+The exact tokens are named in `benchmarks/RESULTS-block3-final.md`; they were
+not corrected because the listening pass did not cover them.
+
+**The subtitle timing floor is largely fixed.** Two causes, two fixes:
+`sub_pop`'s stub timings were wrong (0.60 s floor against
+TEMPLATE_LIBRARY_GUIDE §5's own budget of 4 frames per end, which is 0.33 s),
+and display timing did not exist. Buildability went 31 → 10 issues on vitasilk
+and 25 → 8 on test-1. **Every image slot now passes.** What still fails is 7
+subtitle groups per reel and a few keywords, each blocked because merging would
+make a 3-word group or would break a keyword's group alignment.
+
+`service/src/analysis/display-timing.ts` holds it. **Word timings are never
+modified** — `start`/`end` stay exactly what the words say, and
+`displayStart`/`displayEnd` are how long the card is up. Extension takes only
+silence, never reaches into the next group or past the reel; a merge is tried
+only after extension fails and is refused outright on a superseded group; a
+group that can be neither extended nor merged is reported, never faked.
+`findShortWords` reports every word under 0.05 s with its id, text and whether
+its timing was interpolated — 11 across the two reels, 7 of them interpolated.
+**Nothing is repaired**; that is a Block 2 alignment question.
+
+**Template assignment is a seeded shuffle**, not the session-4 coprime
+rotation, which produced a visible A,B,C cycle that PROJECT_SPEC §1 rules out.
+Determinism is unchanged and no variant repeats back to back.
+
+**SCHEMA FRAGILITY RULE, standing.** `readEditPlan` validates on read, so a
+required schema addition makes every previously written plan unopenable —
+including for migration. Session 5 hit this and had to move a check out of
+structural validation. Every schema addition is now **optional with a
+default**, or ships with a migration path that does not read through the new
+validator.
 
 Panel and real job types are not started; templates exist only as a stub.
 
