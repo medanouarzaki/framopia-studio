@@ -218,15 +218,16 @@ export function buildAggregateReport(resultsRoot = RESULTS_DIR): string {
 
   return `# Block 1 transcription benchmark — run C (guide v1.0.3)
 
-**Every WER column here is scored against the \`v1.0.1-conformant\`
+**Every WER column here is scored against the \`v1.0.6-conformant\`
 references.** The engine outputs are unchanged — they are the same recorded
-run-C responses — but the references they are measured against were corrected
-after run C was first written: the ground-truth reel in Block 2 session 6, and
-test-1 and test-2 in Block 3 session 1 (\`dla vidéo\` → \`dial lvidéo\`,
-\`joj dl 7essass\` → \`joj dial l7essass\`). **Any run-C WER figure quoted
-elsewhere from before those corrections is superseded by this table.** Nothing
-but the WER columns moved; cost, wall time and timestamp deviation are
-untouched.
+run-C responses — but the references they are measured against have been
+corrected three times since run C was first written: the ground-truth reel in
+Block 2 session 6, test-1 and test-2 in Block 3 session 1 (\`dla vidéo\` →
+\`dial lvidéo\`, \`joj dl 7essass\` → \`joj dial l7essass\`), and all four in
+Block 3 session 2, which straightened the curly apostrophes §4 forbids.
+**Any run-C WER figure quoted elsewhere from before those corrections is
+superseded by this table.** Nothing but the WER columns moved; cost, wall time
+and timestamp deviation are untouched.
 
 The run of record for the Block 1 freeze decision. Earlier runs are kept
 beside it: run A (guide v1.0.1) in \`RESULTS-block1-runA.md\`, run B (a free

@@ -150,14 +150,20 @@ The adapter fit: `benchmarks/src/score-editplan.ts`, 39 lines, reads only the
 word texts out of a plan and hands them to the existing scorer, so it has no
 dependency on the service package.
 
-**All figures below are scored against the `v1.0.1-conformant` references.**
+**All figures below are scored against the `v1.0.6-conformant` references.**
+They supersede the `v1.0.1-conformant` figures this section carried when it
+was written: test-3 was 21.7% overall / 21.2% darija / 12.5% fr/en, and the
+run-C test-3 row it is compared against was 20.0%. Straightening one curly
+apostrophe in the test-3 reference (Block 3 session 2) turned a substitution
+into a match on **both** sides, so every delta below is unchanged. The other
+three reels did not move at all.
 
 | reel | overall | darija | fr/en | hyp words | ref words |
 |---|---|---|---|---|---|
 | ground-truth | 19.8% | 21.7% | 6.3% | 81 | 81 |
 | test-1 | 31.3% | 30.4% | 33.3% | 72 | 67 |
 | test-2 | 34.3% | 32.7% | 0.0% | 75 | 70 |
-| test-3 | 21.7% | 21.2% | 12.5% | 63 | 60 |
+| test-3 | 20.0% | 21.2% | 6.3% | 63 | 60 |
 
 Beside run C's hybrid rows, re-scored against the same corrected references:
 
@@ -166,7 +172,7 @@ Beside run C's hybrid rows, re-scored against the same corrected references:
 | ground-truth | 16.0% | 19.8% | +3.8 |
 | test-1 | 23.9% | 31.3% | +7.4 |
 | test-2 | 28.6% | 34.3% | +5.7 |
-| test-3 | 20.0% | 21.7% | +1.7 |
+| test-3 | 18.3% | 20.0% | +1.7 |
 
 **Production scored worse on every reel, three of the four beyond the
 3.7-point noise floor.** That is what the numbers say and it should not be

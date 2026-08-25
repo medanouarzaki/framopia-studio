@@ -6,6 +6,11 @@ reference omitted from a word the model invented, and only one of those two
 reaches a client's subtitles. This file separates them by name so a human ear
 can rule on each.
 
+**Scored against the `v1.0.6-conformant` references.** The reference sweep
+later in this session straightened one curly apostrophe in test-3, which
+turned one substitution into a match there (10 → 9); the inserted and deleted
+token sets are unchanged by it.
+
 **No API calls were made.** Everything here is computed from the Edit Plans
 and references already on disk, using the same `align` and `normalizeForWer`
 the scorer uses, so an edit listed here is an edit the WER figure charged for.
@@ -33,7 +38,7 @@ word behind it, which makes it a spelling or hearing question rather than the
 | ground-truth | 1 | 1 | 14 | 66 |
 | test-1 | 6 | 1 | 14 | 52 |
 | test-2 | 5 | 0 | 19 | 51 |
-| test-3 | 3 | 0 | 10 | 50 |
+| test-3 | 3 | 0 | 9 | 51 |
 
 | reel | darija | msa | fr | en | mixed | on freeze list |
 |---|---|---|---|---|---|---|
