@@ -179,3 +179,104 @@ For completeness, the other recorded three-call sets on this reel, re-scored:
   figure. That still holds and they were not re-scored.
 - The **findings** in every one of those files — token stability, drift, lang
   tagging agreement, insertion analysis — are unaffected. Only WER moved.
+
+---
+
+# Addendum — `test-3`, Block 4 session 2
+
+Session 1 corrected `ground-truth` from a hand-written token list. Session 2
+threw the lists away and **scanned mechanically instead**: a standalone token
+is one bounded by whitespace on both sides, run over all four references for
+both proclitics §2 governs.
+
+The scan found **two standalone conjunctions in `test-3` that no list ever
+named.** Line 18 was mentioned once in passing in `RESULTS-block3-final.md`;
+**line 17 appears in no list anywhere.** `test-3`'s own header comment block
+asserted "No edit: all three flagged tokens are the attached `w`" while the
+file carried two that were not.
+
+## The scan, all four references
+
+| reel | standalone `w` | standalone `l` | lines |
+|---|---|---|---|
+| ground-truth | 0 | 0 | — |
+| test-1 | 0 | 0 | — |
+| test-2 | 0 | 0 | — |
+| **test-3** | **2** | 0 | 17, 18 |
+
+`wa7d l cocktail`, which Block 3 named in `ground-truth`, **was already
+corrected** by session 1 to `wa7d lcocktail`. The bare-`l` scan confirms it:
+zero standalone articles anywhere.
+
+The three prior counts — six (Block 3 handoff), five (results file), four
+(CLAUDE.md) — were all describing `ground-truth` alone and all of them were
+wrong about the whole corpus, because none of them looked at `test-3`.
+
+## What changed
+
+| line | before | after | rule |
+|---|---|---|---|
+| 17 | `W bdebt 3la le RRS eyes` | `Wbdebt 3la le RRS eyes` | §2, conjunction attaches |
+| 18 | `... non réticulé w مادة الكافيين` | `... non réticulé ومادة الكافيين` | §2, same rule and same letter in Arabic script |
+
+Line 18 is the case §2 spells out directly: "In Arabic script it is the same
+rule with the same letter: `إشراقة ونضارة`, never `إشراقة و نضارة`." The Latin
+`w` before an Arabic-script noun becomes the attached Arabic `و`, which is
+what the production transcript had already been writing.
+
+`test-3` goes from **60 reference words to 58.**
+
+## Before and after — test-3
+
+Recorded engine outputs, re-scored. No API call.
+
+| engine | before | after | move |
+|---|---|---|---|
+| scribe | 56.7% | 53.4% | −3.3 |
+| gemini | 23.3% | 25.9% | +2.6 |
+| whisper | 85.0% | 82.8% | −2.2 |
+| hybrid (run C) | 18.3% | 24.1% | +5.8 |
+| **production** | **16.7%** | **12.1%** | **−4.6** |
+
+The other three reels did not move, which is the control:
+ground-truth 23.7/11.8, test-1 20.6/14.7, test-2 28.6/22.9 for hybrid and
+production respectively — identical to session 1's table.
+
+**The same shape as `ground-truth`, for the same reason.** Production improves
+4.6 points; run C hybrid worsens 5.8, because run C was being paid for writing
+the conjunction standalone against a reference that did the same. The gap
+swings 10.4 points, from −1.6 to **−12.0**.
+
+## Production against run C hybrid, all four reels, final
+
+| reel | run C hybrid | production | gap |
+|---|---|---|---|
+| ground-truth | 23.7% | **11.8%** | −11.9 |
+| test-1 | 20.6% | **14.7%** | −5.9 |
+| test-2 | 28.6% | **22.9%** | −5.7 |
+| test-3 | 24.1% | **12.1%** | **−12.0** |
+
+test-3 moves from the narrowest margin of the four to the widest. Production
+beats the Block 1 frozen config on every reel by between 5.7 and 12.0 points.
+
+## The noise floor did not move again
+
+Still **5.2 points** (22.4 / 21.1 / 26.3). It is measured on the
+`ground-truth` reel, which session 2 did not touch; re-derived from the
+recorded three-call set rather than assumed. `dialrule` 1.3 and `langtagging`
+3.9 are likewise unchanged.
+
+## Why the lists kept being wrong
+
+Three hand-written counts of the same defect disagreed with each other and all
+three were incomplete, because each was derived by reading rather than by
+matching. §2 has claimed since v1.0.7 that "a standalone `w` is a spelling
+error, and the conformance scorer treats it as one" — **the scorer did not.**
+`w` appeared in the scorer only as a vowel-less *exception*, which suppresses
+a warning rather than raising one.
+
+Session 2 adds `findProclitics` to `benchmarks/src/orthography.ts`, a scored
+violation for a standalone `w`, `و` or bare `l`, and
+`benchmarks/src/verify-references.ts` gates every reference file's
+`# reference-version:` header on a clean pass. Both run in `npm run check`.
+The guide's claim about the scorer is now true.

@@ -1,5 +1,14 @@
 # The references at v1.0.7, after the listening pass
 
+> **Superseded WER figures (Block 4 session 2).** The `test-3` reference was
+> corrected: two standalone conjunctions were fused per guide §2 (`W bdebt` →
+> `Wbdebt`, `w مادة` → `ومادة`), taking it from 60 reference words to 58.
+> They were found by a mechanical scan after three separate hand-written token
+> lists had each missed them. Every test-3 WER number below is scored against
+> the old text; the re-scored figures are in
+> `RESULTS-block4-refcorrection.md`. The findings here are unaffected; only
+> the WER column moved.
+
 The user listened to all 16 tokens the Block 3 insertion analysis flagged and
 ruled **every one of them a real recovery** — the speaker said them, and no
 transcript hallucinated. Separately the user settled the French article by ear:

@@ -1,5 +1,14 @@
 # The four Block 1 reels through the production pipeline
 
+> **Superseded WER figures (Block 4 session 2).** The `test-3` reference was
+> corrected: two standalone conjunctions were fused per guide §2 (`W bdebt` →
+> `Wbdebt`, `w مادة` → `ومادة`), taking it from 60 reference words to 58.
+> They were found by a mechanical scan after three separate hand-written token
+> lists had each missed them. Every test-3 WER number below is scored against
+> the old text; the re-scored figures are in
+> `RESULTS-block4-refcorrection.md`. The findings here are unaffected; only
+> the WER column moved.
+
 > **Superseded WER figures (Block 4 session 1).** The `ground-truth` reel's
 > reference was corrected again: five standalone conjunction and article
 > tokens were fused per guide §2, taking it from 81 reference words to 76.

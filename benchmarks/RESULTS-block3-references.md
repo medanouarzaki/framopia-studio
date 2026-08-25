@@ -1,5 +1,14 @@
 # The four references swept against orthography guide v1.0.6
 
+> **Superseded WER figures (Block 4 session 2).** The `test-3` reference was
+> corrected: two standalone conjunctions were fused per guide §2 (`W bdebt` →
+> `Wbdebt`, `w مادة` → `ومادة`), taking it from 60 reference words to 58.
+> They were found by a mechanical scan after three separate hand-written token
+> lists had each missed them. Every test-3 WER number below is scored against
+> the old text; the re-scored figures are in
+> `RESULTS-block4-refcorrection.md`. The findings here are unaffected; only
+> the WER column moved.
+
 The references were corrected piecemeal — `v1.0-unrevised` → `v1.0.1-conformant`
 across Block 2 session 6 and Block 3 session 1 — while the guide moved to
 v1.0.6. Nothing had ever run the conformance scorer over the references
