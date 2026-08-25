@@ -23,21 +23,28 @@ four, $0.514519, produced nothing that is still on disk.
 
 All ten at 2K 1:1. **Every one returned 2048x2048.**
 
-| # | model | run | estimate | actual | over | wall |
-|---|---|---|---|---|---|---|
-| 1 | flash | probe | $0.1010 | $0.116352 | +15.2% | 30.8s |
-| 2 | flash | first | $0.1010 | $0.118272 | +17.1% | 24.0s |
-| 3 | flash | first | $0.1010 | $0.127332 | +26.1% | 28.2s |
-| 4 | pro | first | $0.1340 | $0.151246 | +12.9% | 215.0s |
-| 5 | pro | first | $0.1340 | $0.150766 | +12.5% | 33.1s |
-| 6 | pro | first | $0.1340 | $0.149086 | +11.3% | 72.3s |
-| 7 | flash | **wasted** | $0.1010 | $0.119712 | +18.5% | 21.7s |
-| 8 | flash | **wasted** | $0.1010 | $0.123252 | +22.0% | 20.5s |
-| 9 | flash | **wasted** | $0.1010 | $0.118092 | +16.9% | 23.0s |
-| 10 | pro | **wasted** | $0.1340 | $0.152566 | +13.9% | — |
+| # | model | run | fate | estimate | actual | over | wall |
+|---|---|---|---|---|---|---|---|
+| 1 | flash | probe | **superseded** | $0.1010 | $0.116352 | +15.2% | 30.8s |
+| 2 | flash | first | **superseded** | $0.1010 | $0.118272 | +17.1% | 24.0s |
+| 3 | flash | first | **superseded** | $0.1010 | $0.127332 | +26.1% | 28.2s |
+| 4 | pro | first | corpus | $0.1340 | $0.151246 | +12.9% | 215.0s |
+| 5 | pro | first | corpus | $0.1340 | $0.150766 | +12.5% | 33.1s |
+| 6 | pro | first | corpus | $0.1340 | $0.149086 | +11.3% | 72.3s |
+| 7 | flash | second | corpus | $0.1010 | $0.119712 | +18.5% | 21.7s |
+| 8 | flash | second | corpus | $0.1010 | $0.123252 | +22.0% | 20.5s |
+| 9 | flash | second | corpus | $0.1010 | $0.118092 | +16.9% | 23.0s |
+| 10 | pro | second | **wasted** | $0.1340 | $0.152566 | +13.9% | — |
 
-Images 7–9 replaced images 1–3 as the review copies; image 10 was killed
-before its copy was written. The corpus is images 4–6 (pro) and 7–9 (flash).
+**The corpus is images 4–9**, summing to $0.812154. The second run
+regenerated the flash arm, so images 7–9 replaced images 1–3 as the review
+copies and 1–3 are superseded; image 10 was killed before its copy was
+written. What bought nothing is **1–3 and 10**, $0.361956 + $0.152566 =
+$0.514522, which is the $0.514519 quoted above to rounding.
+
+(The fate column was wrong in the first version of this report, marking 7–9
+wasted while the prose and the arithmetic both said otherwise. Corrected in
+session 4; money and conclusions were right, only the labels were not.)
 
 **The published rate under-predicts even at the correct shape.** Session 2
 blamed its 21.4% on a served shape matching no published pair. That was
