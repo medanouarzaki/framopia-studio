@@ -10,7 +10,8 @@
     "build": "tsc",
     "bench": "tsx src/run.ts",
     "tag": "tsx src/tag-cli.ts",
-    "aggregate": "tsx src/aggregate-cli.ts"
+    "aggregate": "tsx src/aggregate-cli.ts",
+    "verify-refs": "tsx src/verify-references-cli.ts"
   },
   "dependencies": {
     "@framopia/core": "*",

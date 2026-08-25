@@ -16,6 +16,7 @@
     "bench:aggregate": "npm run build:core && npm run aggregate --workspace framopia-benchmarks",
     "validate:modes": "npm run build:core && npm run validate:modes --workspace @framopia/core",
     "analyse": "npm run build:core && npm run analyse --workspace framopia-service --",
-    "validate-plan": "npm run build:core && npm run validate-plan --workspace framopia-service --"
+    "validate-plan": "npm run build:core && npm run validate-plan --workspace framopia-service --",
+    "bench:verify-refs": "npm run build:core && npm run verify-refs --workspace framopia-benchmarks --"
   }
 }

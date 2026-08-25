@@ -34,6 +34,32 @@ The repository must read as the work of a competent human developer. Concretely:
 - `npm run check` = typecheck + lint + all unit tests + template validation (once it exists). It must pass before every session's final commit; from Block 2 on it runs at session end and its result goes in the report. From Block 10, `npm run golden` joins it per BLOCKS.md.
 - Live-API smoke scripts exist but are manual, cost-labeled, and never part of `check`.
 
+### A conformance claim is written by the checker, never by hand
+
+A `# reference-version:` header in `.local/ground-truth/*.txt` is a machine
+assertion that the file passes the orthography conformance scorer clean
+against that guide version. It is written **only** by
+`npm run bench:verify-refs -- --write`, and only after a clean pass. Never
+hand-edit it, and never bump it as part of "also updating the header" while
+editing the text.
+
+`npm run check` verifies every reference against its declared version and
+fails the build on a mismatch. Do not remove that step to get a commit
+through: correct the text and re-stamp.
+
+The rule exists because `ground-truth` asserted `v1.0.7-conformant` for an
+entire block while violating v1.0.7 — the header was bumped by hand in the
+same session that was supposed to make it true, and nothing looked afterwards.
+`test-3` then carried two standalone conjunctions past three separate
+hand-written token lists, each of which disagreed with the other two.
+
+The general form, which applies past this one file: **anything that asserts a
+property is verified must be emitted by the thing that verifies it.** A claim
+a human can type is a claim nobody checks. When a document states that a
+checker enforces a rule, confirm the checker actually implements it — §2 of
+the orthography guide said the scorer flagged a standalone `w` for a full
+version before that was true.
+
 ## 4. Session report (mandatory, every session)
 
 File: `reports/block-N-session-M.md`, committed. Sections, in order:

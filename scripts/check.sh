@@ -17,4 +17,11 @@ npm run lint --workspaces --if-present
 npm run test --workspaces --if-present -- --run
 npm run validate:modes --workspace @framopia/core
 
+# Every reference file's declared version against a clean scorer pass. The
+# `ground-truth` reference asserted v1.0.7 conformance for an entire block
+# while violating v1.0.7, and `test-3` carried two standalone conjunctions
+# that three hand-written token lists all missed, because nothing ever
+# checked. See CLAUDE_CODE_GUIDELINES.md §3.
+npm run verify-refs --workspace framopia-benchmarks
+
 echo "check: PASS"
