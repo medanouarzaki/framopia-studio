@@ -43,8 +43,23 @@ describe('the analysis fingerprint', () => {
     );
   });
 
-  it('invalidates on a mode version bump', () => {
-    expect(analysisFingerprintOf(inputs({ mode: mode({ version: 3 }) }))).not.toBe(
+  /**
+   * Deliberately reversed in Block 4 session 4. Keying on `mode.version` meant
+   * a variation-axis edit — which the Gemini call never sees — invalidated
+   * every entry and billed a full re-analysis. The key is now a content hash
+   * of the fields this call actually reads.
+   */
+  it('survives a mode version bump on its own', () => {
+    expect(analysisFingerprintOf(inputs({ mode: mode({ version: 3 }) }))).toBe(
+      analysisFingerprintOf(inputs()),
+    );
+  });
+
+  it('invalidates when a field the prompt reads changes', () => {
+    expect(analysisFingerprintOf(inputs({ mode: mode({ name: 'Another Client' }) }))).not.toBe(
+      analysisFingerprintOf(inputs()),
+    );
+    expect(analysisFingerprintOf(inputs({ mode: mode({ vocabulary: ['profhilo'] }) }))).not.toBe(
       analysisFingerprintOf(inputs()),
     );
   });
@@ -158,10 +173,19 @@ describe('analyseKeywordsCached', () => {
     expect(calls).toBe(2);
   });
 
-  it('misses after a mode version bump', async () => {
+  // A version bump alone must not bill. A font arriving at Block 9 bumps the
+  // mode and reaches no prompt; so did session 3's variation-axis edit.
+  it('still hits after a mode version bump', async () => {
     await analyseKeywordsCached(options());
     expect(calls).toBe(1);
     await analyseKeywordsCached({ ...options(), mode: mode({ version: 3 }) });
+    expect(calls).toBe(1);
+  });
+
+  it('misses when the vocabulary the prompt carries changes', async () => {
+    await analyseKeywordsCached(options());
+    expect(calls).toBe(1);
+    await analyseKeywordsCached({ ...options(), mode: mode({ vocabulary: ['profhilo'] }) });
     expect(calls).toBe(2);
   });
 

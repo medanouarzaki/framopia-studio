@@ -1,5 +1,10 @@
 import { createHash } from 'node:crypto';
-import { modelConfig, type ClientMode } from '@framopia/core';
+import {
+  keywordModeContentHash,
+  modelConfig,
+  slotModeContentHash,
+  type ClientMode,
+} from '@framopia/core';
 import { ACTIVE_ANALYSIS_PROMPT_VERSION, type AnalysisPromptVersion } from './keywords.js';
 import { ACTIVE_SLOT_PROMPT_VERSION, type SlotPromptVersion } from './slots.js';
 import type { AnalysisWord } from './types.js';
@@ -18,8 +23,12 @@ export interface AnalysisFingerprintInputs {
   promptVersion: AnalysisPromptVersion;
   geminiModel: string;
   modeId: string;
-  /** A mode version bump invalidates: the prompt carries mode context. */
-  modeVersion: number;
+  /**
+   * A content hash of the mode fields the keyword call reads, not the mode
+   * version. Session 3 bumped the mode for a variation-axis change this call
+   * never sees and invalidated every entry; a font at Block 9 would too.
+   */
+  modeHash: string;
   transcriptHash: string;
   candidateCount: number;
 }
@@ -46,7 +55,7 @@ export function analysisFingerprintInputs(options: {
     promptVersion: options.promptVersion ?? ACTIVE_ANALYSIS_PROMPT_VERSION,
     geminiModel: modelConfig.geminiModel,
     modeId: options.mode.id,
-    modeVersion: options.mode.version,
+    modeHash: keywordModeContentHash(options.mode),
     transcriptHash: hashTranscript(options.words),
     candidateCount: options.candidateCount,
   };
@@ -57,7 +66,7 @@ export function analysisFingerprintOf(inputs: AnalysisFingerprintInputs): string
     inputs.promptVersion,
     inputs.geminiModel,
     inputs.modeId,
-    inputs.modeVersion,
+    inputs.modeHash,
     inputs.transcriptHash,
     inputs.candidateCount,
   ]);
@@ -66,14 +75,19 @@ export function analysisFingerprintOf(inputs: AnalysisFingerprintInputs): string
 
 /**
  * The slot stage keys on the same things for the same reasons: its prompt
- * version, the model pin, the mode identity (its style fragments and
- * variation axes both reach the composed prompt) and the transcript.
+ * version, the model pin, the mode fields **its own call** reads, and the
+ * transcript.
+ *
+ * Its mode hash is narrower than the keyword one — the slot prompt reads the
+ * client name and nothing else. The style fragments and variation axes reach
+ * the composed prompt, but composition is pure and free, so keying a billed
+ * call on them would pay for an edit the model never saw.
  */
 export interface SlotFingerprintInputs {
   promptVersion: SlotPromptVersion;
   geminiModel: string;
   modeId: string;
-  modeVersion: number;
+  modeHash: string;
   transcriptHash: string;
   candidateCount: number;
 }
@@ -88,7 +102,7 @@ export function slotFingerprintInputs(options: {
     promptVersion: options.promptVersion ?? ACTIVE_SLOT_PROMPT_VERSION,
     geminiModel: modelConfig.geminiModel,
     modeId: options.mode.id,
-    modeVersion: options.mode.version,
+    modeHash: slotModeContentHash(options.mode),
     transcriptHash: hashTranscript(options.words),
     candidateCount: options.candidateCount,
   };
@@ -99,7 +113,7 @@ export function slotFingerprintOf(inputs: SlotFingerprintInputs): string {
     inputs.promptVersion,
     inputs.geminiModel,
     inputs.modeId,
-    inputs.modeVersion,
+    inputs.modeHash,
     inputs.transcriptHash,
     inputs.candidateCount,
   ]);

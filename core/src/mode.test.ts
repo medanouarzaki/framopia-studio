@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
+  compositionContentHash,
+  keywordModeContentHash,
   loadMode,
+  slotModeContentHash,
   ModeFontsUnresolvedError,
   ModeValidationError,
   parseMode,
@@ -342,5 +345,88 @@ describe('requireFonts', () => {
       latin: 'Inter Semi-Bold',
       arabic: 'Some Arabic Font',
     });
+  });
+});
+
+describe('mode content hashes', () => {
+  const mode = loadMode('k2-syndicalia');
+  const bump = (o: Partial<ClientMode>): ClientMode => ({ ...mode, ...o }) as ClientMode;
+
+  /**
+   * The Block 4 session 3 problem: the mode went v2 to v3 for a
+   * variation-axis vocabulary change, and every analysis cache entry was
+   * invalidated for an edit the Gemini call never sees. A font landing at
+   * Block 9 would do the same. Keying on content rather than version is what
+   * stops that.
+   */
+  it('ignores a version bump on its own', () => {
+    const bumped = bump({ version: mode.version + 1 });
+    expect(keywordModeContentHash(bumped)).toBe(keywordModeContentHash(mode));
+    expect(slotModeContentHash(bumped)).toBe(slotModeContentHash(mode));
+  });
+
+  it('ignores a variation-axis edit, which no analysis call reads', () => {
+    const edited = bump({
+      imageVariation: {
+        ...mode.imageVariation,
+        axes: { ...mode.imageVariation.axes, lighting: ['a', 'b'] },
+      },
+    });
+    expect(keywordModeContentHash(edited)).toBe(keywordModeContentHash(mode));
+    expect(slotModeContentHash(edited)).toBe(slotModeContentHash(mode));
+  });
+
+  it('ignores fonts, which arrive at Block 9 and reach no prompt', () => {
+    const fonted = bump({ fonts: { status: 'set', latin: 'Inter', arabic: 'Cairo' } });
+    expect(keywordModeContentHash(fonted)).toBe(keywordModeContentHash(mode));
+    expect(slotModeContentHash(fonted)).toBe(slotModeContentHash(mode));
+  });
+
+  it('changes when the client name changes, which both prompts carry', () => {
+    const renamed = bump({ name: 'Another Client' });
+    expect(keywordModeContentHash(renamed)).not.toBe(keywordModeContentHash(mode));
+    expect(slotModeContentHash(renamed)).not.toBe(slotModeContentHash(mode));
+  });
+
+  // The keyword prompt passes vocabulary as an explicit term list; the slot
+  // prompt never sees it, so keying slots on it would re-run every slot when
+  // Block 9 fills the vocabulary in.
+  it('changes the keyword hash on vocabulary but not the slot hash', () => {
+    const stocked = bump({ vocabulary: ['profhilo', 'RRS eyes'] });
+    expect(keywordModeContentHash(stocked)).not.toBe(keywordModeContentHash(mode));
+    expect(slotModeContentHash(stocked)).toBe(slotModeContentHash(mode));
+  });
+
+  it('is 16 hex characters and stable', () => {
+    expect(keywordModeContentHash(mode)).toMatch(/^[0-9a-f]{16}$/);
+    expect(keywordModeContentHash(mode)).toBe(keywordModeContentHash(mode));
+  });
+});
+
+describe('compositionContentHash', () => {
+  const mode = loadMode('k2-syndicalia');
+
+  it('changes on a variation-axis edit, which composition does read', () => {
+    const edited = {
+      ...mode,
+      imageVariation: {
+        ...mode.imageVariation,
+        axes: { ...mode.imageVariation.axes, lighting: ['a', 'b'] },
+      },
+    } as ClientMode;
+    expect(compositionContentHash(edited)).not.toBe(compositionContentHash(mode));
+  });
+
+  it('changes on a palette edit, which is substituted into the fragments', () => {
+    const repainted = {
+      ...mode, palette: { ...mode.palette, accent: '#000000' },
+    } as ClientMode;
+    expect(compositionContentHash(repainted)).not.toBe(compositionContentHash(mode));
+  });
+
+  it('ignores a bare version bump', () => {
+    expect(compositionContentHash({ ...mode, version: 99 } as ClientMode)).toBe(
+      compositionContentHash(mode),
+    );
   });
 });

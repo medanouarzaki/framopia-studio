@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { REPO_ROOT } from './paths.js';
@@ -493,6 +494,60 @@ export function renderNegativePrompt(mode: ClientMode): string[] {
  * substituting a default: PROJECT_SPEC §5 says the user supplies K2's fonts
  * at Block 9, and a placeholder that renders would ship as if it were chosen.
  */
+/**
+ * Content hashes over the mode fields a given consumer actually reads.
+ *
+ * A cache fingerprint keyed on `mode.version` says "something in this file
+ * changed", which is almost never the question. Block 4 session 3 bumped the
+ * mode to v3 for a variation-axis vocabulary change that the Gemini analysis
+ * call never sees, and every analysis entry was invalidated — a full paid
+ * re-run on every reel for an edit the model could not have noticed. A font
+ * landing at Block 9 would do the same.
+ *
+ * So each consumer keys on the fields it reads, enumerated here rather than
+ * inferred. Block 3 set the precedent by fingerprinting the transcript on its
+ * content rather than a version. Adding a field to a prompt means adding it
+ * to the matching hash; a hash that drifts from its prompt serves stale
+ * answers, so these live next to the mode and not next to the callers.
+ */
+function contentHash(value: unknown): string {
+  return createHash('sha256').update(JSON.stringify(value)).digest('hex').slice(0, 16);
+}
+
+/**
+ * What the keyword prompt reads: the client's name, and its vocabulary as an
+ * explicit term list (`analysis/keywords.ts`). Nothing else in the mode
+ * reaches that call.
+ */
+export function keywordModeContentHash(mode: ClientMode): string {
+  return contentHash([mode.name, mode.vocabulary]);
+}
+
+/**
+ * What the image-slot prompt reads: the client's name and nothing else
+ * (`analysis/slots.ts`). Deliberately not the vocabulary — that call never
+ * sees it, and keying on it would re-run every slot when Block 9 fills the
+ * vocabulary in.
+ */
+export function slotModeContentHash(mode: ClientMode): string {
+  return contentHash([mode.name]);
+}
+
+/**
+ * What prompt composition reads: the palette (substituted into the style
+ * fragments), both halves of `imageStyle`, and the variation axes. This is
+ * pure and free to re-run, so it keys nothing that bills — it exists so a
+ * plan can record which composition produced its prompts.
+ */
+export function compositionContentHash(mode: ClientMode): string {
+  return contentHash([
+    mode.palette,
+    mode.imageStyle.stylePrompt,
+    mode.imageStyle.negativePrompt,
+    mode.imageVariation.axes,
+  ]);
+}
+
 export function requireFonts(mode: ClientMode, stage: string): { latin: string; arabic: string } {
   if (mode.fonts.status === 'tbd') throw new ModeFontsUnresolvedError(mode.id, stage);
   return { latin: mode.fonts.latin, arabic: mode.fonts.arabic };
