@@ -53,12 +53,21 @@ export const MIN_SLOT_GAP_S = 0.5;
  * across every slot while composition, lighting and crop vary, so the set
  * reads as designed rather than batched.
  *
- * The offset and the stride both come from a hash of the plan id and the axis
- * name, so the same plan always draws the same values and two different reels
- * do not march through the axes in lockstep. The stride is chosen from the
- * values coprime to the axis length, which guarantees two things at once:
- * consecutive slots never land on the same value, and the draw walks the
- * whole axis instead of ping-ponging between two of its values.
+ * The offset, the stride and the per-cycle bump all come from a hash of the
+ * plan id and the axis name, so the same plan always draws the same values
+ * and two different reels do not march through the axes in lockstep.
+ *
+ * The stride is chosen from the values coprime to the axis length, which
+ * guarantees consecutive slots never land on the same value and that the draw
+ * walks the whole axis rather than ping-ponging between two of its values.
+ *
+ * The bump advances the walk by an extra step each time it completes a cycle.
+ * Without it a reel with more slots than an axis has values repeats exactly:
+ * vitasilk's fifth slot came out identical to its first on all three axes,
+ * which is two of five images composed the same way. The bump is picked so
+ * that it cannot collide at the wrap either. An axis with only two values
+ * cannot satisfy both conditions, so it takes no bump and repeats — with two
+ * values and three slots something has to.
  */
 function gcd(a: number, b: number): number {
   return b === 0 ? a : gcd(b, a % b);
@@ -81,7 +90,12 @@ export function drawVariation(
             (s) => gcd(s, values.length) === 1,
           );
     const stride = strides[digest.readUInt32BE(4) % strides.length] as number;
-    drawn[axis] = values[(offset + stride * slotIndex) % values.length] as string;
+    const bumps = Array.from({ length: values.length - 1 }, (_, i) => i + 1).filter(
+      (b) => (stride + b) % values.length !== 0,
+    );
+    const bump = bumps.length === 0 ? 0 : (bumps[digest.readUInt32BE(8) % bumps.length] as number);
+    const cycle = Math.floor(slotIndex / values.length);
+    drawn[axis] = values[(offset + stride * slotIndex + bump * cycle) % values.length] as string;
   }
   return drawn;
 }

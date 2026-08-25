@@ -87,6 +87,22 @@ describe('drawVariation', () => {
     expect(seen.size).toBe(4);
   });
 
+  it('does not repeat the first draw when the slots outrun the axis', () => {
+    // vitasilk has five slots against four values per axis. Without the
+    // per-cycle bump slot 4 came out identical to slot 0 on every axis.
+    const first = drawVariation(mode(), 'plan-a', 0);
+    const wrapped = drawVariation(mode(), 'plan-a', 4);
+    expect(JSON.stringify(wrapped)).not.toBe(JSON.stringify(first));
+  });
+
+  it('keeps consecutive slots distinct across the wrap, for many slots', () => {
+    for (let i = 0; i < 30; i += 1) {
+      const a = drawVariation(mode(), 'plan-a', i);
+      const b = drawVariation(mode(), 'plan-a', i + 1);
+      for (const axis of Object.keys(a)) expect(a[axis]).not.toBe(b[axis]);
+    }
+  });
+
   it('draws differently for a different plan', () => {
     const a = Array.from({ length: 4 }, (_, i) => JSON.stringify(drawVariation(mode(), 'plan-a', i)));
     const b = Array.from({ length: 4 }, (_, i) => JSON.stringify(drawVariation(mode(), 'plan-b', i)));
