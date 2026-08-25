@@ -1,6 +1,7 @@
 import { loadConfig, loadMode, type ClientMode } from '@framopia/core';
 import { readEditPlan, writeEditPlan } from '../editplan/io.js';
 import type { EditPlan, ImageSlot, KeywordItem } from '../editplan/types.js';
+import { regroupForKeywords, type DroppedKeyword } from './regroup.js';
 import { analyseKeywordsCached, planSlotsCached, type CachedKeywordResult, type CachedSlotResult } from './cached.js';
 import { ACTIVE_ANALYSIS_PROMPT_VERSION } from './keywords.js';
 import { ACTIVE_SLOT_PROMPT_VERSION } from './slots.js';
@@ -42,6 +43,8 @@ export interface AnalyseKeywordsResult {
   plan: EditPlan;
   analysis: CachedKeywordResult;
   cached: boolean;
+  /** Keywords the re-grouping pass could not make buildable. */
+  regroupDropped: DroppedKeyword[];
 }
 
 /**
@@ -91,7 +94,7 @@ export async function analyseKeywordsForPlan(
   // panel. The selection itself is identical either way — the mode is a run
   // parameter and never reaches the model.
   const approved = keywordMode === 'auto';
-  const items: KeywordItem[] = analysis.selection.items.map((item, i) => ({
+  const proposed: KeywordItem[] = analysis.selection.items.map((item, i) => ({
     id: `k${String(i + 1).padStart(3, '0')}`,
     wordIds: item.wordIds,
     text: item.text,
@@ -103,7 +106,22 @@ export async function analyseKeywordsForPlan(
     end: item.end,
   }));
 
+  // Groups were derived during transcription, before any keyword existed, so
+  // a span can straddle two of them. A keyword replaces its group's
+  // rendering, which is only expressible when the two are the same thing.
+  const regrouped = regroupForKeywords({
+    groups: plan.subtitles.groups,
+    words: plan.transcript.words,
+    keywords: proposed,
+  });
+  for (const drop of regrouped.dropped) {
+    log(`analysis: dropped keyword ${drop.keywordId} (${drop.reason})`);
+  }
+  const kept = new Set(regrouped.keptKeywordIds);
+  const items = proposed.filter((item) => kept.has(item.id));
+
   const timestamp = now();
+  plan.subtitles.groups = regrouped.groups;
   plan.keywords = { mode: keywordMode, items };
   plan.pipeline.analysis = {
     status: 'done',
@@ -123,7 +141,7 @@ export async function analyseKeywordsForPlan(
 
   await writeEditPlan(planPath, plan);
 
-  return { planPath, plan, analysis, cached: analysis.cached };
+  return { planPath, plan, analysis, cached: analysis.cached, regroupDropped: regrouped.dropped };
 }
 
 export interface PlanImageSlotsOptions {

@@ -108,6 +108,22 @@ export interface SubtitleGroup {
   start: number;
   end: number;
   templateId: string | null;
+  /**
+   * The keyword that renders in this group's place. Departure from
+   * ARCHITECTURE §3, which gives a group no such field: a keyword span and a
+   * subtitle group can claim the same words, and §3 never says which wins.
+   * The rule is that the keyword replaces the group's rendering, and the
+   * builder must be told rather than left to work it out from overlapping
+   * time ranges. Null on every group no keyword claims.
+   */
+  supersededBy?: string | null;
+  /**
+   * True once a human adjusted this group in the panel, mirroring
+   * `PlanWord.edited`. ARCHITECTURE §3 requires that an automated re-run never
+   * overwrite a flagged item, and the keyword-aware re-grouping pass is
+   * exactly such a re-run; groups had no way to carry the flag.
+   */
+  edited?: boolean;
 }
 
 export interface Subtitles {

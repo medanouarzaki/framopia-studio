@@ -39,6 +39,19 @@ function planWith(items: unknown[]): EditPlan {
     word('w2', 'euh', 1.0, true),
   ];
   plan.keywords = { mode: 'auto', items: items as EditPlan['keywords']['items'] };
+  // A keyword supersedes exactly one group, so a plan carrying one has to
+  // carry that group too — the re-grouping pass guarantees it.
+  plan.subtitles.groups = [
+    {
+      id: 'g001',
+      wordIds: ['w0'],
+      start: 0,
+      end: 0.4,
+      templateId: null,
+      supersededBy: items.length > 0 ? 'k001' : null,
+    },
+    { id: 'g002', wordIds: ['w1'], start: 0.5, end: 0.9, templateId: null, supersededBy: null },
+  ];
   return plan;
 }
 
@@ -70,20 +83,21 @@ describe('keyword validation', () => {
   });
 
   it('keeps a keyword naming an unknown word off disk', () => {
-    expect(paths(planWith([keyword({ wordIds: ['w99'] })]))).toEqual([
+    expect(paths(planWith([keyword({ wordIds: ['w99'] })]))).toContain(
       'keywords.items[0].wordIds[0]',
-    ]);
+    );
   });
 
   it('keeps a keyword on a removed word off disk', () => {
-    const issues = paths(planWith([keyword({ wordIds: ['w2'] })]));
-    expect(issues).toEqual(['keywords.items[0].wordIds[0]']);
+    expect(paths(planWith([keyword({ wordIds: ['w2'] })]))).toContain(
+      'keywords.items[0].wordIds[0]',
+    );
   });
 
   it('keeps two keywords claiming the same word off disk', () => {
-    expect(
-      paths(planWith([keyword(), keyword({ id: 'k002', wordIds: ['w0'] })])),
-    ).toEqual(['keywords.items[1].wordIds[0]']);
+    expect(paths(planWith([keyword(), keyword({ id: 'k002', wordIds: ['w0'] })]))).toContain(
+      'keywords.items[1].wordIds[0]',
+    );
   });
 
   it('rejects a score outside 0-1', () => {
@@ -92,7 +106,7 @@ describe('keyword validation', () => {
   });
 
   it('rejects an empty wordIds list', () => {
-    expect(paths(planWith([keyword({ wordIds: [] })]))).toEqual(['keywords.items[0].wordIds']);
+    expect(paths(planWith([keyword({ wordIds: [] })]))).toContain('keywords.items[0].wordIds');
   });
 
   it('rejects a missing required keyword field', () => {

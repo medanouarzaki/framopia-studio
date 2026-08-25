@@ -148,6 +148,10 @@ function checkWords(c: Checker, value: unknown): void {
   });
 }
 
+/** PROJECT_SPEC §5's fast-reel style. Absolute, and it predates every rule
+ * that touches groups. */
+const MAX_GROUP_WORDS = 2;
+
 function checkSubtitles(c: Checker, value: unknown, wordIds: Set<string>): void {
   const subtitles = c.object('subtitles', value);
   if (subtitles === null) return;
@@ -172,6 +176,11 @@ function checkSubtitles(c: Checker, value: unknown, wordIds: Set<string>): void 
     c.number(`${p}.start`, g.start);
     c.number(`${p}.end`, g.end);
     c.nullableString(`${p}.templateId`, g.templateId);
+    if (g.supersededBy !== undefined) c.nullableString(`${p}.supersededBy`, g.supersededBy);
+    if (g.edited !== undefined) c.boolean(`${p}.edited`, g.edited);
+    if (ids !== null && ids.length > MAX_GROUP_WORDS) {
+      c.fail(`${p}.wordIds`, `a group holds at most ${MAX_GROUP_WORDS} words, found ${ids.length}`);
+    }
   });
 }
 
@@ -289,6 +298,58 @@ function checkImages(c: Checker, value: unknown, words: Map<string, Rec>): void 
   });
 }
 
+/**
+ * Structural agreement between a `supersededBy` and the keyword it names: the
+ * keyword exists, no keyword supersedes two groups, and the group's words are
+ * exactly the span.
+ *
+ * The completeness half — that *every* keyword supersedes some group — is
+ * deliberately not here. It is a buildability property, checked by
+ * `npm run validate-plan`, because a plan written before supersession existed
+ * is structurally fine and must still be readable; failing it here would make
+ * an older plan impossible to open and therefore impossible to migrate.
+ */
+function checkSupersession(c: Checker, plan: Rec): void {
+  const keywords = (plan.keywords as Rec | undefined)?.items;
+  const groups = (plan.subtitles as Rec | undefined)?.groups;
+  if (!Array.isArray(keywords) || !Array.isArray(groups)) return;
+
+  const keywordById = new Map<string, Rec>();
+  for (const k of keywords) {
+    if (typeof k === 'object' && k !== null && typeof (k as Rec).id === 'string') {
+      keywordById.set((k as Rec).id as string, k as Rec);
+    }
+  }
+
+  const owned = new Map<string, string>();
+  groups.forEach((raw, i) => {
+    if (typeof raw !== 'object' || raw === null) return;
+    const g = raw as Rec;
+    const owner = g.supersededBy;
+    if (typeof owner !== 'string') return;
+    const p = `subtitles.groups[${i}].supersededBy`;
+    if (!keywordById.has(owner)) {
+      c.fail(p, `no keyword has id ${owner}`);
+      return;
+    }
+    const previous = owned.get(owner);
+    if (previous !== undefined) {
+      c.fail(p, `keyword ${owner} already supersedes ${previous}`);
+      return;
+    }
+    owned.set(owner, g.id as string);
+    const span = keywordById.get(owner)?.wordIds;
+    const members = g.wordIds;
+    if (Array.isArray(span) && Array.isArray(members)) {
+      const same = span.length === members.length && span.every((id, j) => id === members[j]);
+      if (!same) {
+        c.fail(p, `keyword ${owner} does not span exactly this group's words`);
+      }
+    }
+  });
+
+}
+
 function checkContainers(c: Checker, plan: Rec): void {
 
 
@@ -381,6 +442,7 @@ export function validateEditPlan(value: unknown): PlanValidationIssue[] {
   }
   checkSubtitles(c, plan.subtitles, new Set(byId.keys()));
   checkKeywords(c, plan.keywords, byId);
+  checkSupersession(c, plan);
   checkImages(c, plan.images, byId);
   checkContainers(c, plan);
 
