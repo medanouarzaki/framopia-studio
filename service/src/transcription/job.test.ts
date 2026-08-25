@@ -219,6 +219,12 @@ describe('transcribeVideo — re-run on an unchanged video', () => {
     expect(second.cached).toBe(true);
     expect(second.plan.pipeline.transcription.costUsd).toBe(0);
     expect(second.plan.costs.totalUsd).toBe(0);
+    // Present and zero, not absent: a key that comes and goes between runs
+    // reads as a pipeline change to anything diffing byStage.
+    expect(second.plan.costs.byStage).toEqual({ transcription: 0 });
+    expect(Object.keys(second.plan.costs.byStage)).toEqual(
+      Object.keys(first.plan.costs.byStage),
+    );
 
     // Everything the transcript itself produced must be identical; only the
     // timestamps and the cost bookkeeping may move.
@@ -244,7 +250,9 @@ describe('transcribeVideo — re-run on an unchanged video', () => {
         .replace(/"costUsd": [\d.]+/g, '"costUsd": 0')
         .replace(/"totalUsd": [\d.]+/g, '"totalUsd": 0')
         .replace(/"cached": \w+/, '"cached": X')
-        .replace(/"byStage": \{[^}]*\}/, '"byStage": {}');
+        // The value, not the key: byStage must still carry `transcription`
+        // on both runs, so a dropped key fails this comparison.
+        .replace(/"transcription": [\d.]+/, '"transcription": 0');
     expect(normalise(secondJson)).toBe(normalise(firstJson));
   });
 

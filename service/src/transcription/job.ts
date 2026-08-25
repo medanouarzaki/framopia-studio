@@ -154,9 +154,11 @@ export async function transcribeVideo(
     completedAt: timestamp,
     error: null,
   };
-  plan.costs = transcript.cached
-    ? { totalUsd: 0, byStage: {} }
-    : { totalUsd: transcript.cost.totalUsd, byStage: { transcription: transcript.cost.totalUsd } };
+  // A cache hit costs nothing, but the stage still ran: recording it as 0
+  // rather than dropping the key keeps `byStage` diffable across runs, where
+  // an appearing and vanishing key reads as a pipeline change.
+  const stageCost = transcript.cached ? 0 : transcript.cost.totalUsd;
+  plan.costs = { totalUsd: stageCost, byStage: { transcription: stageCost } };
 
   const planPath = options.planPath ?? editPlanPathFor(videoPath);
   await writeEditPlan(planPath, plan);
