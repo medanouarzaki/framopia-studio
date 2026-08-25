@@ -48,6 +48,37 @@ export function estimateGeminiCallCost(durationS: number): number {
   );
 }
 
+/**
+ * Rough characters per token. Four is the usual English figure and it
+ * under-counts Arabic script, which is the safe direction for a spend gate.
+ */
+const CHARS_PER_TOKEN = 4;
+
+/**
+ * A text-in, JSON-out call: no audio part, so the duration-based estimator
+ * above does not describe it. Passing it a duration of 0 printed ~$0.0040
+ * against a ~$0.05 actual for the Block 3 analysis stage, which is worse than
+ * printing nothing.
+ *
+ * Same methodology as `estimateGeminiCallCost` — the same deliberately
+ * pessimistic thinking multiplier, priced the same way — fed the prompt that
+ * will actually be sent instead of a duration it does not have.
+ */
+export function estimateGeminiTextCallCost(options: {
+  promptChars: number;
+  expectedOutputTokens: number;
+}): number {
+  const { promptChars, expectedOutputTokens } = options;
+  const inputTokens = promptChars / CHARS_PER_TOKEN;
+  const { geminiPrices } = modelConfig;
+
+  return (
+    (inputTokens / 1_000_000) * geminiPrices.textInputUsdPerMillionTokens +
+    ((expectedOutputTokens * (1 + THINKING_TOKEN_MULTIPLIER)) / 1_000_000) *
+      geminiPrices.outputUsdPerMillionTokens
+  );
+}
+
 export interface GeminiUsageDetail {
   modality?: string;
   tokenCount?: number;

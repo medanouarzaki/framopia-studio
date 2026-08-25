@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { computeGeminiCost, estimateCosts, estimateGeminiCallCost } from './pricing.js';
+import {
+  computeGeminiCost,
+  estimateCosts,
+  estimateGeminiCallCost,
+  estimateGeminiTextCallCost,
+} from './pricing.js';
 import { modelConfig } from './model-config.js';
 
 describe('estimateGeminiCallCost', () => {
@@ -134,5 +139,28 @@ describe('estimateGeminiCallCost — gating headroom', () => {
     expect(estimateGeminiCallCost(WORST_RECORDED_DURATION_S)).toBeLessThan(
       WORST_RECORDED_USD * 3,
     );
+  });
+});
+
+describe('estimateGeminiTextCallCost', () => {
+  it('lands in the right order of magnitude for a real analysis call', () => {
+    // The Block 3 session 3 keyword prompt was ~2600 characters and asked for
+    // nine candidates; the five recorded actuals ran $0.0498 to $0.0582.
+    const estimate = estimateGeminiTextCallCost({
+      promptChars: 2600,
+      expectedOutputTokens: 270,
+    });
+    expect(estimate).toBeGreaterThan(0.03);
+    expect(estimate).toBeLessThan(0.12);
+  });
+
+  it('grows with the prompt and with the expected answer', () => {
+    const base = estimateGeminiTextCallCost({ promptChars: 1000, expectedOutputTokens: 100 });
+    expect(estimateGeminiTextCallCost({ promptChars: 4000, expectedOutputTokens: 100 })).toBeGreaterThan(base);
+    expect(estimateGeminiTextCallCost({ promptChars: 1000, expectedOutputTokens: 400 })).toBeGreaterThan(base);
+  });
+
+  it('is never zero for a real prompt', () => {
+    expect(estimateGeminiTextCallCost({ promptChars: 1, expectedOutputTokens: 1 })).toBeGreaterThan(0);
   });
 });

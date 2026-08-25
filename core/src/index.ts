@@ -33,6 +33,7 @@ export {
   computeGeminiCost,
   estimateCosts,
   estimateGeminiCallCost,
+  estimateGeminiTextCallCost,
   estimateScribeCost,
   SCRIBE_KEYTERM_SURCHARGE,
   SCRIBE_USD_PER_AUDIO_HOUR,

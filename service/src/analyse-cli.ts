@@ -2,15 +2,22 @@ import { existsSync } from 'node:fs';
 import { createInterface } from 'node:readline/promises';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
-import { estimateGeminiCallCost, loadMode, readCosts } from '@framopia/core';
+import { estimateGeminiTextCallCost, loadMode, readCosts } from '@framopia/core';
 import { readEditPlan } from './editplan/io.js';
 import { analyseKeywordsForPlan, planImageSlotsForPlan, planWordsForAnalysis } from './analysis/job.js';
 import { analysisCacheRef, slotCacheRef } from './analysis/cached.js';
 import { readAnalysisCache, readSlotCache } from './analysis/cache.js';
-import { candidateCountFor } from './analysis/keywords.js';
-import { slotCandidateCountFor } from './analysis/slots.js';
+import { buildKeywordPrompt, candidateCountFor } from './analysis/keywords.js';
+import { buildSlotPrompt, slotCandidateCountFor } from './analysis/slots.js';
 import { imageSlotCountFor, keywordCountFor } from './analysis/count.js';
 import type { KeywordMode } from './analysis/types.js';
+
+/**
+ * Roughly what one candidate costs in visible output tokens, measured off the
+ * Block 3 session 3 responses. Feeds the pre-spend estimate only; actuals
+ * always come from usageMetadata.
+ */
+const OUTPUT_TOKENS_PER_CANDIDATE = { keywords: 30, slots: 40 } as const;
 
 async function confirm(message: string): Promise<boolean> {
   const rl = createInterface({ input: process.stdin, output: process.stdout });
@@ -85,10 +92,19 @@ async function main(): Promise<void> {
   if (willHit) {
     console.log('Cache hit — no billable calls for this run.');
   } else {
-    // Text in, JSON out: no audio part, so the estimate is the text-only
-    // Gemini estimate rather than the transcription one.
-    const estimate = estimateGeminiCallCost(0);
-    console.log(`Estimated cost: ~$${estimate.toFixed(4)}`);
+    // Estimated from the prompt that will actually be sent, not from a
+    // duration this call does not have. Both stages are text in, JSON out.
+    const prompt =
+      stage === 'keywords'
+        ? buildKeywordPrompt({ words, mode, candidateCount })
+        : buildSlotPrompt({ words, mode, candidateCount, durationS: plan.source.durationS });
+    const estimate = estimateGeminiTextCallCost({
+      promptChars: prompt.length,
+      expectedOutputTokens: candidateCount * OUTPUT_TOKENS_PER_CANDIDATE[stage],
+    });
+    console.log(
+      `Estimated cost: ~$${estimate.toFixed(4)} (pessimistic — the thinking multiplier is a spend gate, not a forecast)`,
+    );
     if (!values.yes && !(await confirm(`Proceed with a billable call? [y/N] `))) {
       console.error('aborted: cost confirmation declined');
       process.exitCode = 1;
