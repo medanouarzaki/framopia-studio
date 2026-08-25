@@ -1,0 +1,232 @@
+import { createUserContent, GoogleGenAI } from '@google/genai';
+import {
+  appendCost,
+  computeGeminiCost,
+  modelConfig,
+  type ClientMode,
+  type GeminiUsage,
+} from '@framopia/core';
+import { AnalysisError, type AnalysisWord, type KeywordCandidate } from './types.js';
+
+export type AnalysisPromptVersion = 1;
+
+/**
+ * Identity of the keyword prompt, and part of the analysis cache fingerprint
+ * per ARCHITECTURE §6 — a change here must invalidate every cached analysis.
+ * Switching is this constant and nothing else.
+ */
+export const ACTIVE_ANALYSIS_PROMPT_VERSION: AnalysisPromptVersion = 1;
+
+/**
+ * How many more candidates to ask for than will be kept. The count is imposed
+ * downstream, and candidates are lost to unresolvable ids, removed words and
+ * overlap, so asking for exactly N would leave a reel short whenever any
+ * candidate failed to resolve.
+ */
+/** ARCHITECTURE §8: every billable call appends one line under this stage. */
+export const KEYWORD_LEDGER_STAGE = 'analysis-keywords';
+
+export const CANDIDATE_MULTIPLIER = 3;
+export const MIN_CANDIDATES = 8;
+
+export function candidateCountFor(keywordCount: number): number {
+  return Math.max(MIN_CANDIDATES, keywordCount * CANDIDATE_MULTIPLIER);
+}
+
+export interface BuildKeywordPromptOptions {
+  words: AnalysisWord[];
+  mode: ClientMode;
+  candidateCount: number;
+  version?: AnalysisPromptVersion;
+}
+
+/**
+ * The criteria are stated in priority order and the prompt says so, because
+ * the failure mode is a model that treats them as a flat list and picks a
+ * brand name over the word carrying the claim.
+ *
+ * Delivery and vocal emphasis are ruled out explicitly. Nothing in this
+ * pipeline hears prosody: the model is given the transcript as text, so any
+ * appeal to how something was said would be invention.
+ */
+export function buildKeywordPrompt(options: BuildKeywordPromptOptions): string {
+  const { words, mode, candidateCount } = options;
+  const transcript = words
+    .filter((w) => !w.removed)
+    .map((w) => `${w.id}\t${w.text}`)
+    .join('\n');
+
+  const vocabularyBlock =
+    mode.vocabulary.length > 0
+      ? `The client's own vocabulary, for criterion 2: ${mode.vocabulary.join(', ')}.`
+      : 'The client has no vocabulary list yet, so criterion 2 rests on product and procedure names alone.';
+
+  return `You are selecting the words a short vertical video should emphasize on screen.
+
+The transcript below is one word per line, as "word_id<TAB>text". It is
+Moroccan Darija written in Latin Arabizi, mixed with French and English, and
+some words are in Arabic script. Do not translate it and do not rewrite it.
+
+SELECTION CRITERIA, in this priority order:
+1. PRIMARY: semantic weight. The word that carries the claim of its sentence
+   — the thing being asserted, the thing a viewer must not miss.
+2. SECONDARY (tiebreak only): brand and domain vocabulary — product names,
+   procedure names, and any term in the mode's vocabulary list.
+
+Delivery and vocal emphasis are NOT criteria. Nothing in this pipeline hears
+prosody.
+
+Criterion 2 breaks ties within criterion 1. It never promotes a word that
+carries no claim.
+
+${vocabularyBlock}
+
+Client: ${mode.name}.
+
+Return the ${candidateCount} strongest candidates, ranked best first.
+Return candidates only. How many the video actually uses is imposed
+downstream and is not yours to decide.
+
+Every candidate must name real word_ids copied exactly from the transcript
+below. A candidate may span more than one word only when the words form one
+term. Candidates must not share a word_id.
+
+"score" is your confidence that the word carries its sentence's claim, from
+0 to 1. "reason" is one clause, not a sentence and not a paragraph.
+
+Respond with strict JSON only, no prose, no markdown fences, in this shape:
+{"candidates":[{"wordIds":["w0000"],"text":"...","score":0.0,"reason":"..."}]}
+
+TRANSCRIPT:
+${transcript}`;
+}
+
+interface KeywordRawResponse {
+  candidates: KeywordCandidate[];
+}
+
+export function parseKeywordResponse(text: string): KeywordCandidate[] {
+  const stripped = text
+    .trim()
+    .replace(/^```(?:json)?/i, '')
+    .replace(/```$/, '')
+    .trim();
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(stripped);
+  } catch {
+    throw new AnalysisError(
+      'keywords',
+      'response was not valid JSON after stripping code fences',
+      true,
+    );
+  }
+
+  const record = parsed as Partial<KeywordRawResponse>;
+  if (!Array.isArray(record.candidates)) {
+    throw new AnalysisError('keywords', 'response is missing a "candidates" array', true);
+  }
+
+  return record.candidates.map((c) => ({
+    wordIds: Array.isArray(c?.wordIds) ? c.wordIds.filter((id) => typeof id === 'string') : [],
+    text: typeof c?.text === 'string' ? c.text : '',
+    score: typeof c?.score === 'number' ? c.score : Number.NaN,
+    reason: typeof c?.reason === 'string' ? c.reason : '',
+  }));
+}
+
+const OVERLOAD_MARKERS = ['503', 'UNAVAILABLE', 'high demand', 'overloaded'];
+
+function isTransientOverload(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return OVERLOAD_MARKERS.some((marker) => message.includes(marker));
+}
+
+export interface KeywordAnalysisOptions {
+  apiKey: string;
+  words: AnalysisWord[];
+  mode: ClientMode;
+  candidateCount: number;
+  version?: AnalysisPromptVersion;
+}
+
+export interface KeywordAnalysisResult {
+  candidates: KeywordCandidate[];
+  /** The response verbatim, so a cache entry replays byte for byte. */
+  rawText: string;
+  promptVersion: AnalysisPromptVersion;
+  model: string;
+  costUsd: number;
+  wallTimeS: number;
+  usage: GeminiUsage;
+}
+
+/**
+ * One structured call over the corrected transcript plus mode context.
+ *
+ * **This call is not reproducible.** Two identical requests can return
+ * different candidates: Block 2 measured a 3.7-point WER floor across three
+ * identical correction calls and saw one brand name rendered three ways. The
+ * cache is what makes a repeated run byte-identical, not the model.
+ */
+export async function runKeywordAnalysis(
+  options: KeywordAnalysisOptions,
+): Promise<KeywordAnalysisResult> {
+  const {
+    apiKey,
+    words,
+    mode,
+    candidateCount,
+    version = ACTIVE_ANALYSIS_PROMPT_VERSION,
+  } = options;
+
+  const ai = new GoogleGenAI({ apiKey });
+  const prompt = buildKeywordPrompt({ words, mode, candidateCount, version });
+  const request = {
+    model: modelConfig.geminiModel,
+    contents: createUserContent([prompt]),
+  };
+
+  const startedAt = Date.now();
+  let response: Awaited<ReturnType<typeof ai.models.generateContent>>;
+  try {
+    response = await ai.models.generateContent(request);
+  } catch (error) {
+    if (!isTransientOverload(error)) {
+      throw new AnalysisError(
+        'keywords',
+        error instanceof Error ? error.message : String(error),
+        false,
+      );
+    }
+    try {
+      response = await ai.models.generateContent(request);
+    } catch (retryError) {
+      throw new AnalysisError(
+        'keywords',
+        retryError instanceof Error ? retryError.message : String(retryError),
+        true,
+      );
+    }
+  }
+  const wallTimeS = (Date.now() - startedAt) / 1000;
+  const usage = (response.usageMetadata ?? {}) as GeminiUsage;
+  const rawText = response.text ?? '';
+  const costUsd = computeGeminiCost(usage);
+
+  // Recorded here, where the call is actually made, for the same reason
+  // hybrid.ts records its two legs here: a caller that stubs this function
+  // out must not be able to write a fabricated line to the ledger.
+  appendCost({ stage: KEYWORD_LEDGER_STAGE, model: modelConfig.geminiModel, unit: 'run', usd: costUsd });
+
+  return {
+    candidates: parseKeywordResponse(rawText),
+    rawText,
+    promptVersion: version,
+    model: modelConfig.geminiModel,
+    costUsd,
+    wallTimeS,
+    usage,
+  };
+}

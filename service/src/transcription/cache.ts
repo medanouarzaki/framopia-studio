@@ -11,7 +11,9 @@ import { LOCAL_DIR } from '@framopia/core';
  */
 export const CACHE_ROOT = path.join(LOCAL_DIR, 'cache');
 
-const MANIFEST = 'manifest.json';
+/** Every stage's entry describes itself in a file of this name. */
+export const CACHE_MANIFEST = 'manifest.json';
+const MANIFEST = CACHE_MANIFEST;
 const AUDIO = 'audio.wav';
 
 export interface CacheEntryRef {
@@ -45,11 +47,17 @@ export const MAX_ENTRIES_PER_VIDEO = 3;
  * MAX_ENTRIES_PER_VIDEO. Scoped deliberately: it only ever reads the
  * directory named by videoSha256 under the cache root, and only ever removes
  * children of that directory, so it cannot reach a user asset.
+ *
+ * `stage` narrows it to one stage's entries. Every caller passes one: the
+ * budget is per stage, because a video carries an entry per stage and a
+ * shared budget would let an analysis write evict the transcription entry
+ * the next run still needs.
  */
 export async function evictStaleEntries(
   videoSha256: string,
   root = CACHE_ROOT,
   keep = MAX_ENTRIES_PER_VIDEO,
+  stage?: string,
 ): Promise<string[]> {
   const videoDir = path.join(root, videoSha256);
   let names: string[];
@@ -61,6 +69,7 @@ export async function evictStaleEntries(
 
   const entries: { dir: string; mtimeMs: number }[] = [];
   for (const name of names) {
+    if (stage !== undefined && !name.startsWith(`${stage}-`)) continue;
     const dir = path.join(videoDir, name);
     try {
       const info = await stat(path.join(dir, MANIFEST));

@@ -2,6 +2,7 @@ import { alignCorrectedOntoDraft } from './align.js';
 import {
   cacheEntryDir,
   evictStaleEntries,
+  MAX_ENTRIES_PER_VIDEO,
   readTranscriptionCache,
   writeTranscriptionCache,
   CACHE_ROOT,
@@ -137,7 +138,12 @@ export async function transcribeHybridCached(
     model: transcript.model,
   });
 
-  for (const dir of await evictStaleEntries(videoSha256, cacheRoot ?? CACHE_ROOT)) {
+  for (const dir of await evictStaleEntries(
+    videoSha256,
+    cacheRoot ?? CACHE_ROOT,
+    MAX_ENTRIES_PER_VIDEO,
+    TRANSCRIPTION_CACHE_STAGE,
+  )) {
     log(`cache: evicted stale entry ${dir}`);
   }
 
