@@ -317,6 +317,11 @@ function checkImages(c: Checker, value: unknown, words: Map<string, Rec>): void 
     c.nullableString(`${p}.zoneId`, slot.zoneId);
     c.nullableString(`${p}.templateId`, slot.templateId);
     c.oneOf(`${p}.status`, slot.status, SLOT_STATUSES);
+    // Optional-with-default: absent on every plan written before Block 4
+    // session 3, and checked only when present.
+    if (slot.promptModeVersion !== undefined) {
+      c.number(`${p}.promptModeVersion`, slot.promptModeVersion);
+    }
     if (slot.presentation !== null) {
       c.oneOf(`${p}.presentation`, slot.presentation, PRESENTATIONS);
     }

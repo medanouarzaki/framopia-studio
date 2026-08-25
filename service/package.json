@@ -12,7 +12,8 @@
     "transcribe": "tsx src/transcribe-cli.ts",
     "analyse": "tsx src/analyse-cli.ts",
     "validate-plan": "tsx src/validate-plan-cli.ts",
-    "bakeoff": "tsx src/images/bakeoff-cli.ts"
+    "bakeoff": "tsx src/images/bakeoff-cli.ts",
+    "recompose": "tsx src/analysis/recompose-cli.ts"
   },
   "dependencies": {
     "@framopia/core": "*",

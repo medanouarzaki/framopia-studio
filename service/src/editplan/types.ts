@@ -233,6 +233,17 @@ export interface ImageSlot {
   candidates: ImageCandidate[];
   chosenCandidateId: string | null;
   /**
+   * The `version` of the mode whose fragments composed `prompt` and
+   * `negativePrompt`. Optional under the schema fragility rule: a required
+   * field here would make every plan written before Block 4 session 3
+   * unopenable, migration included. Absent means "composed by the analysis
+   * run that created the slot, mode version unrecorded".
+   *
+   * It exists so a re-run can tell a recomposed slot from a freshly planned
+   * one without diffing prompt strings.
+   */
+  promptModeVersion?: number;
+  /**
    * Quality-gate outcome, editor-overridable. **Null until the gate runs**,
    * which is Block 4 — §3 types it as always set, but the planner has no
    * image to judge and a guessed `cutout` would read as a decision.

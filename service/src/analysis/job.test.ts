@@ -1,8 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { assertValidEditPlan, EditPlanValidationError } from '../editplan/validate.js';
 import { createEditPlan } from '../editplan/io.js';
-import type { EditPlan, TranscriptWord } from '../editplan/types.js';
-import { analysisConfigLabel, planWordsForAnalysis, slotConfigLabel } from './job.js';
+import type { EditPlan, ImageSlot, TranscriptWord } from '../editplan/types.js';
+import {
+  analysisConfigLabel,
+  planWordsForAnalysis,
+  slotConfigLabel,
+  slotsReplacementFlags,
+} from './job.js';
 
 const word = (id: string, text: string, start: number, removed = false): TranscriptWord => ({
   id,
@@ -217,5 +222,56 @@ describe('stage config labels', () => {
     expect(slotConfigLabel(1, { id: 'k2-syndicalia', version: 2 } as never)).toBe(
       'slots-prompt-v1-k2-syndicalia-v2',
     );
+  });
+});
+
+describe('slotsReplacementFlags', () => {
+  const slot = (o: Partial<ImageSlot>): ImageSlot => ({
+    id: 'img001', wordIds: ['w1'], start: 0, end: 2,
+    contextText: 'c', idea: 'i', prompt: 'p', negativePrompt: 'n',
+    candidates: [], chosenCandidateId: null, presentation: null,
+    zoneId: null, templateId: null, status: 'pending', ...o,
+  });
+  const withSlots = (slots: ImageSlot[]): EditPlan =>
+    ({ images: { slots } }) as unknown as EditPlan;
+
+  it('says nothing about a freshly planned slot', () => {
+    expect(slotsReplacementFlags(withSlots([slot({})]))).toEqual([]);
+  });
+
+  /**
+   * A re-run replaces plan.images wholesale, and the ideas it would request
+   * come back different because the call is not reproducible. A recomposed
+   * prompt is the product of a deliberate mode edit that no re-run recovers.
+   */
+  it('blocks on a recomposed prompt', () => {
+    const flags = slotsReplacementFlags(withSlots([slot({ promptModeVersion: 3 })]));
+    expect(flags).toHaveLength(1);
+    expect(flags[0]?.detail).toContain('mode v3');
+  });
+
+  it('blocks on generated candidates and on a chosen one', () => {
+    expect(
+      slotsReplacementFlags(
+        withSlots([
+          slot({
+            candidates: [{ id: 'c1', path: '/i.png', cutoutPath: null, cutoutQuality: null }],
+          }),
+        ]),
+      ),
+    ).toHaveLength(1);
+    expect(
+      slotsReplacementFlags(withSlots([slot({ chosenCandidateId: 'c1' })])),
+    ).toHaveLength(1);
+  });
+
+  it('reports every affected slot', () => {
+    const flags = slotsReplacementFlags(
+      withSlots([
+        slot({ id: 'img001', promptModeVersion: 3 }),
+        slot({ id: 'img002', promptModeVersion: 3 }),
+      ]),
+    );
+    expect(flags.map((f) => f.slotId)).toEqual(['img001', 'img002']);
   });
 });

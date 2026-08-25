@@ -160,6 +160,8 @@ export interface PlanImageSlotsOptions {
   modeId: string;
   bypassCache?: boolean;
   cacheRoot?: string;
+  /** Discard recomposed prompts and generated candidates. Never the default. */
+  force?: boolean;
   log?: (message: string) => void;
   now?: () => string;
   /** Injected in tests, so a plan can be enriched without an API key. */
@@ -176,6 +178,48 @@ export interface PlanImageSlotsResult {
 }
 
 /**
+ * A re-run would replace `plan.images` wholesale, which is correct for a
+ * freshly planned reel and destructive for one that has been recomposed or
+ * generated against. Mirrors `PlanMergeBlockedError`: it names what would be
+ * lost and demands an explicit --force rather than deciding for the operator.
+ */
+export class SlotsReplaceBlockedError extends Error {
+  constructor(readonly reasons: { slotId: string; detail: string }[]) {
+    super(
+      `re-planning would discard work on ${reasons.length} slot(s): ` +
+        `${reasons.map((r) => `${r.slotId} (${r.detail})`).join('; ')}. ` +
+        'The ideas would be re-requested from the model and would come back different, ' +
+        'because the call is not reproducible. Re-run with --force to discard them.',
+    );
+    this.name = 'SlotsReplaceBlockedError';
+  }
+}
+
+/**
+ * What a wholesale replacement of `plan.images.slots` would destroy. A
+ * recomposed prompt counts: it is the product of a deliberate mode edit that
+ * no re-run reproduces, since a re-run asks the model for fresh ideas.
+ */
+export function slotsReplacementFlags(plan: EditPlan): { slotId: string; detail: string }[] {
+  const reasons: { slotId: string; detail: string }[] = [];
+  for (const slot of plan.images.slots) {
+    if (slot.promptModeVersion !== undefined) {
+      reasons.push({
+        slotId: slot.id,
+        detail: `prompt recomposed at mode v${slot.promptModeVersion}`,
+      });
+    }
+    if (slot.candidates.length > 0) {
+      reasons.push({ slotId: slot.id, detail: `${slot.candidates.length} generated candidate(s)` });
+    }
+    if (slot.chosenCandidateId !== null) {
+      reasons.push({ slotId: slot.id, detail: `a candidate was chosen (${slot.chosenCandidateId})` });
+    }
+  }
+  return reasons;
+}
+
+/**
  * Reads a plan, plans its image slots, and writes the result back.
  * **No image is generated here** — that is Block 4. This stage decides which
  * moments get one, what it should show, and the exact prompt that will be
@@ -189,12 +233,17 @@ export async function planImageSlotsForPlan(
     modeId,
     bypassCache = false,
     cacheRoot,
+    force = false,
     log = (): void => undefined,
     now = () => new Date().toISOString(),
     runCached = planSlotsCached,
   } = options;
 
   const plan = await readEditPlan(planPath);
+  // Before the model is asked for anything: a blocked re-run must cost
+  // nothing, the way the ceiling gate works for images.
+  const blocked = slotsReplacementFlags(plan);
+  if (blocked.length > 0 && !force) throw new SlotsReplaceBlockedError(blocked);
   const mode = loadMode(modeId);
   const config = loadConfig();
   const words = planWordsForAnalysis(plan);
