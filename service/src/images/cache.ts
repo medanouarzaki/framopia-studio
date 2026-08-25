@@ -24,6 +24,8 @@ export interface ImageCachePayload {
   generatedAt: string;
   /** Any text the model returned alongside the bytes. */
   text?: string | null;
+  width?: number | null;
+  height?: number | null;
 }
 
 export interface ImageCacheReadResult {

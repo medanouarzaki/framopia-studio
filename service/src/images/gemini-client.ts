@@ -1,5 +1,6 @@
 import { GoogleGenAI } from '@google/genai';
 import { loadConfig, type ImageResolution } from '@framopia/core';
+import { readImageDimensions } from './image-dimensions.js';
 import {
   ImageGenerationError,
   type GeneratedImage,
@@ -73,16 +74,20 @@ export class GeminiImageClient implements ImageGenerationClient {
       .join('\n')
       .trim();
 
+    const bytes = Buffer.from(inline.data, 'base64');
+    const mimeType = inline.mimeType ?? 'image/png';
+    const dimensions = readImageDimensions(bytes, mimeType);
+
     return {
-      bytes: Buffer.from(inline.data, 'base64'),
-      mimeType: inline.mimeType ?? 'image/png',
+      bytes,
+      mimeType,
       usage: {
         promptTokenCount: response.usageMetadata?.promptTokenCount,
         candidatesTokenCount: response.usageMetadata?.candidatesTokenCount,
       },
       text: returnedText.length > 0 ? returnedText : null,
-      width: null,
-      height: null,
+      width: dimensions?.width ?? null,
+      height: dimensions?.height ?? null,
     };
   }
 }

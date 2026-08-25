@@ -13,6 +13,34 @@ import type { ImageGenerationConfig } from './config.js';
 import { IMAGE_CACHE_STAGE, imageFileName, readImageCache, writeImageCache } from './cache.js';
 import { imageFingerprintInputs, imageFingerprintOf } from './fingerprint.js';
 import { assertWithinCeiling, estimateRun, formatEstimate } from './estimate.js';
+import { expectedDimensions } from './image-dimensions.js';
+
+/**
+ * A response whose dimensions are not the ones requested. Hard error, not a
+ * warning: session 2 showed the served token count for an unrequested shape
+ * matches no published (size, aspect) pair, so such a response is an
+ * **unpriced request** and its cost cannot be predicted or checked. Caching
+ * it would also hand the next stage a candidate of the wrong shape.
+ */
+export class ImageDimensionMismatchError extends Error {
+  constructor(
+    readonly modelId: string,
+    readonly requested: { width: number; height: number },
+    readonly received: { width: number | null; height: number | null },
+  ) {
+    const unreadable = received.width === null || received.height === null;
+    super(
+      unreadable
+        ? `${modelId} returned bytes whose dimensions could not be read, for a request of ` +
+          `${requested.width}x${requested.height}. Nothing was cached or written: an image ` +
+          'that cannot be measured cannot be confirmed to be the tier that was paid for.'
+        : `${modelId} returned ${received.width}x${received.height} for a request of ` +
+          `${requested.width}x${requested.height}. Nothing was cached or written; ` +
+          'a served shape that matches no published (size, aspect) pair is an unpriced request.',
+    );
+    this.name = 'ImageDimensionMismatchError';
+  }
+}
 
 export const IMAGE_LEDGER_STAGE = 'images-generate';
 
@@ -24,6 +52,8 @@ export interface GeneratedCandidate {
   modelId: string;
   resolution: string;
   generatedAt: string;
+  width: number | null;
+  height: number | null;
   /** Billed, from usageMetadata. Never the price-table figure. */
   costUsd: number;
   /** The published per-image rate, kept beside the actual so they can be compared. */
@@ -118,7 +148,9 @@ export async function generateImages(options: {
             slotId: slot.id, candidateIndex: index, id,
             path: path.join(ref.dir, hit.payload.file),
             modelId: hit.payload.modelId, resolution: hit.payload.resolution,
-            generatedAt: hit.payload.generatedAt, costUsd: 0,
+            generatedAt: hit.payload.generatedAt,
+            width: hit.payload.width ?? null, height: hit.payload.height ?? null,
+            costUsd: 0,
             estimatedUsd: perImageUsd, cached: true,
             text: hit.payload.text ?? null, bytes: 0,
             mimeType: hit.payload.mimeType, wallTimeS: 0,
@@ -135,6 +167,17 @@ export async function generateImages(options: {
         resolution: config.resolution,
         aspectRatio: config.aspectRatio,
       });
+
+      // Checked before anything is billed, cached or written. The call has
+      // already cost money either way, but a wrong-shaped image must not
+      // enter the cache or the plan.
+      const wanted = expectedDimensions(config.resolution, config.aspectRatio);
+      if (wanted !== null && (image.width !== wanted.width || image.height !== wanted.height)) {
+        throw new ImageDimensionMismatchError(config.modelId, wanted, {
+          width: image.width,
+          height: image.height,
+        });
+      }
 
       // The call returned, so it was billed by Google whether or not this
       // process records it. Everything below is bookkeeping for that fact.
@@ -164,6 +207,7 @@ export async function generateImages(options: {
           modelId: config.modelId, resolution: config.resolution,
           candidateIndex: index, modeId: mode.id, modeVersion: mode.version,
           mimeType: image.mimeType, file, costUsd: actualUsd, generatedAt,
+          width: image.width, height: image.height,
         },
         image.bytes,
       );
@@ -172,7 +216,8 @@ export async function generateImages(options: {
         slotId: slot.id, candidateIndex: index, id,
         path: path.join(ref.dir, file),
         modelId: config.modelId, resolution: config.resolution,
-        generatedAt, costUsd: actualUsd, estimatedUsd: perImageUsd, cached: false,
+        generatedAt, width: image.width, height: image.height,
+        costUsd: actualUsd, estimatedUsd: perImageUsd, cached: false,
         text: image.text, bytes: image.bytes.length, mimeType: image.mimeType, wallTimeS,
       });
     }

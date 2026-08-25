@@ -1,4 +1,4 @@
-import { mkdtempSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -7,7 +7,7 @@ import type { ImageSlot } from '../editplan/types.js';
 import type { GeneratedImage, ImageGenerationClient, ImageGenerationRequest } from './client.js';
 import { DEFAULT_IMAGE_CONFIG, parseImageConfig } from './config.js';
 import { ImageBudgetExceededError } from './estimate.js';
-import { generateImages } from './generate.js';
+import { generateImages, ImageDimensionMismatchError } from './generate.js';
 
 const mode = loadMode('k2-syndicalia');
 
@@ -18,13 +18,22 @@ const mode = loadMode('k2-syndicalia');
  */
 class FakeClient implements ImageGenerationClient {
   readonly requests: ImageGenerationRequest[] = [];
-  constructor(private readonly mimeType = 'image/png') {}
+  constructor(
+    private readonly mimeType = 'image/png',
+    private readonly size: { width: number | null; height: number | null } = {
+      width: 1024,
+      height: 1024,
+    },
+  ) {}
   async generate(request: ImageGenerationRequest): Promise<GeneratedImage> {
     this.requests.push(request);
     return {
       bytes: Uint8Array.from([1, 2, 3]),
       mimeType: this.mimeType,
       usage: { promptTokenCount: 10, candidatesTokenCount: 1120 },
+      text: null,
+      width: this.size.width,
+      height: this.size.height,
     };
   }
 }
@@ -205,5 +214,75 @@ describe('the ledger', () => {
       }),
     ).rejects.toThrow(ImageBudgetExceededError);
     expect(existsSync(COSTS_PATH) ? readFileSync(COSTS_PATH, 'utf8') : '').toBe(before);
+  });
+});
+
+describe('dimension checking', () => {
+  /**
+   * The session-2 defect, as a test. 2752x1536 came back for a 2K 1:1
+   * request; nothing in the code could see it, so a human measured it with
+   * `sips` afterwards.
+   */
+  it('rejects a response whose shape is not the one requested', async () => {
+    const client = new FakeClient('image/jpeg', { width: 2752, height: 1536 });
+    await expect(
+      generateImages({
+        slots: [SLOTS[0]], mode, config: parseImageConfig({ resolution: '2K' }),
+        client, videoSha256: VIDEO, cacheRoot,
+      }),
+    ).rejects.toThrow(ImageDimensionMismatchError);
+  });
+
+  it('names both shapes in the error', async () => {
+    const client = new FakeClient('image/jpeg', { width: 2752, height: 1536 });
+    await expect(
+      generateImages({
+        slots: [SLOTS[0]], mode, config: parseImageConfig({ resolution: '2K' }),
+        client, videoSha256: VIDEO, cacheRoot,
+      }),
+    ).rejects.toThrow(/2752x1536 for a request of 2048x2048/);
+  });
+
+  // A wrong-shaped image is an unpriced request, so it must not become a
+  // cache entry the next run serves as a candidate.
+  it('caches nothing and writes no ledger line when the shape is wrong', async () => {
+    const before = existsSync(COSTS_PATH) ? readFileSync(COSTS_PATH, 'utf8') : '';
+    await expect(
+      generateImages({
+        slots: [SLOTS[0]], mode, config: parseImageConfig({ resolution: '2K' }),
+        client: new FakeClient('image/jpeg', { width: 2752, height: 1536 }),
+        videoSha256: VIDEO, cacheRoot, bill: true,
+      }),
+    ).rejects.toThrow(ImageDimensionMismatchError);
+    expect(readdirSync(cacheRoot)).toEqual([]);
+    expect(existsSync(COSTS_PATH) ? readFileSync(COSTS_PATH, 'utf8') : '').toBe(before);
+  });
+
+  it('accepts the requested shape', async () => {
+    const result = await generateImages({
+      slots: [SLOTS[0]], mode,
+      config: parseImageConfig({ resolution: '2K', candidatesPerSlot: 2 }),
+      client: new FakeClient('image/png', { width: 2048, height: 2048 }),
+      videoSha256: VIDEO, cacheRoot,
+    });
+    expect(result.candidates).toHaveLength(2);
+    expect(result.candidates[0]?.width).toBe(2048);
+  });
+
+  /**
+   * Unreadable bytes fail closed. An image that cannot be measured cannot be
+   * confirmed to be the tier that was paid for, and this check exists
+   * because an unverified assumption cost a session. The message
+   * distinguishes the two cases so an operator knows which happened.
+   */
+  it('rejects when the dimensions could not be read at all', async () => {
+    await expect(
+      generateImages({
+        slots: [SLOTS[0]], mode,
+        config: parseImageConfig({ resolution: '2K', candidatesPerSlot: 2 }),
+        client: new FakeClient('image/png', { width: null, height: null }),
+        videoSha256: VIDEO, cacheRoot,
+      }),
+    ).rejects.toThrow(/dimensions could not be read/);
   });
 });

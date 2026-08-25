@@ -21,6 +21,11 @@ export {
 } from './client.js';
 export { GeminiImageClient } from './gemini-client.js';
 export {
+  expectedDimensions,
+  readImageDimensions,
+  type Dimensions,
+} from './image-dimensions.js';
+export {
   imageFingerprintInputs,
   imageFingerprintOf,
   type ImageFingerprintInputs,
@@ -41,6 +46,7 @@ export {
 } from './estimate.js';
 export {
   generateImages,
+  ImageDimensionMismatchError,
   IMAGE_LEDGER_STAGE,
   type GeneratedCandidate,
   type GenerateImagesResult,
