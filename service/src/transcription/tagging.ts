@@ -84,8 +84,8 @@ export function deriveLang(text: string): WordLang | null {
  *
  * Language is not derivable this way. Arabizi Darija, French and English all
  * sit in Latin script, and Arabic script covers both MSA and the domain terms
- * §6 mandates. When the correction pass does not say — which is every word
- * today — `lang` is **null**, meaning "no stage has determined this yet".
+ * §6 mandates. Prompt version 3 asks the model for it; when the model does
+ * not say, `lang` is **null**, meaning "no stage has determined this".
  * It is deliberately not defaulted to `darija`: most words are Darija, so
  * that default would be right often enough to look like data and wrong often
  * enough to mislead the review UI it feeds.

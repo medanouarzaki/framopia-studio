@@ -119,6 +119,33 @@ Version 2 stays selectable in `service/src/transcription/correction.ts` as the
 record of the experiment. The `ou` corruption is now detected by the
 conformance scorer rather than prevented by prompt wording.
 
+## Amendment — prompt version 3 activated (2026-08-25)
+
+The freeze decision above is unchanged: the engine chain, the model pin and
+the alignment method are as frozen. This records a change to the correction
+prompt's response shape.
+
+**`ACTIVE_PROMPT_VERSION = 3`.** Version 3 is version 1 — the Block 1 frozen
+prompt, verbatim — plus a per-word `lang` from the enum
+`darija|msa|fr|en|mixed`, and nothing else: not the version 2 conjunction
+rule, not the version 2 keyterms position. ARCHITECTURE §3 requires the field
+and PROJECT_SPEC §5 depends on it.
+
+It was measured twice, three runs each, replaying the same recorded Scribe
+draft (`benchmarks/RESULTS-block2-langtagging.md`). The first attempt, under
+guide v1.0.5, tagged every word but disagreed with itself on the six
+Arabic-script domain terms — `darija` twice, `msa` once — because §6 said
+which script those take and never which language they are. Guide v1.0.6
+settles that. Re-measured under v1.0.6: all six terms `msa` in all three runs,
+tag stability 81/81, coverage 81/81 with no nulls and no out-of-enum values,
+and a WER mean of 15.6% against version 1's 15.2% — a 0.4-point difference
+against a measured 3.7-point noise floor.
+
+Version 1 remains selectable and is what run C and every Block 1 figure were
+measured with. `lang` stays nullable in the Edit Plan schema: a model omission
+or a cache entry written before version 3 existed still produces null, and
+null must remain representable rather than be filled with a guess.
+
 ## References
 
 - `benchmarks/RESULTS-block1.md` — run C, the run of record.

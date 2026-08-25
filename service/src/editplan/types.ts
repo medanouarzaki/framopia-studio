@@ -64,9 +64,11 @@ export interface PlanWord {
   /** Raw ASR form, kept for audit and diff. */
   sourceText: string;
   /**
-   * Null where no stage has determined the language yet. The correction
-   * prompt frozen in Block 1 does not report it and it is not derivable from
-   * the characters, so null is the honest value rather than a default.
+   * Null where no stage has determined the language. Prompt version 3 reports
+   * it for every word, so null now means a model omission or a cache entry
+   * written before version 3 existed — it stays representable because the
+   * alternative is filling it with a guess, and it is not derivable from the
+   * characters.
    */
   lang: WordLang | null;
   script: WordScript;

@@ -97,7 +97,7 @@ describe('correction prompt versions', () => {
       version: ACTIVE_PROMPT_VERSION,
     });
     expect(active).toBe(explicit);
-    expect(ACTIVE_PROMPT_VERSION).toBe(1);
+    expect(ACTIVE_PROMPT_VERSION).toBe(3);
   });
 });
 
@@ -178,7 +178,7 @@ describe('correction prompt version 3', () => {
     expect(strip(await build(3))).toBe(strip(await build(1)));
   });
 
-  it('is not the active version', async () => {
-    expect(ACTIVE_PROMPT_VERSION).toBe(1);
+  it('is the active version', () => {
+    expect(ACTIVE_PROMPT_VERSION).toBe(3);
   });
 });

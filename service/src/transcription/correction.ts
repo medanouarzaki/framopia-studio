@@ -11,8 +11,14 @@ export type PromptVersion = 1 | 2 | 3;
  * Identity of the correction prompt, and part of the cache fingerprint per
  * ARCHITECTURE §6 — a change here must invalidate every cached correction.
  *
- * Version 1 is active: the Block 1 frozen prompt, verbatim, and the only
- * version any evidence describes.
+ * Version 3 is active: version 1 plus a per-word `lang` in the response, and
+ * nothing else. Activated in Block 2 session 7 on the evidence in
+ * benchmarks/RESULTS-block2-langtagging.md — under guide v1.0.6 all three
+ * runs tagged every word, agreed on every tag, and moved WER by 0.4 points
+ * against a 3.7-point noise floor.
+ *
+ * Version 1 is the Block 1 frozen prompt, verbatim, and stays selectable: it
+ * is what run C and every Block 1 figure were measured with.
  *
  * Version 2 stays selectable as the record of the Block 2 session 3
  * experiment, but is not active. That comparison
@@ -20,15 +26,12 @@ export type PromptVersion = 1 | 2 | 3;
  * things at once — the conjunction rule and the keyterms position — and ran
  * each arm once, with no noise floor to judge the difference against.
  *
- * Version 3 is version 1 plus a per-word `lang` in the response. Nothing
- * else differs from version 1 — not the conjunction rule, not the keyterms
- * position. ARCHITECTURE §3 requires the field and PROJECT_SPEC §5 depends on
- * it; the frozen prompt asks for text only, so every word currently comes
- * back untagged.
+ * ARCHITECTURE §3 requires the `lang` field and PROJECT_SPEC §5 depends on it
+ * for the Latin-versus-Arabic rendering decision.
  *
  * Switching is this constant and nothing else.
  */
-export const ACTIVE_PROMPT_VERSION: PromptVersion = 1;
+export const ACTIVE_PROMPT_VERSION: PromptVersion = 3;
 
 /**
  * Version 2 only. The hybrid path rendered the Darija conjunction و as French
