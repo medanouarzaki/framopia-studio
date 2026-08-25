@@ -6,16 +6,22 @@ import {
   type ClientMode,
   type GeminiUsage,
 } from '@framopia/core';
+import { MAX_KEYWORD_WORDS } from './span.js';
 import { AnalysisError, type AnalysisWord, type KeywordCandidate } from './types.js';
 
-export type AnalysisPromptVersion = 1;
+export type AnalysisPromptVersion = 1 | 2;
 
 /**
  * Identity of the keyword prompt, and part of the analysis cache fingerprint
  * per ARCHITECTURE §6 — a change here must invalidate every cached analysis.
  * Switching is this constant and nothing else.
+ *
+ * Version 2 adds the span-length preference. Version 1's selections ran to
+ * four words on a 22 s reel, which no keyword template can carry; the cap is
+ * enforced in `narrowSpan` either way, and this asks the model to make
+ * narrowing the exception rather than the rule.
  */
-export const ACTIVE_ANALYSIS_PROMPT_VERSION: AnalysisPromptVersion = 1;
+export const ACTIVE_ANALYSIS_PROMPT_VERSION: AnalysisPromptVersion = 2;
 
 /**
  * How many more candidates to ask for than will be kept. The count is imposed
@@ -50,7 +56,7 @@ export interface BuildKeywordPromptOptions {
  * appeal to how something was said would be invention.
  */
 export function buildKeywordPrompt(options: BuildKeywordPromptOptions): string {
-  const { words, mode, candidateCount } = options;
+  const { words, mode, candidateCount, version = ACTIVE_ANALYSIS_PROMPT_VERSION } = options;
   const transcript = words
     .filter((w) => !w.removed)
     .map((w) => `${w.id}\t${w.text}`)
@@ -88,8 +94,20 @@ Return candidates only. How many the video actually uses is imposed
 downstream and is not yours to decide.
 
 Every candidate must name real word_ids copied exactly from the transcript
-below. A candidate may span more than one word only when the words form one
-term. Candidates must not share a word_id.
+below. Candidates must not share a word_id.${
+    version >= 2
+      ? `
+
+Prefer a span of ONE word. Use two only when the two words are one term and
+neither carries the idea alone. Never return more than ${MAX_KEYWORD_WORDS} words: these go
+into an on-screen animation designed for one or two short words, and a longer
+span is shortened before it reaches the video. Do not include a leading
+article, a preposition, or a bare number in the span.
+
+Do not return two candidates about the same thing. If two spans name the same
+idea, return only the stronger one.`
+      : ''
+  }
 
 "score" is your confidence that the word carries its sentence's claim, from
 0 to 1. "reason" is one clause, not a sentence and not a paragraph.

@@ -37,6 +37,12 @@ describe('the analysis fingerprint', () => {
     expect(analysisFingerprintOf(inputs())).toBe(analysisFingerprintOf(inputs()));
   });
 
+  it('invalidates on an analysis prompt version bump', () => {
+    expect(analysisFingerprintOf(inputs({ promptVersion: 1 }))).not.toBe(
+      analysisFingerprintOf(inputs({ promptVersion: 2 })),
+    );
+  });
+
   it('invalidates on a mode version bump', () => {
     expect(analysisFingerprintOf(inputs({ mode: mode({ version: 3 }) }))).not.toBe(
       analysisFingerprintOf(inputs()),

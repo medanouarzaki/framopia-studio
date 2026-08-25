@@ -69,6 +69,18 @@ describe('buildKeywordPrompt', () => {
     expect(prompt()).not.toContain("client's own vocabulary");
   });
 
+  it('asks for short spans and against duplicate ideas under version 2', () => {
+    const p = prompt();
+    expect(p).toContain('Prefer a span of ONE word.');
+    expect(p).toContain('Never return more than 2 words');
+    expect(p).toContain('Do not return two candidates about the same thing.');
+  });
+
+  it('leaves version 1 exactly as it was measured', () => {
+    const v1 = buildKeywordPrompt({ words, mode: mode(), candidateCount: 9, version: 1 });
+    expect(v1).not.toContain('Prefer a span of ONE word.');
+  });
+
   it('asks for the candidate count and refuses the model the final count', () => {
     expect(prompt()).toContain('Return the 9 strongest candidates');
     expect(prompt()).toContain('is imposed\ndownstream and is not yours to decide');

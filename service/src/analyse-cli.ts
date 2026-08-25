@@ -96,11 +96,23 @@ async function main(): Promise<void> {
       ? 'Cost: $0.0000 — served from cache, nothing billed'
       : `Cost: $${result.analysis.costUsd.toFixed(4)}`,
   );
+  const diversitySkips = selection.failures.filter((f) => f.reason === 'shares-a-head-term');
+  const resolutionFailures = selection.failures.filter((f) => f.reason !== 'shares-a-head-term');
   console.log(
     `${result.plan.keywords.items.length}/${selection.requestedCount} keyword(s), mode ${keywordMode}, ` +
-      `${selection.failures.length} resolution failure(s), ${selection.textMismatches.length} text mismatch(es), ` +
+      `${resolutionFailures.length} resolution failure(s), ${diversitySkips.length} diversity skip(s), ` +
+      `${selection.narrowed.length} narrowed, ${selection.textMismatches.length} text mismatch(es), ` +
       `${result.analysis.wallTimeS.toFixed(1)}s`,
   );
+  if (selection.shortfall > 0) {
+    console.log(`  shortfall: ${selection.shortfall} keyword(s) the candidates could not supply`);
+  }
+  for (const n of selection.narrowed) {
+    console.log(`  narrowed: "${n.originalText}" -> "${n.text}"`);
+  }
+  for (const skip of diversitySkips) {
+    console.log(`  diversity skip: "${skip.candidate.text}"`);
+  }
   for (const item of result.plan.keywords.items) {
     console.log(
       `  ${item.id} ${item.text} (${item.score.toFixed(2)}) [${item.start.toFixed(2)}-${item.end.toFixed(2)}s] approved=${item.approved} — ${item.reason}`,

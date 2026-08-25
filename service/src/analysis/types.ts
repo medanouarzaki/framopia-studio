@@ -35,8 +35,17 @@ export interface ResolutionFailure {
     | 'unknown-word-id'
     | 'removed-word'
     | 'overlaps-a-selected-keyword'
+    | 'shares-a-head-term'
     | 'empty-word-ids'
     | 'score-out-of-range';
+}
+
+/** A candidate the model returned longer than a template can carry. */
+export interface NarrowedSpan {
+  originalWordIds: string[];
+  originalText: string;
+  wordIds: string[];
+  text: string;
 }
 
 export interface SelectionResult {
@@ -54,4 +63,12 @@ export interface SelectionResult {
   textMismatches: { wordIds: string[]; modelText: string; planText: string }[];
   /** Imposed by keywordCountFor, never chosen by the model. */
   requestedCount: number;
+  /** Candidates the span cap shortened, with what they were. */
+  narrowed: NarrowedSpan[];
+  /**
+   * How many keywords the count asked for and diversity could not supply.
+   * Reported, never padded: a second keyword on the same idea is worse than
+   * one fewer emphasis moment.
+   */
+  shortfall: number;
 }

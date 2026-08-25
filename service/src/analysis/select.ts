@@ -1,6 +1,8 @@
+import { narrowSpan, significantStems } from './span.js';
 import type {
   AnalysisWord,
   KeywordCandidate,
+  NarrowedSpan,
   ResolutionFailure,
   SelectionResult,
 } from './types.js';
@@ -21,6 +23,15 @@ import type {
  * two keywords cannot share a start time without sharing a word, which
  * overlap already rejects, but a total order means the sort can never depend
  * on the input's incoming order.
+ *
+ * Two rules are enforced here rather than asked of the model, because a model
+ * that forgets one produces a plan that looks fine and builds wrong:
+ *
+ * - **At most two words per keyword** (`narrowSpan`). An over-long candidate
+ *   is shortened, not dropped.
+ * - **No two keywords on the same head term** (`significantStems`). A
+ *   collision skips the candidate and the next by score takes its place, so
+ *   the count is still met whenever the candidates allow it.
  */
 export function selectKeywords(
   candidates: KeywordCandidate[],
@@ -31,7 +42,11 @@ export function selectKeywords(
   const failures: ResolutionFailure[] = [];
   const textMismatches: SelectionResult['textMismatches'] = [];
 
-  const resolved: (SelectionResult['items'][number] & { firstId: string })[] = [];
+  const resolved: (SelectionResult['items'][number] & {
+    firstId: string;
+    stems: Set<string>;
+  })[] = [];
+  const narrowedSpans: NarrowedSpan[] = [];
 
   for (const candidate of candidates) {
     if (!Array.isArray(candidate.wordIds) || candidate.wordIds.length === 0) {
@@ -58,23 +73,36 @@ export function selectKeywords(
     }
 
     const ordered = [...found].sort((a, b) => a.start - b.start);
-    const planText = ordered.map((w) => w.text).join(' ');
-    if (typeof candidate.text === 'string' && candidate.text.trim() !== planText) {
+    const fullText = ordered.map((w) => w.text).join(' ');
+    if (typeof candidate.text === 'string' && candidate.text.trim() !== fullText) {
       textMismatches.push({
         wordIds: candidate.wordIds,
         modelText: candidate.text,
-        planText,
+        planText: fullText,
+      });
+    }
+
+    const { indices, narrowed: wasNarrowed } = narrowSpan(ordered.map((w) => w.text));
+    const kept = indices.map((i) => ordered[i] as AnalysisWord);
+    const planText = kept.map((w) => w.text).join(' ');
+    if (wasNarrowed) {
+      narrowedSpans.push({
+        originalWordIds: ordered.map((w) => w.id),
+        originalText: fullText,
+        wordIds: kept.map((w) => w.id),
+        text: planText,
       });
     }
 
     resolved.push({
-      wordIds: ordered.map((w) => w.id),
+      wordIds: kept.map((w) => w.id),
       text: planText,
       score: candidate.score,
       reason: candidate.reason,
-      start: ordered[0]?.start ?? 0,
-      end: ordered[ordered.length - 1]?.end ?? 0,
-      firstId: ordered[0]?.id ?? '',
+      start: kept[0]?.start ?? 0,
+      end: kept[kept.length - 1]?.end ?? 0,
+      firstId: kept[0]?.id ?? '',
+      stems: significantStems(kept.map((w) => w.text)),
     });
   }
 
@@ -84,17 +112,25 @@ export function selectKeywords(
 
   const items: SelectionResult['items'] = [];
   const taken = new Set<string>();
+  const claimedStems = new Set<string>();
   for (const entry of resolved) {
     if (items.length >= requestedCount) break;
+    const asCandidate: KeywordCandidate = {
+      wordIds: entry.wordIds,
+      text: entry.text,
+      score: entry.score,
+      reason: entry.reason,
+    };
     if (entry.wordIds.some((id) => taken.has(id))) {
-      const original = candidates.find((c) => c.wordIds.join() === entry.wordIds.join());
-      failures.push({
-        candidate: original ?? { ...entry },
-        reason: 'overlaps-a-selected-keyword',
-      });
+      failures.push({ candidate: asCandidate, reason: 'overlaps-a-selected-keyword' });
+      continue;
+    }
+    if ([...entry.stems].some((stem) => claimedStems.has(stem))) {
+      failures.push({ candidate: asCandidate, reason: 'shares-a-head-term' });
       continue;
     }
     for (const id of entry.wordIds) taken.add(id);
+    for (const stem of entry.stems) claimedStems.add(stem);
     items.push({
       wordIds: entry.wordIds,
       text: entry.text,
@@ -105,5 +141,12 @@ export function selectKeywords(
     });
   }
 
-  return { items, failures, textMismatches, requestedCount };
+  return {
+    items,
+    failures,
+    textMismatches,
+    requestedCount,
+    narrowed: narrowedSpans,
+    shortfall: Math.max(0, requestedCount - items.length),
+  };
 }
