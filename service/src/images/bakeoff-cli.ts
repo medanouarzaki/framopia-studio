@@ -104,6 +104,14 @@ for (const arm of arms) {
   all.push(...result.candidates);
 }
 
+// The probe covers one candidate, so writing the manifest from it would
+// replace a full six-candidate record with a one-line one. It did exactly
+// that in session 4 and the provenance had to be rebuilt by hand.
+if (firstOnly) {
+  console.log(`\nprobe only: ${OUT_DIR}/candidates.json left as it was`);
+  process.exit(0);
+}
+
 writeFileSync(
   path.join(OUT_DIR, 'candidates.json'),
   `${JSON.stringify({ slotId: slot.id, prompt: slot.prompt, negativePrompt: slot.negativePrompt, candidates: all }, null, 2)}\n`,
