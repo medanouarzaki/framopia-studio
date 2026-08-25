@@ -303,6 +303,22 @@ function checkImages(c: Checker, value: unknown, words: Map<string, Rec>): void 
       if (cand.promptFingerprint !== undefined) {
         c.string(`${cp}.promptFingerprint`, cand.promptFingerprint);
       }
+      if (cand.detectedText !== undefined && cand.detectedText !== null) {
+        const found = c.array(`${cp}.detectedText`, cand.detectedText);
+        found?.forEach((raw, di) => {
+          const dp = `${cp}.detectedText[${di}]`;
+          const detection = c.object(dp, raw);
+          if (detection === null) return;
+          c.string(`${dp}.text`, detection.text);
+          c.number(`${dp}.confidence`, detection.confidence);
+          if (
+            typeof detection.confidence === 'number' &&
+            (detection.confidence < 0 || detection.confidence > 1)
+          ) {
+            c.fail(`${dp}.confidence`, 'expected a number between 0 and 1');
+          }
+        });
+      }
       if (cand.metrics !== undefined && cand.metrics !== null) {
         const m = c.object(`${cp}.metrics`, cand.metrics);
         if (m !== null) {

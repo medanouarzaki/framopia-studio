@@ -186,6 +186,13 @@ export interface CutoutMetrics {
   edgeHalo: number;
 }
 
+/** One OCR detection: what was read and how confident the reader was. */
+export interface DetectedText {
+  text: string;
+  /** 0-1 as reported by the reader. */
+  confidence: number;
+}
+
 export interface ImageCandidate {
   id: string;
   path: string;
@@ -213,6 +220,19 @@ export interface ImageCandidate {
   promptFingerprint?: string;
   /** §5.4 metrics. Null once the gate has run and produced nothing usable. */
   metrics?: CutoutMetrics | null;
+  /**
+   * Text the OCR pass found in the generated image. **Advisory, never a
+   * delete**: it surfaces to the editor and nothing acts on it
+   * automatically, because a false positive on a texture that reads like
+   * lettering must not silently drop a good candidate.
+   *
+   * A negative prompt is not a control. One of the six Block 4 images
+   * rendered a legible English product label despite `no text, no watermark,
+   * no logo`, on a reel that is Darija for a Moroccan clinic. Optional with a
+   * default, like every Block 4 addition: absent means the pass has not run,
+   * which is different from having run and found nothing.
+   */
+  detectedText?: DetectedText[] | null;
 }
 
 export interface ImageSlot {

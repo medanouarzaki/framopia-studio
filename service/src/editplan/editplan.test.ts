@@ -310,3 +310,70 @@ describe('validateEditPlan — image candidates (Block 4 fields)', () => {
     ]);
   });
 });
+
+describe('validateEditPlan — detected text on a candidate', () => {
+  function planWithCandidate(candidate: Record<string, unknown>): EditPlan {
+    const plan = minimalPlan();
+    plan.transcript.words = [
+      {
+        id: 'w1', start: 0, end: 0.4, text: 'kolajin', sourceText: 'kolajin',
+        lang: 'darija', script: 'latin', confidence: 0.9,
+        removed: false, removedReason: null, edited: false,
+      },
+    ];
+    plan.images.slots = [
+      {
+        id: 's001', wordIds: ['w1'], start: 0, end: 2,
+        contextText: 'ctx', idea: 'idea', prompt: 'p', negativePrompt: 'n',
+        candidates: [candidate as never],
+        chosenCandidateId: null, presentation: null,
+        zoneId: null, templateId: null, status: 'pending',
+      },
+    ];
+    return plan;
+  }
+
+  const base = { id: 'c1', path: '/i.png', cutoutPath: null, cutoutQuality: null };
+
+  // Absent means the pass has not run, which is not the same as having run
+  // and found nothing. Every plan written before Block 4 session 4 is absent.
+  it('accepts a candidate with no detectedText', () => {
+    expect(validateEditPlan(planWithCandidate(base))).toEqual([]);
+  });
+
+  it('accepts an empty array, which is "ran and found nothing"', () => {
+    expect(validateEditPlan(planWithCandidate({ ...base, detectedText: [] }))).toEqual([]);
+  });
+
+  it('accepts detections', () => {
+    expect(
+      validateEditPlan(
+        planWithCandidate({
+          ...base,
+          detectedText: [
+            { text: 'HAIR', confidence: 0.984 },
+            { text: 'SERUM', confidence: 0.958 },
+          ],
+        }),
+      ),
+    ).toEqual([]);
+  });
+
+  it('rejects a confidence outside 0-1', () => {
+    const issues = validateEditPlan(
+      planWithCandidate({ ...base, detectedText: [{ text: 'HAIR', confidence: 1.5 }] }),
+    );
+    expect(issues.map((i) => i.path)).toEqual([
+      'images.slots[0].candidates[0].detectedText[0].confidence',
+    ]);
+  });
+
+  it('rejects a detection missing its text', () => {
+    const issues = validateEditPlan(
+      planWithCandidate({ ...base, detectedText: [{ confidence: 0.9 }] }),
+    );
+    expect(issues.map((i) => i.path)).toContain(
+      'images.slots[0].candidates[0].detectedText[0].text',
+    );
+  });
+});
