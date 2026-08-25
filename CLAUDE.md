@@ -413,7 +413,8 @@ the module's own doc comment, plus `validateMode`, `parseMode`, `loadMode`,
 
 **Analysis** is `service/src/analysis/`, driven by
 `npm run analyse -- --plan <path.editplan.json> [--stage keywords|slots]
-[--mode <id>] [--keywords auto|propose] [--yes] [--no-cache]`. Two stages,
+[--mode <id>] [--keywords auto|propose] [--yes] [--no-cache]`, and checked with
+`npm run validate-plan -- --plan <path.editplan.json>`. Two stages,
 same shape: derive a count from duration, one structured Gemini call for
 candidates, then pure deterministic selection that imposes the count.
 
@@ -563,7 +564,69 @@ four and lost its duplicate-idea pair. **Nothing needed narrowing and no
 diversity skip fired on either reel** — the prompt prevented both upstream, so
 those two selector rules are live but unexercised on real data.
 
-Panel, templates, and real job types are not started.
+**Block 3 session 5 finished the analysis stage.** What it added:
+
+- **Prompt punctuation is normalised** (`composePrompt`). Fragments come from
+  three places that cannot agree on terminal punctuation, and every session-4
+  prompt shipped reading `...five minutes.. a single clear idea`. Each fragment
+  is now stripped of its own trailing punctuation before the separator is
+  added, and a test pins that no composed prompt doubles punctuation or
+  whitespace.
+- **Subtitle groups are keyword-aware** (`service/src/analysis/regroup.ts`).
+  Grouping runs during transcription, before any keyword exists, so a span can
+  land across two groups — it did on four of six live keywords. After
+  selection, the pass re-cuts the word sequence so every keyword span is
+  exactly one group, and the group records `supersededBy`. **It only ever
+  splits**, so the 1–2 word rule cannot be broken by it; a keyword that still
+  cannot align — non-adjacent words, or a group carrying a human edit §3
+  forbids re-deriving — is **dropped and counted**, never forced.
+- **`templates/manifest.json` and `assets/sfx/sfx.json`** are stubs following
+  TEMPLATE_LIBRARY_GUIDE §8 exactly. Both carry a machine-readable
+  `stub: true`, and `assertRenderable` throws `StubTemplatesError` so a
+  rendering stage cannot build from placeholder timings. **No audio file
+  exists**; the index declares ids only and Block 6 supplies the sounds.
+  `npm run validate:modes` now also validates the manifest and checks that
+  every id a mode allows exists in it with the right type.
+- **Template assignment is deterministic** (`assign.ts`): an offset and a
+  coprime stride seeded from `meta.id` and the element type, plus a per-cycle
+  bump. Consecutive elements never repeat a variant and the walk covers every
+  variant. The multi-variant path is tested now against a fixture mode with
+  3/2/4 variants — 42 subtitle elements came out 14/14/14 with a longest run
+  of 1 — so Block 9 does not discover it broken. A type with no allowed
+  variant throws `NoTemplateVariantError`.
+- **SFX events are derived** (`sfx.ts`), recomputed on every run from the
+  assigned templates and the manifest bindings, at element start plus the
+  binding offset. An sfxId the index does not define throws `UnknownSfxError`.
+  Subtitles declare no SFX per §10, so 42 groups produce none.
+- **Buildability checks** (`buildability.ts`), exposed as
+  `npm run validate-plan -- --plan <path>`: element duration against
+  intro + minHold + outro, every keyword span mapping to exactly one group,
+  slot word ids resolving, no slot overlap, and every templateId in the
+  manifest. It reports every failure at once and **repairs nothing**.
+
+**Both live plans currently fail buildability**, and this is the block's real
+finding: 26 of 42 vitasilk groups and 23 of 39 test-1 groups are shorter than
+`sub_pop`'s 0.60 s of intro + hold + outro, worst case 0.00 s — an interpolated
+word whose start and end are the same instant. The stub timings are guesses and
+Block 6 will move them, but a word spoken in 0.08 s cannot carry an animation
+with a distinguishable intro and outro at any timing. It is a real conflict
+between PROJECT_SPEC §5's fast-reel 1–2 word subtitles and a template contract
+having intro/hold/outro at all, and it is the user's to settle. Numbers in
+`benchmarks/RESULTS-block3-complete.md`.
+
+**Schema departures from ARCHITECTURE §3 introduced in Block 3**, all
+documented at their definition in `service/src/editplan/types.ts`:
+
+| field | shape | why |
+|---|---|---|
+| `transcript.contentHash` | `string?` | A re-run must tell whether downstream word-id references still mean anything without diffing two word arrays. Recomputed from the words, so a plan predating the field is answered exactly rather than assumed stale. |
+| `keywords.items[].edited` | `boolean?` | §3 requires an automated re-run never overwrite a human-flagged item; keywords had no way to carry the flag. |
+| `subtitles.groups[].supersededBy` | `string \| null` (optional) | A keyword and a group can claim the same words and §3 never says which wins. The keyword replaces the group's rendering, and the builder is told rather than inferring it from overlapping time ranges. |
+| `subtitles.groups[].edited` | `boolean?` | Same reason as the keyword flag: the re-grouping pass is an automated re-run over groups. |
+| `images.slots[].wordIds` | `string[]` | §3 gives a slot only start/end, which leaves a merge unable to tell whether the span it illustrates still exists. |
+| `images.slots[].presentation` | `'cutout' \| 'card' \| null` | §3 types it as always set; the quality gate is Block 4, and a guessed `cutout` would read as a decision. |
+
+Panel and real job types are not started; templates exist only as a stub.
 
 See `docs/BLOCKS.md` for the full block plan and `handoffs/` for prior
 session context.
