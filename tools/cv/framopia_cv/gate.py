@@ -35,9 +35,18 @@ MAX_HOLE_RATIO = 0.01
 MIN_FOREGROUND_AREA = 0.05
 MAX_FOREGROUND_AREA = 0.92
 
-# Halo. Mean alpha in the 3px ring outside the subject. A clean matte falls to
-# zero there; 0.10 allows a soft edge without allowing a rim of old
-# background. Provisional.
+# Halo. Mean alpha in the ring beyond the subject's soft edge. A clean matte
+# has decayed to zero there; 0.10 allows a soft boundary without allowing a
+# rim of old background.
+#
+# Held at 0.10 after a human check, not merely left alone. The bound was
+# declared blind and two of the six Block 4 images landed within 0.004 of it
+# (0.0966 and 0.0965), which looked like a threshold about to be wrong. The
+# user compared originals against cutouts: **the bright edge is in the
+# original.** It is rim light the model rendered, not background the matte
+# retained, so the near-misses are correct renders and the bound is not
+# cutting into good mattes. Still provisional — six images from one prompt on
+# one slot — but no longer unexamined.
 MAX_EDGE_HALO = 0.10
 
 

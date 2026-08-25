@@ -87,6 +87,24 @@ landing that close to two of six is worth knowing: a small change in the
 threshold, the model or the prompt flips them to `card`. Nothing was moved to
 accommodate them.
 
+### Resolved: the near-misses are rim light, not retained background
+
+The user compared the originals against the cutouts. **The bright edge is
+present in the original image** — it is rim lighting the model rendered, not
+background the matte failed to remove. The two near-misses are therefore
+correct renders scoring high on a metric that cannot distinguish a lit edge
+from a retained one, and not the gate about to cut into good mattes.
+
+**No threshold was changed.** `MAX_EDGE_HALO` stays at 0.10 and now carries
+this check at its definition. It remains provisional — six images, one prompt,
+one slot — but it is no longer unexamined, and the reason it was not moved is
+recorded rather than implied.
+
+This is also a stated limit of the metric: `edge_halo` measures alpha outside
+the subject and has no way to tell a rim the model drew from a rim the remover
+left. On footage where the mode's lighting axis calls for rim light, expect it
+to run high by construction.
+
 ### Per arm
 
 Three images each. **This is a split, not a result** — three against three,
