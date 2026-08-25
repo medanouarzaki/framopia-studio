@@ -202,6 +202,8 @@ One structured Gemini call over the corrected transcript + mode context → keyw
 ### 5.4 Image generation + quality gate
 Nano Banana, paid tier, 2–4 candidates/slot (**default 2** since Block 4 session 5; mode-overridable via `imageCandidates`).
 
+**Amendment (2026-08-25) — single-subject ideas.** A planned slot's `idea` must depict one subject. `planSlots` throws `MultiSubjectIdeaError` naming the slot and the offending phrase; it does not rewrite. Block 4 session 6 generated `A salon shelf displaying premium hair care products`, which produced an `alpha_edge_noise` failure the gate reported as a matte defect, 47 invented label words, and an unusable matte — one idea contradicting the mode's own invariant in three ways. See PROJECT_SPEC §5.
+
 **Amendment (2026-08-25):** the default was 3. `gemini-3-pro-image` bills ~$0.151 per 2K image against a published $0.134, so three candidates on a five-slot reel is $2.26 — outside PROJECT_SPEC §5's $0.50–2.00 envelope before a single retry. Two puts the same reel at $1.50. The band is unchanged. Frozen config, evidence and caveats: `docs/DECISION-image-config.md`. Cutout gate: rembg/BiRefNet → metrics (alpha edge noise, hole ratio, foreground area sanity, edge halo) → below threshold ⇒ `presentation:"card"` fallback. Editor sees both and can override either way.
 
 ### 5.5 Zones and placement

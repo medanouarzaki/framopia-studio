@@ -355,6 +355,89 @@ export const VARIATION_CONTRADICTIONS: {
 ];
 
 /**
+ * Words and shapes that mean a slot's idea depicts more than one thing.
+ *
+ * Enumerated, readable and extendable rather than clever, for the same reason
+ * `VARIATION_CONTRADICTIONS` is: a general model of "how many things is this"
+ * would need to understand the idea, while this only has to catch the phrasings
+ * a planner actually writes.
+ *
+ * **The list is necessarily incomplete**, and a hard failure built on it will
+ * miss ideas it should catch — `scientific molecular structures` is
+ * multi-subject and no entry here sees it. Extending it is cheap; the entries
+ * are grouped by the reason they qualify so a reader can tell what kind of
+ * word belongs.
+ *
+ * The rule exists because `img005`'s idea — `A salon shelf displaying premium
+ * hair care products` — contradicted the mode's own invariant fragment,
+ * `one subject, centred and unobstructed`, and produced three distinct
+ * problems at once: an `alpha_edge_noise` failure the gate reported as a matte
+ * defect, 47 invented label words, and a matte nothing could use. Block 3's
+ * image negatives already said *nothing in frame that is not carrying the
+ * idea*; a shelf of products is the opposite of one idea read at a glance.
+ */
+export const MULTI_SUBJECT_MARKERS: { term: string; why: string }[] = [
+  { term: 'shelf', why: 'a shelf is a container for many things' },
+  { term: 'shelves', why: 'a shelf is a container for many things' },
+  { term: 'display', why: 'a display is an arrangement of several items' },
+  { term: 'range', why: 'a product range is a set' },
+  { term: 'collection', why: 'a collection is a set' },
+  { term: 'lineup', why: 'a lineup is a set' },
+  { term: 'line-up', why: 'a lineup is a set' },
+  { term: 'assortment', why: 'an assortment is a set' },
+  { term: 'selection of', why: 'a selection is a set' },
+  { term: 'array of', why: 'an array is a set' },
+  { term: 'row of', why: 'a row is a set' },
+  { term: 'set of', why: 'a set is a set' },
+  { term: 'group of', why: 'a group is a set' },
+  { term: 'variety of', why: 'a variety is a set' },
+  { term: 'products', why: 'a plural product noun depicts more than one' },
+  { term: 'bottles', why: 'a plural product noun depicts more than one' },
+  { term: 'jars', why: 'a plural product noun depicts more than one' },
+  { term: 'tubes', why: 'a plural product noun depicts more than one' },
+  { term: 'containers', why: 'a plural product noun depicts more than one' },
+  { term: 'packages', why: 'a plural product noun depicts more than one' },
+  { term: 'items', why: 'a plural product noun depicts more than one' },
+  { term: 'capsules', why: 'a plural product noun depicts more than one' },
+  { term: 'sachets', why: 'a plural product noun depicts more than one' },
+  { term: 'vials', why: 'a plural product noun depicts more than one' },
+];
+
+export interface IdeaIssue {
+  slotId: string;
+  idea: string;
+  marker: string;
+  message: string;
+}
+
+/**
+ * Checks a slot idea against the mode's single-subject invariant.
+ *
+ * Returns issues rather than rewriting. **A violating idea is the planner's
+ * defect**, and a silent rewrite would hide the stage that needs changing
+ * behind an idea nobody wrote.
+ *
+ * Only applies when the mode actually asks for one subject — a mode whose
+ * style fragments never say so has not made the claim, and this must not
+ * invent it.
+ */
+export function checkSlotIdea(slotId: string, idea: string, mode: ClientMode): IdeaIssue[] {
+  const invariant = mode.imageStyle.stylePrompt.join(' ').toLowerCase();
+  if (!invariant.includes('one subject')) return [];
+
+  const lower = idea.toLowerCase();
+  return MULTI_SUBJECT_MARKERS.filter((m) => lower.includes(m.term)).map((m) => ({
+    slotId,
+    idea,
+    marker: m.term,
+    message:
+      `"${m.term}" makes this idea multi-subject (${m.why}), and the mode's ` +
+      'style prompt asks for one subject, centred and unobstructed. ' +
+      'The planner must write a single-subject idea; this is not rewritten here.',
+  }));
+}
+
+/**
  * Cross-check, so it needs both halves and cannot live inside either
  * validator. A term drawn from an axis is appended to the whole of
  * `stylePrompt`, so the two are read together by the model and have to agree.

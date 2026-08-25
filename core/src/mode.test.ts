@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  checkSlotIdea,
   compositionContentHash,
+  MULTI_SUBJECT_MARKERS,
   GLOBAL_NEGATIVE_PROMPTS,
   keywordModeContentHash,
   loadMode,
@@ -483,6 +485,70 @@ describe('validateMode — imageCandidates', () => {
       const mode = valid();
       mode.imageCandidates = n;
       expect(paths(validateMode(mode))).toEqual(['imageCandidates']);
+    }
+  });
+});
+
+describe('checkSlotIdea', () => {
+  const mode = loadMode('k2-syndicalia');
+
+  it('passes a single-subject idea', () => {
+    for (const idea of [
+      'A cosmetic bottle of hair serum on a presentation podium',
+      'A clock face showing exactly five minutes',
+      'A woman looking at a mirror touching her hair with a thoughtful expression',
+      'A female doctor in a medical coat holding a small vial.',
+    ]) {
+      expect(checkSlotIdea('s', idea, mode)).toEqual([]);
+    }
+  });
+
+  /**
+   * The idea that produced three separate problems on img005: an edge-noise
+   * failure the gate reported as a matte defect, 47 invented label words, and
+   * an unusable matte.
+   */
+  it('flags the shelf idea, naming every marker', () => {
+    const issues = checkSlotIdea('img005', 'A salon shelf displaying premium hair care products', mode);
+    expect(issues.map((i) => i.marker).sort()).toEqual(['display', 'products', 'shelf']);
+    expect(issues[0]?.slotId).toBe('img005');
+  });
+
+  it('flags plural product nouns', () => {
+    expect(checkSlotIdea('s', 'Vitamin capsules blending into a cream', mode)).toHaveLength(1);
+    expect(checkSlotIdea('s', 'Three bottles on a table', mode)).toHaveLength(1);
+  });
+
+  // Singular is the whole point: one vial is one subject.
+  it('does not flag the singular', () => {
+    expect(checkSlotIdea('s', 'A doctor holding a small vial', mode)).toEqual([]);
+    expect(checkSlotIdea('s', 'A single bottle', mode)).toEqual([]);
+  });
+
+  it('says the planner must change, not the idea', () => {
+    const issues = checkSlotIdea('s', 'A shelf of serums', mode);
+    expect(issues[0]?.message).toMatch(/not rewritten here/);
+  });
+
+  it('is case-insensitive', () => {
+    expect(checkSlotIdea('s', 'A SALON SHELF', mode)).toHaveLength(1);
+  });
+
+  /**
+   * A mode whose style fragments never ask for one subject has not made the
+   * claim, and this must not invent it for them.
+   */
+  it('says nothing when the mode does not ask for one subject', () => {
+    const permissive = {
+      ...mode,
+      imageStyle: { ...mode.imageStyle, stylePrompt: ['a bold graphic treatment'] },
+    } as ClientMode;
+    expect(checkSlotIdea('s', 'A salon shelf of products', permissive)).toEqual([]);
+  });
+
+  it('carries a reason for every marker', () => {
+    for (const marker of MULTI_SUBJECT_MARKERS) {
+      expect(marker.why.length).toBeGreaterThan(10);
     }
   });
 });

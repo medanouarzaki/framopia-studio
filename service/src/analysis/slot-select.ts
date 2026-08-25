@@ -1,5 +1,11 @@
 import { createHash } from 'node:crypto';
-import { renderNegativePrompt, renderStylePrompt, type ClientMode } from '@framopia/core';
+import {
+  checkSlotIdea,
+  renderNegativePrompt,
+  renderStylePrompt,
+  type ClientMode,
+  type IdeaIssue,
+} from '@framopia/core';
 import type { AnalysisWord } from './types.js';
 
 /**
@@ -123,6 +129,23 @@ function joinFragments(fragments: string[]): string {
   return cleaned.length === 0 ? '' : `${cleaned.join('. ')}.`;
 }
 
+/**
+ * Raised when a planned slot's idea contradicts the mode's single-subject
+ * invariant. A hard failure at plan time, naming the slot and the phrase:
+ * the planner is what needs to change, and a rewrite would hide that behind
+ * an idea nobody wrote.
+ */
+export class MultiSubjectIdeaError extends Error {
+  constructor(readonly issues: IdeaIssue[]) {
+    super(
+      `${issues.length} slot idea(s) depict more than one subject: ` +
+        issues.map((i) => `${i.slotId} ("${i.idea}") — ${i.marker}`).join('; ') +
+        '. The mode asks for one subject, centred and unobstructed.',
+    );
+    this.name = 'MultiSubjectIdeaError';
+  }
+}
+
 export function composePrompt(
   mode: ClientMode,
   idea: string,
@@ -222,6 +245,15 @@ export function planSlots(options: PlanSlotsOptions): SlotSelectionResult {
       negativePrompt: composeNegativePrompt(mode),
     };
   });
+
+  // Checked after selection and before anything downstream reads a prompt: a
+  // multi-subject idea contradicts the mode's own invariant and produced three
+  // separate problems on img005 — a gate failure reported as a matte defect,
+  // 47 invented label words, and an unusable matte.
+  const ideaIssues = slots.flatMap((slot, i) =>
+    checkSlotIdea(`slot ${i + 1}`, slot.idea, mode),
+  );
+  if (ideaIssues.length > 0) throw new MultiSubjectIdeaError(ideaIssues);
 
   const gaps: number[] = [];
   for (let i = 1; i < slots.length; i += 1) {
