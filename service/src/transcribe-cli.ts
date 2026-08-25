@@ -27,12 +27,13 @@ async function main(): Promise<void> {
       keyterms: { type: 'string' },
       yes: { type: 'boolean', default: false },
       'no-cache': { type: 'boolean', default: false },
+      force: { type: 'boolean', default: false },
     },
   });
 
   if (!values.video) {
     console.error(
-      'Usage: npm run transcribe -- --video <path> [--out <path.editplan.json>] [--keyterms <path>] [--yes] [--no-cache]',
+      'Usage: npm run transcribe -- --video <path> [--out <path.editplan.json>] [--keyterms <path>] [--yes] [--no-cache] [--force]',
     );
     process.exitCode = 1;
     return;
@@ -85,6 +86,7 @@ async function main(): Promise<void> {
     videoSha256,
     planPath: values.out,
     bypassCache,
+    force: values.force ?? false,
   });
 
   console.log(`Edit plan written to ${result.planPath}`);

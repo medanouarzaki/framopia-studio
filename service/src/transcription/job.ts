@@ -6,8 +6,11 @@ import { registerJobRunner } from '../jobs.js';
 import {
   createEditPlan,
   editPlanPathFor,
+  mergeIntoExistingPlan,
+  readEditPlan,
   writeEditPlan,
   type EditPlan,
+  type MergePlanResult,
 } from '../editplan/index.js';
 import { transcribeHybridCached, transcriptionCacheRef } from './cached.js';
 import { readTranscriptionCache } from './cache.js';
@@ -36,6 +39,11 @@ export interface TranscribeVideoOptions {
   videoSha256?: string;
   bypassCache?: boolean;
   cacheRoot?: string;
+  /**
+   * Discard human-flagged downstream items when the transcript changed.
+   * Without it a re-run that would destroy them refuses instead.
+   */
+  force?: boolean;
   /** Where extracted audio lives. Overridden in tests so a run cannot pick
    * up a previous run's extraction from the shared .local directory. */
   audioDir?: string;
@@ -58,13 +66,17 @@ export interface TranscribeVideoResult {
   plan: EditPlan;
   transcript: HybridTranscript;
   cached: boolean;
+  merge: MergePlanResult;
 }
 
 /**
  * Video in, validated Edit Plan out: hash, probe, extract audio, transcribe
- * through the cache, then tag, clean and group, and write the plan beside the
- * video. Keywords, images, zones, sfx and build stay empty — the stages that
- * fill them do not exist yet.
+ * through the cache, then tag, clean and group, and merge the result into
+ * whatever plan already sits beside the video.
+ *
+ * It merges rather than replaces because it is no longer the only writer. A
+ * plan carries keyword and image work that later stages added, and a second
+ * transcribe run used to delete all of it without a word.
  */
 export async function transcribeVideo(
   options: TranscribeVideoOptions,
@@ -130,7 +142,7 @@ export async function transcribeVideo(
   }
 
   const timestamp = now();
-  const plan = createEditPlan({
+  const fresh = createEditPlan({
     source: {
       videoPath,
       sha256: videoSha256,
@@ -144,9 +156,9 @@ export async function transcribeVideo(
     now: timestamp,
     id: videoSha256.slice(0, 32),
   });
-  plan.transcript.words = built.words;
-  plan.subtitles.groups = built.groups;
-  plan.pipeline.transcription = {
+  fresh.transcript.words = built.words;
+  fresh.subtitles.groups = built.groups;
+  fresh.pipeline.transcription = {
     status: 'done',
     config: transcriptionConfigLabel(transcript.promptVersion),
     costUsd: transcript.cached ? 0 : transcript.cost.totalUsd,
@@ -158,12 +170,38 @@ export async function transcribeVideo(
   // rather than dropping the key keeps `byStage` diffable across runs, where
   // an appearing and vanishing key reads as a pipeline change.
   const stageCost = transcript.cached ? 0 : transcript.cost.totalUsd;
-  plan.costs = { totalUsd: stageCost, byStage: { transcription: stageCost } };
+  fresh.costs = { totalUsd: stageCost, byStage: { transcription: stageCost } };
 
   const planPath = options.planPath ?? editPlanPathFor(videoPath);
-  await writeEditPlan(planPath, plan);
+  const existing = existsSync(planPath) ? await readEditPlan(planPath) : null;
+  const merge = mergeIntoExistingPlan({ existing, fresh, force: options.force });
 
-  return { videoPath, audioPath, planPath, plan, transcript, cached: transcript.cached };
+  if (existing !== null) {
+    if (!merge.transcriptChanged) {
+      log('plan: transcript unchanged, keeping keywords, images and sfx as they are');
+    } else if (merge.cleared.length > 0) {
+      log(
+        `plan: the transcript changed, so ${merge.cleared.join(', ')} were cleared and their stages set back to pending — word ids they referenced may no longer exist`,
+      );
+      for (const flag of merge.discarded) {
+        log(`plan: --force discarded human-flagged ${flag.block}.${flag.itemId} (${flag.detail})`);
+      }
+    } else {
+      log('plan: the transcript changed; no downstream block had anything to clear');
+    }
+  }
+
+  await writeEditPlan(planPath, merge.plan);
+
+  return {
+    videoPath,
+    audioPath,
+    planPath,
+    plan: merge.plan,
+    transcript,
+    cached: transcript.cached,
+    merge,
+  };
 }
 
 registerJobRunner(TRANSCRIBE_JOB_TYPE, async (params) => {

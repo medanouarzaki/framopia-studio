@@ -90,6 +90,15 @@ export interface PlanWord {
 
 export interface Transcript {
   words: PlanWord[];
+  /**
+   * Departure from ARCHITECTURE §3, which does not name this field. Every
+   * downstream block references transcript word ids, and a re-run has to be
+   * able to tell whether those references still mean anything without
+   * diffing two word arrays. Absent on a plan written before Block 3
+   * session 4; a merge recomputes it from the words rather than assuming
+   * such a plan is stale.
+   */
+  contentHash?: string;
 }
 
 export interface SubtitleGroup {
@@ -115,6 +124,13 @@ export interface KeywordItem {
   templateId: string | null;
   start: number;
   end: number;
+  /**
+   * True once a human touched it, mirroring `PlanWord.edited`. ARCHITECTURE
+   * §3 rules say an automated re-run must never overwrite a flagged item
+   * without explicit confirmation, and keywords had no way to carry that
+   * flag. Optional, so plans written before Block 3 session 4 stay valid.
+   */
+  edited?: boolean;
 }
 
 export interface Keywords {
