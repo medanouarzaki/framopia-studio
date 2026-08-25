@@ -90,6 +90,12 @@ describe('deriveLang — the local cross-check', () => {
     expect(deriveLang('glow')).toBe('en');
   });
 
+  it('does not claim French for the English loanwords of "le filler glow"', () => {
+    expect(deriveLang('le')).toBe('fr');
+    expect(deriveLang('filler')).toBeNull();
+    expect(deriveLang('glow')).toBe('en');
+  });
+
   it('has no opinion on Arabizi', () => {
     for (const text of ['bzaf', 'ch3rk', 'l7loul', '3ndhom', 'katsnay']) {
       expect(deriveLang(text)).toBeNull();

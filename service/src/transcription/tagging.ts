@@ -49,14 +49,20 @@ const ACCENTED_RE = /[àâäçéèêëîïôöùûüÿœæ]/i;
 const FRENCH_LEXICON = new Set([
   'le', 'la', 'les', 'un', 'une', 'des', 'du', 'de', 'et', 'ou', 'alors',
   'donc', 'mais', 'pour', 'avec', 'sans', 'dans', 'par', 'non', 'aussi',
-  'est', "c'est", 'dernière', 'génération', 'marque', 'soin', 'filler',
-  'glow', 'salon', 'enzymes', 'vitamines', 'cocktail', 'saumon', 'cernes',
+  'est', "c'est", 'dernière', 'génération', 'marque', 'soin',
+  'salon', 'enzymes', 'vitamines', 'cocktail', 'saumon', 'cernes',
   'visage', 'peau', 'cou', 'mains', 'acide', 'exemple', 'lissage',
   'brésilien', 'mésothérapie', 'hyaluronique', 'polynucléotides',
   'pigmentées', 'faiblement', 'réticulé', 'ridules', 'décolleté', 'profhilo',
   'caféine', 'minutes', 'injections',
 ]);
 
+// "filler" and "glow" were both listed as French. They are English loanwords
+// in Moroccan aesthetics speech, and the one time the cross-check ever fired
+// it was this error: the model tagged "filler" en in "le filler glow" and was
+// right. "glow" is asserted here; "filler" is only removed, so it derives to
+// null and the derivation stays silent rather than trading one claim for
+// another.
 const ENGLISH_LEXICON = new Set(['the', 'and', 'eyes', 'skin', 'face', 'glow']);
 
 const EDGE_PUNCTUATION_RE = /^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu;
@@ -71,7 +77,6 @@ export function deriveLang(text: string): WordLang | null {
     .replace(/^l['\u2019]/, '')
     .replace(EDGE_PUNCTUATION_RE, '');
   if (bare.length === 0) return null;
-  // English before French: "glow" is on both lists and is English here.
   if (ENGLISH_LEXICON.has(bare)) return 'en';
   if (FRENCH_LEXICON.has(bare)) return 'fr';
   if (ACCENTED_RE.test(bare) || /^l['\u2019]/.test(text)) return 'fr';
