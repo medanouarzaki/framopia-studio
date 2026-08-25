@@ -336,6 +336,20 @@ function checkImages(c: Checker, value: unknown, words: Map<string, Rec>): void 
           }
         }
       }
+      if (cand.gate !== undefined && cand.gate !== null) {
+        const gp = `${cp}.gate`;
+        const gate = c.object(gp, cand.gate);
+        if (gate !== null) {
+          c.oneOf(`${gp}.presentation`, gate.presentation, PRESENTATIONS);
+          c.boolean(`${gp}.passed`, gate.passed);
+          const failures = c.array(`${gp}.failures`, gate.failures);
+          if (failures !== null && typeof gate.passed === 'boolean') {
+            if (gate.passed !== (failures.length === 0)) {
+              c.fail(`${gp}.passed`, 'must be true exactly when failures is empty');
+            }
+          }
+        }
+      }
       if (cand.metrics !== undefined && cand.metrics !== null) {
         const m = c.object(`${cp}.metrics`, cand.metrics);
         if (m !== null) {

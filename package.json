@@ -19,6 +19,7 @@
     "validate-plan": "npm run build:core && npm run validate-plan --workspace framopia-service --",
     "bench:verify-refs": "npm run build:core && npm run verify-refs --workspace framopia-benchmarks --",
     "recompose": "npm run build:core && npm run recompose --workspace framopia-service --",
-    "cutouts": "npm run build:core && npm run cutouts --workspace framopia-service"
+    "cutouts": "npm run build:core && npm run cutouts --workspace framopia-service",
+    "images": "npm run build:core && npm run images --workspace framopia-service --"
   }
 }

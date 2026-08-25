@@ -208,6 +208,14 @@ export interface TextVerdict {
   ok: boolean;
 }
 
+/** The §5.4 quality gate's outcome for one candidate. */
+export interface CandidateGate {
+  presentation: 'cutout' | 'card';
+  passed: boolean;
+  /** Every metric that failed, each naming its value and its bound. */
+  failures: string[];
+}
+
 export interface ImageCandidate {
   id: string;
   path: string;
@@ -262,6 +270,16 @@ export interface ImageCandidate {
    * must not silently drop a good candidate.
    */
   textVerdict?: TextVerdict | null;
+  /**
+   * The §5.4 gate's verdict on this candidate's matte, and why it failed if
+   * it did. Optional: absent means the gate has not run, which is not the
+   * same as having run and passed.
+   *
+   * Per candidate, because the gate judges a matte and each candidate has its
+   * own. The slot's `presentation` is a separate question — it follows
+   * whichever candidate the editor picks.
+   */
+  gate?: CandidateGate | null;
 }
 
 export interface ImageSlot {

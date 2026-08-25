@@ -43,9 +43,18 @@ export interface OcrDetection {
   confidence: number;
 }
 
+export interface TextVerdictJson {
+  hasText: boolean;
+  expected: string[];
+  unexpected: string[];
+  ok: boolean;
+}
+
 export interface SidecarOcr {
   hasText: boolean;
   detections: OcrDetection[];
+  /** Present only when the caller supplied the slot's idea to check against. */
+  verdict?: TextVerdictJson;
 }
 
 export interface RemoveBgResult {
@@ -55,6 +64,7 @@ export interface RemoveBgResult {
   cutoutPath: string;
   model: string;
   alphaMatting: boolean;
+  postProcessMask?: boolean;
   width: number;
   height: number;
   metrics: CutoutMetricsJson;
@@ -96,6 +106,9 @@ export function removeBackground(options: {
   outPath: string;
   alphaMatting?: boolean;
   ocr?: boolean;
+  /** The slot's idea; without it the OCR pass reports text but no verdict. */
+  idea?: string;
+  modeVocabulary?: string[];
 }): Promise<RemoveBgResult> {
   return runSidecar<RemoveBgResult>({
     task: 'remove_bg',
@@ -103,5 +116,7 @@ export function removeBackground(options: {
     outPath: options.outPath,
     alphaMatting: options.alphaMatting ?? false,
     ocr: options.ocr ?? true,
+    idea: options.idea,
+    modeVocabulary: options.modeVocabulary ?? [],
   });
 }
