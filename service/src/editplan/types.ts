@@ -370,8 +370,32 @@ export interface Watermark {
 }
 
 export interface Costs {
+  /**
+   * What the **most recent** run of each stage cost. A cached run writes 0
+   * rather than dropping the key, so `byStage` stays diffable across runs — a
+   * key that appears and vanishes reads as a pipeline change.
+   *
+   * This is not what the reel cost. See `spentUsd`.
+   */
   totalUsd: number;
   byStage: Record<string, number>;
+  /**
+   * **Cumulative money actually spent on this reel**, accumulated across every
+   * run. A cached run adds nothing; a regenerated slot **adds**, it does not
+   * replace — so this can exceed what one clean run would cost, because the
+   * money really was spent.
+   *
+   * Named `spent` rather than `cost` deliberately: Block 8's panel shows a
+   * running total against a $2.00 soft alarm, and an alarm reading a number
+   * that resets on re-run is not an alarm. `byStage` read 0 for images
+   * immediately after a $1.55 run, which is what prompted this.
+   *
+   * Optional with a default under the schema fragility rule: absent on every
+   * plan written before Block 4 session 7, and absent means unknown rather
+   * than zero.
+   */
+  spentUsd?: number;
+  spentByStage?: Record<string, number>;
 }
 
 export interface Build {

@@ -6,6 +6,7 @@ import {
   templatesById,
   type ClientMode,
 } from '@framopia/core';
+import { recordStageSpend } from '../editplan/costs.js';
 import { readEditPlan, writeEditPlan } from '../editplan/io.js';
 import type { EditPlan, ImageSlot, KeywordItem } from '../editplan/types.js';
 import { regroupForKeywords, type DroppedKeyword } from './regroup.js';
@@ -146,8 +147,7 @@ export async function analyseKeywordsForPlan(
   // its own zero: a byStage key that appears and vanishes between runs reads
   // as a pipeline change.
   const stageCost = analysis.cached ? 0 : analysis.costUsd;
-  plan.costs.byStage.analysis = stageCost;
-  plan.costs.totalUsd = Object.values(plan.costs.byStage).reduce((n, v) => n + v, 0);
+  recordStageSpend(plan, 'analysis', stageCost);
   plan.meta.updatedAt = timestamp;
 
   await writeEditPlan(planPath, plan);
@@ -324,8 +324,7 @@ export async function planImageSlotsForPlan(
     error: null,
   };
   const stageCost = analysis.cached ? 0 : analysis.costUsd;
-  plan.costs.byStage.images = stageCost;
-  plan.costs.totalUsd = Object.values(plan.costs.byStage).reduce((n, v) => n + v, 0);
+  recordStageSpend(plan, 'imageSlots', stageCost);
   plan.meta.updatedAt = timestamp;
 
   await writeEditPlan(planPath, plan);

@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { recordStageSpend } from './costs.js';
 import type { EditPlan, PipelineStageName } from './types.js';
 
 /**
@@ -167,12 +168,18 @@ export function mergeIntoExistingPlan(options: MergePlanOptions): MergePlanResul
     costs: {
       totalUsd: existing.costs.totalUsd,
       byStage: { ...existing.costs.byStage },
+      // Carried, never reset: the money was spent on this reel whatever a
+      // re-run does. The existing plan's cumulative figure is the floor.
+      ...(existing.costs.spentUsd === undefined
+        ? {}
+        : { spentUsd: existing.costs.spentUsd }),
+      ...(existing.costs.spentByStage === undefined
+        ? {}
+        : { spentByStage: { ...existing.costs.spentByStage } }),
     },
   };
 
-  const transcriptionCost = fresh.costs.byStage.transcription ?? 0;
-  merged.costs.byStage.transcription = transcriptionCost;
-  merged.costs.totalUsd = Object.values(merged.costs.byStage).reduce((n, v) => n + v, 0);
+  recordStageSpend(merged, 'transcription', fresh.costs.byStage.transcription ?? 0);
 
   // Recomputed from the existing plan's own words rather than read from its
   // stored `contentHash`. The stored value is the record of what downstream

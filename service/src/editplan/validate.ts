@@ -473,6 +473,10 @@ function checkContainers(c: Checker, plan: Rec): void {
   if (costs !== null) {
     c.number('costs.totalUsd', costs.totalUsd);
     c.object('costs.byStage', costs.byStage);
+    // Optional with a default: absent on every plan written before Block 4
+    // session 7, and absent means unknown rather than zero.
+    if (costs.spentUsd !== undefined) c.number('costs.spentUsd', costs.spentUsd);
+    if (costs.spentByStage !== undefined) c.object('costs.spentByStage', costs.spentByStage);
   }
 
   const build = c.object('build', plan.build);

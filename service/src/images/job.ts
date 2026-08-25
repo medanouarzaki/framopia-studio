@@ -1,6 +1,7 @@
 import { mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { loadMode, type ClientMode } from '@framopia/core';
+import { recordStageSpend } from '../editplan/costs.js';
 import { readEditPlan, writeEditPlan } from '../editplan/io.js';
 import type { EditPlan, ImageCandidate, ImageSlot } from '../editplan/types.js';
 import { parseImageConfig, type ImageGenerationConfig } from './config.js';
@@ -226,10 +227,7 @@ export async function generateImagesForPlan(
     completedAt: timestamp,
     error: null,
   };
-  // Zero on a fully cached run rather than absent, so byStage stays diffable
-  // across runs: a key that appears and vanishes reads as a pipeline change.
-  plan.costs.byStage.images = result.totalUsd;
-  plan.costs.totalUsd = Object.values(plan.costs.byStage).reduce((a, b) => a + b, 0);
+  recordStageSpend(plan, 'images', result.totalUsd);
   plan.meta.updatedAt = timestamp;
 
   await writeEditPlan(planPath, plan);
