@@ -178,6 +178,16 @@ function checkSubtitles(c: Checker, value: unknown, wordIds: Set<string>): void 
     c.nullableString(`${p}.templateId`, g.templateId);
     if (g.supersededBy !== undefined) c.nullableString(`${p}.supersededBy`, g.supersededBy);
     if (g.edited !== undefined) c.boolean(`${p}.edited`, g.edited);
+    if (g.displayStart !== undefined) c.number(`${p}.displayStart`, g.displayStart);
+    if (g.displayEnd !== undefined) c.number(`${p}.displayEnd`, g.displayEnd);
+    if (typeof g.displayStart === 'number' && typeof g.displayEnd === 'number') {
+      if (g.displayEnd < g.displayStart) {
+        c.fail(`${p}.displayEnd`, 'a display window cannot end before it starts');
+      }
+      if (typeof g.end === 'number' && g.displayEnd < g.end) {
+        c.fail(`${p}.displayEnd`, 'a card cannot leave before its last word is spoken');
+      }
+    }
     if (ids !== null && ids.length > MAX_GROUP_WORDS) {
       c.fail(`${p}.wordIds`, `a group holds at most ${MAX_GROUP_WORDS} words, found ${ids.length}`);
     }

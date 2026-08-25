@@ -124,6 +124,18 @@ export interface SubtitleGroup {
    * exactly such a re-run; groups had no way to carry the flag.
    */
   edited?: boolean;
+  /**
+   * How long the card is on screen, which is not the same question as when the
+   * words were spoken. `start`/`end` remain the word timings and §3's single
+   * timing authority; these extend forward so a short word's animation can
+   * play, never into the next group and never past the reel.
+   *
+   * Departure from ARCHITECTURE §3, which gives a group only start/end.
+   * **Optional with a default** — absent means the display window is the
+   * speech window — so a plan written before this field stays readable.
+   */
+  displayStart?: number;
+  displayEnd?: number;
 }
 
 export interface Subtitles {

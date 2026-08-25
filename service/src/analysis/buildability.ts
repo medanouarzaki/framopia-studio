@@ -1,5 +1,11 @@
 import type { TemplateEntry } from '@framopia/core';
 import type { EditPlan } from '../editplan/types.js';
+import {
+  displayWindow,
+  DURATION_EPSILON_S,
+  findShortWords,
+  type ShortWord,
+} from './display-timing.js';
 
 export interface BuildabilityIssue {
   path: string;
@@ -11,6 +17,12 @@ export interface BuildabilityIssue {
 export interface BuildabilityReport {
   issues: BuildabilityIssue[];
   checked: { subtitleGroups: number; keywords: number; imageSlots: number; sfxEvents: number };
+  /**
+   * Words too short to be real timings. Reported, never repaired, and never
+   * counted as a buildability failure: they are a Block 2 alignment question
+   * and fixing them here would invent a measurement.
+   */
+  shortWords: ShortWord[];
 }
 
 /**
@@ -46,7 +58,7 @@ export function checkBuildability(
     }
     const needed = template.introS + template.minHoldS + template.outroS;
     const have = end - start;
-    if (have < needed) {
+    if (have < needed - DURATION_EPSILON_S) {
       issues.push({
         path,
         message:
@@ -57,8 +69,11 @@ export function checkBuildability(
     }
   };
 
+  // A subtitle is judged on how long its card is up, not on how long the word
+  // took to say. The two are the same until display timing has run.
   plan.subtitles.groups.forEach((g, i) => {
-    durationCheck(`subtitles.groups[${i}]`, g.start, g.end, g.templateId);
+    const window = displayWindow(g);
+    durationCheck(`subtitles.groups[${i}]`, window.start, window.end, g.templateId);
   });
   plan.keywords.items.forEach((k, i) => {
     durationCheck(`keywords.items[${i}]`, k.start, k.end, k.templateId);
@@ -113,6 +128,7 @@ export function checkBuildability(
 
   return {
     issues,
+    shortWords: findShortWords(plan.transcript.words),
     checked: {
       subtitleGroups: plan.subtitles.groups.length,
       keywords: plan.keywords.items.length,

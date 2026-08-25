@@ -10,6 +10,7 @@ import { readEditPlan, writeEditPlan } from '../editplan/io.js';
 import type { EditPlan, ImageSlot, KeywordItem } from '../editplan/types.js';
 import { regroupForKeywords, type DroppedKeyword } from './regroup.js';
 import { assignTemplates, type AssignmentResult } from './assign.js';
+import { applyDisplayTiming, type DisplayTimingResult } from './display-timing.js';
 import { deriveSfxEvents } from './sfx.js';
 import { analyseKeywordsCached, planSlotsCached, type CachedKeywordResult, type CachedSlotResult } from './cached.js';
 import { ACTIVE_ANALYSIS_PROMPT_VERSION } from './keywords.js';
@@ -170,6 +171,7 @@ export interface PlanImageSlotsResult {
   analysis: CachedSlotResult;
   cached: boolean;
   assignment: AssignmentResult;
+  timing: DisplayTimingResult;
 }
 
 /**
@@ -239,6 +241,27 @@ export async function planImageSlotsForPlan(
   // describing different plans.
   const manifest = loadTemplateManifest();
   const templates = templatesById(manifest);
+  assignTemplates(plan, mode, templates);
+
+  // Display timing needs the assigned template's floor, and a merge produces a
+  // card that has never been assigned one — so assignment runs again over the
+  // final group list. It is deterministic, so the second pass is free of
+  // surprises.
+  const timing = applyDisplayTiming({
+    groups: plan.subtitles.groups,
+    templates,
+    reelDurationS: plan.source.durationS,
+  });
+  plan.subtitles.groups = timing.groups;
+  for (const merge of timing.merged) {
+    log(`subtitles: merged ${merge.from.join(' + ')} to reach the template floor`);
+  }
+  for (const u of timing.unbuildable) {
+    log(
+      `subtitles: ${u.groupId} "${u.wordIds.join(' ')}" has ${u.haveS.toFixed(2)}s of ${u.needS.toFixed(2)}s and cannot be fixed (${u.reason})`,
+    );
+  }
+
   const assignment = assignTemplates(plan, mode, templates);
   for (const issue of assignment.issues) log(`templates: ${issue.path}: ${issue.message}`);
   plan.sfx = { events: deriveSfxEvents(plan, templates, loadSfxIndex()) };
@@ -257,5 +280,5 @@ export async function planImageSlotsForPlan(
 
   await writeEditPlan(planPath, plan);
 
-  return { planPath, plan, analysis, cached: analysis.cached, assignment };
+  return { planPath, plan, analysis, cached: analysis.cached, assignment, timing };
 }

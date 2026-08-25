@@ -26,6 +26,17 @@ async function main(): Promise<void> {
       `${checked.imageSlots} image slot(s), ${checked.sfxEvents} sfx event(s)`,
   );
 
+  if (report.shortWords.length > 0) {
+    console.log(
+      `${report.shortWords.length} word(s) under a sane minimum duration — an alignment question, not a display one:`,
+    );
+    for (const w of report.shortWords) {
+      console.log(
+        `  ${w.id} "${w.text}" ${w.durationS.toFixed(3)}s${w.interpolated ? ' (timing interpolated)' : ' (from scribe)'}`,
+      );
+    }
+  }
+
   if (report.issues.length === 0) {
     console.log('buildable: no issues');
     return;

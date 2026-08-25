@@ -8,13 +8,13 @@
       "file": "library.aep",
       "type": "subtitle",
       "placeholders": ["TXT_MAIN"],
-      "introS": 0.2,
-      "outroS": 0.2,
-      "minHoldS": 0.2,
+      "introS": 0.13,
+      "outroS": 0.13,
+      "minHoldS": 0.07,
       "anchor": "center",
       "imagePresentation": null,
       "sfx": [],
-      "notes": "default subtitle pop; subtitles carry no SFX per §10, they are too frequent"
+      "notes": "default subtitle pop; timings are TEMPLATE_LIBRARY_GUIDE §5's own budget for subtitles, 4 frames per end at 30 fps, giving a floor of 0.33s against the ~0.3s groups §5 says to expect; subtitles carry no SFX per §10, they are too frequent"
     },
     {
       "id": "kw_slam",
