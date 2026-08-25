@@ -147,6 +147,10 @@ export function mergeIntoExistingPlan(options: MergePlanOptions): MergePlanResul
   fresh.transcript.contentHash = freshHash;
 
   if (existing === null) {
+    // A first run spends money too. Without this the cumulative figure
+    // appeared only on the second run, which made a fresh plan and a re-run
+    // plan differ in shape rather than in content.
+    recordStageSpend(fresh, 'transcription', fresh.costs.byStage.transcription ?? 0);
     return { plan: fresh, transcriptChanged: true, cleared: [], discarded: [] };
   }
 
@@ -170,12 +174,16 @@ export function mergeIntoExistingPlan(options: MergePlanOptions): MergePlanResul
       byStage: { ...existing.costs.byStage },
       // Carried, never reset: the money was spent on this reel whatever a
       // re-run does. The existing plan's cumulative figure is the floor.
-      ...(existing.costs.spentUsd === undefined
-        ? {}
-        : { spentUsd: existing.costs.spentUsd }),
+      //
+      // Spread in the same order `recordStageSpend` writes them, so a plan
+      // built through the merge serialises identically to one built fresh.
+      // A test compares the two byte for byte.
       ...(existing.costs.spentByStage === undefined
         ? {}
         : { spentByStage: { ...existing.costs.spentByStage } }),
+      ...(existing.costs.spentUsd === undefined
+        ? {}
+        : { spentUsd: existing.costs.spentUsd }),
     },
   };
 
