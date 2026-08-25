@@ -1,73 +1,25 @@
-# Model bake-off — halted after image 1
+# Model bake-off — six images, both arms complete
 
-**The bake-off did not run.** The sequencing gate was designed to catch a
-defect on the first image rather than the sixth, and it caught two. One flash
-image was generated for **$0.122593**; the remaining five were not.
+Session 2 halted this at image 1 because the client sent no `aspectRatio` and
+the API served 2752x1536. **That fix is verified: all six images came back
+2048x2048.** The comparison corpus exists.
 
-Two of the four post-image-1 checks failed:
+It also cost more than it should have. A cache-eviction defect made the
+verification run regenerate images that were already on disk, and session
+spend reached **$1.326673 against a $1.00 ceiling**. The defect and the
+overrun are in `reports/block-4-session-3.md`; this file is the measurement.
 
-| # | check | result |
-|---|---|---|
-| 1 | response parsed, real shape not an assumed one | **partial** — parsed, but returned `image/jpeg` where the caller assumed PNG |
-| 2 | bytes are a valid image of the requested dimensions | **FAIL** — 2752x1536, not the requested 2K 1:1 |
-| 3 | `usageMetadata` present, cost within 20% of estimate | **FAIL** — $0.122593 against $0.101, **21.4% over** |
-| 4 | exactly one ledger line written | pass — 84 to 85 |
-
-Checks 2 and 3 are one defect, not two.
-
-## The defect
-
-`GeminiImageClient` sent `imageConfig: { imageSize: '2K' }` and **no
-`aspectRatio`**. The API does not default to square: it chose its own ratio
-and returned a 16:9 landscape.
-
-```
-requested   2K, 1:1   = 2048 x 2048 = 4,194,304 px
-received              = 2752 x 1536 = 4,227,072 px
-```
-
-That is **0.78% more pixels for 21.4% more cost**. Working backwards from
-$0.122593 at $60/M output and a ~120-token prompt gives about **2,042 output
-tokens**, against the **1,680** Google publishes for the 2K tier.
-
-Those two figures cannot be reconciled by area, so **the token count for a
-served aspect ratio is not derivable from area.** 2,042 falls between the
-published 2K count (1,680) and the 4K count (2,520) and matches neither. The
-price table prices *published (size, aspect) pairs*; **a request whose served
-dimensions match no published pair is an unpriced request**, and the table
-cannot predict its cost. The tier served was not the tier requested, and the
-21.4% overage is the measure of that.
-
-This is exactly the failure the sequencing was for. At image 6 it would have
-cost $0.705 and produced six landscape images for a square comp.
-
-`ImageConfig.aspectRatio` is in the SDK's own type
-(`node_modules/@google/genai/dist/genai.d.ts`), documented as supporting
-`"1:1"` among others, and simply was never set — session 1 wrote the client
-against the API without executing it, and this is what that cost.
-
-### The third finding: the response is JPEG, not PNG
-
-`mimeType` came back **`image/jpeg`**. The cache layer handled it correctly —
-`imageFileName` maps jpeg to `image.jpg` and the entry on disk is right — but
-the bake-off CLI wrote the review copy as `<model>-<index>.png` regardless, so
-a JPEG sat behind a `.png` name. Session 3 uses these files as its cutout test
-corpus, so a mislabelled corpus would have been handed forward.
-
-The session brief specified `.png` filenames. That was written before anyone
-knew what the API returns. **The extension now follows the returned mime
-type**, which is the only version of the rule that can be true.
+**No quality verdict. Nobody has looked at the images.**
 
 ## The slot
 
-`img002` in `vitasilk`'s Edit Plan, 6.259s–8.86s, the second of five.
-Word ids `w0018`–`w0027`. Context text: `jbt likom le filler glow mn la marque
-Vita Silk`. Idea: `A cosmetic bottle of hair serum on a presentation podium`.
+`img002` of `vitasilk`, 6.259s–8.86s, second of five, word ids
+`w0018`–`w0027`. Prompts recomposed against mode **v3** with no model call.
 
 ### Prompt, verbatim
 
 ```
-A cosmetic bottle of hair serum on a presentation podium. a single clear idea, readable at a glance. one subject, centred and unobstructed. dominant colour palette of #1A0000, #820000 and #C9A96E. lit against #1A0000, with #F8F6F2 reserved for highlights. subject off-centre with open space to one side. flat frontal light, no modelling. wide, the whole subject with air around it.
+A cosmetic bottle of hair serum on a presentation podium. a single clear idea, readable at a glance. one subject, centred and unobstructed. dominant colour palette of #1A0000, #820000 and #C9A96E. lit against #1A0000, with #F8F6F2 reserved for highlights. seen from slightly below, looking up. close, the subject filling most of the height. flat frontal light, no modelling.
 ```
 
 ### Negative prompt, verbatim
@@ -76,67 +28,80 @@ A cosmetic bottle of hair serum on a presentation podium. a single clear idea, r
 no extraneous objects, no background clutter, no incidental detail, nothing in frame that is not carrying the idea, no busy or competing composition, no text, no watermark, no logo
 ```
 
-**The composed prompt contradicts itself and was sent anyway**, because this
-session was to vary one thing and the prompt was not it. The invariant style
-fragment says `one subject, centred and unobstructed`; the variation draw for
-this slot says `subject off-centre with open space to one side`. The mode's
-invariant half and its varying half disagree about where the subject goes.
-Nothing validates that they can both be satisfied. This is a mode-authoring
-problem, not a generation one, and it is live on every slot the planner has
-ever produced.
+**The self-contradiction session 2 reported is gone.** That prompt read
+`one subject, centred and unobstructed` and `subject off-centre with open
+space to one side` in the same breath. The varying half now draws camera
+angle, framing tightness and lighting, none of which can contradict a
+placement the invariant half fixes — and `validateMode` rejects a mode where
+they could.
 
-## The one image
+## The six images
 
-| field | value |
-|---|---|
-| model | `gemini-3.1-flash-image` |
-| candidate index | 0 |
-| resolution requested | 2K, 1:1 |
-| dimensions received | **2752 x 1536** |
-| mime type | `image/jpeg` |
-| bytes | 1,508,160 |
-| wall clock | 14.2 s |
-| **estimate** | **$0.1010** |
-| **actual, from `usageMetadata`** | **$0.122593** |
-| overage | +21.4% |
-| ledger lines written | 1 |
-| **text returned alongside the image** | **none** |
+Every one **2048x2048**, exactly as requested. Every one `image/jpeg` — neither
+model returned PNG for either arm.
 
-File: `benchmarks/results/latest-imagebakeoff/gemini-3.1-flash-image-1.jpg`.
-Kept, not deleted: session 3 uses it.
+| model | idx | dims | estimate | actual | over | wall | bytes |
+|---|---|---|---|---|---|---|---|
+| `gemini-3.1-flash-image` | 0 | 2048x2048 | $0.1010 | $0.119712 | +18.5% | 21.7s | 1,752,462 |
+| `gemini-3.1-flash-image` | 1 | 2048x2048 | $0.1010 | $0.123252 | +22.0% | 20.5s | 1,469,250 |
+| `gemini-3.1-flash-image` | 2 | 2048x2048 | $0.1010 | $0.118092 | +16.9% | 23.0s | 1,406,430 |
+| `gemini-3-pro-image` | 0 | 2048x2048 | $0.1340 | $0.151246 | +12.9% | 215.0s | 1,862,566 |
+| `gemini-3-pro-image` | 1 | 2048x2048 | $0.1340 | $0.150766 | +12.5% | 33.1s | 1,922,200 |
+| `gemini-3-pro-image` | 2 | 2048x2048 | $0.1340 | $0.149086 | +11.3% | 72.3s | 1,692,813 |
 
-### The negative-prompt question is unanswered
+Corpus cost **$0.812154**. Files are in
+`benchmarks/results/latest-imagebakeoff/` with `candidates.json` recording each
+one's size and sha256 prefix.
 
-The model returned **no text at all** alongside the bytes — the `parts` array
-held only `inlineData`. So the `Avoid:` phrasing did not draw a conversational
-reply, which is the failure mode session 1 flagged. That is the only thing
-this says. **Whether the model obeyed the negatives is a question about the
-picture, and nobody has looked at the picture.** One image from one model
-cannot answer it either way.
+The flash files are the **second** run's and the pro files the **first**
+run's, because the eviction defect made the second run regenerate the flash
+arm and overwrite those three review copies. All six are the same model, same
+prompt, same resolution and same aspect ratio, so the comparison is intact;
+the manifest was rebuilt to describe the files actually on disk rather than the
+run that first produced them.
 
-## Cache
+### No model returned any text
 
-Verified on a second invocation of the identical slot and candidate index:
+Six responses, zero text parts. The `Avoid:` phrasing — the negatives are
+appended as prose because these models take no negative-prompt field — drew no
+conversational reply from either model.
 
-```
-ledger lines written: 0 (expected 0)
-  img002-c1 idx=0 cached=true actual=$0.000000 est=$0.1010
-ledger before=85 after=85
-ledger sha UNCHANGED
-```
+**That is all this establishes.** Whether the negatives were *obeyed* is a
+question about the pictures, and nobody has looked at them.
 
-A hit costs $0.00 and writes no ledger line, as designed.
+### Wall clock
 
-**The fix invalidates this entry.** `aspectRatio` is now part of the
-fingerprint — it changes the pixels and it changes the price, so it has to
-key — which means session 3's first run is a miss and regenerates. That is
-correct: the cached image is the wrong shape.
+Flash is consistent: 20.5–23.0s. Pro is not: 33.1s, 72.3s, 215.0s for three
+identical requests. The 215s call was the arm's first, so a cold start is the
+obvious guess and three calls cannot confirm it. On these numbers pro is
+between 1.4x and 10x slower per image, and the spread is wider than the gap.
+
+## The price table under-predicts even at the correct shape
+
+Session 2 found a 21.4% overage and traced it to a served shape that matched
+no published (size, aspect) pair. **That explanation was necessary but not
+sufficient.** Every one of these six images was served at exactly the
+requested 2K 1:1 — a published pair — and every one still billed over:
+
+| model | published per-image | mean actual | mean over |
+|---|---|---|---|
+| `gemini-3.1-flash-image` | $0.1010 | $0.120352 | **+19.2%** |
+| `gemini-3-pro-image` | $0.1340 | $0.150366 | **+12.2%** |
+
+Working back from the flash figures at $60/M output gives roughly 1,930–2,050
+output tokens against the **1,680** Google publishes for 2K.
+
+So the published per-image rate is a **floor, not a price**, even for an exact
+published pair. The overage is smaller and steadier at the correct shape
+(11–22%) than at the wrong one, which is worth something — but any budget
+built from the table needs a margin, and the ledger must keep taking its
+figures from `usageMetadata`.
 
 ## Per-reel arithmetic
 
-Published per-image rates at 2K, from
-`core/src/model-config.json` (ai.google.dev, read 2026-08-25):
-flash **$0.101**, pro **$0.134**.
+From the published rates, which the table above shows are floors.
+
+**2K** (both arms were run at 2K):
 
 | candidates/slot | flash, 4-slot | flash, 5-slot | pro, 4-slot | pro, 5-slot |
 |---|---|---|---|---|
@@ -144,7 +109,7 @@ flash **$0.101**, pro **$0.134**.
 | 3 | $1.212 | $1.515 | $1.608 | $2.010 |
 | 4 | $1.616 | $2.020 | $2.144 | $2.680 |
 
-At 1K, where pro is priced identically and flash is $0.067:
+**1K**, where pro is priced identically and flash drops to $0.067:
 
 | candidates/slot | flash, 4-slot | flash, 5-slot | pro, 4-slot | pro, 5-slot |
 |---|---|---|---|---|
@@ -152,12 +117,33 @@ At 1K, where pro is priced identically and flash is $0.067:
 | 3 | $0.804 | $1.005 | $1.608 | $2.010 |
 | 4 | $1.072 | $1.340 | $2.144 | $2.680 |
 
-**Treat every figure above as a floor.** The one real call billed 21.4% over
-its published rate. Until a call is confirmed to land on the requested tier,
-the published rate is not a reliable predictor of the invoice — which is the
-second reason the ledger records `usageMetadata` and never the table.
+Applying the measured overage — +19.2% flash, +12.2% pro — a 5-slot reel at 3
+candidates costs about **$1.81 on flash at 2K**, **$1.20 on flash at 1K** and
+**$2.26 on pro at either**. Pro prices 1K and 2K the same, so there is no
+reason to run pro below 2K.
 
-## No verdict
+## Cache
 
-No model was picked, no quality judgement was made, and none should be read
-into this file. One landscape image from one model is not a comparison.
+**The cache-hit verification failed and is the reason this session is a
+PROBLEM.** A second invocation regenerated instead of hitting, at a cost of
+$0.51.
+
+The cause was not the fingerprint, which was correct and stable. The image
+stage sized its eviction budget from **one call's** image count, so the pro
+arm's eviction deleted the three entries the flash arm had just written. Any
+run that calls twice over one video destroyed its own cache.
+
+Fixed: `evictStaleEntries` takes a protect list it never removes, and the
+image budget is a per-video constant. The two-arm scenario is now a test that
+fails against the old eviction and passes against the new one.
+
+**The fix is verified against the fake client only.** No live re-verification
+was run, because the session was already over its ceiling and confirming a
+cache hit with real calls would have meant spending more to prove that
+spending had stopped.
+
+## What this does not say
+
+No model was chosen. No image was judged. Flash is cheaper and faster and
+that is a fact about the invoice, not about the pictures. The corpus is six
+files at 2048x2048 from one slot of one reel, waiting to be looked at.

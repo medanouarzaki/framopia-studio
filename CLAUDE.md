@@ -110,6 +110,9 @@ AI-generated contextual images, SFX, and a watermark. Full spec in
 - `npm run bakeoff --prefix service [-- --first-only]` — **billable.** The
   Block 4 image bake-off on `vitasilk` slot `img002`. `--first-only`
   generates one image and stops.
+- `npm run recompose -- --plan <abs path.editplan.json> [--mode <id>]` — free.
+  Re-composes an existing plan's image prompts against the current mode. No
+  Gemini call and no analysis re-run. Paths must be absolute.
 
 ## Conventions (binding — see docs/CLAUDE_CODE_GUIDELINES.md)
 
@@ -877,19 +880,116 @@ Two of four post-image-1 checks failed, and both are one defect:
 estimate is built from; the two are recorded side by side rather than assumed
 equal, which is how the 21.4% gap was visible at all.
 
-**The mode's own prompt contradicts itself.** `img002` composed to
+**The mode's own prompt contradicted itself.** `img002` composed to
 `one subject, centred and unobstructed` (invariant style fragment) plus
-`subject off-centre with open space to one side` (variation draw). Nothing
-validates that the invariant half and the varying half can both be satisfied,
-and this is live on every slot the planner has ever produced. Not touched this
-session — one variable — and it is a mode-authoring problem, not a generation
-one.
+`subject off-centre with open space to one side` (variation draw), live on
+every slot the planner had ever produced. Fixed in session 3: the composition
+axis is gone and `validateMode` now rejects the pair.
 
 **No model was picked and no quality judgement exists.** One landscape image
-from one model is not a comparison. The artifact is
-`benchmarks/results/latest-imagebakeoff/gemini-3.1-flash-image-1.jpg`
-(gitignored, kept — session 3's cutout corpus), and **it is the wrong shape**,
-so session 3 regenerates rather than building the gate on it.
+from one model is not a comparison. That image was the wrong shape and was
+discarded in session 3, which regenerated the corpus at the correct one.
+
+## Block 4 session 3 — the bake-off ran, and went over budget
+
+**Session spend $1.326673 against a $1.00 ceiling.** Ten images were generated
+where six were planned, because a cache-eviction defect made the verification
+run regenerate an arm that was already on disk. Ledger 91 → 95 entries,
+$8.491707 → $9.005328. The overrun is recorded in
+`reports/block-4-session-3.md`; the measurement is
+`benchmarks/RESULTS-block4-imagebakeoff.md`.
+
+**ORTHOGRAPHY_GUIDE is v1.0.8.** The conjunction before an Arabic-script term
+attaches *in Arabic script* as a proclitic: `ومادة`, never `w مادة` and never
+`و مادة`. §2 states it; §6 and §8 cross-reference it, because both could be
+read as forbidding it and neither does — §8 bans mixing scripts inside one
+word and the fused form is one script throughout, and §6's term-level rule is
+untouched because after fusion there is no separate conjunction word whose
+script a neighbour could decide. `findProclitics` names the required fix when
+the next token is Arabic script. **No WER figure moved** — all 20 rows
+identical, `RESULTS-block1.md` byte-identical — which is what the ruling
+predicted, the references already carrying the fused form.
+
+**The mode is v3 and its variation axes are camera angle, framing tightness
+and lighting.** Composition is gone: when the quality gate returns `cutout`
+the background is discarded, so variation expressed as where the subject sits
+inside the generated frame is erased, and the set reads as batched precisely
+where cutouts work best. Every axis term is now a property of the subject.
+`centred and unobstructed` stays in the invariant half — it survives the
+cutout and helps it by holding the subject clear of the frame edge.
+
+**`validateMode` rejects a contradiction between the two halves of a prompt**
+(`VARIATION_CONTRADICTIONS` in `core/src/mode.ts`, an enumerated pair table).
+Session 2 shipped `one subject, centred and unobstructed` alongside `subject
+off-centre with open space to one side` on **every slot the planner had ever
+produced**, and it was found by a human reading the composed string.
+
+**Prompts recompose without a model call**
+(`service/src/analysis/recompose.ts`, `npm run recompose -- --plan <abs path>`).
+A mode bump changes the composed prompt but not the underlying idea, and the
+idea is the only part a Gemini call produces; re-running analysis would pay for
+ideas already on disk and replace them with different ones, the call not being
+reproducible. It walks the same pure path the planner used, so the output is
+byte-identical to what the planner would have written at this mode version — a
+test asserts exactly that. Run on `vitasilk` and `test-1`.
+
+- `ImageSlot.promptModeVersion` is a **schema addition, optional with a
+  default**, absent on every plan written before this session and validated
+  only when present. All five plans still open through `readEditPlan`.
+- **Slot planning now refuses to overwrite recomposed prompts, generated
+  candidates or a chosen candidate** and demands `--force`
+  (`SlotsReplaceBlockedError`). It set `plan.images = { slots }` wholesale
+  before, destroying all three silently.
+- **Known divergence, accepted and unresolved:** the mode is at v3 while the
+  analysis cache entries are fingerprinted at v2. Ruled on next session. Not
+  papered over and the cache was deliberately not invalidated.
+
+**The client reports what it received.** `image-dimensions.ts` reads width and
+height out of the returned bytes — PNG IHDR and the JPEG frame header, no
+decoder dependency — and `generateImages` throws
+`ImageDimensionMismatchError` before anything is billed, cached or written.
+Unreadable bytes fail closed with their own message: an image that cannot be
+measured cannot be confirmed to be the tier that was paid for. The parser is
+tested against session 2's real 2752x1536 response and agrees with the system
+decoder on it.
+
+### What the six images established
+
+**Session 2's `aspectRatio` fix works: all six came back 2048x2048.** All six
+`image/jpeg`; neither model returned PNG. **No model returned any text**, so
+the `Avoid:` phrasing drew no conversational reply — whether the negatives
+were *obeyed* is a question about the pictures and **nobody has looked at
+them.** No model was picked.
+
+**The price table under-predicts even at the correct shape.** Session 2's
+explanation — a served shape matching no published pair — was necessary but
+not sufficient. All six of these were served at exactly the requested 2K 1:1
+and still billed over: flash **+19.2%** mean, pro **+12.2%** mean, roughly
+1,930–2,050 output tokens against the 1,680 published for 2K. **The published
+per-image rate is a floor, not a price**, which is why the ledger takes its
+figures from `usageMetadata` and never the table.
+
+Wall clock: flash 20.5–23.0s, consistent; pro 33.1s / 72.3s / 215.0s for three
+identical requests, the 215s being the arm's first call.
+
+### The eviction defect
+
+`generateImages` sized its eviction budget from **one call's** image count, so
+a second call over the same video and stage deleted the first call's entries.
+The bake-off's pro arm evicted the flash arm's three images, and the
+"second invocation is a cache hit" check regenerated six for $0.51.
+
+Fixed: `evictStaleEntries` takes a **protect list it never removes**, and the
+image budget is `MAX_IMAGE_ENTRIES_PER_VIDEO = 64` — an image costs ~$0.12 to
+regenerate and ~1.5MB to keep. The two-arm scenario is a test that fails
+against the old eviction and passes against the new. **Verified against the
+fake client only**; no live re-verification was run, the session being over
+its ceiling already.
+
+The corpus at `benchmarks/results/latest-imagebakeoff/` (gitignored, kept for
+session 4) is six 2048x2048 JPEGs: the pro files from the first run, the flash
+files from the second, all the same model, prompt, resolution and aspect
+ratio. `candidates.json` was rebuilt to describe the files actually on disk.
 
 Panel and real job types are not started; templates exist only as a stub.
 
