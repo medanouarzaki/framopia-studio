@@ -35,9 +35,11 @@ AI-generated contextual images, SFX, and a watermark. Full spec in
   Whisper baseline, Scribe+Gemini hybrid), scored on WER, orthography
   conformance, and cross-engine timestamp deviation. See `benchmarks/README.md`.
 - `tools/cv/` — the Python CV sidecar: repo-local venv, subprocess, JSON in
-  and JSON out. Background removal and the §5.4 cutout gate, local OCR, and
-  person segmentation for frame analysis. Tasks: `remove_bg`, `detect_text`,
-  `segment_person`, `segment_overlay`. Downloaded weights live in
+  and JSON out. Background removal and the §5.4 cutout gate, local OCR,
+  person segmentation and zone derivation for frame analysis. Tasks:
+  `remove_bg`, `detect_text`, `segment_person`, `segment_overlay`,
+  `compute_zones`, `component_stats`, `zone_overlay`, `component_overlay`.
+  Downloaded weights live in
   `tools/cv/models/` (gitignored) and are pinned by sha256 in
   `tools/cv/models.json`.
   `tools/validate-templates/` — not started
@@ -139,6 +141,16 @@ AI-generated contextual images, SFX, and a watermark. Full spec in
   Person segmentation over an already-sampled reel into
   `.local/cv/<video-basename>/masks-2fps/`, plus contact sheets and close-ups
   under `benchmarks/results/latest-segmentation/`. Needs `tools/cv/setup.sh`.
+- `npm run zones -- (--reel <label> | --all) [--threshold <t>] [--no-debug]` —
+  free, local, **no inference**: it reads the masks already on disk. Writes
+  `zones.json` beside them and contact sheets, close-ups and a validity
+  timeline under `benchmarks/results/latest-zones/`. `--threshold` re-reads the
+  stored **confidence** masks at that value instead of the binary ones, which
+  is how the sensitivity sweep varies one thing.
+- `npm run components -- [--floor <f>]` — free, local. Connected-component
+  analysis over every stored binary mask, plus the twelve frames with the
+  largest dropped component rendered to `benchmarks/results/latest-components/`.
+  Modifies no mask.
 
 **`.local/cv/` is not a cache.** Nothing fingerprints it, no stage looks
 entries up in it, and it is deliberately outside `.local/cache/` so that it is
@@ -1463,6 +1475,99 @@ footage and are covered by the pre-existing `benchmarks/results/` ignore.
 
 **Not done and not attempted this session:** zone computation, the placement
 solver, and any Edit Plan schema change. No plan was read or written.
+
+## Block 5 session 2 — zones
+
+**Spent $0.00; no API was called.** Ledger 105 entries / $10.555772 /
+sha `a7e85e4b…` at both ends, byte-identical.
+
+**Zones are derived from the mask, never from the bounding box.** Session 1
+measured person pixels at ~0.25 of the frame against a median bounding box of
+~0.64 of it: the subject fills about two-fifths of its own box, and the rest is
+negative space beside the head and between the arms. A box-derived left or
+right zone would throw that away. `person_stats`' bbox stays reported metadata
+and is not an input to zone derivation.
+
+**MediaPipe Image Segmenter is frozen for this project.** The user reviewed all
+five contact sheets and ruled the masks accurate. YOLO11-seg is assessed and
+rejected and **ultralytics must not be installed**; ARCHITECTURE §1.4 named it
+as the fallback and that is now closed.
+
+**`tools/cv/framopia_cv/zones.py`** holds the whole derivation, and every
+constant in it is **chosen, not measured**:
+
+| constant | value | why |
+|---|---|---|
+| `PERSON_COMPONENT_FLOOR` | 0.0001 of frame | 52 px at 540x960, under any limb at this size; set from the corpus distribution, the cut itself chosen |
+| `ZONE_MARGIN` | 0.02 | clearance so a zone never abuts the subject |
+| `MIN_ZONE_AREA` | 0.03 | below this a zone is worse than none, because the solver would treat it as a real option |
+| `BOTTOM_EXCLUSION` | 0.15 | the mask under-covers low-contrast fabric there and an unselected pixel reads as free space |
+| `LATERAL_INSET` / `VERTICAL_INSET` | 0.03 / 0.05 | no zone runs into the frame border |
+| `OPEN_SAMPLES` / `CLOSE_SAMPLES` | 2 / 1 | opening is slow, closing is eager |
+
+**The component floor is validated by a render, not by the histogram.** The
+non-largest component distribution decays smoothly from 1 px with **no natural
+gap**, so the cut is a judgement: 444 non-largest components across 231 frames,
+median 0.000015 of frame, p90 0.00022, max 0.00583. **No non-largest component
+anywhere in the corpus reaches 1% of the frame.** The largest component the
+floor actually drops is **ground-truth frame 29 at 0.000098 of frame**, and the
+twelve worst-case renders show every dropped component to be a hem fragment at
+the very bottom edge — inside `BOTTOM_EXCLUSION` in any case. **No hand or limb
+is dropped anywhere in the corpus.**
+
+**Occupancy is read per row and per column over the span each zone covers**,
+never from a bounding box. A skirt flaring left inside the excluded band does
+not kill the left zone, because the left zone does not reach there.
+
+**All five reels yield zones, on every sample.** Zero empty samples across 231
+frames; four reels give top, left and right, vitasilk gives top and left only.
+Each reel produced exactly one window per kind spanning the whole reel — the
+footage is a fixed camera on a seated or standing speaker, so the hysteresis
+never had a dropout to absorb. **The reduction is therefore live but
+unexercised on real input**, and only the unit tests show it opening and
+closing.
+
+| reel | top area | left area | right area | valid s / kind | wall clock |
+|---|---|---|---|---|---|
+| test-1 | 0.2348 | 0.1351 | 0.1277 | 21.52 | 0.4 s |
+| test-2 | 0.2377 | 0.1973 | 0.1470 | 22.02 | 0.4 s |
+| test-3 | 0.2818 | 0.0936 | 0.1321 | 21.02 | 0.3 s |
+| ground-truth | 0.2456 | 0.1973 | 0.1055 | 23.02 | 0.4 s |
+| vitasilk | 0.1340 | 0.0418 | none | 25.53 | 0.5 s |
+
+**`BOTTOM_EXCLUSION` costs nothing in validity.** Measured against the same
+derivation at 0.0: **0.0% of total valid seconds removed on all five reels.**
+It changes rectangle heights, not whether a zone exists.
+
+**The bottom 15% of the frame is not generally under-covered.** Mean mask
+coverage there runs 0.21–0.64 against 0.21–0.42 over the rest — **higher, not
+lower, on every reel** — and occupied rows in the band are 100% on four reels
+and 88.3% on ground-truth, which is the only reel with a frame under 50%. The
+dress defect the exclusion guards against is one reel and a few rows, not a
+corpus-wide gap. Reported, not acted on.
+
+**The threshold barely matters.** Re-deriving from the stored confidence masks
+at 0.4 and 0.6 changed **zone count not at all and total valid seconds not at
+all** — 0.0% on every reel at both. Mean rect area moved −4.2% to +1.7%, the
+largest being vitasilk's thin left strip. Re-thresholding the confidence mask
+at 0.5 reproduces the stored binary masks **exactly**, on all five reels. This
+was a sensitivity measurement; **no default changed and no threshold is
+recommended.**
+
+**Known geometric gap: `MIN_ZONE_AREA` does not capture usability.** vitasilk's
+left zone is 0.052 wide by 0.800 tall — area 0.042, over the 0.03 floor, but a
+strip no square image fits. A minimum dimension or an aspect bound is missing
+and is the solver session's problem. **Zones may also overlap each other** (top
+overlaps left and right in the frame corners); they are independent candidates
+and non-overlap is the solver's job, per ARCHITECTURE §5.5.
+
+Debug output: `benchmarks/results/latest-zones/<reel>-contactsheet.png`,
+six `<reel>-frame-<index>.png` and `<reel>-timeline.png` per reel;
+`benchmarks/results/latest-components/` for the floor renders. Both covered by
+the pre-existing `benchmarks/results/` ignore.
+
+**Not done and not attempted:** the placement solver, any Edit Plan read or
+write, and any schema change. Zones exist only as `zones.json` beside the masks.
 
 Panel and real job types are not started; templates exist only as a stub.
 
