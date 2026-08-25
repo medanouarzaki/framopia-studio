@@ -200,12 +200,97 @@ describe('the k2 stub on disk', () => {
     expect(mode.vocabulary).toEqual([]);
   });
 
-  it('varies composition, lighting and crop across a reel', () => {
+  it('is at version 3', () => {
+    expect(mode.version).toBe(3);
+  });
+
+  it('varies camera angle, framing tightness and lighting across a reel', () => {
     expect(Object.keys(mode.imageVariation.axes).sort()).toEqual([
-      'composition',
-      'crop',
+      'cameraAngle',
+      'framingTightness',
       'lighting',
     ]);
+  });
+
+  /**
+   * A cutout discards the background, so variation expressed as where the
+   * subject sits inside the generated frame is erased and the set reads as
+   * batched exactly where cutouts work best. Every axis term has to be a
+   * property of the subject itself.
+   */
+  it('has no in-frame placement language in any axis', () => {
+    const placement = [
+      'off-centre', 'off centre', 'in frame', 'to one side', 'edge to edge',
+      'headroom', 'symmetrical',
+    ];
+    for (const [axis, values] of Object.entries(mode.imageVariation.axes)) {
+      for (const value of values) {
+        for (const term of placement) {
+          expect(`${axis}: ${value}`.toLowerCase()).not.toContain(term);
+        }
+      }
+    }
+  });
+
+  // Centred survives the cutout and helps it, by keeping the subject clear
+  // of the frame edge, so the invariant fragment keeps it.
+  it('keeps the centred subject in the invariant half', () => {
+    expect(mode.imageStyle.stylePrompt.join(' ')).toContain('centred and unobstructed');
+  });
+
+  it('has no contradiction between its two halves', () => {
+    expect(validateMode(mode as unknown as Record<string, unknown>)).toEqual([]);
+  });
+});
+
+describe('validateMode — the two halves of a prompt must agree', () => {
+  /**
+   * The exact pair that shipped in Block 4 session 2's prompt and was found
+   * by a human reading the composed string after the image came back.
+   */
+  it('rejects an axis term that contradicts the invariant fragment', () => {
+    const mode = valid();
+    (mode.imageStyle as { stylePrompt: string[] }).stylePrompt = [
+      'one subject, centred and unobstructed',
+    ];
+    (mode.imageVariation as { axes: Record<string, string[]> }).axes = {
+      cameraAngle: ['seen straight on', 'subject off-centre with open space to one side'],
+    };
+    const issues = validateMode(mode);
+    expect(paths(issues)).toEqual(['imageVariation.axes.cameraAngle[1]']);
+    expect(issues[0]?.message).toContain('centred');
+  });
+
+  it('reports every contradicting axis term, not just the first', () => {
+    const mode = valid();
+    (mode.imageStyle as { stylePrompt: string[] }).stylePrompt = [
+      'one subject, centred and unobstructed',
+    ];
+    (mode.imageVariation as { axes: Record<string, string[]> }).axes = {
+      a: ['off-centre framing', 'subject partially hidden'],
+    };
+    expect(paths(validateMode(mode)).sort()).toEqual([
+      'imageVariation.axes.a[0]',
+      'imageVariation.axes.a[1]',
+    ]);
+  });
+
+  it('says nothing when the invariant fragment does not carry the term', () => {
+    const mode = valid();
+    (mode.imageStyle as { stylePrompt: string[] }).stylePrompt = ['a bold graphic treatment'];
+    (mode.imageVariation as { axes: Record<string, string[]> }).axes = {
+      a: ['subject off-centre with open space to one side', 'seen straight on'],
+    };
+    expect(validateMode(mode)).toEqual([]);
+  });
+
+  it('matches regardless of case', () => {
+    const mode = valid();
+    (mode.imageStyle as { stylePrompt: string[] }).stylePrompt = ['One Subject, Centred'];
+    (mode.imageVariation as { axes: Record<string, string[]> }).axes = {
+      a: ['Subject OFF-CENTRE', 'seen straight on'],
+    };
+    expect(paths(validateMode(mode))).toEqual(['imageVariation.axes.a[0]']);
   });
 });
 

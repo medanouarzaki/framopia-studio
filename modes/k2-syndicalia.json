@@ -1,7 +1,7 @@
 {
   "id": "k2-syndicalia",
   "name": "K2 Syndicalia",
-  "version": 2,
+  "version": 3,
   "note": "Stub. The palette is locked (PROJECT_SPEC §5); fonts, the real image style and the vocabulary are supplied by the user at Block 9. vocabulary is deliberately empty rather than guessed: Block 2 saw one brand name rendered three different ways across three identical correction calls, so these terms become load-bearing as transcription key terms once they exist. allowedTemplates holds stub ids until the real templates arrive in Block 6. Version 2 added imageVariation.",
   "palette": {
     "background": "#1A0000",
@@ -29,32 +29,39 @@
     ]
   },
   "imageVariation": {
-    "note": "The user's ruling (Block 3 session 3): the mode palette is dominant in every image, and composition, lighting and crop vary across the slots of one reel so the set reads as designed rather than batched. imageStyle.stylePrompt is the invariant half and applies unchanged to every slot — that is what keeps the palette dominant. These axes are the varying half. The specific terms are placeholders like the rest of this stub and are refined with the user at Block 9; the axis names are the part that is settled.",
+    "note": "The user's ruling (Block 3 session 3): the mode palette is dominant in every image, and the slots of one reel vary so the set reads as designed rather than batched. imageStyle.stylePrompt is the invariant half and applies unchanged to every slot -- that is what keeps the palette dominant. These axes are the varying half. Block 4 session 3 replaced the composition axis: when the quality gate returns `cutout` the background is discarded, so any variation expressed as where the subject sits inside the generated frame is erased, and the set would read as batched precisely where cutouts work best. The three axes here are properties of the subject itself, which survive being cut out. Placement language is gone from both halves except `centred`, which the invariant fragment keeps because it helps the cutout by holding the subject clear of the frame edge. The specific terms are placeholders like the rest of this stub and are refined with the user at Block 9; the axis names are the part that is settled.",
     "axes": {
-      "composition": [
-        "subject centred, symmetrical",
-        "subject off-centre with open space to one side",
-        "subject low in frame with headroom above",
-        "subject filling the frame edge to edge"
+      "cameraAngle": [
+        "seen straight on at eye level",
+        "seen from slightly below, looking up",
+        "seen from slightly above, looking down",
+        "seen at a three-quarter turn"
+      ],
+      "framingTightness": [
+        "wide, the whole subject with air around it",
+        "medium, the subject from the waist",
+        "close, the subject filling most of the height",
+        "macro, a single detail standing for the whole"
       ],
       "lighting": [
         "hard directional light with defined shadow",
         "soft diffuse light, shadows barely readable",
         "rim light separating the subject from the ground",
         "flat frontal light, no modelling"
-      ],
-      "crop": [
-        "wide, the whole subject with air around it",
-        "medium, the subject from the waist",
-        "close, filling the frame",
-        "macro, a single detail standing for the whole"
       ]
     }
   },
   "allowedTemplates": {
-    "subtitle": ["sub_pop"],
-    "keyword": ["kw_slam"],
-    "image": ["img_slide_left", "img_float"]
+    "subtitle": [
+      "sub_pop"
+    ],
+    "keyword": [
+      "kw_slam"
+    ],
+    "image": [
+      "img_slide_left",
+      "img_float"
+    ]
   },
   "vocabulary": []
 }

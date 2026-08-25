@@ -31,6 +31,7 @@ export {
   TEMPLATE_KINDS,
   TEMPLATE_PREFIXES,
   validateMode,
+  VARIATION_CONTRADICTIONS,
   type ClientMode,
   type ImageVariation,
   type ModeFonts,

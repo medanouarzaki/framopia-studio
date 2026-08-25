@@ -35,8 +35,21 @@ import { REPO_ROOT } from './paths.js';
  * of `stylePrompt`, which is what keeps the mode palette dominant across the
  * set; each slot then draws one value from each `imageVariation` axis so the
  * images read as designed rather than batched. The axes are mode data on
- * purpose: no composition, lighting or crop term may be written in a source
- * file, for the same reason no colour may be.
+ * purpose: no camera-angle, framing or lighting term may be written in a
+ * source file, for the same reason no colour may be.
+ *
+ * **An axis must vary something that survives the cutout.** When the quality
+ * gate returns `cutout` the background is discarded, so variation expressed
+ * as where the subject sits inside the generated frame is erased and the set
+ * reads as batched exactly where cutouts work best. That is why the
+ * composition axis was dropped at Block 4 session 3 in favour of camera
+ * angle, framing tightness and lighting, all properties of the subject.
+ *
+ * **The two halves must not contradict each other.** Both reach the same
+ * composed prompt, and until Block 4 session 3 nothing checked that they
+ * could both be satisfied — `one subject, centred and unobstructed` shipped
+ * alongside `subject off-centre with open space to one side` on every slot
+ * the planner had produced. See `VARIATION_CONTRADICTIONS`.
  *
  * Which value a given slot draws is not decided here — that is composition
  * work, and it belongs to the stage that builds image slots.
@@ -271,6 +284,90 @@ function validateImageVariation(c: Checker, value: unknown): void {
   }
 }
 
+/**
+ * Enumerated contradictions between the invariant half of a prompt and the
+ * varying half. Both halves reach the same composed string, and nothing
+ * checked that they could both be satisfied: Block 4 session 2 sent
+ * `one subject, centred and unobstructed` and `subject off-centre with open
+ * space to one side` in one prompt, and the contradiction was found by a
+ * human reading it after the image came back. It had been live on every slot
+ * the planner had ever produced.
+ *
+ * Enumerated rather than inferred. A general model of what contradicts what
+ * would need to understand the prompts; this only has to catch the pairs we
+ * can name, and a pair nobody named is a pair nobody was going to write.
+ */
+export const VARIATION_CONTRADICTIONS: {
+  invariant: string;
+  contradicts: string[];
+  why: string;
+}[] = [
+  {
+    invariant: 'centred',
+    contradicts: [
+      'off-centre', 'off centre', 'off-center', 'off center',
+      'to one side', 'low in frame', 'high in frame', 'edge to edge', 'asymmetric',
+    ],
+    why: 'the invariant fragment places the subject centred',
+  },
+  {
+    invariant: 'unobstructed',
+    contradicts: ['obscured', 'obstructed', 'partially hidden', 'occluded', 'behind'],
+    why: 'the invariant fragment requires the subject unobstructed',
+  },
+  {
+    invariant: 'one subject',
+    contradicts: ['two subjects', 'three subjects', 'multiple subjects', 'group of', 'pair of'],
+    why: 'the invariant fragment allows exactly one subject',
+  },
+  {
+    invariant: 'single clear idea',
+    contradicts: ['busy', 'cluttered', 'competing', 'layered scene'],
+    why: 'the invariant fragment asks for a single clear idea',
+  },
+  {
+    invariant: 'readable at a glance',
+    contradicts: ['busy', 'cluttered', 'intricate', 'dense'],
+    why: 'the invariant fragment asks for readability at a glance',
+  },
+];
+
+/**
+ * Cross-check, so it needs both halves and cannot live inside either
+ * validator. A term drawn from an axis is appended to the whole of
+ * `stylePrompt`, so the two are read together by the model and have to agree.
+ */
+function validateVariationAgainstStyle(c: Checker, mode: Rec): void {
+  const style = mode.imageStyle as { stylePrompt?: unknown } | undefined;
+  const variation = mode.imageVariation as { axes?: unknown } | undefined;
+  const fragments = style?.stylePrompt;
+  const axes = variation?.axes;
+  if (!Array.isArray(fragments) || typeof axes !== 'object' || axes === null) return;
+
+  const invariantText = fragments
+    .filter((f): f is string => typeof f === 'string')
+    .join(' ')
+    .toLowerCase();
+
+  for (const [name, values] of Object.entries(axes as Record<string, unknown>)) {
+    if (!Array.isArray(values)) continue;
+    values.forEach((value, index) => {
+      if (typeof value !== 'string') return;
+      const lower = value.toLowerCase();
+      for (const rule of VARIATION_CONTRADICTIONS) {
+        if (!invariantText.includes(rule.invariant)) continue;
+        const hit = rule.contradicts.find((term) => lower.includes(term));
+        if (hit === undefined) continue;
+        c.fail(
+          `imageVariation.axes.${name}[${index}]`,
+          `"${hit}" contradicts imageStyle.stylePrompt ("${rule.invariant}"): ${rule.why}. ` +
+            'Both halves reach the same composed prompt.',
+        );
+      }
+    });
+  }
+}
+
 function validateTemplates(c: Checker, value: unknown): void {
   const templates = c.object('allowedTemplates', value);
   if (templates === null) return;
@@ -335,6 +432,7 @@ export function validateMode(value: unknown): ModeValidationIssue[] {
   if (mode.fonts !== undefined) validateFonts(c, mode.fonts);
   if (mode.imageStyle !== undefined) validateImageStyle(c, mode.imageStyle);
   if (mode.imageVariation !== undefined) validateImageVariation(c, mode.imageVariation);
+  validateVariationAgainstStyle(c, mode);
   if (mode.allowedTemplates !== undefined) validateTemplates(c, mode.allowedTemplates);
   if (mode.vocabulary !== undefined) c.stringArray('vocabulary', mode.vocabulary);
 
