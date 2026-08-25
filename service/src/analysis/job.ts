@@ -1,7 +1,16 @@
-import { loadConfig, loadMode, type ClientMode } from '@framopia/core';
+import {
+  loadConfig,
+  loadMode,
+  loadSfxIndex,
+  loadTemplateManifest,
+  templatesById,
+  type ClientMode,
+} from '@framopia/core';
 import { readEditPlan, writeEditPlan } from '../editplan/io.js';
 import type { EditPlan, ImageSlot, KeywordItem } from '../editplan/types.js';
 import { regroupForKeywords, type DroppedKeyword } from './regroup.js';
+import { assignTemplates, type AssignmentResult } from './assign.js';
+import { deriveSfxEvents } from './sfx.js';
 import { analyseKeywordsCached, planSlotsCached, type CachedKeywordResult, type CachedSlotResult } from './cached.js';
 import { ACTIVE_ANALYSIS_PROMPT_VERSION } from './keywords.js';
 import { ACTIVE_SLOT_PROMPT_VERSION } from './slots.js';
@@ -160,6 +169,7 @@ export interface PlanImageSlotsResult {
   plan: EditPlan;
   analysis: CachedSlotResult;
   cached: boolean;
+  assignment: AssignmentResult;
 }
 
 /**
@@ -222,6 +232,16 @@ export async function planImageSlotsForPlan(
 
   const timestamp = now();
   plan.images = { slots };
+
+  // Templates and sfx are re-derived on every run over the whole plan, not
+  // just the slots this call produced: assignment depends on element order
+  // and sfx depends on assignment, so a partial update would leave the two
+  // describing different plans.
+  const manifest = loadTemplateManifest();
+  const templates = templatesById(manifest);
+  const assignment = assignTemplates(plan, mode, templates);
+  for (const issue of assignment.issues) log(`templates: ${issue.path}: ${issue.message}`);
+  plan.sfx = { events: deriveSfxEvents(plan, templates, loadSfxIndex()) };
   plan.pipeline.images = {
     status: 'done',
     config: slotConfigLabel(ACTIVE_SLOT_PROMPT_VERSION, mode),
@@ -237,5 +257,5 @@ export async function planImageSlotsForPlan(
 
   await writeEditPlan(planPath, plan);
 
-  return { planPath, plan, analysis, cached: analysis.cached };
+  return { planPath, plan, analysis, cached: analysis.cached, assignment };
 }
