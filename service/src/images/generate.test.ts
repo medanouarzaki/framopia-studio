@@ -17,6 +17,7 @@ import {
   imageLedgerTotalUsd,
 } from './estimate.js';
 import { generateImages, ImageDimensionMismatchError } from './generate.js';
+import { UndeterminedDimensionsError } from './image-dimensions.js';
 
 const mode = loadMode('k2-syndicalia');
 
@@ -485,5 +486,26 @@ describe('the ceiling as a running check', () => {
       bill: true, costsPath, spendBaselineUsd: 5,
     });
     expect(client.requests).toHaveLength(2);
+  });
+});
+
+describe('a dimension check that cannot be skipped', () => {
+  /**
+   * If `expectedDimensions` returned null for a ratio it could not derive,
+   * `generateImages` would read that as "no expectation" and generate
+   * unchecked. It throws instead, so an unsupported pair stops the run.
+   */
+  it('refuses to generate for a pair whose dimensions are undefined', async () => {
+    const client = new FakeClient('image/png', { width: 2048, height: 2048 });
+    await expect(
+      generateImages({
+        slots: [SLOTS[0]], mode,
+        // Past validateImageConfig deliberately: the point is that the
+        // generator does not rely on config being the only guard.
+        config: { ...parseImageConfig({ resolution: '2K' }), aspectRatio: '16:9' as never },
+        client, videoSha256: VIDEO, cacheRoot,
+      }),
+    ).rejects.toThrow(UndeterminedDimensionsError);
+    expect(client.requests).toHaveLength(0);
   });
 });

@@ -3,7 +3,11 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@framopia/core';
-import { expectedDimensions, readImageDimensions } from './image-dimensions.js';
+import {
+  expectedDimensions,
+  readImageDimensions,
+  UndeterminedDimensionsError,
+} from './image-dimensions.js';
 
 /** A minimal but real PNG: signature plus an IHDR carrying w/h. */
 function png(width: number, height: number): Uint8Array {
@@ -86,14 +90,28 @@ describe('expectedDimensions', () => {
     expect(expectedDimensions('2K', '1:1')).toEqual({ width: 2048, height: 2048 });
   });
 
-  it('is null for an unknown tier', () => {
-    expect(expectedDimensions('8K', '1:1')).toBeNull();
+  /**
+   * Fails closed, and this matters more than it looks. `generateImages` reads
+   * a null as "no expectation" and skips the dimension check, so returning
+   * null here would silently disable the check the moment a non-square ratio
+   * were allowed — the findProclitics defect over again, a guard that
+   * quietly declines to guard.
+   */
+  it('throws on an unknown tier rather than returning null', () => {
+    expect(() => expectedDimensions('8K', '1:1')).toThrow(UndeterminedDimensionsError);
   });
 
-  // Session 2 established that a non-square served shape matches no published
-  // pair, so its dimensions are not derivable. Refusing beats guessing.
-  it('is null for a non-square ratio rather than deriving one', () => {
-    expect(expectedDimensions('2K', '16:9')).toBeNull();
-    expect(expectedDimensions('2K', 'square')).toBeNull();
+  it('throws on a non-square ratio rather than deriving one', () => {
+    expect(() => expectedDimensions('2K', '16:9')).toThrow(UndeterminedDimensionsError);
+    expect(() => expectedDimensions('2K', '9:16')).toThrow(/not derivable/);
+  });
+
+  it('throws on an unreadable ratio', () => {
+    expect(() => expectedDimensions('2K', 'square')).toThrow(UndeterminedDimensionsError);
+    expect(() => expectedDimensions('2K', '1:0')).toThrow(/unreadable aspect ratio/);
+  });
+
+  it('says the check cannot be skipped', () => {
+    expect(() => expectedDimensions('2K', '16:9')).toThrow(/cannot be skipped/);
   });
 });

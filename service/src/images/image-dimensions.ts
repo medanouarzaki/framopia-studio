@@ -71,18 +71,50 @@ export function readImageDimensions(bytes: Uint8Array, mimeType?: string): Dimen
   return readPngDimensions(bytes) ?? readJpegDimensions(bytes);
 }
 
+/**
+ * Raised when the expected pixel dimensions for a (size, aspect) pair cannot
+ * be derived. **Not a null return**: `generateImages` reads null as "no
+ * expectation" and skips the dimension check entirely, so returning null for
+ * an unknown pair would silently disable the check the moment a non-square
+ * ratio were allowed.
+ *
+ * That is the `findProclitics` defect again — guide §2 claimed the scorer
+ * flagged a standalone `w` while the scorer only suppressed a warning for it,
+ * and nothing detected the gap for a whole version. A guard that quietly
+ * declines to guard is worse than no guard, because it reads as one.
+ */
+export class UndeterminedDimensionsError extends Error {
+  constructor(
+    readonly resolution: string,
+    readonly aspectRatio: string,
+    reason: string,
+  ) {
+    super(
+      `cannot determine expected dimensions for ${resolution} at ${aspectRatio}: ${reason}. ` +
+        'The dimension check cannot be skipped: add the pair to expectedDimensions first.',
+    );
+    this.name = 'UndeterminedDimensionsError';
+  }
+}
+
 /** The pixel dimensions a (size, aspect) pair is supposed to produce. */
-export function expectedDimensions(resolution: string, aspectRatio: string): Dimensions | null {
+export function expectedDimensions(resolution: string, aspectRatio: string): Dimensions {
   const side = { '0.5K': 512, '1K': 1024, '2K': 2048, '4K': 4096 }[resolution];
-  if (side === undefined) return null;
+  if (side === undefined) {
+    throw new UndeterminedDimensionsError(resolution, aspectRatio, 'unknown resolution tier');
+  }
   const parts = aspectRatio.split(':').map(Number);
   const [w, h] = parts;
   if (parts.length !== 2 || w === undefined || h === undefined || !(w > 0) || !(h > 0)) {
-    return null;
+    throw new UndeterminedDimensionsError(resolution, aspectRatio, 'unreadable aspect ratio');
   }
   if (w === h) return { width: side, height: side };
-  // Non-square tiers are not derivable from the square side, and session 2
-  // showed the served token count is not derivable from area either. Only
-  // 1:1 is allowed by config, so refusing here is honest rather than limiting.
-  return null;
+  // Session 2 showed the served token count for a non-published pair is not
+  // derivable from area, and the pixel dimensions are not derivable from the
+  // square side either. Config allows only 1:1 today; whoever allows another
+  // ratio has to state what it produces here.
+  throw new UndeterminedDimensionsError(
+    resolution, aspectRatio,
+    'only square ratios have known dimensions; a non-square tier is not derivable from the square side',
+  );
 }

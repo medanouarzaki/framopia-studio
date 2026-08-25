@@ -22,6 +22,7 @@ export {
 export { GeminiImageClient } from './gemini-client.js';
 export {
   expectedDimensions,
+  UndeterminedDimensionsError,
   readImageDimensions,
   type Dimensions,
 } from './image-dimensions.js';

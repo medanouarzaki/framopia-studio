@@ -134,6 +134,11 @@ export async function generateImages(options: {
     spendBaselineUsd = imageLedgerTotalUsd(costsPath),
   } = options;
 
+  // Resolved once, before anything is requested: it depends only on config,
+  // and discovering an underivable pair after a billable call would mean
+  // paying to learn something knowable for free.
+  const wanted = expectedDimensions(config.resolution, config.aspectRatio);
+
   const perImageUsd = computeImageCost(config.modelId, config.resolution);
   const candidates: GeneratedCandidate[] = [];
   const warnings: string[] = [];
@@ -239,8 +244,7 @@ export async function generateImages(options: {
       // Checked before anything is billed, cached or written. The call has
       // already cost money either way, but a wrong-shaped image must not
       // enter the cache or the plan.
-      const wanted = expectedDimensions(config.resolution, config.aspectRatio);
-      if (wanted !== null && (image.width !== wanted.width || image.height !== wanted.height)) {
+      if (image.width !== wanted.width || image.height !== wanted.height) {
         throw new ImageDimensionMismatchError(config.modelId, wanted, {
           width: image.width,
           height: image.height,
