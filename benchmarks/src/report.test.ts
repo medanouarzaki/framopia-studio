@@ -106,7 +106,7 @@ describe('buildReport', () => {
 
 describe('buildReport — vowel-less warnings', () => {
   it('lists them in their own section, away from the score', () => {
-    const md = buildReport([result('hybrid', ['yom', 'w', '7l'])], null, {
+    const md = buildReport([result('hybrid', ['yom', 'nhdr', '7l'])], null, {
       title: 'Warnings',
       audioPath: 'a.wav',
       groundTruthPath: null,

@@ -43,6 +43,11 @@ export interface OuConjunctionReport {
   examples: FlaggedExample[];
 }
 
+export interface ProcliticReport {
+  count: number;
+  examples: FlaggedExample[];
+}
+
 export interface VowellessClusterReport {
   count: number;
   examples: FlaggedExample[];
@@ -78,6 +83,7 @@ export interface OrthographyReport {
   digitSubstitutions: DigitSubstitutionReport;
   shDigraph: ShDigraphReport;
   ouConjunction: OuConjunctionReport;
+  proclitic: ProcliticReport;
   dialAttachment: DialAttachmentReport;
   freezeList: FreezeListReport;
   score: number;
@@ -167,6 +173,45 @@ export function findOuConjunctions(words: string[]): OuConjunctionReport {
     if (!isLatinWord(word)) continue;
     if (stripEdgePunctuation(word.toLowerCase()) !== 'ou') continue;
     examples.push({ word, detail: 'standalone "ou" — the conjunction و is written w (§2)' });
+  }
+
+  return { count: examples.length, examples };
+}
+
+/**
+ * §2 makes the conjunction `w` and the definite article `l` proclitics: they
+ * attach to the word that follows, no space and no hyphen. A standalone one
+ * is a spelling error, in Arabic script as much as in Latin — §2 spells that
+ * out with `إشراقة ونضارة`, never `إشراقة و نضارة`.
+ *
+ * §2 has claimed since v1.0.7 that the scorer treats a standalone `w` as a
+ * violation. It did not: `w` was only ever in the vowel-less exception set,
+ * which suppresses a warning rather than raising one. Nothing looked, so the
+ * `ground-truth` reference asserted v1.0.7 conformance for a whole block
+ * while breaking it, and `test-3` carried two standalone conjunctions that
+ * three separate hand-written token lists all missed. This is the check that
+ * makes the guide's claim true.
+ *
+ * Bare `l` only. `l'acide` is French with its own apostrophe (§5), `le` and
+ * `la` are French articles the v1.0.7 rule explicitly preserves, and neither
+ * is this defect.
+ */
+export function findProclitics(words: string[]): ProcliticReport {
+  const examples: FlaggedExample[] = [];
+
+  for (const word of words) {
+    const bare = stripEdgePunctuation(word).toLowerCase();
+    if (bare === 'w' || bare === '\u0648') {
+      examples.push({
+        word,
+        detail: `standalone "${word}" — the conjunction attaches to the next word (§2)`,
+      });
+    } else if (bare === 'l') {
+      examples.push({
+        word,
+        detail: `standalone "${word}" — the definite article attaches to its noun (§2)`,
+      });
+    }
   }
 
   return { count: examples.length, examples };
@@ -279,6 +324,7 @@ export function scoreOrthography(words: string[]): OrthographyReport {
   const digitSubstitutions = findDigitSubstitutions(words);
   const shDigraph = findShDigraph(words);
   const ouConjunction = findOuConjunctions(words);
+  const proclitic = findProclitics(words);
   const dialAttachment = findDialAttachment(words);
   const vowellessClusters = findVowellessClusters(words);
   const freezeList = findFreezeListConformance(words);
@@ -290,6 +336,7 @@ export function scoreOrthography(words: string[]): OrthographyReport {
     digitSubstitutions.count +
     shDigraph.count +
     ouConjunction.count +
+    proclitic.count +
     dialAttachment.count +
     freezeList.nearMiss;
   const score = totalWords === 0 ? 1 : Math.max(0, 1 - violations / totalWords);
@@ -300,6 +347,7 @@ export function scoreOrthography(words: string[]): OrthographyReport {
     digitSubstitutions,
     shDigraph,
     ouConjunction,
+    proclitic,
     dialAttachment,
     freezeList,
     score,

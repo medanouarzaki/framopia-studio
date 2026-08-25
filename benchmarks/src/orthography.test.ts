@@ -6,6 +6,7 @@ import {
   findOuConjunctions,
   findVowellessClusters,
   scoreOrthography,
+  findProclitics,
 } from './orthography.js';
 
 describe('editDistance', () => {
@@ -202,15 +203,15 @@ describe('vowel-less cluster detection', () => {
 
 describe('scoreOrthography — violations versus warnings', () => {
   it('counts an ou conjunction against the score', () => {
-    const clean = scoreOrthography(['yom', 'w', 'l7el']);
-    const dirty = scoreOrthography(['yom', 'ou', 'l7el']);
+    const clean = scoreOrthography(['yom', 'wl7el', 'ghadi']);
+    const dirty = scoreOrthography(['yom', 'ou', 'ghadi']);
     expect(clean.score).toBe(1);
     expect(dirty.ouConjunction.count).toBe(1);
     expect(dirty.score).toBeCloseTo(1 - 1 / 3, 12);
   });
 
   it('reports a vowel-less cluster as a warning without touching the score', () => {
-    const report = scoreOrthography(['yom', 'w', '7l']);
+    const report = scoreOrthography(['yom', 'ghadi', '7l']);
     expect(report.warnings.vowellessClusters.count).toBe(1);
     expect(report.warnings.vowellessClusters.examples[0]?.word).toBe('7l');
     expect(report.score).toBe(1);
@@ -276,5 +277,51 @@ describe('scoreOrthography — dial is a scored violation', () => {
     expect(clean.score).toBe(1);
     expect(fused.dialAttachment.count).toBe(1);
     expect(fused.score).toBeCloseTo(0.5, 12);
+  });
+});
+
+describe('findProclitics', () => {
+  it('flags a standalone latin conjunction, either case', () => {
+    expect(findProclitics(['Mabin', '7essa', 'w', '7essa']).count).toBe(1);
+    expect(findProclitics(['W', 'bdebt', '3la']).count).toBe(1);
+  });
+
+  // §2 states the rule for Arabic script with the same letter.
+  it('flags a standalone arabic conjunction', () => {
+    expect(findProclitics(['إشراقة', 'و', 'نضارة']).count).toBe(1);
+  });
+
+  it('flags a standalone definite article', () => {
+    expect(findProclitics(['wa7d', 'l', 'cocktail']).count).toBe(1);
+  });
+
+  it('passes the attached forms the guide asks for', () => {
+    expect(findProclitics(['Mabin', '7essa', 'w7essa', '15', 'yom']).count).toBe(0);
+    expect(findProclitics(['إشراقة', 'ونضارة']).count).toBe(0);
+    expect(findProclitics(['wa7d', 'lcocktail', 'dial', 'lvitaminat']).count).toBe(0);
+    expect(findProclitics(['Wl’effet', 'dialha']).count).toBe(0);
+  });
+
+  // v1.0.7 explicitly preserves a French noun's French article, and an
+  // elided l' is French spelling under §5. Neither is this defect.
+  it('does not flag french articles or an elided l apostrophe', () => {
+    expect(findProclitics(['dial', 'la', 'vidéo']).count).toBe(0);
+    expect(findProclitics(['3la', 'le', 'RRS', 'eyes']).count).toBe(0);
+    expect(findProclitics(["l'acide", 'hyaluronique']).count).toBe(0);
+    expect(findProclitics(['l’ADN', 'du', 'saumon']).count).toBe(0);
+  });
+
+  it('sees through edge punctuation', () => {
+    expect(findProclitics(['w,']).count).toBe(1);
+    expect(findProclitics(['"l"']).count).toBe(1);
+  });
+
+  it('counts toward the scored violations, not the warnings', () => {
+    const clean = scoreOrthography(['yom', 'nhdr', 'likom']);
+    const dirty = scoreOrthography(['yom', 'w', 'nhdr', 'likom']);
+    expect(clean.proclitic.count).toBe(0);
+    expect(clean.score).toBe(1);
+    expect(dirty.proclitic.count).toBe(1);
+    expect(dirty.score).toBeCloseTo(1 - 1 / 4, 12);
   });
 });
