@@ -1,0 +1,24 @@
+# Pinned. The sidecar is invoked as a subprocess and its output feeds a gate
+# that decides whether an image is used, so a silent version drift changes a
+# rendering decision. Install with tools/cv/setup.sh.
+#
+# rembg carries the BiRefNet-general background remover (ARCHITECTURE §1.4).
+# It pulls onnxruntime, pymatting (the optional alpha-matting pass) and
+# opencv/scikit-image.
+rembg[cpu]==2.0.81
+onnxruntime==1.29.0
+pymatting==1.1.15
+
+# Metrics are computed directly on the alpha channel: numpy for the array
+# work, Pillow to read and write PNG with alpha, scipy for the binary
+# morphology and connected-component labelling the hole and halo metrics need.
+numpy==2.4.6
+pillow==12.3.0
+scipy==1.17.1
+
+# Local OCR, ONNX-based: no system binary to install and no network at
+# inference time. A negative prompt is not a control, so text on a candidate
+# has to be detected rather than requested away.
+rapidocr-onnxruntime==1.4.4
+
+pytest==9.1.1

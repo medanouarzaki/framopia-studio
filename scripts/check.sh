@@ -24,4 +24,14 @@ npm run validate:modes --workspace @framopia/core
 # checked. See CLAUDE_CODE_GUIDELINES.md §3.
 npm run verify-refs --workspace framopia-benchmarks
 
+# The CV sidecar's metric tests. Skipped with a notice when the venv is not
+# built: the sidecar needs python3.11 and a ~1GB model download, and a
+# contributor without it should still be able to run the gate for the
+# TypeScript workspaces. It is never skipped silently.
+if [ -x tools/cv/.venv/bin/python ]; then
+  (cd tools/cv && ./.venv/bin/python -m pytest -q)
+else
+  echo "check: SKIPPING sidecar tests — tools/cv/.venv missing, run tools/cv/setup.sh"
+fi
+
 echo "check: PASS"
