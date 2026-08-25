@@ -113,9 +113,12 @@ AI-generated contextual images, SFX, and a watermark. Full spec in
   Block 4 image bake-off on `vitasilk` slot `img002`. `--first-only`
   generates one image and stops.
 - `npm run images -- --plan <abs path.editplan.json> [--mode <id>]
-  [--ceiling <usd>] [--no-cache] [--force]` — **billable.** The production
+  [--ceiling <usd>] [--no-cache] [--force] [--probe]` — **billable.**
+  `--probe` generates one candidate and halts without writing the plan. The production
   image stage: candidates, cutouts, metrics, gate and text verdict onto a
   plan. Takes the session spend baseline once so every arm shares one ceiling.
+- `npm run plan-page -- --plan <abs path.editplan.json> [--out <dir>]` — free.
+  The review page for a plan's candidates, grouped by slot.
 - `npm run cutouts` — free, local. Runs the CV sidecar's cutout gate over
   `benchmarks/results/latest-imagebakeoff/` and writes cutouts, metrics and a
   review page to `benchmarks/results/latest-cutouts/`. Generates no images.
@@ -1212,6 +1215,93 @@ re-run check, the ten-image review page, and every DoD item.
 | gated cutouts on disk with metrics | **no** on a plan; the six-image corpus has them |
 | costs recorded | code path proven by test, never exercised live |
 | cache prevents regeneration | proven for analysis, **unproven for images across a full run** |
+
+## Block 4 is complete — session 6 met the DoD
+
+**Session spend $1.550444** against a $2.25 ceiling. Ledger 95 → 105 entries,
+$9.005328 → $10.555772, sha `66e02a42…` → `a7e85e4b…`.
+
+**`my files/test videos/vitasilk.editplan.json` is the fixture plan**: five
+slots, ten candidates, every one with a cutout on disk, four §5.4 metrics, a
+gate outcome, a text verdict and its actual cost. `chosenCandidateId` is null
+on every slot — the editor picks in Block 8.
+
+| DoD item | evidence |
+|---|---|
+| every slot has candidates | 5 slots × 2 = 10, `status: generated` |
+| gated cutouts on disk with metrics | 10 PNGs in `my files/test videos/cutouts/`, metrics and `gate` per candidate |
+| costs recorded | 10 ledger lines at the point of spend, $1.550444, actuals from `usageMetadata` |
+| cache prevents regeneration | re-run: `10 already cached, 0 to generate`, `billed 0`, ledger sha unchanged |
+
+**The cache re-run is also the eviction fix's first full multi-batch test**,
+unverified since session 3 broke it. Ten entries across five slots survived
+the run that wrote them.
+
+**Mode is v5.** Session 6 pruned `soft diffuse light, shadows barely readable`
+by the user's ruling — barely-readable shadows are the flat characterless look
+under a gentler name. The lighting axis is at the validator's minimum of two
+values; a diffuse *and* modelled entry is the user's to write at Block 9, like
+the fonts. Both plans recomposed free and **all four analysis cache entries
+still hit at $0.00**.
+
+**Decision docs are now tested against the constants they freeze**
+(`service/src/decisions.test.ts`, in `npm run check`). Session 5 nearly paid
+for their being unconnected: `DECISION-image-config.md` froze pro-at-2K while
+`DEFAULT_IMAGE_CONFIG` still said flash-at-1K, and ten wrong images would have
+passed every check. The tests parse the markdown and fail in both directions;
+the table parser throws rather than returning undefined, so a restructured
+table cannot quietly stop the checking. They immediately caught real drift —
+`DECISION-transcription-config.md` recorded `ACTIVE_PROMPT_VERSION = 3` while
+the code has run 4 since Block 3 session 6; the amendment is now written.
+
+### What the run actually found
+
+**Only 2 of 10 candidates passed the gate**, and this is the block's real
+result rather than the DoD checkbox.
+
+- **Six failed on `edge_halo`** (up to 0.1703 against 0.10). That is mode v5's
+  lighting prune: the axis now offers only `hard directional` and `rim light`,
+  and `edge_halo` **cannot tell a rim the model drew from a rim the remover
+  left** — the limit recorded at `MAX_EDGE_HALO` in session 5, when the user
+  established the bright edge in the corpus was rendered, not retained. The
+  gate is sending correct renders to `card` for having exactly the lighting
+  the mode asks for. **No threshold was refitted.** It is a tension between
+  two deliberate decisions, not a defect in either.
+- **Two failed on `hole_ratio`** (img004, 0.09251 and 0.01739) — a genuine
+  matte defect, and **the metric's first firing on a real image**. It read
+  0.00000 on all six corpus images and needed deliberate degradation in
+  session 5 to prove it worked.
+- **Two failed on `alpha_edge_noise`** (img005, 0.08965 and 0.38286), also a
+  first on real input — **but arguably a false positive.** That slot's idea is
+  `A salon shelf displaying premium hair care products`, inherently
+  many objects, while the metric counts everything outside the largest
+  connected blob as speckle and the mode's invariant fragment says
+  `one subject, centred and unobstructed`. **The idea contradicts the
+  invariant** and the gate reports it as a matte failure. A mode and prompt
+  problem surfacing through a metric.
+
+**Every slot's two candidates agreed**, so the null "candidates disagree"
+presentation is still untested on real data.
+
+**The text check earned its place.** `no text` was removed at session 5
+because it never worked; the correctness check that replaced it caught
+`elixir, luxe` on img002-c1 and **47 unexpected words on img005-c1** —
+`velvet`, `golden`, `noir`, `repair`, `solde` and a long gibberish tail, a
+shelf rendered full of fake labels. Four of ten carry text the slot did not
+ask for; all advisory, nothing deleted. One clean pass: img002-c2 reads
+`hair, serum`.
+
+**Costs ran +12.9% to +18.4% over published, mean +15.7%**, never under —
+twenty of twenty across the block. The 1.35 gate covered all of them. The mean
+has crept up from session 3's +12.2% on three images, which argues for leaving
+the gate where it is rather than tightening it toward the mean.
+
+Numbers and the full per-candidate table: `benchmarks/RESULTS-block4-vitasilk.md`.
+Review page: `benchmarks/results/latest-cutouts/vitasilk/index.html`, grouped
+by slot with each idea above its candidates (`npm run plan-page`).
+
+**`test-1` was not run.** One fixture meets the DoD and a second reel buys no
+DoD item.
 
 Panel and real job types are not started; templates exist only as a stub.
 
