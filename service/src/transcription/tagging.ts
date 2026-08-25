@@ -3,10 +3,10 @@ import type { WordLang, WordScript } from '../editplan/types.js';
 const ARABIC_SCRIPT_RE = /[؀-ۿݐ-ݿ]/;
 
 /**
- * What the correction pass may say about a word beyond its text. The prompt
- * frozen in Block 1 asks only for `text`, so `lang` and `script` are absent
- * in practice today; they are read here so that a later prompt version can
- * supply them without another change to this layer.
+ * What the correction pass may say about a word beyond its text. Prompt
+ * version 3 supplies `lang`; versions 1 and 2 ask only for `text`. `script`
+ * is read here too, though no prompt version asks for it — the characters
+ * answer that on their own.
  */
 export interface CorrectedWord {
   text: string;
