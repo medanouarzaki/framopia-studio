@@ -53,22 +53,41 @@ def _remove_bg(request: dict) -> dict:
     }
 
     if request.get("ocr", False):
-        from .ocr import detect_text
+        payload["ocr"] = _ocr_payload(request, image_path)
 
-        payload["ocr"] = detect_text(image_path).to_dict()
+    return payload
+
+
+def _ocr_payload(request: dict, image_path: str) -> dict:
+    """OCR plus, when the caller supplies context, a correctness verdict.
+
+    Without `idea` there is nothing to check against, so the result is the
+    raw detection and no verdict — reporting "unexpected" against an empty
+    expectation would flag every word ever read.
+    """
+    from .ocr import detect_text
+
+    result = detect_text(image_path)
+    payload = result.to_dict()
+
+    idea = request.get("idea")
+    if isinstance(idea, str) and idea.strip():
+        from .text_check import check_text
+
+        vocabulary = [v for v in request.get("modeVocabulary", []) if isinstance(v, str)]
+        verdict = check_text([d.text for d in result.detections], idea, vocabulary)
+        payload["verdict"] = verdict.to_dict()
 
     return payload
 
 
 def _detect_text(request: dict) -> dict:
-    from .ocr import detect_text
-
     image_path = request["imagePath"]
     return {
         "ok": True,
         "task": "detect_text",
         "imagePath": image_path,
-        "ocr": detect_text(image_path).to_dict(),
+        "ocr": _ocr_payload(request, image_path),
     }
 
 

@@ -193,6 +193,21 @@ export interface DetectedText {
   confidence: number;
 }
 
+/**
+ * The correctness verdict on a candidate's text. Text is permitted since the
+ * Block 4 session 5 ruling; **uncontrolled** text is the failure, and Block 2
+ * recorded one brand name emerging three ways across three identical calls.
+ */
+export interface TextVerdict {
+  /** True when anything with meaning was read; stopwords alone do not count. */
+  hasText: boolean;
+  /** Words the slot is entitled to show, normalised. */
+  expected: string[];
+  /** Words it is not. Non-empty is the advisory warning. */
+  unexpected: string[];
+  ok: boolean;
+}
+
 export interface ImageCandidate {
   id: string;
   path: string;
@@ -233,6 +248,20 @@ export interface ImageCandidate {
    * which is different from having run and found nothing.
    */
   detectedText?: DetectedText[] | null;
+  /**
+   * Whether the detected text is text this slot is entitled to show, checked
+   * against the slot's own `idea` plus the client mode's vocabulary.
+   *
+   * A sibling field rather than a shape change to `detectedText`: that is an
+   * array on plans already written, and the schema fragility rule makes every
+   * addition optional. Absent means the check has not run; `ok` with empty
+   * lists means it ran and found nothing to object to.
+   *
+   * **Advisory.** `ok: false` names words and nothing more — it does not
+   * delete, reject or re-roll, because a false positive on a stylised texture
+   * must not silently drop a good candidate.
+   */
+  textVerdict?: TextVerdict | null;
 }
 
 export interface ImageSlot {

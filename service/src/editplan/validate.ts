@@ -319,6 +319,23 @@ function checkImages(c: Checker, value: unknown, words: Map<string, Rec>): void 
           }
         });
       }
+      if (cand.textVerdict !== undefined && cand.textVerdict !== null) {
+        const vp = `${cp}.textVerdict`;
+        const verdict = c.object(vp, cand.textVerdict);
+        if (verdict !== null) {
+          c.boolean(`${vp}.hasText`, verdict.hasText);
+          c.boolean(`${vp}.ok`, verdict.ok);
+          c.array(`${vp}.expected`, verdict.expected);
+          const unexpected = c.array(`${vp}.unexpected`, verdict.unexpected);
+          // `ok` restates whether `unexpected` is empty. Cross-checked so a
+          // plan cannot claim a clean verdict while naming offending words.
+          if (unexpected !== null && typeof verdict.ok === 'boolean') {
+            if (verdict.ok !== (unexpected.length === 0)) {
+              c.fail(`${vp}.ok`, 'must be true exactly when unexpected is empty');
+            }
+          }
+        }
+      }
       if (cand.metrics !== undefined && cand.metrics !== null) {
         const m = c.object(`${cp}.metrics`, cand.metrics);
         if (m !== null) {

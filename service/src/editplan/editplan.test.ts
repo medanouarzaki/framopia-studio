@@ -377,3 +377,77 @@ describe('validateEditPlan — detected text on a candidate', () => {
     );
   });
 });
+
+describe('validateEditPlan — the text verdict', () => {
+  function planWithCandidate(candidate: Record<string, unknown>): EditPlan {
+    const plan = minimalPlan();
+    plan.transcript.words = [
+      {
+        id: 'w1', start: 0, end: 0.4, text: 'kolajin', sourceText: 'kolajin',
+        lang: 'darija', script: 'latin', confidence: 0.9,
+        removed: false, removedReason: null, edited: false,
+      },
+    ];
+    plan.images.slots = [
+      {
+        id: 's001', wordIds: ['w1'], start: 0, end: 2,
+        contextText: 'ctx', idea: 'idea', prompt: 'p', negativePrompt: 'n',
+        candidates: [candidate as never],
+        chosenCandidateId: null, presentation: null,
+        zoneId: null, templateId: null, status: 'pending',
+      },
+    ];
+    return plan;
+  }
+
+  const base = { id: 'c1', path: '/i.png', cutoutPath: null, cutoutQuality: null };
+
+  it('accepts a candidate with no verdict, which is "not checked"', () => {
+    expect(validateEditPlan(planWithCandidate(base))).toEqual([]);
+  });
+
+  it('accepts a clean verdict', () => {
+    expect(
+      validateEditPlan(
+        planWithCandidate({
+          ...base,
+          textVerdict: { hasText: true, expected: ['hair', 'serum'], unexpected: [], ok: true },
+        }),
+      ),
+    ).toEqual([]);
+  });
+
+  it('accepts a verdict naming unexpected words', () => {
+    expect(
+      validateEditPlan(
+        planWithCandidate({
+          ...base,
+          textVerdict: { hasText: true, expected: [], unexpected: ['luxe'], ok: false },
+        }),
+      ),
+    ).toEqual([]);
+  });
+
+  // `ok` restates whether `unexpected` is empty, so a plan must not be able
+  // to claim a clean verdict while naming offending words.
+  it('rejects an ok that disagrees with its own word list', () => {
+    const issues = validateEditPlan(
+      planWithCandidate({
+        ...base,
+        textVerdict: { hasText: true, expected: [], unexpected: ['luxe'], ok: true },
+      }),
+    );
+    expect(issues.map((i) => i.path)).toEqual([
+      'images.slots[0].candidates[0].textVerdict.ok',
+    ]);
+  });
+
+  it('rejects a malformed verdict', () => {
+    const issues = validateEditPlan(
+      planWithCandidate({ ...base, textVerdict: { hasText: 'yes', expected: [], unexpected: [], ok: true } }),
+    );
+    expect(issues.map((i) => i.path)).toContain(
+      'images.slots[0].candidates[0].textVerdict.hasText',
+    );
+  });
+});
