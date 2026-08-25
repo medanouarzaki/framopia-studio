@@ -11,7 +11,8 @@
     "start": "node dist/server.js",
     "transcribe": "tsx src/transcribe-cli.ts",
     "analyse": "tsx src/analyse-cli.ts",
-    "validate-plan": "tsx src/validate-plan-cli.ts"
+    "validate-plan": "tsx src/validate-plan-cli.ts",
+    "bakeoff": "tsx src/images/bakeoff-cli.ts"
   },
   "dependencies": {
     "@framopia/core": "*",

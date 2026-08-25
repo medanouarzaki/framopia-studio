@@ -61,7 +61,7 @@ describe('validateImageConfig', () => {
       modelId: 'nope', resolution: '4K' as never, candidatesPerSlot: 99, ceilingUsd: 0,
     });
     expect(issues.map((i) => i.path).sort()).toEqual([
-      'candidatesPerSlot', 'ceilingUsd', 'modelId', 'resolution',
+      'aspectRatio', 'candidatesPerSlot', 'ceilingUsd', 'modelId', 'resolution',
     ]);
   });
 });
@@ -80,5 +80,35 @@ describe('parseImageConfig', () => {
 
   it('throws on 4K rather than silently downgrading it', () => {
     expect(() => parseImageConfig({ resolution: '4K' as never })).toThrow(ImageConfigError);
+  });
+});
+
+describe('aspect ratio', () => {
+  it('defaults to square and is always sent', () => {
+    expect(parseImageConfig().aspectRatio).toBe('1:1');
+  });
+
+  /**
+   * The API does not default to square. Leaving it unset produced a
+   * 2752x1536 landscape against a 2K 1:1 request in Block 4 session 2, and
+   * billed 21% over the per-image estimate because the tier served was not
+   * the tier requested.
+   */
+  it('rejects a non-square ratio', () => {
+    for (const ratio of ['16:9', '9:16', '4:3']) {
+      const issues = validateImageConfig({ ...DEFAULT_IMAGE_CONFIG, aspectRatio: ratio as never });
+      expect(issues.map((i) => i.path)).toEqual(['aspectRatio']);
+    }
+    expect(() => parseImageConfig({ aspectRatio: '16:9' as never })).toThrow(ImageConfigError);
+  });
+
+  it('rejects it missing rather than silently letting the model choose', () => {
+    const issues = validateImageConfig({
+      modelId: DEFAULT_IMAGE_CONFIG.modelId,
+      resolution: '1K',
+      candidatesPerSlot: 3,
+      ceilingUsd: 1,
+    });
+    expect(issues.map((i) => i.path)).toEqual(['aspectRatio']);
   });
 });

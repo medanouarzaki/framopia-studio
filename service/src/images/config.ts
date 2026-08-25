@@ -23,9 +23,24 @@ export const DEFAULT_CANDIDATES_PER_SLOT = 3;
  */
 export const DEFAULT_CEILING_USD = 3;
 
+/**
+ * The ratios the API accepts (`ImageConfig.aspectRatio`). Only 1:1 is allowed
+ * here: TEMPLATE_LIBRARY_GUIDE §3 has image comps at 1200x1200, so a
+ * non-square generation is cropped before anyone sees it.
+ */
+export const ALLOWED_ASPECT_RATIOS = ['1:1'] as const;
+export type AspectRatio = (typeof ALLOWED_ASPECT_RATIOS)[number];
+
 export interface ImageGenerationConfig {
   modelId: string;
   resolution: ImageResolution;
+  /**
+   * Must be sent explicitly. The API does not default to square: leaving it
+   * unset produced a 2752x1536 landscape image against a 2K 1:1 request in
+   * Block 4 session 2, which also billed 21% over the per-image estimate
+   * because the tier served was not the tier requested.
+   */
+  aspectRatio: AspectRatio;
   candidatesPerSlot: number;
   ceilingUsd: number;
 }
@@ -38,6 +53,7 @@ export interface ImageGenerationConfig {
 export const DEFAULT_IMAGE_CONFIG: ImageGenerationConfig = {
   modelId: GEMINI_IMAGE_MODEL_FLASH,
   resolution: '1K',
+  aspectRatio: '1:1',
   candidatesPerSlot: DEFAULT_CANDIDATES_PER_SLOT,
   ceilingUsd: DEFAULT_CEILING_USD,
 };
@@ -77,6 +93,15 @@ export function validateImageConfig(config: Partial<ImageGenerationConfig>): Ima
         ? 'the image comps work at 1200x1200, so 4K is paid-for pixels that get scaled away'
         : `allowed: ${ALLOWED_IMAGE_RESOLUTIONS.join(', ')}`;
     issues.push({ path: 'resolution', message: `"${config.resolution}" is rejected — ${why}` });
+  }
+
+  if (typeof config.aspectRatio !== 'string') {
+    issues.push({ path: 'aspectRatio', message: 'must be a string' });
+  } else if (!(ALLOWED_ASPECT_RATIOS as readonly string[]).includes(config.aspectRatio)) {
+    issues.push({
+      path: 'aspectRatio',
+      message: `"${config.aspectRatio}" is rejected — the image comps are square (1200x1200); allowed: ${ALLOWED_ASPECT_RATIOS.join(', ')}`,
+    });
   }
 
   const n = config.candidatesPerSlot;

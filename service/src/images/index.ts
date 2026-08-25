@@ -1,4 +1,5 @@
 export {
+  ALLOWED_ASPECT_RATIOS,
   DEFAULT_CANDIDATES_PER_SLOT,
   DEFAULT_CEILING_USD,
   DEFAULT_IMAGE_CONFIG,
@@ -7,6 +8,7 @@ export {
   MIN_CANDIDATES_PER_SLOT,
   parseImageConfig,
   validateImageConfig,
+  type AspectRatio,
   type ImageConfigIssue,
   type ImageGenerationConfig,
 } from './config.js';

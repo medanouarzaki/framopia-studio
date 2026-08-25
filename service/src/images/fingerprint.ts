@@ -18,6 +18,8 @@ export interface ImageFingerprintInputs {
   negativePrompt: string;
   modelId: string;
   resolution: ImageResolution;
+  /** Part of the key: it changes the pixels and it changes the price. */
+  aspectRatio: string;
   /** Two candidates for one slot differ only here. */
   candidateIndex: number;
   modeId: string;
@@ -29,6 +31,7 @@ export function imageFingerprintInputs(options: {
   negativePrompt: string;
   modelId: string;
   resolution: ImageResolution;
+  aspectRatio: string;
   candidateIndex: number;
   mode: ClientMode;
 }): ImageFingerprintInputs {
@@ -37,6 +40,7 @@ export function imageFingerprintInputs(options: {
     negativePrompt: options.negativePrompt,
     modelId: options.modelId,
     resolution: options.resolution,
+    aspectRatio: options.aspectRatio,
     candidateIndex: options.candidateIndex,
     modeId: options.mode.id,
     modeVersion: options.mode.version,
@@ -49,6 +53,7 @@ export function imageFingerprintOf(inputs: ImageFingerprintInputs): string {
     inputs.negativePrompt,
     inputs.modelId,
     inputs.resolution,
+    inputs.aspectRatio,
     inputs.candidateIndex,
     inputs.modeId,
     inputs.modeVersion,

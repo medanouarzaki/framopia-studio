@@ -9,6 +9,7 @@ const base = {
   negativePrompt: 'no text, no watermark',
   modelId: 'gemini-3.1-flash-image',
   resolution: '1K' as const,
+  aspectRatio: '1:1',
   candidateIndex: 0,
   mode,
 };
@@ -31,6 +32,7 @@ describe('imageFingerprintOf', () => {
       { ...base, negativePrompt: 'no text' },
       { ...base, modelId: 'gemini-3-pro-image' },
       { ...base, resolution: '2K' as const },
+      { ...base, aspectRatio: '9:16' },
       { ...base, candidateIndex: 1 },
       { ...base, mode: { ...mode, id: 'other-client' } as ClientMode },
       { ...base, mode: { ...mode, version: mode.version + 1 } as ClientMode },
@@ -58,6 +60,7 @@ describe('imageFingerprintOf', () => {
       modeVersion: forwards.modeVersion,
       modeId: forwards.modeId,
       candidateIndex: forwards.candidateIndex,
+      aspectRatio: forwards.aspectRatio,
       resolution: forwards.resolution,
       modelId: forwards.modelId,
       negativePrompt: forwards.negativePrompt,

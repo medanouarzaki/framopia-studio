@@ -69,6 +69,7 @@ describe('generateImages', () => {
     expect(client.requests[0].prompt).toBe(SLOTS[0].prompt);
     expect(client.requests[0].negativePrompt).toBe(SLOTS[0].negativePrompt);
     expect(client.requests[0].resolution).toBe('1K');
+    expect(client.requests[0].aspectRatio).toBe('1:1');
   });
 
   it('writes the bytes and serves the second run from cache for free', async () => {
