@@ -1,4 +1,9 @@
-import { estimateImageRunCost, readCosts, type ImageRunEstimate } from '@framopia/core';
+import {
+  estimateImageRunCost,
+  IMAGE_COST_MULTIPLIER,
+  readCosts,
+  type ImageRunEstimate,
+} from '@framopia/core';
 import type { ImageGenerationConfig } from './config.js';
 
 /** Ledger stage the running check sums. Kept here to avoid a cycle with generate.ts. */
@@ -81,7 +86,8 @@ export function formatEstimate(estimate: ImageRunEstimate, cachedImages = 0): st
   const billableUsd = billable * estimate.perImageUsd;
   const lines = [
     `Image generation estimate: ${estimate.modelId} at ${estimate.resolution}, ` +
-      `$${estimate.perImageUsd.toFixed(4)} per image.`,
+      `$${estimate.publishedUsd.toFixed(4)} published per image, ` +
+      `budgeted at $${estimate.perImageUsd.toFixed(4)} (x${IMAGE_COST_MULTIPLIER}).`,
     `  ${estimate.slots} slots x ${estimate.candidatesPerSlot} candidates = ${estimate.images} images`,
   ];
   if (cachedImages > 0) {

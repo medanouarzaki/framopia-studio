@@ -64,6 +64,7 @@ export {
   ALLOWED_IMAGE_RESOLUTIONS,
   computeGeminiCost,
   computeImageCost,
+  IMAGE_COST_MULTIPLIER,
   computeImageCostFromUsage,
   estimateImageRunCost,
   imageModelPrices,

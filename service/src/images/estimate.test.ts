@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { GEMINI_IMAGE_MODEL_FLASH, GEMINI_IMAGE_MODEL_PRO } from '@framopia/core';
+import {
+  GEMINI_IMAGE_MODEL_FLASH,
+  GEMINI_IMAGE_MODEL_PRO,
+  IMAGE_COST_MULTIPLIER,
+} from '@framopia/core';
 import { parseImageConfig } from './config.js';
 import { assertWithinCeiling, estimateRun, formatEstimate, ImageBudgetExceededError } from './estimate.js';
 
@@ -8,8 +12,10 @@ describe('estimateRun', () => {
     const flash = estimateRun(5, parseImageConfig({ modelId: GEMINI_IMAGE_MODEL_FLASH }));
     const pro = estimateRun(5, parseImageConfig({ modelId: GEMINI_IMAGE_MODEL_PRO }));
     expect(flash.images).toBe(15);
-    expect(flash.usd).toBeCloseTo(15 * 0.067, 10);
-    expect(pro.usd).toBeCloseTo(15 * 0.134, 10);
+    // Budgeted figures carry the gate multiplier; published rates do not.
+    expect(flash.publishedUsd).toBe(0.067);
+    expect(flash.usd).toBeCloseTo(15 * 0.067 * IMAGE_COST_MULTIPLIER, 10);
+    expect(pro.usd).toBeCloseTo(15 * 0.134 * IMAGE_COST_MULTIPLIER, 10);
     expect(pro.usd).toBeGreaterThan(flash.usd);
   });
 
@@ -35,7 +41,8 @@ describe('formatEstimate', () => {
   it('names the model and the per-image rate', () => {
     const text = formatEstimate(estimateRun(4, parseImageConfig()));
     expect(text).toMatch(GEMINI_IMAGE_MODEL_FLASH);
-    expect(text).toMatch(/\$0\.0670 per image/);
+    expect(text).toMatch(/\$0\.0670 published per image/);
+    expect(text).toMatch(/budgeted at \$0\.0905/);
     expect(text).toMatch(/12 images/);
   });
 

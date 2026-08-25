@@ -3,6 +3,7 @@ import {
   ALLOWED_IMAGE_RESOLUTIONS,
   computeGeminiCost,
   computeImageCost,
+  IMAGE_COST_MULTIPLIER,
   computeImageCostFromUsage,
   estimateImageRunCost,
   imageModelPrices,
@@ -228,7 +229,10 @@ describe('estimateImageRunCost', () => {
       modelId: 'gemini-3-pro-image', resolution: '1K', slots: 5, candidatesPerSlot: 3,
     });
     expect(e.images).toBe(15);
-    expect(e.usd).toBeCloseTo(15 * 0.134, 12);
+    // The estimate carries the gate multiplier; the published rate is kept
+    // beside it so the two can be compared.
+    expect(e.publishedUsd).toBe(0.134);
+    expect(e.usd).toBeCloseTo(15 * 0.134 * IMAGE_COST_MULTIPLIER, 12);
     expect(e.modelId).toBe('gemini-3-pro-image');
   });
 
@@ -296,5 +300,46 @@ describe('computeImageCostFromUsage', () => {
     expect(() => computeImageCostFromUsage('ghost', { candidatesTokenCount: 1120 })).toThrow(
       UnknownImageModelError,
     );
+  });
+});
+
+describe('IMAGE_COST_MULTIPLIER', () => {
+  // Ten images, every one billed above its published rate. The gate must sit
+  // above the worst of them, not near the mean.
+  const observed = [1.152, 1.171, 1.261, 1.185, 1.220, 1.169, 1.129, 1.125, 1.113, 1.139];
+
+  it('clears every ratio observed so far', () => {
+    expect(IMAGE_COST_MULTIPLIER).toBeGreaterThan(Math.max(...observed));
+  });
+
+  it('is a gate, not a mean', () => {
+    const mean = observed.reduce((a, b) => a + b, 0) / observed.length;
+    expect(IMAGE_COST_MULTIPLIER).toBeGreaterThan(mean);
+  });
+
+  it('inflates the run estimate above the published rate', () => {
+    const e = estimateImageRunCost({
+      modelId: 'gemini-3.1-flash-image', resolution: '2K', slots: 5, candidatesPerSlot: 3,
+    });
+    expect(e.publishedUsd).toBe(0.101);
+    expect(e.perImageUsd).toBeCloseTo(0.101 * IMAGE_COST_MULTIPLIER, 12);
+    expect(e.usd).toBeCloseTo(15 * 0.101 * IMAGE_COST_MULTIPLIER, 12);
+    expect(e.usd).toBeGreaterThan(15 * 0.101);
+  });
+
+  // The gate is for estimates only. A recorded cost must never be inflated.
+  it('does not touch computeImageCost or the usage-based actual', () => {
+    expect(computeImageCost('gemini-3.1-flash-image', '2K')).toBe(0.101);
+    expect(
+      computeImageCostFromUsage('gemini-3.1-flash-image', { candidatesTokenCount: 1680 }),
+    ).toBeCloseTo(0.1008, 6);
+  });
+
+  it('would have covered the real bake-off', () => {
+    const budgeted = estimateImageRunCost({
+      modelId: 'gemini-3-pro-image', resolution: '2K', slots: 1, candidatesPerSlot: 3,
+    }).usd;
+    // The three pro images actually billed this much.
+    expect(budgeted).toBeGreaterThan(0.151246 + 0.150766 + 0.149086);
   });
 });

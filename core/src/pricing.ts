@@ -237,21 +237,49 @@ export function computeImageCostFromUsage(modelId: string, usage: ImageUsage): n
   );
 }
 
+/**
+ * Applied to every pre-flight image estimate. Like THINKING_TOKEN_MULTIPLIER
+ * this is a **gate, not a best estimate**: it feeds a spend ceiling, and a
+ * ceiling that under-estimates protects nobody. Typical cost is well under it.
+ *
+ * Ten images have been generated at exact published (size, aspect) pairs, and
+ * every one billed above its published per-image rate — never once under.
+ * Actual over published, in order
+ * (benchmarks/RESULTS-block4-imagebakeoff.md, reports/block-4-session-3.md):
+ *
+ *   flash 2K  1.152, 1.171, 1.261, 1.185, 1.220, 1.169
+ *   pro   2K  1.129, 1.125, 1.113, 1.139
+ *
+ *   min 1.113   mean 1.166   max 1.261
+ *
+ * 1.35 clears the worst observed by 7%. It is not derived from a model of
+ * why the gap exists — the served token count for a published pair is 1,930
+ * to 2,050 against a published 1,680 and nothing explains that — so it is
+ * chosen to sit above the evidence rather than to fit it. Ten images from one
+ * slot on one reel is a thin basis; revise it when there is a wider one.
+ *
+ * Actuals always come from `usageMetadata` and are never estimated.
+ */
+export const IMAGE_COST_MULTIPLIER = 1.35;
+
 export interface ImageRunEstimate {
   modelId: string;
   resolution: ImageResolution;
   slots: number;
   candidatesPerSlot: number;
   images: number;
+  /** The rate Google publishes, before the gate multiplier. */
+  publishedUsd: number;
+  /** What the gate budgets per image: published x IMAGE_COST_MULTIPLIER. */
   perImageUsd: number;
   usd: number;
 }
 
 /**
- * The pre-spend estimate for a whole generation run. Exact rather than
- * pessimistic, unlike the text estimators: per-image billing means the only
- * unknown is how many images get requested, and that is decided before the
- * first call.
+ * The pre-spend estimate for a whole generation run, deliberately pessimistic
+ * by IMAGE_COST_MULTIPLIER. It was exact once, on the theory that per-image
+ * billing left only the image count unknown; ten images then billed 11% to
+ * 26% above their published rates.
  */
 export function estimateImageRunCost(options: {
   modelId: string;
@@ -260,8 +288,9 @@ export function estimateImageRunCost(options: {
   candidatesPerSlot: number;
 }): ImageRunEstimate {
   const { modelId, resolution, slots, candidatesPerSlot } = options;
-  const perImageUsd = computeImageCost(modelId, resolution);
+  const publishedUsd = computeImageCost(modelId, resolution);
+  const perImageUsd = publishedUsd * IMAGE_COST_MULTIPLIER;
   const images = slots * candidatesPerSlot;
-  return { modelId, resolution, slots, candidatesPerSlot, images, perImageUsd,
-    usd: images * perImageUsd };
+  return { modelId, resolution, slots, candidatesPerSlot, images,
+    publishedUsd, perImageUsd, usd: images * perImageUsd };
 }
