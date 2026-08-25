@@ -1259,14 +1259,13 @@ the code has run 4 since Block 3 session 6; the amendment is now written.
 **Only 2 of 10 candidates passed the gate**, and this is the block's real
 result rather than the DoD checkbox.
 
-- **Six failed on `edge_halo`** (up to 0.1703 against 0.10). That is mode v5's
-  lighting prune: the axis now offers only `hard directional` and `rim light`,
-  and `edge_halo` **cannot tell a rim the model drew from a rim the remover
-  left** — the limit recorded at `MAX_EDGE_HALO` in session 5, when the user
-  established the bright edge in the corpus was rendered, not retained. The
-  gate is sending correct renders to `card` for having exactly the lighting
-  the mode asks for. **No threshold was refitted.** It is a tension between
-  two deliberate decisions, not a defect in either.
+- **Five failed on `edge_halo`, four of them on halo alone** (up to 0.1703
+  against 0.10). `edge_halo` **could not tell a rim the model drew from a rim
+  the remover left**, so the gate was rejecting correct renders. **Session 7
+  fixed the metric, not the threshold** — see below. The lighting prune is a
+  plausible contributing cause and was never isolated: these ten span five
+  slots with different subjects while the clean corpus was six images of one
+  slot, so subject and slot changed alongside lighting.
 - **Two failed on `hole_ratio`** (img004, 0.09251 and 0.01739) — a genuine
   matte defect, and **the metric's first firing on a real image**. It read
   0.00000 on all six corpus images and needed deliberate degradation in

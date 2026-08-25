@@ -176,14 +176,29 @@ comes to ~$1.40.
 - **Two of ten candidates passed the gate.** Not a defect in the code, but the
   pipeline as configured sends 80% of what it generates to the `card`
   fallback, and that is not a usable yield.
-- **Six failures are `edge_halo`, caused by mode v5's own lighting prune.** The
-  axis now offers only `hard directional` and `rim light`; `edge_halo` cannot
-  tell a rim the model drew from a rim the remover left. The gate rejects
-  correct renders for having the lighting the mode asks for. **This is a
-  tension between two deliberate decisions and needs a ruling, not a fix.**
-  Options: raise the bound with evidence, make the metric colour-aware so it
-  can compare the cutout against the original, or accept `card` for rim-lit
-  slots. **I refitted nothing.**
+- **Five failures are `edge_halo`; four of those fail on halo alone.**
+  (Corrected in session 7: this said six. Counting the table against the 0.10
+  bound gives img001-c1 0.1004, img001-c2 0.1187, img003-c1 0.1214, img003-c2
+  0.1703 and img004-c2 0.1395. The three stated reasons summed to 10 against 8
+  failing candidates because img004-c2 fails on both halo and hole and was
+  counted twice.)
+
+  **The number that matters for the ruling is four**, because img004-c2 fails
+  `hole_ratio` regardless. A halo fix moves yield from 2/10 to 6/10 and leaves
+  img004 and img005 on `card`.
+
+  `edge_halo` cannot tell a rim the model drew from a rim the remover left, so
+  the gate may be rejecting correct renders. **This is a tension between two
+  deliberate decisions and needs a ruling, not a fix.** Options: raise the
+  bound with evidence, make the metric compare the cutout against the
+  original, or accept `card` for rim-lit slots. **I refitted nothing.**
+- **Attributing the halo failures to the v5 lighting prune is a hypothesis,
+  not a measurement.** (Added in session 7.) The clean corpus was six images
+  of **one slot**; these ten span five slots with different subjects. Lighting
+  changed, but so did subject and slot, and session 5 recorded that the
+  lighting axis is not reliably obeyed and the prune's effect unmeasured. The
+  prune is a plausible contributing cause and nothing here isolates it. One
+  variable per experiment; this run varied several.
 - **`img005`'s edge-noise failure is arguably a false positive.** Its idea is
   `A salon shelf displaying premium hair care products` — many objects — while
   the metric counts everything outside the largest connected blob as speckle
@@ -228,10 +243,10 @@ Open `benchmarks/results/latest-cutouts/vitasilk/index.html` and look at the
 five slots as a set, with the ideas visible. Two questions are waiting on your
 eye and neither can be answered from the metrics. First: do the four
 `card` slots actually look wrong, or is the halo bound rejecting images you
-would happily use? Six of the eight failures are that one metric colliding
-with the lighting you just asked for, and the ruling — raise the bound, make
-the metric compare cutout against original, or accept `card` for rim-lit slots
-— should come from seeing them. Second: does `img005` want to be a shelf at
+would happily use? Five of the eight failures involve that one metric and four
+turn on it alone, and the ruling — raise the bound, make the metric compare
+cutout against original, or accept `card` for rim-lit slots — should come from
+seeing them. Second: does `img005` want to be a shelf at
 all? Its idea asks for many objects while the mode's invariant asks for one
 subject, and if the invariant is right then the slot planner is writing ideas
 it should not. Both are prompt-and-mode questions rather than code, which is

@@ -81,22 +81,30 @@ every slot**: the editor picks in Block 8.
 
 This is the run's real finding and it is not a good number.
 
-### Six failed on edge halo, and that is the lighting prune
+### Five failed on edge halo — four of them on halo alone
 
 `img001` ×2, `img003` ×2, `img004-c2` — all over the 0.10 bound, up to 0.1703.
+**img004-c2 fails `hole_ratio` regardless**, so the number that matters for a
+ruling is **four**: fixing halo takes yield from 2/10 to 6/10 and leaves
+img004 and img005 on `card`.
 
-Mode v5 pruned every flat and unmodelled lighting entry, leaving only
-`hard directional light with defined shadow` and
-`rim light separating the subject from the ground`. `edge_halo` measures alpha
-just outside the subject and **cannot tell a rim the model drew from a rim the
-remover left** — a limit recorded at `MAX_EDGE_HALO` in session 5, when the
-user established by comparing originals against cutouts that the bright edge
-in the corpus images was rendered, not retained.
+(This section said six in the first version of this file. The three stated
+reasons summed to 10 against 8 failing candidates, because img004-c2 was
+counted under both halo and hole. Corrected in session 7.)
 
-So the gate is sending correct renders to `card` for having exactly the
-lighting the mode now asks for. **No threshold was refitted.** The tension is
-real and it is between two deliberate decisions — prune flat light, and keep
-the halo bound at 0.10 — not a defect in either.
+`edge_halo` measures alpha just outside the subject and **cannot tell a rim
+the model drew from a rim the remover left** — a limit recorded at
+`MAX_EDGE_HALO` in session 5, when the user established by comparing originals
+against cutouts that the bright edge in the corpus images was rendered, not
+retained. **Session 7 fixed the metric rather than the threshold**; see
+`RESULTS-block4-halo.md`.
+
+**Mode v5's lighting prune is a plausible contributing cause and nothing here
+isolates it.** The clean corpus was six images of one slot; these ten span
+five slots with different subjects. Lighting changed, but so did subject and
+slot, and session 5 recorded that the axis is not reliably obeyed and the
+prune's effect unmeasured. One variable per experiment; this run varied
+several.
 
 ### Two failed on holes, which is a genuine matte defect
 
