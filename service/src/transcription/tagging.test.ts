@@ -96,6 +96,39 @@ describe('deriveLang — the local cross-check', () => {
     expect(deriveLang('glow')).toBe('en');
   });
 
+  it('has no opinion on a word spelled the same in French and English', () => {
+    for (const text of [
+      'cocktail',
+      'enzymes',
+      'minutes',
+      'injections',
+      'salon',
+      'mains',
+      'marque',
+      'face',
+    ]) {
+      expect(deriveLang(text)).toBeNull();
+    }
+  });
+
+  it('has no opinion on a brand name', () => {
+    expect(deriveLang('profhilo')).toBeNull();
+  });
+
+  it('still answers where the spelling decides it', () => {
+    // An accent, an elided article, a French-only form, an English-only form.
+    expect(deriveLang('réticulé')).toBe('fr');
+    expect(deriveLang("l'acide")).toBe('fr');
+    expect(deriveLang('vitamines')).toBe('fr');
+    expect(deriveLang('eyes')).toBe('en');
+  });
+
+  it('leaves a standalone "ou" to the conformance scorer', () => {
+    // §2 writes the conjunction `w`, so a standalone `ou` is a scored Darija
+    // violation far more often than it is the French "or".
+    expect(deriveLang('ou')).toBeNull();
+  });
+
   it('has no opinion on Arabizi', () => {
     for (const text of ['bzaf', 'ch3rk', 'l7loul', '3ndhom', 'katsnay']) {
       expect(deriveLang(text)).toBeNull();

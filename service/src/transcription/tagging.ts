@@ -45,16 +45,24 @@ const ACCENTED_RE = /[àâäçéèêëîïôöùûüÿœæ]/i;
  * unmatched words to darija. That default is right for scoring a
  * Darija-majority reference and wrong here, where a wrong guess would be
  * recorded as a disagreement with the model.
+ *
+ * The rule for both lists: **an entry may only be a word whose spelling
+ * decides its language.** A word spelled the same in French and English
+ * cannot be claimed by either, so it is absent and derives to null — the
+ * derivation says nothing rather than guessing. Two corollaries, so neither
+ * gets re-added:
+ *
+ * - An accented word needs no entry. `ACCENTED_RE` below already answers it,
+ *   and listing it twice invites the two to drift apart.
+ * - A brand or product name is not a language claim. §5 makes brand spelling
+ *   a client-vocabulary matter, and mode vocabulary carries it from Block 9.
  */
 const FRENCH_LEXICON = new Set([
-  'le', 'la', 'les', 'un', 'une', 'des', 'du', 'de', 'et', 'ou', 'alors',
+  'le', 'la', 'les', 'un', 'une', 'des', 'du', 'de', 'et', 'alors',
   'donc', 'mais', 'pour', 'avec', 'sans', 'dans', 'par', 'non', 'aussi',
-  'est', "c'est", 'dernière', 'génération', 'marque', 'soin',
-  'salon', 'enzymes', 'vitamines', 'cocktail', 'saumon', 'cernes',
-  'visage', 'peau', 'cou', 'mains', 'acide', 'exemple', 'lissage',
-  'brésilien', 'mésothérapie', 'hyaluronique', 'polynucléotides',
-  'pigmentées', 'faiblement', 'réticulé', 'ridules', 'décolleté', 'profhilo',
-  'caféine', 'minutes', 'injections',
+  'est', "c'est", 'soin', 'vitamines', 'saumon', 'cernes', 'visage', 'peau',
+  'cou', 'acide', 'exemple', 'lissage', 'hyaluronique', 'ridules',
+  'faiblement',
 ]);
 
 // "filler" and "glow" were both listed as French. They are English loanwords
@@ -63,7 +71,7 @@ const FRENCH_LEXICON = new Set([
 // right. "glow" is asserted here; "filler" is only removed, so it derives to
 // null and the derivation stays silent rather than trading one claim for
 // another.
-const ENGLISH_LEXICON = new Set(['the', 'and', 'eyes', 'skin', 'face', 'glow']);
+const ENGLISH_LEXICON = new Set(['the', 'and', 'eyes', 'skin', 'glow']);
 
 const EDGE_PUNCTUATION_RE = /^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu;
 
