@@ -62,6 +62,24 @@ version before that was true.
 
 ## 4. Session report (mandatory, every session)
 
+### A defect report names the state it destroyed
+
+When a defect corrupts or deletes state — cache entries, generated files, a
+plan, a ledger line — the report records **what was lost**, not only that the
+defect happened and was fixed. Name the entries, the files, the count.
+
+The next session starts from the report. If it says "the fix is unverified"
+but not "and two cache entries are gone", that session plans a verification
+run it cannot afford and discovers the gap only by probing. Block 4 session 3
+reported its eviction fix as unverified and did not record that two image
+entries had been deleted; session 4's first instruction was therefore
+unrunnable, and finding that out consumed the opening of the session.
+
+The same applies to state a fix cannot restore. Say so explicitly: an entry
+that will never come back is a permanent change to what the repo can
+reproduce, and it belongs in **Failures & open problems**, not only in a
+narrative of what went wrong.
+
 File: `reports/block-N-session-M.md`, committed. Sections, in order:
 1. **Done** — deliverables actually completed, with file paths.
 2. **Deviations** — anything done differently than the prompt, and why.
