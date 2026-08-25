@@ -23,12 +23,14 @@ AI-generated contextual images, SFX, and a watermark. Full spec in
 - `reports/` — per-session work reports
 - `panel/` — After Effects CEP panel (not started)
 - `core/` — `@framopia/core`, the shared workspace package: config loading,
-  the cost ledger, pricing constants and the Gemini model pin
-  (`core/src/model-config.json`), the token normalizer, the Levenshtein
+  the cost ledger, pricing constants and the Gemini model pins — text and
+  **image** — (`core/src/model-config.json`), the token normalizer, the Levenshtein
   aligner, and `SCRIPT_RULES`. Anything both `service/` and `benchmarks/`
   need lives here; nothing is duplicated across the two any more.
 - `service/` — Node/TypeScript companion service. `service/src/transcription/`
-  holds the production hybrid module (see Status).
+  holds the production hybrid module, `service/src/analysis/` the keyword and
+  image-slot stages, and `service/src/images/` the image generation stage
+  (see Status).
 - `benchmarks/` — transcription benchmark harness (Scribe, Gemini, local
   Whisper baseline, Scribe+Gemini hybrid), scored on WER, orthography
   conformance, and cross-engine timestamp deviation. See `benchmarks/README.md`.
@@ -273,13 +275,18 @@ unchanged. `.local/ground-truth/ground-truth.txt` carries a
 `GroundTruth.version` exposes it, so a scored result can name what it scored
 against.
 
-**The noise floor is 3.7 WER points** against the corrected reference — 14.8%
+**The noise floor is 5.2 WER points** since the Block 4 session 1 reference
+correction; see the Block 4 section. The 3.7 figure below is superseded and is
+kept because it is what every Block 3 comparison was judged against.
+
+**The noise floor was 3.7 WER points** against the then-corrected reference — 14.8%
 to 18.5% across the three identical correction calls. It got *wider* than the
 old 2.5-point figure because correcting the reference removed accidental
 credit the outlier run was getting for a fused spelling. **The 2.5-point
 figure is superseded** and every result scored against the old reference is
 labelled as such in the results files. Any prompt comparison whose effect is
-under 3.7 points is not measurable at n=1 on this reel.
+under 3.7 points is not measurable at n=1 on this reel — **read 5.2 for
+anything measured from Block 4 onward.**
 
 **Post-processing** (all pure, no API): `tagging.ts` derives `script` from the
 characters and leaves `lang` **null** when the correction pass does not report
@@ -656,11 +663,12 @@ all five reels**, including Arabic-script `ونضارة` and `ومادة`.
 production now beats run C hybrid on test-1 (14.7% against 20.6%), test-2
 (22.9% against 28.6%) and test-3 (16.7% against 18.3%). test-1 halved from
 31.3%. The gap that had stood since session 1 is gone on those three.
-ground-truth is the exception at 22.2% against 16.0%, and that is **a reference
-defect**: its own reference writes the conjunction standalone on four lines and
-the article standalone on two, so the transcript is penalised for being right.
-The exact tokens are named in `benchmarks/RESULTS-block3-final.md`; they were
-not corrected because the listening pass did not cover them.
+ground-truth was the exception at 22.2% against 16.0%, and that was **a
+reference defect**: its own reference wrote the conjunction standalone on
+three lines and the article standalone on two, so the transcript was penalised
+for being right. **Block 4 session 1 corrected it** — production is now 11.8%
+against run C's 23.7%, and the inversion holds on all four reels. (The "four
+lines" here was a miscount of the same five-token list.)
 
 **The subtitle timing floor is largely fixed.** Two causes, two fixes:
 `sub_pop`'s stub timings were wrong (0.60 s floor against
@@ -690,6 +698,102 @@ including for migration. Session 5 hit this and had to move a check out of
 structural validation. Every schema addition is now **optional with a
 default**, or ships with a migration path that does not read through the new
 validator.
+
+## Block 4 — image generation
+
+**Session 1 was preparation only and spent nothing.** The ledger held 84
+entries and $7.556062 at both ends of the session, byte-identical.
+
+**The `ground-truth` reference is corrected and the numbers moved a lot.**
+It still wrote a standalone `w` on three lines and a standalone definite
+article on two, which guide §2 forbids — and its header had already been
+bumped to `v1.0.7-conformant` in Block 3 session 6, so it had been claiming a
+conformance it did not have. The five tokens named in
+`RESULTS-block3-final.md` are fused. Re-scored from recorded engine outputs
+with **no API call**; `benchmarks/RESULTS-block4-refcorrection.md` is the
+record.
+
+- The reel goes from **81 reference words to 76**, so unlike the Block 3
+  reference corrections this one is *not* token-for-token and every WER
+  denominator for it moved.
+- **Production drops 22.2% → 11.8%**, a 10.4-point improvement — materially
+  more than the 6.2 points Block 3 estimated, and not reconciled to it: 6.2
+  was the production-vs-run-C *gap*, which nets the transcript's penalty
+  against the credit run C got for making the same non-conformant choice.
+- **Production now beats run C hybrid on all four reels.** ground-truth was
+  the last holdout and now shows the largest margin: −11.9, against −5.9,
+  −5.7 and −1.6. Run C hybrid on this reel worsened 16.0% → 23.7%.
+- **The noise floor is now 5.2 points**, re-scored from the recorded
+  three-call set — up from 3.7, which is superseded, as 2.5 was before it.
+  Any prompt comparison under 5.2 points is not measurable at n=1 on this
+  reel. Caveat: that set ran prompt version 1 and production is on version 4;
+  nothing here re-measures the current prompt.
+- `RESULTS-block1.md` was regenerated by `npm run bench:aggregate` (disk only)
+  and seven other results files carry a supersession notice. Only WER moved;
+  every finding in them stands.
+
+**Image pricing lives in `core`** — `geminiImagePrices` in
+`model-config.json`, read off ai.google.dev/gemini-api/docs/pricing on
+2026-08-25, with `computeImageCost` and `estimateImageRunCost` in
+`pricing.ts`. Per-model, per-resolution-tier. **Nothing about image cost is
+hardcoded outside core.** An unknown model id throws
+`UnknownImageModelError` rather than costing zero.
+
+Per image: `gemini-3-pro-image` $0.134 at 1K and 2K, $0.24 at 4K;
+`gemini-3.1-flash-image` $0.045/$0.067/$0.101/$0.151 at 0.5K/1K/2K/4K;
+`gemini-3.1-flash-lite-image` $0.0336 at 1K; `gemini-2.5-flash-image` $0.039,
+**which retires 2026-10-02 and must not be used** — config validation rejects
+any priced model carrying a `retiresOn`.
+
+`GEMINI_IMAGE_MODEL_PRO` and `GEMINI_IMAGE_MODEL_FLASH` are both live options.
+**Session 2 picks one, by the user's eye. Nothing in code may assume either.**
+
+**1K–2K only, never 4K.** The largest negative zone in a 2160×3840 frame is
+roughly 1700 px across and TEMPLATE_LIBRARY_GUIDE §3 has image comps at
+1200×1200, so 4K is paid-for pixels that get scaled away.
+`ALLOWED_IMAGE_RESOLUTIONS` is `['1K', '2K']`; `validateImageConfig` rejects
+4K by name, and `validateEditPlan` rejects a candidate recording it. The
+default is 1K.
+
+**`service/src/images/`** — `config.ts` (the resolution ruling, 2–4 candidates
+per slot per ARCHITECTURE §5.4 at a default of 3, and a `ceilingUsd` default
+of $3), `client.ts` (the one-method `ImageGenerationClient` interface),
+`gemini-client.ts` (**the real client, never invoked in session 1**),
+`fingerprint.ts`, `cache.ts`, `estimate.ts`, `generate.ts`.
+
+- The cache is `.local/cache/<video-sha256>/images-<fingerprint>/`, reusing
+  `cacheEntryDir` and `evictStaleEntries` **stage-scoped**, so an image write
+  cannot evict the transcription entry. The image is written before the
+  manifest, so an interrupted write reads as a miss; an entry naming a missing
+  file is a miss with a warning, never a zero-byte candidate.
+- The fingerprint covers the composed prompt, the negative prompt, model id,
+  resolution, candidate index, mode id and mode version. **A mode version bump
+  invalidates**, even when this slot's prompt is unchanged, because it may
+  have changed what a later slot draws from the variation axes.
+- **`appendCost` fires once per image the client actually returned, and
+  nowhere else** — not in a wrapper, not on a cache hit, not on an injected
+  fake. Block 3 session 3 wrote eight fabricated ledger lines by billing
+  around a call that never happened. A test runs the whole path against the
+  fake and asserts the ledger is byte-identical.
+- The ceiling is checked **before the first call**, so an over-budget run
+  costs nothing rather than aborting halfway with images already billed.
+
+**Six new optional fields on `ImageCandidate`** — `modelId`, `resolution`,
+`generatedAt`, `costUsd`, `promptFingerprint`, `metrics` (§5.4's alpha edge
+noise, hole ratio, foreground area, edge halo). Every one is
+optional-and-validated-only-when-present under the schema fragility rule, and
+all five existing plans still open through `readEditPlan`.
+
+**The mode palette is reachable without fonts.** `loadMode` →
+`parseMode` → `validateMode` never touches `requireFonts`, and neither do
+`renderStylePrompt` or `renderNegativePrompt`. Confirmed live against
+`k2-syndicalia` with `fonts.status: "tbd"`: the palette resolves and the four
+style fragments render.
+
+**Nothing has been generated.** No image has ever been produced, the real
+client has never been called, and the cutout gate, the metrics that would fill
+`ImageCandidate.metrics`, and the job that would write candidates back onto a
+plan do not exist. `generate.ts` is proven only against a fake.
 
 Panel and real job types are not started; templates exist only as a stub.
 
