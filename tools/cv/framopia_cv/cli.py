@@ -9,6 +9,8 @@ merely clutter a log.
      "alphaMatting": false, "ocr": true}
     {"task": "segment_person", "framePaths": ["..."], "outDir": "...",
      "threshold": 0.5}
+    {"task": "compute_zones", "frames": [{"maskPath": "...", "timeS": 0.0}],
+     "sampleFps": 2}
 
 Exit status is 0 with `{"ok": true, ...}` on success and 1 with
 `{"ok": false, "error": "..."}` on failure. A failure is still valid JSON: the
@@ -137,11 +139,111 @@ def _segment_overlay(request: dict) -> dict:
     }
 
 
+def _compute_zones(request: dict) -> dict:
+    from .zones import (
+        BOTTOM_EXCLUSION,
+        CLOSE_SAMPLES,
+        LATERAL_INSET,
+        MIN_ZONE_AREA,
+        OPEN_SAMPLES,
+        PERSON_COMPONENT_FLOOR,
+        VERTICAL_INSET,
+        ZONE_MARGIN,
+        compute_zones,
+    )
+
+    frames = request["frames"]
+    if not isinstance(frames, list) or not frames:
+        raise ValueError("frames must be a non-empty list of {maskPath, timeS}")
+
+    params = {
+        "threshold": request.get("threshold"),
+        "component_floor": float(request.get("componentFloor", PERSON_COMPONENT_FLOOR)),
+        "zone_margin": float(request.get("zoneMargin", ZONE_MARGIN)),
+        "min_zone_area": float(request.get("minZoneArea", MIN_ZONE_AREA)),
+        "bottom_exclusion": float(request.get("bottomExclusion", BOTTOM_EXCLUSION)),
+        "lateral_inset": float(request.get("lateralInset", LATERAL_INSET)),
+        "vertical_inset": float(request.get("verticalInset", VERTICAL_INSET)),
+        "open_samples": int(request.get("openSamples", OPEN_SAMPLES)),
+        "close_samples": int(request.get("closeSamples", CLOSE_SAMPLES)),
+    }
+    result = compute_zones(frames, **params)
+
+    return {
+        "ok": True,
+        "task": "compute_zones",
+        "sampleFps": request.get("sampleFps"),
+        "width": result["width"],
+        "height": result["height"],
+        # Echoed so a result on disk carries the constants it was produced
+        # with; they are chosen values and a later run may not share them.
+        "params": params,
+        "zones": result["zones"],
+        "perFrame": result["perFrame"],
+        "emptySamples": result["emptySamples"],
+    }
+
+
+def _zone_overlay(request: dict) -> dict:
+    """Zone debug renders: a contact sheet, close-ups and a validity timeline."""
+    from .overlay import close_ups, contact_sheet, timeline
+
+    frames = request["frames"]
+    out_dir = request["outDir"]
+    prefix = request["prefix"]
+    return {
+        "ok": True,
+        "task": "zone_overlay",
+        "contactSheet": contact_sheet(frames, f"{out_dir}/{prefix}-contactsheet.png"),
+        "closeUps": close_ups(frames, out_dir, prefix),
+        "timeline": timeline(
+            request["zones"], float(request["durationS"]), f"{out_dir}/{prefix}-timeline.png"
+        ),
+    }
+
+
+def _component_overlay(request: dict) -> dict:
+    """The frames whose largest dropped component is biggest, drawn."""
+    from .overlay import component_render
+
+    out_dir = request["outDir"]
+    written = [
+        component_render(entry, f"{out_dir}/{entry['name']}.png") for entry in request["entries"]
+    ]
+    return {"ok": True, "task": "component_overlay", "rendered": written}
+
+
+def _component_stats(request: dict) -> dict:
+    """Every mask's components, with what the floor would drop.
+
+    Reads the stored masks and computes nothing else: no inference, no
+    re-segmentation, and nothing on disk is modified.
+    """
+    from .zones import PERSON_COMPONENT_FLOOR, component_report, load_mask
+
+    floor = float(request.get("componentFloor", PERSON_COMPONENT_FLOOR))
+    threshold = request.get("threshold")
+    frames = []
+    for mask_path in request["maskPaths"]:
+        mask = load_mask(mask_path, threshold)
+        components = component_report(mask)
+        # Mirrors filter_components exactly, which drops by absolute area and
+        # does not exempt the largest component.
+        for component in components:
+            component["dropped"] = component["areaFrameFraction"] < floor
+        frames.append({"maskPath": mask_path, "components": components})
+    return {"ok": True, "task": "component_stats", "componentFloor": floor, "frames": frames}
+
+
 TASKS = {
     "remove_bg": _remove_bg,
     "detect_text": _detect_text,
     "segment_person": _segment_person,
     "segment_overlay": _segment_overlay,
+    "compute_zones": _compute_zones,
+    "component_stats": _component_stats,
+    "zone_overlay": _zone_overlay,
+    "component_overlay": _component_overlay,
 }
 
 

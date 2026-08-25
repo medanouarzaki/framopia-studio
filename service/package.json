@@ -18,7 +18,9 @@
     "images": "tsx src/images/images-cli.ts",
     "plan-page": "tsx src/images/plan-page-cli.ts",
     "frames": "tsx src/frames/frames-cli.ts",
-    "segment": "tsx src/frames/segment-cli.ts"
+    "segment": "tsx src/frames/segment-cli.ts",
+    "zones": "tsx src/frames/zones-cli.ts",
+    "components": "tsx src/frames/components-cli.ts"
   },
   "dependencies": {
     "@framopia/core": "*",
