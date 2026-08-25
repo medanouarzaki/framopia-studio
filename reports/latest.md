@@ -252,7 +252,7 @@ Review page: `benchmarks/results/latest-cutouts/index.html`.
   candidate` at the last code commit; docs commits follow.
 - Nine commits this session.
 - **`npm run check` exit 0**, `check: PASS`. core **107** (5 files), service
-  **464** (32 files), benchmarks **166** (16 files) — **737** TypeScript tests,
+  **464** (30 files), benchmarks **166** (16 files) — **737** TypeScript tests,
   plus **24** sidecar pytest tests. `references: PASS` on all four.
 - No commit carries an AI attribution trailer.
 - Pushed at session end.
