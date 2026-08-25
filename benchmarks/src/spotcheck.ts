@@ -1,7 +1,14 @@
 import type { TranscribedWord } from './types.js';
 
-/** A word plus whatever the caller wants shown beside it. */
-export type SpotcheckWord = TranscribedWord & { context?: string };
+/**
+ * A word plus whatever the caller wants shown beside it. `choices` overrides
+ * the page default for this row alone, so one page can ask two different
+ * questions of the same audio.
+ */
+export type SpotcheckWord = TranscribedWord & {
+  context?: string;
+  choices?: [string, string];
+};
 
 /**
  * Picks up to `n` words spread evenly across the timed range of `words`
@@ -96,6 +103,7 @@ export function generateSpotcheckHtml(options: SpotcheckOptions): string {
       const seekTo = Math.max(0, start - leadInS);
       const contextCell =
         contextHeader === undefined ? '' : `\n        <td>${escapeHtml(word.context ?? '')}</td>`;
+      const rowChoices = word.choices ?? choices;
       return `
       <tr>
         <td>${index + 1}</td>
@@ -103,8 +111,8 @@ export function generateSpotcheckHtml(options: SpotcheckOptions): string {
         <td>${start.toFixed(2)}s</td>
         <td><button type="button" onclick="playAt(${seekTo})">play</button></td>
         <td>
-          <label><input type="radio" name="row-${index}" value="${escapeHtml(choices[0])}"> ${escapeHtml(choices[0])}</label>
-          <label><input type="radio" name="row-${index}" value="${escapeHtml(choices[1])}"> ${escapeHtml(choices[1])}</label>
+          <label><input type="radio" name="row-${index}" value="${escapeHtml(rowChoices[0])}"> ${escapeHtml(rowChoices[0])}</label>
+          <label><input type="radio" name="row-${index}" value="${escapeHtml(rowChoices[1])}"> ${escapeHtml(rowChoices[1])}</label>
         </td>
       </tr>`;
     })
@@ -145,11 +153,19 @@ ${rows}
   }
   function showSummary() {
     var radios = document.querySelectorAll('input[type=radio]:checked');
-    var hits = 0;
     var total = ${sample.length};
-    radios.forEach(function (r) { if (r.value === '${escapeJsString(choices[0])}') hits += 1; });
+    // Counted by answer rather than against one expected value, because a
+    // page may carry rows that ask different questions.
+    var counts = {};
+    var order = [];
+    radios.forEach(function (r) {
+      if (counts[r.value] === undefined) { counts[r.value] = 0; order.push(r.value); }
+      counts[r.value] += 1;
+    });
+    order.sort();
+    var parts = order.map(function (v) { return v + ' ' + counts[v]; });
     var rated = radios.length;
-    var text = '${escapeJsString(engine)}: ' + hits + '/' + rated + ' rated ${escapeJsString(choices[0])} (' + rated + '/' + total + ' rated)';
+    var text = '${escapeJsString(engine)}: ' + parts.join(', ') + ' (' + rated + '/' + total + ' rated)';
     document.getElementById('summary').value = text;
   }
 </script>

@@ -47,14 +47,41 @@ function planWords(planPath: string): AnalysisWord[] {
 const ctx = (before: string[], after: string[], text: string): string =>
   `${before.join(' ')} [${text}] ${after.join(' ')}`.trim();
 
+/**
+ * One extra row on test-1, asking a different question of the same audio.
+ * The user ruled that `dial lvidéo` versus `dial la vidéo` is settled by what
+ * was spoken — both spellings are legal under the guide, §2 attaching the
+ * article and §5 keeping the French word's own form — so the reference can
+ * only be fixed by ear. It is not a recovery-or-hallucination question, which
+ * is why it carries its own answers.
+ */
+const LISTENING_QUESTIONS: Record<string, SpotcheckWord[]> = {
+  'test-1': [
+    {
+      text: 'lvidéo / la vidéo',
+      startS: 3.74,
+      endS: 4.42,
+      confidence: null,
+      context:
+        'tal lkher dial [?] lyoma ghadi — which spelling does the audio support? ' +
+        'The reference writes "dial lvidéo"; the transcript writes "dial la vidéo". ' +
+        'Row 1 asks whether "la" is audible at all; this row asks which spelling wins.',
+      choices: ['dial lvidéo', 'dial la vidéo'],
+    },
+  ],
+};
+
 function spotcheckPage(reel: string, analysis: EditAnalysis): string {
-  const words: SpotcheckWord[] = analysis.inserted.map((t) => ({
-    text: t.text,
-    startS: t.startS,
-    endS: t.endS,
-    confidence: null,
-    context: `${ctx(t.before, t.after, t.text)}${t.interpolatedTiming ? '  (timing interpolated)' : ''}`,
-  }));
+  const words: SpotcheckWord[] = [
+    ...analysis.inserted.map((t) => ({
+      text: t.text,
+      startS: t.startS,
+      endS: t.endS,
+      confidence: null,
+      context: `${ctx(t.before, t.after, t.text)}${t.interpolatedTiming ? '  (timing interpolated)' : ''}`,
+    })),
+    ...(LISTENING_QUESTIONS[reel] ?? []),
+  ];
   return generateSpotcheckHtml({
     engine: `${reel} — inserted tokens`,
     audioPath: path.join(LOCAL_DIR, 'bench-audio', `${reel}.wav`),
@@ -65,9 +92,12 @@ function spotcheckPage(reel: string, analysis: EditAnalysis): string {
     choices: ['recovery', 'hallucination'],
     contextHeader: 'context',
     intro:
-      `${words.length} tokens the production transcript has and the reference does not. ` +
+      `${analysis.inserted.length} tokens the production transcript has and the reference does not. ` +
       'Play starts 1s before the token. Mark it a recovery if you hear the word in the ' +
-      'audio, a hallucination if you do not.',
+      'audio, a hallucination if you do not.' +
+      (LISTENING_QUESTIONS[reel] === undefined
+        ? ''
+        : ` ${LISTENING_QUESTIONS[reel]?.length ?? 0} further row(s), sorted in by timestamp, ask a spelling question instead and carry their own answers.`),
   });
 }
 
