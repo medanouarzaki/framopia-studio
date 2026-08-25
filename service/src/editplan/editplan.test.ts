@@ -230,3 +230,83 @@ describe('edit plan io', () => {
     await expect(readEditPlan(planPath)).rejects.toThrow(/zones\.sampleFps/);
   });
 });
+
+describe('validateEditPlan — image candidates (Block 4 fields)', () => {
+  function planWithCandidate(candidate: Record<string, unknown>): EditPlan {
+    const plan = minimalPlan();
+    plan.transcript.words = [
+      {
+        id: 'w1', start: 0, end: 0.4, text: 'kolajin', sourceText: 'kolajin',
+        lang: 'darija', script: 'latin', confidence: 0.9,
+        removed: false, removedReason: null, edited: false,
+      },
+    ];
+    plan.images.slots = [
+      {
+        id: 's001', wordIds: ['w1'], start: 0, end: 2,
+        contextText: 'ctx', idea: 'idea', prompt: 'p', negativePrompt: 'n',
+        candidates: [candidate as never],
+        chosenCandidateId: null, presentation: null,
+        zoneId: null, templateId: null, status: 'pending',
+      },
+    ];
+    return plan;
+  }
+
+  const schemaV1 = { id: 'c1', path: '/i.png', cutoutPath: null, cutoutQuality: null };
+
+  /**
+   * The schema-fragility rule: readEditPlan validates on read, so a required
+   * addition would make every pre-Block-4 plan unopenable, migration
+   * included. A candidate carrying only the v1 fields has to stay legal.
+   */
+  it('accepts a candidate with none of the Block 4 fields', () => {
+    expect(validateEditPlan(planWithCandidate(schemaV1))).toEqual([]);
+  });
+
+  it('accepts a candidate carrying all of them', () => {
+    expect(
+      validateEditPlan(
+        planWithCandidate({
+          ...schemaV1,
+          modelId: 'gemini-3.1-flash-image',
+          resolution: '2K',
+          generatedAt: '2026-08-25T00:00:00.000Z',
+          costUsd: 0.101,
+          promptFingerprint: '0123456789abcdef',
+          metrics: { alphaEdgeNoise: 0.1, holeRatio: 0, foregroundArea: 0.4, edgeHalo: 0.02 },
+        }),
+      ),
+    ).toEqual([]);
+  });
+
+  it('accepts null metrics, which is a gate that has not run', () => {
+    expect(validateEditPlan(planWithCandidate({ ...schemaV1, metrics: null }))).toEqual([]);
+  });
+
+  it('rejects a 4K candidate: the comps scale those pixels away', () => {
+    const issues = validateEditPlan(planWithCandidate({ ...schemaV1, resolution: '4K' }));
+    expect(issues.map((i) => i.path)).toEqual(['images.slots[0].candidates[0].resolution']);
+  });
+
+  it('rejects a present-but-wrongly-typed Block 4 field', () => {
+    const issues = validateEditPlan(planWithCandidate({ ...schemaV1, costUsd: 'free' }));
+    expect(issues.map((i) => i.path)).toEqual(['images.slots[0].candidates[0].costUsd']);
+  });
+
+  it('still requires the v1 candidate fields', () => {
+    const issues = validateEditPlan(planWithCandidate({ id: 'c1' }));
+    expect(issues.map((i) => i.path)).toContain('images.slots[0].candidates[0].path');
+  });
+
+  it('reports an incomplete metrics object per field', () => {
+    const issues = validateEditPlan(
+      planWithCandidate({ ...schemaV1, metrics: { alphaEdgeNoise: 0.1 } }),
+    );
+    expect(issues.map((i) => i.path)).toEqual([
+      'images.slots[0].candidates[0].metrics.holeRatio',
+      'images.slots[0].candidates[0].metrics.foregroundArea',
+      'images.slots[0].candidates[0].metrics.edgeHalo',
+    ]);
+  });
+});

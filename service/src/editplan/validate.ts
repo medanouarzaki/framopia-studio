@@ -43,6 +43,10 @@ const STATUSES = new Set(['pending', 'running', 'done', 'error']);
 const LANGS = new Set(['darija', 'msa', 'fr', 'en', 'mixed']);
 const SCRIPTS = new Set(['latin', 'arabic']);
 const REMOVED_REASONS = new Set(['filler', 'stutter', 'falseStart']);
+// The generation tiers a candidate may record. 4K is deliberately absent: the
+// image comps work at 1200x1200, so it is paid-for pixels that get scaled
+// away, and config validation rejects it before anything is generated.
+const CANDIDATE_RESOLUTIONS = new Set(['1K', '2K']);
 
 class Checker {
   readonly issues: PlanValidationIssue[] = [];
@@ -278,7 +282,37 @@ function checkImages(c: Checker, value: unknown, words: Map<string, Rec>): void 
     c.string(`${p}.idea`, slot.idea);
     c.string(`${p}.prompt`, slot.prompt);
     c.string(`${p}.negativePrompt`, slot.negativePrompt);
-    c.array(`${p}.candidates`, slot.candidates);
+    const candidates = c.array(`${p}.candidates`, slot.candidates);
+    candidates?.forEach((raw, ci) => {
+      const cp = `${p}.candidates[${ci}]`;
+      const cand = c.object(cp, raw);
+      if (cand === null) return;
+      c.string(`${cp}.id`, cand.id);
+      c.string(`${cp}.path`, cand.path);
+      c.nullableString(`${cp}.cutoutPath`, cand.cutoutPath);
+      c.nullableNumber(`${cp}.cutoutQuality`, cand.cutoutQuality);
+      // Block 4 fields are checked only when present. Absent is legal and is
+      // what every plan written before Block 4 has; requiring one here would
+      // make those plans unopenable, migration included.
+      if (cand.modelId !== undefined) c.string(`${cp}.modelId`, cand.modelId);
+      if (cand.resolution !== undefined) {
+        c.oneOf(`${cp}.resolution`, cand.resolution, CANDIDATE_RESOLUTIONS);
+      }
+      if (cand.generatedAt !== undefined) c.string(`${cp}.generatedAt`, cand.generatedAt);
+      if (cand.costUsd !== undefined) c.number(`${cp}.costUsd`, cand.costUsd);
+      if (cand.promptFingerprint !== undefined) {
+        c.string(`${cp}.promptFingerprint`, cand.promptFingerprint);
+      }
+      if (cand.metrics !== undefined && cand.metrics !== null) {
+        const m = c.object(`${cp}.metrics`, cand.metrics);
+        if (m !== null) {
+          c.number(`${cp}.metrics.alphaEdgeNoise`, m.alphaEdgeNoise);
+          c.number(`${cp}.metrics.holeRatio`, m.holeRatio);
+          c.number(`${cp}.metrics.foregroundArea`, m.foregroundArea);
+          c.number(`${cp}.metrics.edgeHalo`, m.edgeHalo);
+        }
+      }
+    });
     c.nullableString(`${p}.chosenCandidateId`, slot.chosenCandidateId);
     c.nullableString(`${p}.zoneId`, slot.zoneId);
     c.nullableString(`${p}.templateId`, slot.templateId);

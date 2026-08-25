@@ -174,11 +174,45 @@ export interface Keywords {
   items: KeywordItem[];
 }
 
+/**
+ * ARCHITECTURE §5.4's cutout gate metrics. Null until the gate runs; a
+ * candidate generated before the gate existed simply has no metrics, which is
+ * different from having failed it.
+ */
+export interface CutoutMetrics {
+  alphaEdgeNoise: number;
+  holeRatio: number;
+  foregroundArea: number;
+  edgeHalo: number;
+}
+
 export interface ImageCandidate {
   id: string;
   path: string;
   cutoutPath: string | null;
   cutoutQuality: number | null;
+  /**
+   * Everything below is a Block 4 addition and every one of them is optional.
+   * `readEditPlan` validates on read, so a required field here would make
+   * every plan written before Block 4 unopenable — including for a migration
+   * that wanted to add the field. Block 3 session 5 hit exactly that and had
+   * to back a check out of structural validation.
+   *
+   * Which model produced this candidate. Absent on a plan predating Block 4,
+   * and the two candidate models differ enough that guessing one would be a
+   * fabricated provenance record.
+   */
+  modelId?: string;
+  /** Generation tier, `1K` or `2K`. 4K is rejected by config validation. */
+  resolution?: string;
+  /** ISO 8601, set when the bytes were written. */
+  generatedAt?: string;
+  /** What the image actually cost, from the per-image rate in core. */
+  costUsd?: number;
+  /** The cache fingerprint the bytes live under, so a plan can find them. */
+  promptFingerprint?: string;
+  /** §5.4 metrics. Null once the gate has run and produced nothing usable. */
+  metrics?: CutoutMetrics | null;
 }
 
 export interface ImageSlot {
