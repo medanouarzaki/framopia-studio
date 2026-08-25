@@ -3,6 +3,7 @@ import {
   ALLOWED_IMAGE_RESOLUTIONS,
   computeGeminiCost,
   computeImageCost,
+  computeImageCostFromUsage,
   estimateImageRunCost,
   imageModelPrices,
   isAllowedImageResolution,
@@ -261,5 +262,39 @@ describe('image model pins', () => {
     expect(imageModelPrices('gemini-2.5-flash-image').retiresOn).toBe('2026-10-02');
     expect(imageModelPrices(GEMINI_IMAGE_MODEL_PRO).retiresOn).toBeNull();
     expect(imageModelPrices(GEMINI_IMAGE_MODEL_FLASH).retiresOn).toBeNull();
+  });
+});
+
+describe('computeImageCostFromUsage', () => {
+  // Google prices an image at a fixed token count per tier, so the billed
+  // figure lands within rounding of the published per-image rate. 1,680
+  // output tokens is the documented 2K count for gemini-3.1-flash-image and
+  // yields $0.1008 against a published $0.101 — the published figure is the
+  // rounded display, so the two agree to 0.2% and not exactly.
+  it('reproduces the published per-image rate from the documented token count', () => {
+    const usd = computeImageCostFromUsage('gemini-3.1-flash-image', {
+      promptTokenCount: 0,
+      candidatesTokenCount: 1680,
+    });
+    const published = computeImageCost('gemini-3.1-flash-image', '2K');
+    expect(Math.abs(usd - published) / published).toBeLessThan(0.01);
+  });
+
+  it('charges prompt tokens at the input rate', () => {
+    const withPrompt = computeImageCostFromUsage('gemini-3-pro-image', {
+      promptTokenCount: 1_000_000,
+      candidatesTokenCount: 0,
+    });
+    expect(withPrompt).toBeCloseTo(2.0, 10);
+  });
+
+  it('is zero when the response reported no usage at all', () => {
+    expect(computeImageCostFromUsage('gemini-3-pro-image', {})).toBe(0);
+  });
+
+  it('throws on an unknown model rather than costing zero', () => {
+    expect(() => computeImageCostFromUsage('ghost', { candidatesTokenCount: 1120 })).toThrow(
+      UnknownImageModelError,
+    );
   });
 });

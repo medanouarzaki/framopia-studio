@@ -5,6 +5,7 @@ export interface ImageGenerationRequest {
   prompt: string;
   negativePrompt: string;
   resolution: ImageResolution;
+  aspectRatio: string;
 }
 
 export interface ImageGenerationUsage {
@@ -17,6 +18,16 @@ export interface GeneratedImage {
   /** IANA type as reported by the API, e.g. `image/png`. */
   mimeType: string;
   usage: ImageGenerationUsage;
+  /**
+   * Any text the model returned alongside the image, joined and trimmed.
+   * These models take no separate negative-prompt field, so the negatives are
+   * appended to the prompt as prose — if the model answers that prose
+   * conversationally instead of obeying it, this is where it shows.
+   */
+  text: string | null;
+  /** Pixel dimensions, when the response reports them. */
+  width: number | null;
+  height: number | null;
 }
 
 /**

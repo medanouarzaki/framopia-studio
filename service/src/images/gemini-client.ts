@@ -38,7 +38,14 @@ export class GeminiImageClient implements ImageGenerationClient {
       response = await this.ai.models.generateContent({
         model: request.modelId,
         contents: text,
-        config: { imageConfig: { imageSize: imageSizeFor(request.resolution) } },
+        config: {
+          imageConfig: {
+            imageSize: imageSizeFor(request.resolution),
+            // Sent explicitly: the API picks its own ratio otherwise, and
+            // picked 16:9 for a 2K request in Block 4 session 2.
+            aspectRatio: request.aspectRatio,
+          },
+        },
       });
     } catch (error) {
       throw new ImageGenerationError(
@@ -60,6 +67,12 @@ export class GeminiImageClient implements ImageGenerationClient {
       );
     }
 
+    const returnedText = parts
+      .map((p) => p.text)
+      .filter((t): t is string => typeof t === 'string' && t.trim().length > 0)
+      .join('\n')
+      .trim();
+
     return {
       bytes: Buffer.from(inline.data, 'base64'),
       mimeType: inline.mimeType ?? 'image/png',
@@ -67,6 +80,9 @@ export class GeminiImageClient implements ImageGenerationClient {
         promptTokenCount: response.usageMetadata?.promptTokenCount,
         candidatesTokenCount: response.usageMetadata?.candidatesTokenCount,
       },
+      text: returnedText.length > 0 ? returnedText : null,
+      width: null,
+      height: null,
     };
   }
 }

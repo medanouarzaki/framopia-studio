@@ -214,6 +214,29 @@ export function computeImageCost(modelId: string, resolution: ImageResolution): 
   return usd;
 }
 
+export interface ImageUsage {
+  promptTokenCount?: number;
+  candidatesTokenCount?: number;
+}
+
+/**
+ * What an image call actually cost, from the response's `usageMetadata`.
+ *
+ * The per-image table is the *published* rate and is what the pre-spend
+ * estimate uses; this is the billed amount. The two should agree, because
+ * Google prices an image at a fixed token count per tier — but they are
+ * computed from different things, and a disagreement means either the tier
+ * served was not the tier requested or the price table is stale. Recording
+ * the table figure as an actual would hide both.
+ */
+export function computeImageCostFromUsage(modelId: string, usage: ImageUsage): number {
+  const prices = imageModelPrices(modelId);
+  return (
+    ((usage.promptTokenCount ?? 0) / 1_000_000) * prices.inputUsdPerMillionTokens +
+    ((usage.candidatesTokenCount ?? 0) / 1_000_000) * prices.outputUsdPerMillionTokens
+  );
+}
+
 export interface ImageRunEstimate {
   modelId: string;
   resolution: ImageResolution;

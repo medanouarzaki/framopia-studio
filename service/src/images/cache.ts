@@ -22,6 +22,8 @@ export interface ImageCachePayload {
   file: string;
   costUsd: number;
   generatedAt: string;
+  /** Any text the model returned alongside the bytes. */
+  text?: string | null;
 }
 
 export interface ImageCacheReadResult {
