@@ -193,10 +193,14 @@ that comparison (`benchmarks/RESULTS-block2-promptv2.md`) was inconclusive,
 having varied two things at once and run each arm once. The `ou` corruption is
 caught by the conformance scorer instead of a prompt rule.
 
-`mixed` has never been produced by any run. `en` first appeared on the live
-vitasilk plan (8 words), where `langDisagreement` also fired for the first
-time — on `filler` ×2, tagged `en` by the model and `fr` by `deriveLang`,
-whose French lexicon claims a word that is English in "le filler glow".
+`mixed` has never been produced by any run — 365 tagged words across the five
+live plans, still nothing. `en` first appeared on the live vitasilk plan (8 words),
+where `langDisagreement` also fired for the first and so far only time — on
+`filler` ×2, tagged `en` by the model and `fr` by `deriveLang`. **The model
+was right and the cross-check was wrong**, so Block 3 session 1 removed
+`filler` from `deriveLang`'s French lexicon (it now derives to null, asserting
+nothing) and removed `glow`, which was on both lists and only came out English
+because the English check ran first.
 
 **`dial` is written separate since guide v1.0.5** (`dial l7loul`, never
 `dl7loul`), because six of the twelve tokens that moved across identical calls
@@ -204,11 +208,22 @@ were this one word. `benchmarks/RESULTS-block2-dialrule.md` measured it: the
 instability is gone (6/6 occurrences comply in all three runs, stability
 69/81 → 79/81) and WER stayed inside the floor.
 
-**All four references are versioned.** `ground-truth` and `test-3` are
-`v1.0.1-conformant`; `test-1` and `test-2` are `v1.0-unrevised` because they
-still contain reduced `dl`/`dla` tokens (`dla vidéo` and `joj dl 7essass` in
-test-1, `joj dl 7essass` in test-2). Those were reported, not fixed —
-correcting a reference is a user decision.
+**All four references are versioned, and all four are now
+`v1.0.1-conformant`.** `ground-truth` and `test-3` were already; `test-1` and
+`test-2` were corrected in Block 3 session 1 — `dla vidéo` → `dial lvidéo` and
+`joj dl 7essass` → `joj dial l7essass` (once in each file). Word counts are
+unchanged (67 and 70), so the corrections are token-for-token. Every result
+scored against the old text is superseded: `RESULTS-block1.md` was
+regenerated from the recorded engine outputs with no API calls, runs A and B
+carry a supersession notice, and the evidence table in
+`docs/DECISION-transcription-config.md` was re-scored (hybrid 24.8% → 21.9%
+overall, gemini 26.6% → 24.5%; the freeze ranking is unchanged).
+
+The one open question the correction raises: §2 attaches the definite article
+(`lvidéo`) while §5 says a French word keeps its own spelling (`la vidéo`).
+`dial lvidéo` follows the `dial lvitaminat` precedent already in the
+ground-truth reference, but the guide does not settle it and no engine writes
+it that way — test-1's fr/en WER went 0.0% → 33.3% on that single token.
 
 **The ground-truth reference was corrected to match the guide.** The hand-written
 ground truth wrote `dl 7olol`, `dl 7essass`, `dl vitaminat` — the reduced form
@@ -243,6 +258,12 @@ but still counting their audio in the gap. Alignment carries Scribe's
 per-slot confidence onto anchored words and leaves interpolated words at
 `null`.
 
+**Cleaning has never fired on real footage.** Zero `removed: true` words
+across all five reels ever run, and zero would have: the Scribe drafts contain
+no fillers and no immediate repeats at all (343 draft words, five reels). The
+footage is scripted and delivered to camera, so `cleaning.ts` is untested
+against real input and its unit tests are the only evidence it works.
+
 **Edit Plan v1** lives in `service/src/editplan/` — `types.ts` (the whole
 ARCHITECTURE §3 shape), `validate.ts` (structural validation returning issues
 with dotted paths, plus `EditPlanVersionError` for an unknown
@@ -275,6 +296,19 @@ second run on the same reel hit the cache, cost $0.0000, took 4 s against
 Two deliberate departures from ARCHITECTURE §3, both to avoid recording a
 guess as data: `transcript.words[].lang` is nullable, and `clientMode` and
 `watermark` are nullable because transcription runs before either is chosen.
+
+**Block 3 session 1 ran the four Block 1 reels through the production CLI** —
+the first evidence the pipeline generalises past vitasilk. All four completed,
+all four plans validated, $0.6248 against a $0.8792 estimate; ledger all-time
+is $5.445002. Every one of the 148 subtitle groups is 1 or 2 words, every word
+lands in exactly one group, and all 291 words carry a lang tag with no nulls.
+`readEditPlan` was exercised outside its tests for the first time on all four
+plans, and its schema-version gate throws `EditPlanVersionError` as designed.
+Numbers, including WER against the corrected references and why it is *not* a
+prompt comparison, are in `benchmarks/RESULTS-block3-generalisation.md`.
+`benchmarks/src/score-editplan.ts` is the 39-line adapter that scores a
+production Edit Plan with the existing benchmark scorer; it reads word texts
+only and does not import from `service/`.
 
 Panel, templates, and real job types are not started.
 
