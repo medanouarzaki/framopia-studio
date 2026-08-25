@@ -47,8 +47,16 @@ Block 3 session 1, the curly apostrophes in all four in Block 3 session 2).
 Whisper is unchanged. The ranking that decided the freeze is unchanged; see
 `benchmarks/RESULTS-block1.md` for the live table.
 
-Hybrid wins every reel in run C, including test-1, where it had lost to
-Gemini in runs A and B.
+Hybrid beats Gemini on overall WER on three of the four run-C reels —
+test-1 (23.9% against 29.9%), test-2 (28.6% against 30.0%) and test-3 (18.3%
+against 23.3%) — and loses the ground-truth reel by 1.2 points (16.0% against
+14.8%). test-1 is the reel it had lost to Gemini in runs A and B.
+
+That claim originally read "Hybrid wins every reel in run C, including
+test-1, where it had lost to Gemini in runs A and B." It was never true:
+Gemini beat hybrid on the ground-truth reel under the original scoring
+(21.0% against 22.2%) as well as after every subsequent re-score. Found and
+corrected in Block 3 session 2.
 
 **Timestamp spotcheck, by ear, ground-truth reel, 15 sampled words:**
 
