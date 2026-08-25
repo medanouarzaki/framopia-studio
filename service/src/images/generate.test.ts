@@ -11,7 +11,11 @@ import {
 import type { ImageSlot } from '../editplan/types.js';
 import type { GeneratedImage, ImageGenerationClient, ImageGenerationRequest } from './client.js';
 import { DEFAULT_IMAGE_CONFIG, parseImageConfig } from './config.js';
-import { ImageBudgetExceededError } from './estimate.js';
+import {
+  ImageBudgetExceededError,
+  ImageCeilingReachedError,
+  imageLedgerTotalUsd,
+} from './estimate.js';
 import { generateImages, ImageDimensionMismatchError } from './generate.js';
 
 const mode = loadMode('k2-syndicalia');
@@ -348,5 +352,138 @@ describe('cache eviction across two arms of one run', () => {
     });
     const entries = readdirSync(path.join(cacheRoot, VIDEO)).filter((d) => d.startsWith('images-'));
     expect(entries).toHaveLength(8);
+  });
+});
+
+/**
+ * Bills well above the price table, the way the real models do: ten images at
+ * exact published pairs came in +11% to +26%. The plain fake bills under its
+ * estimate, which would leave the per-request check unreachable.
+ */
+class ExpensiveFakeClient extends FakeClient {
+  override async generate(request: ImageGenerationRequest): Promise<GeneratedImage> {
+    const image = await super.generate(request);
+    return { ...image, usage: { promptTokenCount: 200, candidatesTokenCount: 2600 } };
+  }
+}
+
+describe('the ceiling as a running check', () => {
+  let costsPath: string;
+  // 2K requests, so the fake must return the shape the dimension check wants.
+  const fake = (): FakeClient => new FakeClient('image/png', { width: 2048, height: 2048 });
+  const at2K = (modelId: string, candidatesPerSlot: number, ceilingUsd: number) =>
+    parseImageConfig({ modelId, resolution: '2K', candidatesPerSlot, ceilingUsd });
+
+  beforeEach(() => {
+    costsPath = path.join(cacheRoot, 'costs.jsonl');
+  });
+
+  /**
+   * The Block 4 session 3 overrun, as a test. The ceiling was checked once,
+   * pre-flight, against an estimate; two arms each passed their own check and
+   * the session went $0.33 over. Both arms now share one baseline, so the
+   * second sees what the first spent.
+   */
+  it('stops the second arm once the shared ceiling is reached', async () => {
+    // A ceiling that admits the flash arm and not both arms.
+    await generateImages({
+      slots: [SLOTS[0]], mode, config: at2K(GEMINI_IMAGE_MODEL_FLASH, 3, 0.35),
+      client: fake(), videoSha256: VIDEO, cacheRoot,
+      bill: true, costsPath, spendBaselineUsd: 0,
+    });
+
+    const second = fake();
+    await expect(
+      generateImages({
+        slots: [SLOTS[0]], mode, config: at2K(GEMINI_IMAGE_MODEL_PRO, 3, 0.35),
+        client: second, videoSha256: VIDEO, cacheRoot,
+        bill: true, costsPath, spendBaselineUsd: 0,
+      }),
+    ).rejects.toThrow(ImageBudgetExceededError);
+    // Aborted before asking for anything: the first arm had spent the budget.
+    expect(second.requests).toHaveLength(0);
+  });
+
+  /**
+   * The case the pre-flight check cannot catch: the estimate fits, the
+   * actuals do not. This is the real shape of the risk, since every measured
+   * image has billed above its published rate.
+   */
+  it('stops mid-run when actuals overrun an estimate that passed pre-flight', async () => {
+    const client = new ExpensiveFakeClient('image/png', { width: 2048, height: 2048 });
+    await expect(
+      generateImages({
+        slots: [SLOTS[0]], mode, config: at2K(GEMINI_IMAGE_MODEL_FLASH, 3, 0.31),
+        client, videoSha256: VIDEO, cacheRoot,
+        bill: true, costsPath, spendBaselineUsd: 0,
+      }),
+    ).rejects.toThrow(ImageCeilingReachedError);
+    expect(client.requests.length).toBeGreaterThan(0);
+    expect(client.requests.length).toBeLessThan(3);
+  });
+
+  it('aborts rather than truncating, and says so', async () => {
+    await expect(
+      generateImages({
+        slots: [SLOTS[0]], mode, config: at2K(GEMINI_IMAGE_MODEL_FLASH, 3, 0.31),
+        client: new ExpensiveFakeClient('image/png', { width: 2048, height: 2048 }),
+        videoSha256: VIDEO, cacheRoot, bill: true, costsPath, spendBaselineUsd: 0,
+      }),
+    ).rejects.toThrow(/aborted, not truncated/);
+  });
+
+  it('refuses a run whose estimate alone exceeds what is left', async () => {
+    const client = fake();
+    await expect(
+      generateImages({
+        slots: [SLOTS[0]], mode, config: at2K(GEMINI_IMAGE_MODEL_FLASH, 4, 0.25),
+        client, videoSha256: VIDEO, cacheRoot,
+        bill: true, costsPath, spendBaselineUsd: 0,
+      }),
+    ).rejects.toThrow(ImageBudgetExceededError);
+    expect(client.requests).toHaveLength(0);
+  });
+
+  it('reads actual spend back from the ledger, not the estimate', async () => {
+    await generateImages({
+      slots: [SLOTS[0]], mode, config: at2K(GEMINI_IMAGE_MODEL_FLASH, 2, 10),
+      client: fake(), videoSha256: VIDEO, cacheRoot,
+      bill: true, costsPath, spendBaselineUsd: 0,
+    });
+    // The fake's usage differs from the price table, so this can only have
+    // come from the ledger.
+    const total = imageLedgerTotalUsd(costsPath);
+    expect(total).toBeGreaterThan(0);
+    expect(total).not.toBeCloseTo(2 * 0.101, 4);
+  });
+
+  it('lets a cache hit through, since it spends nothing', async () => {
+    const config = at2K(GEMINI_IMAGE_MODEL_FLASH, 2, 0.25);
+    await generateImages({
+      slots: [SLOTS[0]], mode, config, client: fake(),
+      videoSha256: VIDEO, cacheRoot, bill: true, costsPath, spendBaselineUsd: 0,
+    });
+    const again = fake();
+    const result = await generateImages({
+      slots: [SLOTS[0]], mode, config, client: again,
+      videoSha256: VIDEO, cacheRoot, bill: true, costsPath, spendBaselineUsd: 0,
+    });
+    expect(again.requests).toHaveLength(0);
+    expect(result.cachedImages).toBe(2);
+  });
+
+  it('counts only spend after the baseline', async () => {
+    writeFileSync(
+      costsPath,
+      `${JSON.stringify({ stage: 'images-generate', model: 'm', unit: 'image', usd: 5, timestamp: 't' })}\n`,
+      'utf8',
+    );
+    const client = fake();
+    await generateImages({
+      slots: [SLOTS[0]], mode, config: at2K(GEMINI_IMAGE_MODEL_FLASH, 2, 0.25),
+      client, videoSha256: VIDEO, cacheRoot,
+      bill: true, costsPath, spendBaselineUsd: 5,
+    });
+    expect(client.requests).toHaveLength(2);
   });
 });

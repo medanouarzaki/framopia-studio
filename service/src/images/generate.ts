@@ -9,10 +9,24 @@ import {
 import { cacheEntryDir, evictStaleEntries, type CacheEntryRef } from '../transcription/cache.js';
 import type { ImageSlot } from '../editplan/types.js';
 import type { ImageGenerationClient } from './client.js';
+export { IMAGE_LEDGER_STAGE } from './estimate.js';
 import type { ImageGenerationConfig } from './config.js';
-import { IMAGE_CACHE_STAGE, imageFileName, readImageCache, writeImageCache } from './cache.js';
+import {
+  IMAGE_CACHE_STAGE,
+  imageFileName,
+  readImageCache,
+  writeImageCache,
+  type ImageCachePayload,
+} from './cache.js';
 import { imageFingerprintInputs, imageFingerprintOf } from './fingerprint.js';
-import { assertWithinCeiling, estimateRun, formatEstimate } from './estimate.js';
+import {
+  assertCeilingNotReached,
+  assertWithinCeiling,
+  estimateRun,
+  formatEstimate,
+  imageLedgerTotalUsd,
+  IMAGE_LEDGER_STAGE,
+} from './estimate.js';
 import { expectedDimensions } from './image-dimensions.js';
 
 /**
@@ -41,8 +55,6 @@ export class ImageDimensionMismatchError extends Error {
     this.name = 'ImageDimensionMismatchError';
   }
 }
-
-export const IMAGE_LEDGER_STAGE = 'images-generate';
 
 /**
  * Image entries kept per video. Sized for several models x several
@@ -101,6 +113,14 @@ export async function generateImages(options: {
   /** Set only by the caller that actually spends. */
   bill?: boolean;
   /**
+   * Image spend already in the ledger when the session started. Every arm of
+   * one session passes the same value, so they share one ceiling instead of
+   * each getting a full one. Defaults to now, which bounds this run alone.
+   */
+  spendBaselineUsd?: number;
+  /** Injected in tests. */
+  costsPath?: string;
+  /**
    * Stop after this many candidates in total. The bake-off uses it to
    * generate one image and halt: a response-parsing defect found on image 1
    * costs $0.10, found on image 6 it costs $0.70.
@@ -110,12 +130,9 @@ export async function generateImages(options: {
 }): Promise<GenerateImagesResult> {
   const {
     slots, mode, config, client, videoSha256,
-    cacheRoot, useCache = true, bill = false, limit, log = () => {},
+    cacheRoot, useCache = true, bill = false, limit, costsPath, log = () => {},
+    spendBaselineUsd = imageLedgerTotalUsd(costsPath),
   } = options;
-
-  const estimate = estimateRun(slots.length, config);
-  assertWithinCeiling(estimate, config.ceilingUsd);
-  log(formatEstimate(estimate));
 
   const perImageUsd = computeImageCost(config.modelId, config.resolution);
   const candidates: GeneratedCandidate[] = [];
@@ -126,9 +143,13 @@ export async function generateImages(options: {
   // Every entry this run touched, hit or miss. Eviction may never remove one.
   const writtenDirs: string[] = [];
 
+  // Resolve the cache before the budget check, so a run that will spend
+  // nothing is never refused for want of budget. A fully cached re-run is
+  // exactly the verification step the ceiling must not block.
+  const planned: { slot: ImageSlot; index: number; ref: CacheEntryRef; id: string }[] = [];
   for (const slot of slots) {
     for (let index = 0; index < config.candidatesPerSlot; index += 1) {
-      if (limit !== undefined && candidates.length >= limit) break;
+      if (limit !== undefined && planned.length >= limit) break;
       const fingerprint = imageFingerprintOf(
         imageFingerprintInputs({
           prompt: slot.prompt,
@@ -140,35 +161,71 @@ export async function generateImages(options: {
           mode,
         }),
       );
-      const ref: CacheEntryRef = {
-        dir: cacheEntryDir(videoSha256, IMAGE_CACHE_STAGE, fingerprint, cacheRoot),
-        videoSha256,
-        stage: IMAGE_CACHE_STAGE,
-        fingerprint,
-      };
-      const id = `${slot.id}-c${index + 1}`;
+      planned.push({
+        slot,
+        index,
+        id: `${slot.id}-c${index + 1}`,
+        ref: {
+          dir: cacheEntryDir(videoSha256, IMAGE_CACHE_STAGE, fingerprint, cacheRoot),
+          videoSha256,
+          stage: IMAGE_CACHE_STAGE,
+          fingerprint,
+        },
+      });
+    }
+  }
 
+  const hits = new Map<string, ImageCachePayload>();
+  if (useCache) {
+    for (const p of planned) {
+      const hit = await readImageCache(p.ref);
+      if (hit.warning !== null) warnings.push(hit.warning);
+      if (hit.payload !== null) hits.set(p.ref.fingerprint, hit.payload);
+    }
+  }
+
+  const billable = planned.length - hits.size;
+  // Describes what is actually planned, which `limit` can cut below
+  // slots x candidates.
+  const estimate = { ...estimateRun(slots.length, config), images: planned.length };
+  // Against what is left of the ceiling, not the whole of it. Every arm of a
+  // session shares one baseline, so a second arm sees what the first spent —
+  // session 3 gave each arm a full ceiling and went over.
+  const alreadySpent = imageLedgerTotalUsd(costsPath) - spendBaselineUsd;
+  assertWithinCeiling(
+    { ...estimate, images: billable, usd: billable * perImageUsd },
+    config.ceilingUsd - alreadySpent,
+  );
+  log(formatEstimate(estimate, hits.size));
+  {
+    for (const { slot, index, ref, id } of planned) {
       writtenDirs.push(ref.dir);
 
-      if (useCache) {
-        const hit = await readImageCache(ref);
-        if (hit.warning !== null) warnings.push(hit.warning);
-        if (hit.payload !== null) {
-          cachedImages += 1;
-          candidates.push({
-            slotId: slot.id, candidateIndex: index, id,
-            path: path.join(ref.dir, hit.payload.file),
-            modelId: hit.payload.modelId, resolution: hit.payload.resolution,
-            generatedAt: hit.payload.generatedAt,
-            width: hit.payload.width ?? null, height: hit.payload.height ?? null,
-            costUsd: 0,
-            estimatedUsd: perImageUsd, cached: true,
-            text: hit.payload.text ?? null, bytes: 0,
-            mimeType: hit.payload.mimeType, wallTimeS: 0,
-          });
-          continue;
-        }
+      const payload = hits.get(ref.fingerprint);
+      if (payload !== undefined) {
+        cachedImages += 1;
+        candidates.push({
+          slotId: slot.id, candidateIndex: index, id,
+          path: path.join(ref.dir, payload.file),
+          modelId: payload.modelId, resolution: payload.resolution,
+          generatedAt: payload.generatedAt,
+          width: payload.width ?? null, height: payload.height ?? null,
+          costUsd: 0,
+          estimatedUsd: perImageUsd, cached: true,
+          text: payload.text ?? null, bytes: 0,
+          mimeType: payload.mimeType, wallTimeS: 0,
+        });
+        continue;
       }
+
+      // Re-read the ledger before every request, not once pre-flight.
+      assertCeilingNotReached({
+        baselineUsd: spendBaselineUsd,
+        nextUsd: perImageUsd,
+        ceilingUsd: config.ceilingUsd,
+        imagesDone: billedImages,
+        costsPath,
+      });
 
       const startedAt = Date.now();
       const image = await client.generate({
@@ -198,12 +255,10 @@ export async function generateImages(options: {
       // estimate recorded as an actual is how a ledger stops being evidence.
       const actualUsd = computeImageCostFromUsage(config.modelId, image.usage);
       if (bill) {
-        appendCost({
-          stage: IMAGE_LEDGER_STAGE,
-          model: config.modelId,
-          unit: 'image',
-          usd: actualUsd,
-        });
+        appendCost(
+          { stage: IMAGE_LEDGER_STAGE, model: config.modelId, unit: 'image', usd: actualUsd },
+          costsPath,
+        );
       }
       totalUsd += actualUsd;
       billedImages += 1;

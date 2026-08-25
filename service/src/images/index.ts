@@ -39,7 +39,10 @@ export {
   type ImageCacheReadResult,
 } from './cache.js';
 export {
+  assertCeilingNotReached,
   assertWithinCeiling,
+  ImageCeilingReachedError,
+  imageLedgerTotalUsd,
   estimateRun,
   formatEstimate,
   ImageBudgetExceededError,
