@@ -204,8 +204,8 @@ describe('the k2 stub on disk', () => {
     expect(mode.vocabulary).toEqual([]);
   });
 
-  it('is at version 4', () => {
-    expect(mode.version).toBe(4);
+  it('is at version 5', () => {
+    expect(mode.version).toBe(5);
   });
 
   // §5.4's candidate default dropped from 3 to 2 at Block 4 session 5:
@@ -218,8 +218,13 @@ describe('the k2 stub on disk', () => {
   // A cutout needs the subject separated from its ground.
   it('has no flat or unmodelled lighting entry', () => {
     for (const value of mode.imageVariation.axes.lighting ?? []) {
-      expect(value.toLowerCase()).not.toContain('flat');
-      expect(value.toLowerCase()).not.toContain('no modelling');
+      const lower = value.toLowerCase();
+      expect(lower).not.toContain('flat');
+      expect(lower).not.toContain('no modelling');
+      // Session 5's ruling: barely-readable shadows are the flat
+      // characterless look under a gentler name. Diffuse and modelled is
+      // fine; diffuse and unmodelled is not.
+      expect(lower).not.toContain('barely readable');
     }
   });
 

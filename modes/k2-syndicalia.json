@@ -1,7 +1,7 @@
 {
   "id": "k2-syndicalia",
   "name": "K2 Syndicalia",
-  "version": 4,
+  "version": 5,
   "note": "Stub. The palette is locked (PROJECT_SPEC §5); fonts, the real image style and the vocabulary are supplied by the user at Block 9. vocabulary is deliberately empty rather than guessed: Block 2 saw one brand name rendered three different ways across three identical correction calls, so these terms become load-bearing as transcription key terms once they exist. allowedTemplates holds stub ids until the real templates arrive in Block 6. Version 2 added imageVariation.",
   "palette": {
     "background": "#1A0000",
@@ -29,7 +29,7 @@
     ]
   },
   "imageVariation": {
-    "note": "The user's ruling (Block 3 session 3): the mode palette is dominant in every image, and the slots of one reel vary so the set reads as designed rather than batched. imageStyle.stylePrompt is the invariant half and applies unchanged to every slot -- that is what keeps the palette dominant. These axes are the varying half. Block 4 session 3 replaced the composition axis: when the quality gate returns `cutout` the background is discarded, so any variation expressed as where the subject sits inside the generated frame is erased, and the set would read as batched precisely where cutouts work best. The three axes here are properties of the subject itself, which survive being cut out. Placement language is gone from both halves except `centred`, which the invariant fragment keeps because it helps the cutout by holding the subject clear of the frame edge. The specific terms are placeholders like the rest of this stub and are refined with the user at Block 9; the axis names are the part that is settled. Block 4 session 5 pruned the flat/frontal/unmodelled lighting entry: a cutout needs the subject separated from its ground and flat frontal light removes that separation. Stated honestly, the prune's effect is unmeasured -- all six corpus images carried `flat frontal light, no modelling` and the pro model rendered dramatic rim light regardless, so this axis is not reliably obeyed. `soft diffuse light, shadows barely readable` was kept: it is neither flat nor frontal and it does declare shadows, so it sits outside the stated prune, but it is the next candidate if separation turns out to be the problem.",
+    "note": "The user's ruling (Block 3 session 3): the mode palette is dominant in every image, and the slots of one reel vary so the set reads as designed rather than batched. imageStyle.stylePrompt is the invariant half and applies unchanged to every slot -- that is what keeps the palette dominant. These axes are the varying half. Block 4 session 3 replaced the composition axis: when the quality gate returns `cutout` the background is discarded, so any variation expressed as where the subject sits inside the generated frame is erased, and the set would read as batched precisely where cutouts work best. The three axes here are properties of the subject itself, which survive being cut out. Placement language is gone from both halves except `centred`, which the invariant fragment keeps because it helps the cutout by holding the subject clear of the frame edge. The specific terms are placeholders like the rest of this stub and are refined with the user at Block 9; the axis names are the part that is settled. Block 4 session 5 pruned the flat/frontal/unmodelled lighting entry: a cutout needs the subject separated from its ground and flat frontal light removes that separation. Stated honestly, the prune's effect is unmeasured -- all six corpus images carried `flat frontal light, no modelling` and the pro model rendered dramatic rim light regardless, so this axis is not reliably obeyed. `soft diffuse light, shadows barely readable` was pruned at session 6 by the user's ruling: the prune targets the flat characterless look, and barely-readable shadows are that look under a gentler name. Diffuse light itself is fine -- an entry that is diffuse *and* modelled belongs here, and none is written yet. The axis is at the validator's minimum of two values; a third is the user's to write at Block 9, like the fonts.",
     "axes": {
       "cameraAngle": [
         "seen straight on at eye level",
@@ -45,7 +45,6 @@
       ],
       "lighting": [
         "hard directional light with defined shadow",
-        "soft diffuse light, shadows barely readable",
         "rim light separating the subject from the ground"
       ]
     }
