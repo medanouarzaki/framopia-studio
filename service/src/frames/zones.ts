@@ -60,6 +60,13 @@ export interface ComponentStatsResult {
 }
 
 export const ZONES_DEBUG_DIR = path.join(REPO_ROOT, 'benchmarks', 'results', 'latest-zones');
+
+/**
+ * The source reels' geometry. The working masks are 540x960; a short edge is
+ * quoted in source pixels because that is the frame an editor sees.
+ */
+export const SOURCE_WIDTH = 2160;
+export const SOURCE_HEIGHT = 3840;
 export const COMPONENTS_DEBUG_DIR = path.join(
   REPO_ROOT,
   'benchmarks',

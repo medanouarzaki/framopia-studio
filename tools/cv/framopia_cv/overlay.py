@@ -211,3 +211,74 @@ def component_render(entry: dict, out_path: str) -> str:
     Path(out_path).parent.mkdir(parents=True, exist_ok=True)
     composed.save(out_path, "PNG")
     return out_path
+
+
+def short_edge_render(
+    frame_path: str,
+    mask_path: str,
+    zones: list[dict],
+    source_width: int,
+    source_height: int,
+    min_short_edge: float,
+    out_path: str,
+) -> str:
+    """Each zone with its short edge dimensioned and labelled in source pixels.
+
+    The constant is a judgement about whether an image placed in a rectangle
+    reads as a design element, and that is not a question a table answers. The
+    dimension line is drawn on the short edge specifically, because the images
+    are square and the short edge is the only side that bounds what fits.
+    """
+    composed = tinted(frame_path, mask_path)
+    draw = ImageDraw.Draw(composed)
+    font = _font()
+
+    for zone in zones:
+        rect = zone["rect"]
+        x0 = rect["x"] * composed.width
+        y0 = rect["y"] * composed.height
+        x1 = x0 + rect["w"] * composed.width
+        y1 = y0 + rect["h"] * composed.height
+        colour = ZONE_COLOURS.get(zone["kind"], (255, 255, 255))
+        draw.rectangle([x0, y0, x1 - 1, y1 - 1], outline=colour, width=2)
+
+        px_w = rect["w"] * source_width
+        px_h = rect["h"] * source_height
+        horizontal = px_w <= px_h
+        short_px = min(px_w, px_h)
+
+        # The dimension line sits on the short edge, mid-rectangle, with end
+        # caps so it reads as a measurement rather than another rectangle.
+        if horizontal:
+            y = (y0 + y1) / 2
+            draw.line([x0, y, x1, y], fill=colour, width=3)
+            draw.line([x0, y - 8, x0, y + 8], fill=colour, width=3)
+            draw.line([x1, y - 8, x1, y + 8], fill=colour, width=3)
+            label_at = (x0 + 4, y + 10)
+        else:
+            x = (x0 + x1) / 2
+            draw.line([x, y0, x, y1], fill=colour, width=3)
+            draw.line([x - 8, y0, x + 8, y0], fill=colour, width=3)
+            draw.line([x - 8, y1, x + 8, y1], fill=colour, width=3)
+            label_at = (x + 10, (y0 + y1) / 2)
+
+        aspect = source_height / source_width
+        passes = min(rect["w"], rect["h"] * aspect) >= min_short_edge
+        label = f"{zone['kind']} {short_px:.0f}px {'pass' if passes else 'FAIL'}"
+        # A label anchored inside a zone near the frame edge runs off it; pull
+        # it back so the number stays readable.
+        text_width = draw.textlength(label, font=font)
+        x = min(label_at[0], composed.width - text_width - 4)
+        draw.text((max(2, x), label_at[1]), label, fill=colour, font=font)
+
+    floor_px = min_short_edge * source_width
+    draw.text(
+        (6, 6),
+        f"short edge floor {min_short_edge} of frame width = {floor_px:.0f}px "
+        f"(source {source_width}x{source_height})",
+        fill=(240, 240, 240),
+        font=font,
+    )
+    Path(out_path).parent.mkdir(parents=True, exist_ok=True)
+    composed.save(out_path, "PNG")
+    return out_path

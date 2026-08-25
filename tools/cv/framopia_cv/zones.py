@@ -36,16 +36,24 @@ PERSON_COMPONENT_FLOOR = 0.0001
 # abuts the person and a mask a pixel or two tight does not read as touching.
 ZONE_MARGIN = 0.02
 
-# The smallest rectangle worth emitting. Below this an image would be placed
-# at a size nobody would accept, and a small zone is worse than no zone
-# because the solver would treat it as a real option.
-MIN_ZONE_AREA = 0.03
+# The smallest rectangle worth emitting, as its SHORT EDGE in units of frame
+# width. Generated images are 1:1 (DECISION-image-config), so the largest
+# square a zone can hold is bounded by its short edge alone; area lets one long
+# dimension pay for a fatally short one, and a 0.052 x 0.800 strip passed a
+# 0.03 area floor at 113px wide on a 2160-wide frame. 0.15 is 324px, roughly a
+# quarter of TEMPLATE_LIBRARY_GUIDE §3's 1200x1200 comp working size, below
+# which a placed image reads as a stamp rather than a design element.
+#
+# CHOSEN, NOT MEASURED. The corpus separates one clear outlier at 113px from a
+# cluster at 253px and up, so any value in 0.06-0.11 would remove only that
+# outlier; 0.15 additionally removes two borderline zones at 253px and 285px.
+MIN_ZONE_SHORT_EDGE = 0.15
 
-# The lowest part of the frame is never usable zone area, whatever the mask
-# says. The mask under-covers low-contrast fabric there and an unselected
-# pixel reads as free space, so without this a missed garment becomes a
-# placement target. Ruled by the user; left and right zones are clipped to end
-# above it and the top zone is unaffected.
+# No image is ever placed at the bottom of a 9:16 frame. A product rule, ruled
+# by the user, not a correction for anything in the mask: session 2 measured
+# mask coverage in this band as higher than over the rest of the frame on all
+# five reels. Left and right zones are clipped to end above it and the top zone
+# is unaffected. It costs 0.0% of total valid zone seconds.
 BOTTOM_EXCLUSION = 0.15
 
 # The top zone stops short of the frame's left and right edges, and the side
@@ -54,9 +62,10 @@ LATERAL_INSET = 0.03
 VERTICAL_INSET = 0.05
 
 # A zone opens only after it has been free for two consecutive samples and
-# closes as soon as one sample is not free. Asymmetric on purpose: a zone that
-# flickers open is a placement that flickers, while closing early only costs
-# an opportunity.
+# closes as soon as one sample is not free. The asymmetry is deliberately in
+# the direction of not placing an image: a closed zone costs a placement
+# opportunity, while a zone left open through a real intrusion puts a
+# generated image on a hand.
 OPEN_SAMPLES = 2
 CLOSE_SAMPLES = 1
 
@@ -82,6 +91,17 @@ class Rect:
 
     def to_dict(self) -> dict:
         return {"x": self.x, "y": self.y, "w": self.w, "h": self.h}
+
+
+# Normalized units are anisotropic: the frames are 2160x3840, so w is a
+# fraction of 2160 and h a fraction of 3840. The short edge is therefore
+# compared in units of frame width, with h converted through the aspect ratio.
+def short_edge(rect: Rect, aspect: float) -> float:
+    """The rectangle's short edge as a fraction of the frame width.
+
+    `aspect` is frame height over frame width.
+    """
+    return min(rect.w, rect.h * aspect)
 
 
 def load_mask(path: str, threshold: float | None = None) -> np.ndarray:
@@ -150,12 +170,16 @@ def component_report(mask: np.ndarray) -> list[dict]:
 def free_rects(
     mask: np.ndarray,
     zone_margin: float = ZONE_MARGIN,
-    min_zone_area: float = MIN_ZONE_AREA,
+    min_zone_short_edge: float = MIN_ZONE_SHORT_EDGE,
     bottom_exclusion: float = BOTTOM_EXCLUSION,
     lateral_inset: float = LATERAL_INSET,
     vertical_inset: float = VERTICAL_INSET,
 ) -> dict[str, Rect | None]:
     """The free top, left and right rectangles for one filtered mask.
+
+    A rectangle whose short edge is under `min_zone_short_edge` is discarded
+    rather than emitted small: the images are square, so the short edge is the
+    only dimension that bounds what fits.
 
     Occupancy is read per row and per column, never from a bounding box. Each
     zone reads occupancy only over the span it actually covers: a rectangle is
@@ -200,8 +224,9 @@ def free_rects(
         rects["left"] = Rect(0.0, side_top, 0.5, side_height)
         rects["right"] = Rect(0.5, side_top, 0.5, side_height)
 
+    aspect = height / width
     for kind, rect in rects.items():
-        if rect is not None and rect.area < min_zone_area:
+        if rect is not None and short_edge(rect, aspect) < min_zone_short_edge:
             rects[kind] = None
     return rects
 
@@ -270,7 +295,7 @@ def compute_zones(
     threshold: float | None = None,
     component_floor: float = PERSON_COMPONENT_FLOOR,
     zone_margin: float = ZONE_MARGIN,
-    min_zone_area: float = MIN_ZONE_AREA,
+    min_zone_short_edge: float = MIN_ZONE_SHORT_EDGE,
     bottom_exclusion: float = BOTTOM_EXCLUSION,
     lateral_inset: float = LATERAL_INSET,
     vertical_inset: float = VERTICAL_INSET,
@@ -291,7 +316,12 @@ def compute_zones(
         if shape is None:
             shape = mask.shape
         rects = free_rects(
-            mask, zone_margin, min_zone_area, bottom_exclusion, lateral_inset, vertical_inset
+            mask,
+            zone_margin,
+            min_zone_short_edge,
+            bottom_exclusion,
+            lateral_inset,
+            vertical_inset,
         )
         for kind, rect in rects.items():
             per_kind[kind].append(rect)

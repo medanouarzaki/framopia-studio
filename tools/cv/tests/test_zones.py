@@ -20,10 +20,11 @@ from PIL import Image
 from framopia_cv.zones import (
     BOTTOM_EXCLUSION,
     LATERAL_INSET,
-    MIN_ZONE_AREA,
+    MIN_ZONE_SHORT_EDGE,
     VERTICAL_INSET,
     ZONE_MARGIN,
     Rect,
+    short_edge,
     compute_zones,
     filter_components,
     free_rects,
@@ -107,7 +108,7 @@ class TestFreeRects:
         assert left.y == pytest.approx(VERTICAL_INSET)
         assert left.y + left.h == pytest.approx(1.0 - BOTTOM_EXCLUSION)
 
-    def test_a_rectangle_under_the_minimum_area_is_discarded(self, mask):
+    def test_a_rectangle_under_the_short_edge_floor_is_discarded(self, mask):
         # A subject reaching almost to the left edge leaves a sliver, which is
         # worse than nothing: the solver would treat it as a real option.
         narrow = person(100, 100, 30, 80, 4, 60)
@@ -278,6 +279,56 @@ class TestComputeZones:
         )
         payload = json.loads(completed.stdout)
         assert payload["ok"] is True
-        assert payload["params"]["min_zone_area"] == MIN_ZONE_AREA
+        assert payload["params"]["min_zone_short_edge"] == MIN_ZONE_SHORT_EDGE
         assert payload["params"]["bottom_exclusion"] == BOTTOM_EXCLUSION
         assert payload["sampleFps"] == 2
+
+
+class TestShortEdgePredicate:
+    """The short edge is what bounds a square image; area is not.
+
+    A 0.052 x 0.800 strip passed a 0.03 area floor while being 113px wide on a
+    2160-wide frame, which is the defect this predicate replaces.
+    """
+
+    # Frame aspect for the real footage: 3840 / 2160.
+    ASPECT = 3840 / 2160
+
+    def test_the_short_edge_is_measured_in_units_of_frame_width(self):
+        # Normalized units are anisotropic. A rect 0.20 of the height is
+        # 0.20 * 3840 = 768px, which is 0.356 of the 2160 width.
+        assert short_edge(Rect(0.0, 0.0, 0.9, 0.2), self.ASPECT) == pytest.approx(0.3556, abs=1e-4)
+
+    def test_width_wins_when_it_is_the_shorter_side(self):
+        assert short_edge(Rect(0.0, 0.0, 0.1, 0.8), self.ASPECT) == pytest.approx(0.1)
+
+    def test_the_session_two_sliver_fails_the_predicate(self):
+        # vitasilk's left zone: 0.0522 x 0.800, area 0.0418, which cleared a
+        # 0.03 area floor.
+        sliver = Rect(0.0, 0.05, 0.0522, 0.800)
+        assert sliver.area > 0.03
+        assert short_edge(sliver, self.ASPECT) < MIN_ZONE_SHORT_EDGE
+
+    def test_a_square_zone_below_the_old_area_floor_passes(self):
+        # 324 x 324 source px is area 0.0127 of the frame, under the old 0.03,
+        # and is exactly what the predicate is meant to admit.
+        square = Rect(0.0, 0.0, 0.15, 0.15 / self.ASPECT)
+        assert square.area < 0.03
+        assert short_edge(square, self.ASPECT) == pytest.approx(MIN_ZONE_SHORT_EDGE)
+
+    def test_a_rect_exactly_at_the_constant_is_kept(self):
+        # `>=` is the boundary, as with the component floor.
+        mask = np.zeros((960, 540), dtype=bool)
+        # Occupy from the column that leaves exactly MIN_ZONE_SHORT_EDGE plus
+        # the margin free on the left.
+        left_edge = int(round((MIN_ZONE_SHORT_EDGE + ZONE_MARGIN) * 540))
+        mask[300:800, left_edge:520] = True
+        left = free_rects(mask)["left"]
+        assert left is not None
+        assert short_edge(left, 960 / 540) == pytest.approx(MIN_ZONE_SHORT_EDGE, abs=1e-3)
+
+    def test_one_pixel_narrower_is_discarded(self):
+        mask = np.zeros((960, 540), dtype=bool)
+        left_edge = int(round((MIN_ZONE_SHORT_EDGE + ZONE_MARGIN) * 540)) - 1
+        mask[300:800, left_edge:520] = True
+        assert free_rects(mask)["left"] is None

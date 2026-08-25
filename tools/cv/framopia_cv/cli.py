@@ -144,7 +144,7 @@ def _compute_zones(request: dict) -> dict:
         BOTTOM_EXCLUSION,
         CLOSE_SAMPLES,
         LATERAL_INSET,
-        MIN_ZONE_AREA,
+        MIN_ZONE_SHORT_EDGE,
         OPEN_SAMPLES,
         PERSON_COMPONENT_FLOOR,
         VERTICAL_INSET,
@@ -160,7 +160,9 @@ def _compute_zones(request: dict) -> dict:
         "threshold": request.get("threshold"),
         "component_floor": float(request.get("componentFloor", PERSON_COMPONENT_FLOOR)),
         "zone_margin": float(request.get("zoneMargin", ZONE_MARGIN)),
-        "min_zone_area": float(request.get("minZoneArea", MIN_ZONE_AREA)),
+        "min_zone_short_edge": float(
+            request.get("minZoneShortEdge", MIN_ZONE_SHORT_EDGE)
+        ),
         "bottom_exclusion": float(request.get("bottomExclusion", BOTTOM_EXCLUSION)),
         "lateral_inset": float(request.get("lateralInset", LATERAL_INSET)),
         "vertical_inset": float(request.get("verticalInset", VERTICAL_INSET)),
@@ -235,6 +237,26 @@ def _component_stats(request: dict) -> dict:
     return {"ok": True, "task": "component_stats", "componentFloor": floor, "frames": frames}
 
 
+def _short_edge_overlay(request: dict) -> dict:
+    """One frame per reel with each zone's short edge dimensioned in source px."""
+    from .overlay import short_edge_render
+    from .zones import MIN_ZONE_SHORT_EDGE
+
+    return {
+        "ok": True,
+        "task": "short_edge_overlay",
+        "rendered": short_edge_render(
+            request["framePath"],
+            request["maskPath"],
+            request["zones"],
+            int(request["sourceWidth"]),
+            int(request["sourceHeight"]),
+            float(request.get("minShortEdge", MIN_ZONE_SHORT_EDGE)),
+            request["outPath"],
+        ),
+    }
+
+
 TASKS = {
     "remove_bg": _remove_bg,
     "detect_text": _detect_text,
@@ -243,6 +265,7 @@ TASKS = {
     "compute_zones": _compute_zones,
     "component_stats": _component_stats,
     "zone_overlay": _zone_overlay,
+    "short_edge_overlay": _short_edge_overlay,
     "component_overlay": _component_overlay,
 }
 

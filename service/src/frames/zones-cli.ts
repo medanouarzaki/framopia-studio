@@ -5,6 +5,8 @@ import { loadReels, reelByLabel } from './footage.js';
 import { reelMasksDir } from './segment.js';
 import { SAMPLE_FPS } from './sample.js';
 import {
+  SOURCE_HEIGHT,
+  SOURCE_WIDTH,
   ZONES_DEBUG_DIR,
   computeZones,
   maskFramesFor,
@@ -88,6 +90,25 @@ for (const reel of reels) {
           .map((zone) => ({ kind: zone.kind, rect: zone.rect })),
       })),
     });
+
+    // One frame per reel, chosen mid-reel so the subject is in a typical
+    // position, with every zone's short edge dimensioned in source pixels.
+    const middle = frames[Math.floor(frames.length / 2)];
+    if (middle) {
+      await runSidecar({
+        task: 'short_edge_overlay',
+        framePath: middle.framePath,
+        maskPath: middle.binaryMaskPath,
+        outPath: path.join(ZONES_DEBUG_DIR, `${reel.label}-shortedge.png`),
+        sourceWidth: SOURCE_WIDTH,
+        sourceHeight: SOURCE_HEIGHT,
+        zones: result.zones
+          .filter((zone) =>
+            zone.valid.some(([start, end]) => middle.timeS >= start && middle.timeS <= end),
+          )
+          .map((zone) => ({ kind: zone.kind, rect: zone.rect })),
+      });
+    }
   }
 
   console.log(
