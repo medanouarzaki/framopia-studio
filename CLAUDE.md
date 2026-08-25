@@ -34,8 +34,8 @@ AI-generated contextual images, SFX, and a watermark. Full spec in
   conformance, and cross-engine timestamp deviation. See `benchmarks/README.md`.
 - `tools/cv/`, `tools/validate-templates/` — helper scripts (not started)
 - `templates/` — AE templates (not started)
-- `modes/` — per-client config. `k2-syndicalia.json` is a validated stub; the
-  schema, loader and validation live in `core/src/mode.ts`
+- `modes/` — per-client config. `k2-syndicalia.json` is a validated stub at
+  version 2; the schema, loader and validation live in `core/src/mode.ts`
 - `assets/brand/`, `assets/watermark/`, `assets/sfx/` — shared assets (not started)
 - `.local/` — machine-local config, secrets, run state (gitignored, never committed)
 
@@ -390,10 +390,16 @@ the module's own doc comment, plus `validateMode`, `parseMode`, `loadMode`,
   compose time; a fragment naming a colour literally is a validation failure.
   `GLOBAL_NEGATIVE_PROMPTS` (no text, no watermark, no logo — ARCHITECTURE
   §5.3) is global and lives in code, never in a mode.
-- **There is deliberately no `imageVariation` field.** How much images may
-  vary within a reel is an open user decision; the gap is the record that the
-  question has not been answered, and a guessed default would be
-  indistinguishable from a decision.
+- **`imageVariation` is the varying half of an image prompt**, settled by the
+  user in Block 3 session 3 and the reason the mode is at version 2. Every
+  slot gets the whole of `imageStyle.stylePrompt`, which is what keeps the
+  palette dominant across a reel; each slot then draws one value from each of
+  the `composition`, `lighting` and `crop` axes so the set reads as designed
+  rather than batched. The axes are mode data for the same reason colours are:
+  no composition, lighting or crop term may be written in a source file.
+  Which value a slot draws is session 4's problem, not the mode's. The K2
+  axis *values* are placeholders like the rest of the stub; the axis *names*
+  are settled.
 - `vocabulary` is empty on purpose. Block 2 saw one brand name rendered three
   ways across three identical calls, so these terms are load-bearing as
   transcription key terms once the user supplies them at Block 9.
@@ -404,6 +410,70 @@ the module's own doc comment, plus `validateMode`, `parseMode`, `loadMode`,
   the naming convention or carrying the wrong element prefix, an unknown
   fonts status, a style fragment hardcoding a colour or naming a palette role
   that does not exist, and an id disagreeing with the filename.
+
+**Keyword detection** (Block 3 session 3) is `service/src/analysis/`, driven by
+`npm run analyse -- --plan <path.editplan.json> [--mode <id>]
+[--keywords auto|propose] [--yes] [--no-cache]`.
+
+- `count.ts` — `keywordCountFor(durationS)`: PROJECT_SPEC §5's 3–5 per 30 s
+  taken at its midpoint of 4, pro-rata, rounded, floored at 1. Pure. All five
+  reels are 21–26 s, so all five get **3**. The model is never asked how many
+  keywords exist.
+- `keywords.ts` — `ACTIVE_ANALYSIS_PROMPT_VERSION = 1`, the prompt, the parse,
+  and the one structured Gemini call. Criteria are stated in priority order:
+  **primary is semantic weight** (the word carrying its sentence's claim),
+  **secondary is brand and domain vocabulary, as a tiebreak only**. Delivery
+  and vocal emphasis are ruled out in the prompt — nothing here hears prosody.
+  Mode vocabulary is passed as an explicit term list; empty for K2 today, and
+  the non-empty path is fixture-tested. Asks for `max(8, 3 × count)`
+  candidates and appends its own ledger line at the point of spend, so a
+  stubbed call in a test cannot bill.
+- `select.ts` — everything downstream of the model, and all of it
+  deterministic: score descending, tiebreak on start time then first word id
+  so the order is total and never depends on incoming order. Drops any
+  candidate whose ids do not resolve, names a removed word, overlaps a
+  selected keyword, has no ids, or scores outside 0–1, and **counts each as a
+  resolution failure — never fuzzy-matched into place**. Text comes from the
+  plan, not the model; a disagreement is recorded as a text mismatch.
+- `fingerprint.ts` / `cache.ts` / `cached.ts` — the §6 cache for the analysis
+  stage, reusing `cacheEntryDir` and `evictStaleEntries` rather than a
+  parallel system. The fingerprint covers the analysis prompt version, the
+  Gemini model pin, **mode id and mode version**, the transcript content and
+  the candidate count. A mode version bump invalidates. Eviction is now **per
+  stage**, so an analysis write can no longer evict the transcription entry.
+- `job.ts` — reads a plan, enriches `keywords`, sets `pipeline.analysis` and
+  `costs.byStage.analysis` (**0 on a cache hit, never absent**), and writes
+  back. `writeEditPlan` validates first, so a keyword naming an unknown word,
+  claiming a removed word, overlapping another keyword or scoring outside 0–1
+  cannot reach disk. `templateId` stays null until session 4.
+
+**`auto` and `propose` differ only in the `approved` flag.** The mode is a run
+parameter, never reaches the model, and the selection is identical — asserted
+in unit tests and confirmed live.
+
+**Where determinism holds, precisely.** The cache gives byte-identical output
+on identical inputs, and everything downstream of the model response is
+deterministic. **The Gemini call itself is not reproducible** and nothing in
+the code or docs claims it is. Measured on vitasilk
+(`benchmarks/RESULTS-block3-keywords.md`): three cache-bypassed calls picked
+the **same three keywords with the same spans in the same order**, while
+scores moved (0.90–0.98 on the same word), reasons were reworded every time,
+wall clock spread 30–93 s and cost spread 9.8%. One reel, one domain, with a
+brand and a procedure name in it — the conditions most favourable to a stable
+answer.
+
+**Live run:** vitasilk $0.0514 and test-1 $0.0498, 3 keywords each, **0
+resolution failures and 0 text mismatches** on both. Session spend $0.267718
+over 5 calls; ledger all-time $5.712720.
+
+**The CLI's cost estimate is not a forecast for this stage.**
+`estimateGeminiCallCost` is duration-based and this call sends no audio, so it
+is passed 0 and prints ~$0.0040 against a ~$0.05 actual. Actuals come from
+`usageMetadata` as always.
+
+**Re-running `npm run transcribe` on a plan discards its keywords**, because
+`transcribeVideo` builds a fresh plan rather than merging into the existing
+one. Not fixed; it matters as soon as two stages both write a plan.
 
 Panel, templates, and real job types are not started.
 
