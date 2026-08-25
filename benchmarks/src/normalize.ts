@@ -56,6 +56,11 @@ const NUMERAL_TO_DIGITS = new Map<string, string>(
   }).flatMap(([digits, spellings]) => spellings.map((s) => [s, digits] as [string, string])),
 );
 
+/** The numeral equivalence above, applied to one already-normalized token. */
+export function mapNumeral(token: string): string {
+  return NUMERAL_TO_DIGITS.get(token) ?? token;
+}
+
 /**
  * Normalizes a token sequence for WER comparison only: script-boundary
  * splitting, the usual token normalization, then numeral equivalence.
@@ -64,5 +69,5 @@ const NUMERAL_TO_DIGITS = new Map<string, string>(
  * word and rewriting it would change engine behaviour rather than scoring.
  */
 export function normalizeForWer(words: string[]): string[] {
-  return normalizeWords(words).map((word) => NUMERAL_TO_DIGITS.get(word) ?? word);
+  return normalizeWords(words).map(mapNumeral);
 }

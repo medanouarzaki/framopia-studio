@@ -1,13 +1,16 @@
 import type { TranscribedWord } from './types.js';
 
+/** A word plus whatever the caller wants shown beside it. */
+export type SpotcheckWord = TranscribedWord & { context?: string };
+
 /**
  * Picks up to `n` words spread evenly across the timed range of `words`
  * (not evenly by index — a transcript's word density isn't uniform). Words
  * without a timestamp are not eligible for sampling.
  */
-export function sampleWordsEvenly(words: TranscribedWord[], n: number): TranscribedWord[] {
+export function sampleWordsEvenly<T extends TranscribedWord>(words: T[], n: number): T[] {
   const timed = words
-    .filter((w): w is TranscribedWord & { startS: number } => w.startS !== null)
+    .filter((w): w is T & { startS: number } => w.startS !== null)
     .sort((a, b) => a.startS - b.startS);
 
   if (timed.length <= n) return timed;
@@ -17,7 +20,7 @@ export function sampleWordsEvenly(words: TranscribedWord[], n: number): Transcri
   const last = timed[timed.length - 1]!.startS;
   const span = last - first;
 
-  const chosen: TranscribedWord[] = [];
+  const chosen: (T & { startS: number })[] = [];
   const usedIndices = new Set<number>();
 
   for (let i = 0; i < n; i += 1) {
@@ -56,27 +59,52 @@ function escapeJsString(value: string): string {
 export interface SpotcheckOptions {
   engine: string;
   audioPath: string;
-  words: TranscribedWord[];
+  words: SpotcheckWord[];
   sampleSize?: number;
+  /**
+   * How far before the claimed start to begin playback, and how long to play.
+   * The defaults are the timestamp check: a short clip straddling the word.
+   * A judgement about the word's content needs the run-up to it instead.
+   */
+  leadInS?: number;
+  playMs?: number;
+  /** The two answers offered, as [value, label] pairs. */
+  choices?: [string, string];
+  /** Column heading for `word.context`; the column is dropped when absent. */
+  contextHeader?: string;
+  /** Replaces the sentence under the heading. */
+  intro?: string;
 }
 
 export function generateSpotcheckHtml(options: SpotcheckOptions): string {
-  const { engine, audioPath, words, sampleSize = 15 } = options;
+  const {
+    engine,
+    audioPath,
+    words,
+    sampleSize = 15,
+    leadInS = 0.3,
+    playMs = 1200,
+    choices = ['hit', 'miss'],
+    contextHeader,
+    intro,
+  } = options;
   const sample = sampleWordsEvenly(words, sampleSize);
 
   const rows = sample
     .map((word, index) => {
       const start = word.startS ?? 0;
-      const seekTo = Math.max(0, start - 0.3);
+      const seekTo = Math.max(0, start - leadInS);
+      const contextCell =
+        contextHeader === undefined ? '' : `\n        <td>${escapeHtml(word.context ?? '')}</td>`;
       return `
       <tr>
         <td>${index + 1}</td>
-        <td>${escapeHtml(word.text)}</td>
+        <td>${escapeHtml(word.text)}</td>${contextCell}
         <td>${start.toFixed(2)}s</td>
         <td><button type="button" onclick="playAt(${seekTo})">play</button></td>
         <td>
-          <label><input type="radio" name="row-${index}" value="hit"> hit</label>
-          <label><input type="radio" name="row-${index}" value="miss"> miss</label>
+          <label><input type="radio" name="row-${index}" value="${escapeHtml(choices[0])}"> ${escapeHtml(choices[0])}</label>
+          <label><input type="radio" name="row-${index}" value="${escapeHtml(choices[1])}"> ${escapeHtml(choices[1])}</label>
         </td>
       </tr>`;
     })
@@ -96,10 +124,10 @@ export function generateSpotcheckHtml(options: SpotcheckOptions): string {
 </head>
 <body>
 <h1>Spotcheck — ${escapeHtml(engine)}</h1>
-<p>${sample.length} sampled words. Press play to hear ~1.2s starting 0.3s before the claimed timestamp, then mark hit or miss.</p>
+<p>${escapeHtml(intro ?? `${sample.length} sampled words. Press play to hear ~${(playMs / 1000).toFixed(1)}s starting ${leadInS.toFixed(1)}s before the claimed timestamp, then mark ${choices[0]} or ${choices[1]}.`)}</p>
 <audio id="player" src="${escapeHtml(audioPath)}" preload="none"></audio>
 <table>
-  <thead><tr><th>#</th><th>word</th><th>claimed start</th><th></th><th>result</th></tr></thead>
+  <thead><tr><th>#</th><th>word</th>${contextHeader === undefined ? '' : `<th>${escapeHtml(contextHeader)}</th>`}<th>claimed start</th><th></th><th>result</th></tr></thead>
   <tbody>
 ${rows}
   </tbody>
@@ -113,15 +141,15 @@ ${rows}
     if (stopTimer) clearTimeout(stopTimer);
     player.currentTime = seekTo;
     player.play();
-    stopTimer = setTimeout(function () { player.pause(); }, 1200);
+    stopTimer = setTimeout(function () { player.pause(); }, ${playMs});
   }
   function showSummary() {
     var radios = document.querySelectorAll('input[type=radio]:checked');
     var hits = 0;
     var total = ${sample.length};
-    radios.forEach(function (r) { if (r.value === 'hit') hits += 1; });
+    radios.forEach(function (r) { if (r.value === '${escapeJsString(choices[0])}') hits += 1; });
     var rated = radios.length;
-    var text = '${escapeJsString(engine)}: ' + hits + '/' + rated + ' rated hit (' + rated + '/' + total + ' rated)';
+    var text = '${escapeJsString(engine)}: ' + hits + '/' + rated + ' rated ${escapeJsString(choices[0])} (' + rated + '/' + total + ' rated)';
     document.getElementById('summary').value = text;
   }
 </script>
