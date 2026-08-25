@@ -1302,6 +1302,91 @@ by slot with each idea above its candidates (`npm run plan-page`).
 **`test-1` was not run.** One fixture meets the DoD and a second reel buys no
 DoD item.
 
+## Block 4 session 7 — closed out, $0.00 spent
+
+Ledger 105 entries / $10.555772 / sha `a7e85e4b…` at both ends, byte-identical.
+
+**`edge_halo` compares against the original image now.** It measured alpha
+outside the subject and could not tell a rim the model rendered from
+background the remover retained. A ring pixel bright in the source
+(luminance ≥ `RENDERED_LIGHT_LUMA = 0.5`) is rendered light and is excluded;
+dark in the source but carrying alpha is retained background and counts. The
+boundary was declared before measuring, at the midpoint of the range, and the
+gap is wide — #1A0000 is 0.022 and #F8F6F2 is 0.965. **No threshold changed.**
+
+**The fix changed nothing, and the reason is the finding.** Zero of sixteen
+gate verdicts moved. The ring's median luminance is 0.022 and **no pixel in
+any measured ring reaches the boundary** — the alpha there is genuinely
+retained background. The rendered rim is real but sits **inside the solid
+mask**, where the remover correctly keeps it: `gemini-3-pro-image-1` has
+inside-edge luminance **0.921** against a core of 0.079 and an outside ring of
+0.031. Two different things were conflated. **The halo failures are real
+halo**, so raising the bound would admit real defects rather than rescue
+correct renders. Both facts are asserted in the suite, not left as prose.
+Numbers: `benchmarks/RESULTS-block4-halo.md`.
+
+**The bound decides at the fifth decimal.** `img005-c1` passes by 43 parts in
+a million (0.0999574); `img001-c1` fails by 422 (0.1004224). Five of sixteen
+images sit within 0.35% of it. Nothing was moved — refitting to sixteen images
+from two reels is not evidence — but a gate whose outcome turns on the fifth
+decimal is reporting a coin-flip as a verdict.
+
+**Session 6's halo count was wrong**: five candidates fail on halo, not six,
+and **four fail on halo alone** (img004-c2 fails `hole_ratio` regardless). The
+three stated reasons summed to 10 against 8 failing candidates by
+double-counting. Attributing the failures to the v5 lighting prune was a
+hypothesis stated as a measurement — these ten span five slots with different
+subjects while the clean corpus was six images of one slot.
+
+**A slot idea must depict one subject** (`checkSlotIdea` in `core/src/mode.ts`,
+thrown as `MultiSubjectIdeaError` from `planSlots`). `img005`'s shelf idea
+contradicted the mode's own `one subject, centred and unobstructed` and failed
+three ways at once — the gate read the extra objects as matte noise, the model
+wrote 47 invented label words, and the matte was unusable. A **hard failure at
+plan time naming the slot**, never a rewrite: the planner is what needs to
+change. Flags **img003 and img005** on vitasilk, **nothing on test-1**.
+Neither idea was edited and nothing was re-planned. The marker list is
+enumerated and **incomplete by construction** — it misses
+`scientific molecular structures`, and the doc comment says so.
+
+**The plan records cumulative spend.** `costs.spentUsd` and
+`costs.spentByStage` accumulate across runs — a cached run adds nothing, a
+regenerated slot **adds** rather than replaces, so the figure can exceed one
+clean run because the money really was spent. Named `spent` rather than `cost`
+for that reason. `byStage` stays as it was, holding the **last** run's cost,
+because session 6 valued its diffability. Both written through
+`recordStageSpend` so they cannot drift, and applied to transcription too.
+Slot planning now writes `imageSlots`, not `images` — sharing a bucket with
+image generation made a cumulative total meaningless.
+
+**The ledger has no reel identifier**, so cumulative per-reel spend can only
+accumulate forward. `vitasilk`'s `spentUsd` was backfilled to **$1.550444**,
+the ten production lines, which is the only precisely attributable figure;
+transcription and analysis stay absent, and absent means unknown rather than
+zero.
+
+**Decision docs are tested against their constants**
+(`service/src/decisions.test.ts`). It caught real drift on its first run:
+`DECISION-transcription-config.md` recorded `ACTIVE_PROMPT_VERSION = 3` while
+the code has run 4 since Block 3 session 6.
+
+### Block 4 is complete
+
+| | |
+|---|---|
+| block image spend | **$2.999713** over 21 billed images |
+| of which wasted | **$0.514522** (17.2%), all session 3's eviction defect |
+| all-time ledger | **$10.555772** over 105 entries |
+| per five-slot reel | **~$1.71** (images $1.55 + transcription $0.16), inside PROJECT_SPEC §5's $0.50–2.00 |
+
+Amendment sweep for the handoff: `docs/BLOCK4-AMENDMENTS.md` — every
+amendment with its doc and section, verified against the repo, plus the twelve
+schema additions (all optional with a default) and what is left open.
+
+**Still open and needing a ruling, not a fix:** the gate's yield is 2/10, the
+four halo-alone failures are genuine, and the bound is deciding at the fifth
+decimal. `no watermark` and `no logo` have never been tested as controls.
+
 Panel and real job types are not started; templates exist only as a stub.
 
 See `docs/BLOCKS.md` for the full block plan and `handoffs/` for prior
