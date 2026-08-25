@@ -18,7 +18,8 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
     "test": "vitest",
-    "build": "tsc"
+    "build": "tsc",
+    "validate:modes": "tsx src/validate-modes-cli.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.13.0",

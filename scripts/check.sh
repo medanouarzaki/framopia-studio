@@ -15,5 +15,6 @@ npm run build:core
 npm run typecheck --workspaces --if-present
 npm run lint --workspaces --if-present
 npm run test --workspaces --if-present -- --run
+npm run validate:modes --workspace @framopia/core
 
 echo "check: PASS"

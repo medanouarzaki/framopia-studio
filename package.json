@@ -13,6 +13,7 @@
     "transcribe": "npm run build:core && npm run transcribe --workspace framopia-service --",
     "bench": "npm run build:core && npm run bench --workspace framopia-benchmarks --",
     "bench:tag": "npm run build:core && npm run tag --workspace framopia-benchmarks",
-    "bench:aggregate": "npm run build:core && npm run aggregate --workspace framopia-benchmarks"
+    "bench:aggregate": "npm run build:core && npm run aggregate --workspace framopia-benchmarks",
+    "validate:modes": "npm run build:core && npm run validate:modes --workspace @framopia/core"
   }
 }

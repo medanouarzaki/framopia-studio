@@ -1,0 +1,37 @@
+{
+  "id": "k2-syndicalia",
+  "name": "K2 Syndicalia",
+  "version": 1,
+  "note": "Stub. The palette is locked (PROJECT_SPEC §5); fonts, the real image style and the vocabulary are supplied by the user at Block 9. vocabulary is deliberately empty rather than guessed: Block 2 saw one brand name rendered three different ways across three identical correction calls, so these terms become load-bearing as transcription key terms once they exist. allowedTemplates holds stub ids until the real templates arrive in Block 6.",
+  "palette": {
+    "background": "#1A0000",
+    "primary": "#820000",
+    "accent": "#C9A96E",
+    "light": "#F8F6F2"
+  },
+  "fonts": {
+    "status": "tbd",
+    "note": "The user has fonts in use; their names are collected at Block 9 and recorded here. PROJECT_SPEC §5 forbids inventing them, and requireFonts() throws rather than substituting a default."
+  },
+  "imageStyle": {
+    "stylePrompt": [
+      "a single clear idea, readable at a glance",
+      "one subject, centred and unobstructed",
+      "dominant colour palette of {{palette.background}}, {{palette.primary}} and {{palette.accent}}",
+      "lit against {{palette.background}}, with {{palette.light}} reserved for highlights"
+    ],
+    "negativePrompt": [
+      "no extraneous objects",
+      "no background clutter",
+      "no incidental detail",
+      "nothing in frame that is not carrying the idea",
+      "no busy or competing composition"
+    ]
+  },
+  "allowedTemplates": {
+    "subtitle": ["sub_pop"],
+    "keyword": ["kw_slam"],
+    "image": ["img_slide_left", "img_float"]
+  },
+  "vocabulary": []
+}
