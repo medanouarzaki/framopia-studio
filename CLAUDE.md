@@ -180,6 +180,16 @@ AI-generated contextual images, SFX, and a watermark. Full spec in
   straight-vs-premultiplied verdict with its separation check, and the
   per-frame alpha bounding box. Nothing about that file is hand-typed into a
   document.
+- `npm run diagnose:timing [-- --reel <name> --from <s> --to <s>]` — free, local,
+  **read-only**. Dumps a reel's words and cards over a span, checks them against
+  the raw Scribe response in the transcription cache, and writes
+  `benchmarks/RESULTS-block7-timing-defect.md`.
+- `npm run migrate:regroup [-- --apply]` — free, local. Re-groups every plan to
+  one word per card and re-derives supersession, display timing, templates and
+  SFX. Dry-run by default.
+- `npm run image-size` — free, local. Measures how large each image could be
+  under three rules and writes `benchmarks/RESULTS-block7-image-size.md` plus
+  `.local/build/image-sizes.json` for the builder's three variants.
 - `npm run wrap:survey` — free, local. Measures every card in the corpus in
   After Effects and writes `benchmarks/RESULTS-block7-wrapping.md`. Reads
   `library.aep` as an import source; builds no master and writes no comp.
@@ -3110,6 +3120,104 @@ overflows**: line 1 alone is 2048 px against the 1940 bound.
 The playhead is parked on **`g004` "minutes ymkn" at 2.609 s**, a card that
 wrapped cleanly — chosen inside AE after measuring, since nothing outside knows
 which cards wrapped.
+
+
+## Block 7 session 6 — one word per card, and what was wrong at 4 s
+
+**Spent $0.00; no API was called.** Ledger 108 entries / sha `50ec3f57…` at
+both ends. `templates/library.aep` byte-identical at `dac234ce…`. One After
+Effects instance (PID 44015) throughout.
+
+### The 4 s report: the timings are right
+
+**Checked against the raw Scribe response in the transcription cache** — the
+only independent record of what was said when. All 21 words in 1.5–8.0 s sit on
+an interval Scribe reports, for the same word: `minutes`/`minutes.`,
+`ymkn`/`يمكن`, `un`/`un`, `soin`/`soin`. **The alignment is correct.**
+
+Corpus integrity: **13 zero-duration words, and all 13 are interpolated** — no
+word with a real Scribe anchor has zero duration. **Nothing is non-monotonic
+anywhere.** `confidence` is Scribe's value on an anchored word and `null` on an
+interpolated one, so **alignment quality is auditable after the fact**, which
+had been in doubt.
+
+**`sourceText` is off by one on every word of every reel**, and it is cosmetic.
+`plan-builder.ts` documents it as "the draft word the corrected word anchored
+to" but assigns `draftWords[i]?.text` — a positional index into a different
+array, which the correction pass's insertions desynchronise. Nothing reads it.
+**A real defect, not this one.**
+
+**The diagnosis is two candidates and the data does not separate them.** The
+second word of a two-word card is on screen before it is spoken — pooled median
+**0.410 s**, max 0.870 s — and in the flagged span the cards are 0.36–0.78 s
+long, so the anticipation is most of the card's life. But `w0012` "li" is
+0.080 s and `w0013` "ghayrdd" is 0.020 s, so two cards also flash through in
+under a fifth of a second right there. Both produce "out of step"; naming one
+would be a guess. **Neither is a defect of this block.**
+
+### One word per card
+
+`MAX_WORDS_PER_CARD = 1` in `service/src/transcription/grouping.ts`, amending
+PROJECT_SPEC §5. The two-word machinery is kept behind a `maxWords` option
+rather than deleted, and every test that exercised it now says so explicitly.
+
+**The cost, measured before implementing:**
+
+| | before | after |
+|---|---:|---:|
+| cards across five reels | 190 | **343** |
+| unbuildable (shorter than intro + minHold) | 7 (3.7%) | **120 (35%)** |
+
+**Three invariants had to widen, and the third was found by the validator
+refusing to write.** A keyword span of two words no longer collapses into one
+card; it supersedes the two cards it covers. That rule lived in `regroup.ts`,
+in `buildability.ts`, and — the one nobody remembered — in
+`validate.ts`'s `checkSupersession`, which stopped the migration mid-run with
+"keyword k002 already supersedes g021". **Nothing was written half-migrated**:
+`writeEditPlan` validates first, so `ground truth` (no keywords) had written and
+the other four were untouched.
+
+**The merge rescue is off**, and that is deliberate: at one word per card every
+adjacent pair is mergeable, so display timing would have merged the cards
+straight back into pairs. A card that cannot reach its floor is reported, as
+before.
+
+**The stage order inverts at one word per card.** Session 5 established display
+timing before assignment, because a merge created a card with no template. With
+merging off nothing changes identity, and display timing needs each card's
+template floor — so **assignment must now come first**. Run the old way it reads
+a null floor and calls every card buildable, which is exactly the defect
+session 5 found on three reels; the first dry run here reproduced it (`0`
+unbuildable everywhere) before the order was fixed.
+
+**Wrapping almost disappears**: 9 of vitasilk's cards wrapped at two words, **1
+at one word** — and that one is a two-word keyword. `matrddadich` (2048 px)
+still overflows, being a single word with no break point.
+
+**Conflicts, reported and not resolved.** Multi-word Arabic §6 terms:
+**13 runs of 2+ words across the corpus, 10 split under two-word cards, all 13
+split under one word — strictly worse.** Term-aware grouping stays
+unimplemented, per Block 6. Two-word keywords, flagged for the user's eye:
+test-1 `k002`, test-2 `k002`/`k003`, vitasilk `k001`/`k002`.
+
+### How big the images could be
+
+`npm run image-size` → `benchmarks/RESULTS-block7-image-size.md`. **No constant
+was changed.** vitasilk `img001` is placed at 352 px today against 378 filling
+its zone and **699 with the zone rectangle removed** — the zone was always a
+conservative device for finding free space, never a product rule.
+
+**The binding constraint is the head on all nine slots**, named per slot for
+the first time.
+
+**(c) is not uniformly the largest, and that is a property of the measurement
+rather than of the geometry**: it unions a head *bounding box* over the frames a
+slot is on screen, while zone derivation intersects per-frame maximal free
+rectangles from the full person mask. On vitasilk `img002` that makes (c) 523 px
+against (b)'s 800. The report says so rather than presenting (c) as the ceiling.
+
+`HEAD_CLEARANCE` is now mirrored into `service/src/placement/constants.ts` and
+**pinned equal to `zones.py` by a test**, as the repo rule requires.
 
 
 See `docs/BLOCKS.md` for the full block plan and `handoffs/` for prior

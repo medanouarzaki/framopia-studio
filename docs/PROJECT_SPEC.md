@@ -44,7 +44,15 @@ The output is **not a rendered video**. It is a fully built After Effects compos
 ### Subtitles
 - Script convention: Latin/Arabizi by default (3/7/9 conventions — see ORTHOGRAPHY_GUIDE.md); French and English inline as-is; genuinely classical/standard Arabic (quotes, religious phrases, formal terms) rendered in Arabic script. The pipeline tags each word's language/register; the Latin-vs-Arabic decision is editable per word in the review UI.
 - Lightly cleaned verbatim: remove fillers, stutters, false starts. Never paraphrase.
-- Display in groups of 1–2 words (fast reel style). Word-level timestamps are mandatory.
+- Display **one word per card** (fast reel style). Word-level timestamps are mandatory.
+  Amended in Block 7 session 6 from "groups of 1–2 words": a two-word card puts its
+  second word on screen when the first is spoken and holds it there until the second is
+  said, so the eye reads ahead of the ear on every such card — measured across the corpus
+  at a median of 0.410 s and a maximum of 0.870 s. No retiming fixes it, because the two
+  words are one layer. The cost is recorded in `reports/block-7-session-6.md`: cards go
+  190 → 343 across the five reels and 120 of them are shorter than a template's
+  intro + minimum hold. Keyword spans stay at up to two words — a keyword is its own
+  element and its templates are built for 1–2 words.
 - Same language as speech; no translation.
 - Subtitle visual style and position are global across all clients; per-client only font/palette applied through the template.
 - Global subtitle fonts: **Inter Semi-Bold** for Latin script; Arabic companion font: **Almarai Bold**, set at **1.07x** the Latin size so the two faces read at the same optical weight.
