@@ -1,7 +1,6 @@
 {
   "schemaVersion": 1,
-  "stub": true,
-  "stubNote": "Placeholder entries only. No .aep exists yet: `file` names the library After Effects project that Block 6 creates, and every timing below is a plausible default rather than a measurement taken from a built comp. Code that renders must refuse to run while `stub` is true. TEMPLATE_LIBRARY_GUIDE §8 is the schema; §10 names the first real set.",
+  "stub": false,
   "templates": [
     {
       "id": "sub_pop",
@@ -9,51 +8,77 @@
       "type": "subtitle",
       "placeholders": ["TXT_MAIN"],
       "introS": 0.13,
-      "outroS": 0.13,
-      "minHoldS": 0.07,
+      "outroS": 0,
+      "minHoldS": 0.1,
       "anchor": "center",
       "imagePresentation": null,
       "sfx": [],
-      "notes": "default subtitle pop; timings are TEMPLATE_LIBRARY_GUIDE §5's own budget for subtitles, 4 frames per end at 30 fps, giving a floor of 0.33s against the ~0.3s groups §5 says to expect; subtitles carry no SFX per §10, they are too frequent"
+      "notes": "latin subtitle pop; the whole 4-frame budget is spent on the entrance and the card hard-cuts out, so there is no outro phase"
+    },
+    {
+      "id": "sub_pop_ar",
+      "file": "library.aep",
+      "type": "subtitle",
+      "placeholders": ["TXT_MAIN"],
+      "introS": 0.13,
+      "outroS": 0,
+      "minHoldS": 0.1,
+      "anchor": "center",
+      "imagePresentation": null,
+      "sfx": [],
+      "notes": "arabic variant of sub_pop; almarai bold, rtl paragraph direction, matched timing"
     },
     {
       "id": "kw_slam",
       "file": "library.aep",
       "type": "keyword",
       "placeholders": ["TXT_MAIN"],
-      "introS": 0.2,
-      "outroS": 0.15,
-      "minHoldS": 0.3,
+      "introS": 0.13,
+      "outroS": 0,
+      "minHoldS": 0.1,
       "anchor": "center",
       "imagePresentation": null,
-      "sfx": [{ "sfxId": "hit_01", "offsetS": 0.1, "gainDb": -6 }],
-      "notes": "hard slam, best on 1 word"
+      "sfx": [],
+      "notes": "latin keyword slam; places at the subtitle anchor with no offset, which KEYWORDS_ARE_INSIDE_SUBTITLE_BAND depends on"
+    },
+    {
+      "id": "kw_slam_ar",
+      "file": "library.aep",
+      "type": "keyword",
+      "placeholders": ["TXT_MAIN"],
+      "introS": 0.13,
+      "outroS": 0,
+      "minHoldS": 0.1,
+      "anchor": "center",
+      "imagePresentation": null,
+      "sfx": [],
+      "notes": "arabic variant of kw_slam; almarai bold, rtl paragraph direction, matched timing"
     },
     {
       "id": "img_slide_left",
       "file": "library.aep",
       "type": "image",
       "placeholders": ["IMG_MAIN"],
-      "introS": 0.3,
-      "outroS": 0.25,
-      "minHoldS": 0.6,
+      "introS": 0.13,
+      "outroS": 0,
+      "minHoldS": 0.1,
       "anchor": "center",
       "imagePresentation": "cutout",
-      "sfx": [{ "sfxId": "whoosh_01", "offsetS": 0.0, "gainDb": -9 }],
-      "notes": "slides in from the left; expects a clean cutout"
+      "sfx": [],
+      "notes": "slides in from the left; expects a gated cutout with no background"
     },
     {
       "id": "img_float",
       "file": "library.aep",
       "type": "image",
       "placeholders": ["IMG_MAIN"],
-      "introS": 0.35,
-      "outroS": 0.3,
-      "minHoldS": 0.6,
+      "introS": 0.13,
+      "outroS": 0,
+      "minHoldS": 0.1,
       "anchor": "center",
       "imagePresentation": "card",
-      "sfx": [{ "sfxId": "whoosh_01", "offsetS": 0.05, "gainDb": -12 }],
-      "notes": "card-framed fallback for when the cutout gate says no"
+      "sfx": [],
+      "notes": "card-framed fallback for when the cutout gate says no; carries a decorative CARD layer behind IMG_MAIN, which is parented to it"
     }
   ]
 }

@@ -1,7 +1,7 @@
 {
   "id": "k2-syndicalia",
   "name": "K2 Syndicalia",
-  "version": 5,
+  "version": 6,
   "note": "Stub. The palette is locked (PROJECT_SPEC §5); fonts, the real image style and the vocabulary are supplied by the user at Block 9. vocabulary is deliberately empty rather than guessed: Block 2 saw one brand name rendered three different ways across three identical correction calls, so these terms become load-bearing as transcription key terms once they exist. allowedTemplates holds stub ids until the real templates arrive in Block 6. Version 2 added imageVariation.",
   "palette": {
     "background": "#1A0000",
@@ -52,10 +52,12 @@
   "imageCandidates": 2,
   "allowedTemplates": {
     "subtitle": [
-      "sub_pop"
+      "sub_pop",
+      "sub_pop_ar"
     ],
     "keyword": [
-      "kw_slam"
+      "kw_slam",
+      "kw_slam_ar"
     ],
     "image": [
       "img_slide_left",
