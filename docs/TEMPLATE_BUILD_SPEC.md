@@ -33,22 +33,23 @@ the system swaps the footage source and your transforms and keyframes survive.
 
 Per TEMPLATE_LIBRARY_GUIDE §3:
 
-- **30 fps**, square pixel, **transparent background**
+- **29.97 fps** (30000/1001), square pixel, **transparent background**
 - **Duration**: at least intro + 2 s hold + outro. Longer is fine — the system
   trims.
-- **Size**: subtitle and keyword comps 2160 × 600. Image comps 1200 × 1200.
+- **Size**: subtitle and keyword comps 2160 × 1100. Image comps 1200 × 1200.
 - Nothing in the comp that is not part of the element. No reference footage, no
   visible guides.
 
-**One thing to know about the frame rate.** The guide says 30 fps and calls it
-mandatory, but the source reels are 30000/1001 — **29.97**. Block 5 measured
-this: frame sampling reads real presentation timestamps and the grid diverges
-from the nominal one from the second frame onward. The build spec keeps 30 fps
-because that is what the guide fixes and what the comps are authored at, but a
-comp at 30 fps placed against 29.97 footage accumulates about one frame every
-33 seconds. On a 25 s reel that is under a frame and does not matter. **It is
-recorded here because it has never been tested end to end**, and Block 7 is
-where it would first show.
+**One thing to know about the frame rate.** This section said 30 fps until
+Block 7, on the strength of a guide §3 that has since been amended. The source
+reels are 30000/1001 — **29.97** — Block 5 measured it (frame sampling reads
+real presentation timestamps and the grid diverges from the nominal one from
+the second frame onward), the six built comps are authored at 29.97, and
+`npm run validate:templates` requires 29.97 and rejects 30. A comp built at 30
+against 29.97 footage would accumulate about one frame every 33 seconds; on a
+25 s reel that is under a frame, which is why the mismatch went unnoticed.
+**A comp on a matching timeline has still never been tested end to end**, and
+Block 7 is where it would first show.
 
 ## 3. Type
 
