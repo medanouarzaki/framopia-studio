@@ -39,7 +39,7 @@ AI-generated contextual images, SFX, and a watermark. Full spec in
   person segmentation and zone derivation for frame analysis. Tasks:
   `remove_bg`, `detect_text`, `segment_person`, `segment_overlay`,
   `compute_zones`, `component_stats`, `zone_overlay`, `component_overlay`,
-  `short_edge_overlay`, `placement_overlay`. Downloaded weights live in
+  `short_edge_overlay`, `placement_overlay`, `head_overlay`. Downloaded weights live in
   `tools/cv/models/` (gitignored) and are pinned by sha256 in
   `tools/cv/models.json`.
   `tools/validate-templates/` — not started
@@ -141,8 +141,8 @@ AI-generated contextual images, SFX, and a watermark. Full spec in
   Person segmentation over an already-sampled reel into
   `.local/cv/<video-basename>/masks-2fps/`, plus contact sheets and close-ups
   under `benchmarks/results/latest-segmentation/`. Needs `tools/cv/setup.sh`.
-- `npm run zones -- (--reel <label> | --all) [--threshold <t>] [--write-plan]
-  [--no-debug]` —
+- `npm run zones -- (--reel <label> | --all) [--method maximal|three]
+  [--threshold <t>] [--write-plan] [--no-debug]` —
   free, local, **no inference**: it reads the masks already on disk. Writes
   `zones.json` beside them and contact sheets, close-ups and a validity
   timeline under `benchmarks/results/latest-zones/`. `--threshold` re-reads the
@@ -1762,6 +1762,122 @@ Writing placements onto vitasilk changed exactly `meta`, `pipeline`, `images`,
 and within a slot only `zoneId` changed with `position` and `scale` added. A
 test parses `zones.py` and fails if the mirrored `BOTTOM_EXCLUSION` or
 `MIN_ZONE_SHORT_EDGE` drift.
+
+## Block 5 session 5 — final frames, maximal rectangles, head masks
+
+**Spent $0.00; no API was called.** Ledger 105 entries / $10.555772 /
+sha `a7e85e4b…` at both ends, byte-identical.
+
+**Every reel's last decodable frame is now sampled**, appended outside the 2 fps
+grid and flagged `final: true` in `frames.json`. It is found by seeking
+(`-sseof -1 -copyts`) and decoding, not by trusting a container's frame count.
+It is named `frame-final.png`, never numbered, so a stale file can never be
+swept into the `frame-NNNN.png` grid list and desynchronise showinfo's
+timestamps from the files they describe.
+
+| reel | last grid | final frame | gap closed | tail left |
+|---|---|---|---|---|
+| test-1 | 21.5215 | 21.9553 | 0.4338 | 0.0334 |
+| test-2 | 22.0220 | 22.2889 | 0.2669 | 0.0334 |
+| test-3 | 21.0210 | 21.1545 | 0.1335 | 0.0334 |
+| ground-truth | 23.0230 | 23.2232 | 0.2002 | 0.0334 |
+| vitasilk | 25.5255 | 25.6590 | 0.1335 | 0.0334 |
+
+The 0.0334 s left over is one frame at 29.97 fps — the last frame's own
+duration, so nothing is unobserved. **`test-1` `img004` (19.719-21.940 s) is now
+contained** and places.
+
+**The 231 pre-existing frames were reproduced byte-identically** by the
+`--force` resample, and the 462 pre-existing masks were never rewritten at all:
+`_write_or_verify` verifies an existing mask against the model's fresh output
+and writes only new files. All 472 comparisons matched, which re-verifies
+session 1's determinism claim without risking the evidence.
+
+**The top-zone shortfall was diagnosed before anything was changed**, and both
+hypotheses hold:
+
+- **The intersection over a window is governed by its worst frame.** vitasilk's
+  per-frame top rectangle runs min 547 px, **median 879**, p90 970, max 1015 —
+  and **one frame, index 14 at 7.007 s, sets 547 for the whole 25.53 s window**
+  while 34 of 53 frames exceed 800 px. The other four reels have a median-minus-
+  minimum of 12-16 px, so intersection costs them nothing.
+- **The three fixed kinds are structurally blind to the region beside the head
+  and above the shoulders.** Free-area coverage on the median frame: 0.76-0.82
+  on four reels but **0.47 on vitasilk**, whose right rectangle captures nothing
+  at all.
+
+**The three-rectangle decomposition is replaced by maximal free rectangles**
+(`tools/cv/framopia_cv/rects.py`), the default for `compute_zones`; `--method
+three` keeps the old one selectable because every Block 5 figure before this
+session was measured with it. Largest-rectangle-under-histogram with a
+monotonic stack per row, objective changed from **area to `min(width, height)`**
+— the grid is isotropic and area rewards a strip no square image fits.
+Extraction is greedy: take the best, mark it occupied, repeat.
+
+`kind` is now a **label derived from position**, not the thing that defines the
+rectangle: `top` above the person's topmost row, `left`/`right` beside the
+columns the person occupies **within the rectangle's own rows**, which is what
+puts the beside-the-head region on a side instead of nowhere. A rectangle
+fitting none returns None and is dropped — ARCHITECTURE §3's enum is
+`top|left|right` and no fourth value was invented.
+
+**New constants, all CHOSEN NOT MEASURED**: `GRID_DOWNSAMPLE = 4` (a cell is 16
+source px, well under ZONE_MARGIN's 43), `MAX_ZONES_PER_FRAME = 4`,
+`MATCH_MIN_IOU = 0.5`. **The matching rule is a new decision**: rectangles found
+by position carry no identity across frames, so a frame's rectangle joins the
+track whose last rectangle it overlaps most by intersection over union, and one
+matching nothing starts a new track. The fixed kinds matched implicitly.
+
+| reel | method | zones | largest square | valid s | coverage |
+|---|---|---|---|---|---|
+| test-1 | three | 3 | 959 | 65.87 | 0.8202 |
+| test-1 | **maximal** | **18** | 959 | **79.31** | 0.5357 |
+| test-2 | three | 3 | 971 | 66.87 | 0.8064 |
+| test-2 | **maximal** | **19** | **1023** | **76.14** | 0.5941 |
+| test-3 | three | 4 | 1151 | 62.46 | 0.8067 |
+| test-3 | **maximal** | **7** | **1184** | **78.61** | 0.6735 |
+| ground-truth | three | 4 | 1003 | 68.67 | 0.7599 |
+| ground-truth | **maximal** | **7** | **1007** | **90.39** | 0.5730 |
+| vitasilk | three | 2 | 547 | 26.66 | 0.4702 |
+| vitasilk | **maximal** | **20** | **816** | **83.12** | **0.6563** |
+
+**Zone count rose on every reel**, so no stop condition. **vitasilk's largest
+square goes 547 → 816 px** and **test-1's side zones go 345/365 → 624-656 px**,
+because a maximal rectangle is bounded by the person only where it actually
+sits, not by the widest point of the arms over the whole frame height.
+
+**Coverage fell on four of five reels**, and that is not a defect being hidden:
+the old side rectangles spanned the full frame height and counted a great deal
+of area they could never hold a square in, while the new ones are capped at
+`MAX_ZONES_PER_FRAME` and do not overlap each other. Coverage is a diagnostic
+here, not the objective.
+
+**Placement improves markedly.** vitasilk's five slots now spread across **four
+zones** at 344-742 px instead of all five in one zone at 390-508 px; test-1's
+four slots across three zones at 488-793 px. **test-1 `img004` places.**
+
+**Head masks exist, as data only** — `<stem>-head.png`, hair plus face skin,
+8-bit confidence, 236 written. No torso zone, no new zone kind, no placement
+change, no schema change from it. Long hair counts as head, which over-excludes
+and is the safe direction: an image over a chin is a defect.
+
+| reel | head/frame min | median | max | head bottom y min | median | max |
+|---|---|---|---|---|---|---|
+| test-1 | 0.0190 | 0.0211 | 0.0224 | 0.4104 | 0.4146 | 0.4208 |
+| test-2 | 0.0165 | 0.0200 | 0.0220 | 0.4042 | 0.4156 | 0.4229 |
+| test-3 | 0.0249 | 0.0295 | 0.0315 | 0.5073 | 0.5177 | 0.5240 |
+| ground-truth | 0.0149 | 0.0170 | 0.0179 | 0.4073 | 0.4125 | 0.4167 |
+| vitasilk | 0.0701 | 0.0893 | 0.1018 | 0.5854 | 0.6583 | **0.8510** |
+
+The head bottom edge is the upper bound of any future torso zone. **vitasilk's
+reaches 0.851** on one frame — long hair over the shoulders — which leaves
+almost nothing between it and `BOTTOM_EXCLUSION` at 0.85. A torso zone on that
+reel may not exist at all.
+
+Head coverage was checked by eye on
+`benchmarks/results/latest-head/<reel>-contactsheet.png`: hair, face and glasses
+are fully covered on every frame of ground-truth and vitasilk, with no thin or
+partial heads.
 
 Panel and real job types are not started; templates exist only as a stub.
 
