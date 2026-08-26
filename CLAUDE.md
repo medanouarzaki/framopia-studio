@@ -2451,12 +2451,12 @@ unchanged from session 6. The comps land exactly on the grid's loosest cell
 already swept. **The stub's 0.33 s floor is gone**: the user built to the spec
 and the spec's number is confirmed rather than moved.
 
-`npm run validate-plan` reports a different figure — **11 duration failures,
-test-1 6 and vitasilk 5 — and it is not comparable.** It reads *stored*
-`displayStart`/`displayEnd`, which no plan has, so it measures the case with no
-extension into silence and no merge; and it skips any group with no
-`templateId`, which is every group on ground-truth, test-2 and test-3. **Three
-of five reels are not duration-checked by it at all.**
+`npm run validate-plan` reported a different figure at the time — **11 duration
+failures, test-1 6 and vitasilk 5 — and it was not comparable.** It reads
+*stored* `displayStart`/`displayEnd`, which no plan then had, and it skips any
+group with no `templateId`, which was every group on ground-truth, test-2 and
+test-3. **Both conditions were removed in Block 7 sessions 4 and 5 and the two
+tools now agree**; see the Block 7 session 5 section.
 
 ### Three deliberate departures from TEMPLATE_LIBRARY_GUIDE
 
@@ -2524,14 +2524,12 @@ reasoning in the report named beside it. Read this before "fixing" any of them.
   stub with no audio files**, which nothing checks before a build. Block 7
   collects the audio. (`reports/block-6-session-7.md`)
 
-- **`npm run validate-plan` says 11 where `npm run timing-budget` says 7.**
-  **Trust the 7.** `timing-budget` re-derives display timing from speech
-  timings, which is what a build will do. `validate-plan` reads *stored*
-  `displayStart`/`displayEnd` that no plan carries, so it measures the case
-  with no extension into silence and no merge, and it **skips any group with no
-  `templateId`** — every group on ground-truth, test-2 and test-3, so three of
-  five reels are not duration-checked by it at all.
-  (`reports/block-6-session-7.md`)
+- ~~**`npm run validate-plan` says 11 where `npm run timing-budget` says 7.**~~
+  **Closed in Block 7 session 5: the two agree.** Both causes are gone — every
+  plan carries display timing and every group carries a `templateId`. Both now
+  report **7 unbuildable subtitle groups and 1 unbuildable keyword** across the
+  corpus. The figure to quote is 7 subtitle groups, and it is no longer a
+  disagreement.
 
 ## Block 7 session 1 — housekeeping, the cache fix, the watermark measured
 

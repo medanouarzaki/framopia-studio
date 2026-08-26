@@ -45,14 +45,17 @@ for (const file of readdirSync(dir).filter((f) => f.endsWith('.editplan.json')).
     reelDurationS: plan.source.durationS,
   });
   const after = timing.groups.filter((g) => g.displayStart !== undefined).length;
-  const gained = after - before;
-  totalGained += gained;
+  // A merge removes a card, so `after` can be lower than `before` without
+  // anything having lost its window. Reporting the difference as a "gain"
+  // printed "-1 would gain", which reads as a defect and is not one.
+  const untimedBefore = groups.length - before;
+  totalGained += untimedBefore;
   totalAlready += before;
 
   console.log(
     `${reel.padEnd(14)} ${groups.length} groups: ${before} already timed, ` +
-      `${gained} would gain, ${after} after; merged ${timing.merged.length}, ` +
-      `unbuildable ${timing.unbuildable.length}`,
+      `${untimedBefore} untimed; after: ${after} timed of ${timing.groups.length} groups ` +
+      `(merged ${timing.merged.length}, unbuildable ${timing.unbuildable.length})`,
   );
   for (const u of timing.unbuildable) {
     console.log(`    unbuildable ${u.groupId} "${u.wordIds.join(' ')}" ` +
@@ -70,7 +73,7 @@ for (const file of readdirSync(dir).filter((f) => f.endsWith('.editplan.json')).
 }
 
 console.log(
-  `\n${totalAlready} already timed, ${totalGained} would gain. ` +
-    `$0.00 — this migration makes no model call.`,
+  `\n${totalAlready} already timed, ${totalGained} untimed. ` +
+    '$0.00 — this migration makes no model call.',
 );
 if (!apply) console.log('dry run — pass --apply to write');
