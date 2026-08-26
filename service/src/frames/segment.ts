@@ -19,6 +19,13 @@ export interface SegmentedFrame {
   height: number;
   personPixelRatio: number;
   bbox: PersonBox | null;
+  /** False when the model no longer reproduces a mask already on disk. */
+  confidenceUnchanged?: boolean;
+  binaryUnchanged?: boolean;
+  headMaskPath?: string;
+  headPixelRatio?: number;
+  /** Normalized y below which no head pixel appears; null when no head. */
+  headBottomY?: number | null;
 }
 
 export interface SegmentPersonResult {

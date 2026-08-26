@@ -245,3 +245,61 @@ class TestModelPin:
         result = self._run(tmp_path)
         assert result.returncode == 2
         assert "NOT DOWNLOADED" in result.stdout
+
+
+class TestHeadMask:
+    """Head extraction from the six category planes, and the no-overwrite rule."""
+
+    def planes(self, head_rows=(10, 30), body_rows=(30, 80)) -> list[np.ndarray]:
+        """A constructed six-category softmax: background, hair, body, face, clothes, other."""
+        planes = [np.zeros((100, 50), dtype=np.float64) for _ in range(6)]
+        planes[0][:, :] = 1.0
+        planes[1][head_rows[0] : head_rows[0] + 10, 15:35] = 1.0  # hair
+        planes[3][head_rows[0] + 10 : head_rows[1], 15:35] = 1.0  # face skin
+        planes[4][body_rows[0] : body_rows[1], 10:40] = 1.0  # clothes
+        for index in (1, 3, 4):
+            planes[0][planes[index] > 0] = 0.0
+        return planes
+
+    def test_head_is_hair_plus_face_skin_and_nothing_else(self):
+        from framopia_cv.segment_person import head_confidence
+
+        head = head_confidence(self.planes())
+        assert head[15, 20] == pytest.approx(1.0)  # hair
+        assert head[25, 20] == pytest.approx(1.0)  # face
+        assert head[50, 20] == pytest.approx(0.0)  # clothes are not head
+        assert head[5, 20] == pytest.approx(0.0)  # background
+
+    def test_head_bottom_is_the_last_row_holding_a_head_pixel(self):
+        from framopia_cv.segment_person import head_confidence, head_stats
+
+        ratio, bottom = head_stats(head_confidence(self.planes()) > 0.5)
+        assert ratio == pytest.approx((20 * 20) / (100 * 50))
+        # Head occupies rows 10..29 of 100, so it ends at 30/100.
+        assert bottom == pytest.approx(0.30)
+
+    def test_a_frame_with_no_head_reports_no_bottom_edge(self):
+        from framopia_cv.segment_person import head_stats
+
+        ratio, bottom = head_stats(np.zeros((20, 20), dtype=bool))
+        assert ratio == 0.0
+        assert bottom is None
+
+    # Every mask on disk has already been measured and reasoned about, and
+    # re-encoding one to prove it is unchanged is the one action that could
+    # change it. An existing mask is verified, never rewritten.
+    def test_an_existing_mask_is_verified_and_never_rewritten(self, tmp_path: Path):
+        from framopia_cv.segment_person import _write_or_verify
+
+        path = tmp_path / "m.png"
+        values = np.arange(256, dtype=np.uint8).reshape(16, 16)
+        assert _write_or_verify(path, values) is True
+        before = path.read_bytes()
+
+        assert _write_or_verify(path, values) is True
+        assert path.read_bytes() == before
+
+        different = values.copy()
+        different[0, 0] = (int(different[0, 0]) + 1) % 256
+        assert _write_or_verify(path, different) is False
+        assert path.read_bytes() == before

@@ -362,3 +362,51 @@ def placement_overview(entry: dict, out_path: str) -> str:
     Path(out_path).parent.mkdir(parents=True, exist_ok=True)
     composed.save(out_path, "PNG")
     return out_path
+
+
+# The head is tinted separately from the body so under-coverage is visible: an
+# image over a chin is a defect, an image placed lower is a missed chance.
+HEAD_TINT = (255, 230, 0)
+
+
+def head_tinted(frame_path: str, body_mask: str, head_mask: str) -> Image.Image:
+    """The frame with the body in TINT and the head region in HEAD_TINT."""
+    composed = tinted(frame_path, body_mask)
+    frame = np.asarray(composed, dtype=np.float64)
+    with Image.open(head_mask) as handle:
+        head = np.asarray(handle.convert("L"), dtype=np.float64) / 255.0
+    alpha = ((head > 0.5) * 0.55)[:, :, None]
+    blended = frame * (1.0 - alpha) + np.array(HEAD_TINT, dtype=np.float64) * alpha
+    return Image.fromarray(np.round(blended).astype(np.uint8), mode="RGB")
+
+
+def head_contact_sheet(frames: list[dict], out_path: str) -> str:
+    """Every sampled frame with the head region picked out."""
+    if not frames:
+        raise ValueError("cannot build a contact sheet from no frames")
+
+    first = head_tinted(frames[0]["framePath"], frames[0]["binaryMaskPath"], frames[0]["headMaskPath"])
+    scale = CONTACT_CELL_WIDTH / first.width
+    cell_height = round(first.height * scale)
+    columns = min(CONTACT_COLUMNS, len(frames))
+    rows = -(-len(frames) // columns)
+
+    sheet = Image.new("RGB", (columns * CONTACT_CELL_WIDTH, rows * (cell_height + LABEL_HEIGHT)), (16, 16, 16))
+    draw = ImageDraw.Draw(sheet)
+    font = _font()
+    for position, frame in enumerate(frames):
+        cell = head_tinted(
+            frame["framePath"], frame["binaryMaskPath"], frame["headMaskPath"]
+        ).resize((CONTACT_CELL_WIDTH, cell_height), Image.LANCZOS)
+        x = (position % columns) * CONTACT_CELL_WIDTH
+        y = (position // columns) * (cell_height + LABEL_HEIGHT)
+        sheet.paste(cell, (x, y))
+        draw.text(
+            (x + 4, y + cell_height + 2),
+            f"{frame['index']}  {frame['headRatio']:.3f}  y{frame['headBottomY']:.2f}",
+            fill=(235, 235, 235),
+            font=font,
+        )
+    Path(out_path).parent.mkdir(parents=True, exist_ok=True)
+    sheet.save(out_path, "PNG")
+    return out_path
