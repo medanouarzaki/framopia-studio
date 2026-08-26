@@ -60,20 +60,42 @@ export const EXTRA_LINES_RENDER_BELOW = true;
  *   ~/Library/Fonts/Inter-VariableFont_opsz,wght.ttf
  *   ~/Library/Fonts/Almarai-Bold.ttf
  *
- * Both figures are OS/2 usWinAscent / usWinDescent, the font's own statement
- * of its maximum ink extent, which for both files equals or exceeds the head
- * table's global glyph bounding box. Typo metrics are deliberately not used:
- * they describe comfortable line spacing, not how far a glyph can reach, and
- * a placement exclusion has to cover the reach.
+ * **These are real glyph bounding boxes, not OS/2 table values** — Block 6
+ * session 4. Session 3 used OS/2 usWinAscent/usWinDescent, which describe the
+ * tallest and deepest glyph anywhere in the font; those figures were Inter
+ * 2269/660 and Almarai 1108/453. What replaced them is the extent over every
+ * glyph the orthography can actually produce, measured through a pen so
+ * composites resolve, following only the layout features a shaper turns on
+ * without an application opting in. Stylistic sets are excluded: After Effects
+ * does not enable them, and including them put Inter's maximum on a circled
+ * slashed zero.
+ *
+ * The measured set is deliberately wider than the corpus, which is five reels
+ * of one client and reaches only 800 units of Almarai ascent. It carries every
+ * unvocalized Arabic letter in all four positional forms, Arabic punctuation,
+ * printable ASCII, and the accented French set §5 permits. The widening is the
+ * safety margin and it is worth +300 Almarai ascent units over the corpus
+ * alone, a 37.5% increase; no further pad is added, because a number on top of
+ * a set that already covers every permitted glyph would have no evidence
+ * behind it.
+ *
+ * Almarai's ascent is the Allah ligature ﷲ, which `rlig` builds from لله. The
+ * corpus contains no such sequence, but §6(b) permits religious formulas so it
+ * is carried. Full vocalization cannot exceed it: the harakat outlines top out
+ * at 747, Almarai's highest GPOS base anchor is 407 against a highest mark
+ * anchor of 390, so an attached mark's ink cannot pass 764 against 1100.
  *
  * Inter ships as a variable font and Semi-Bold is an instance of it. Its MVAR
  * table varies only xhgt, stro, strs, undo and unds — no vertical metric tag —
- * and instantiating at wght=600 across both ends of the opsz axis reproduces
- * 2269 / -660 exactly, so the extents below hold for Semi-Bold.
+ * and the measured extents are identical at both ends of the opsz axis.
+ *
+ * Measuring this way shrinks the band by 1.5% and recovers nothing; see
+ * benchmarks/RESULTS-block6-band-repertoire.md. It is here because it is
+ * better founded, not because it changed an outcome.
  */
 export const FONT_METRICS = {
-  latin: { unitsPerEm: 2048, ascent: 2269, descent: 660 },
-  arabic: { unitsPerEm: 1000, ascent: 1108, descent: 453 },
+  latin: { unitsPerEm: 2048, ascent: 1970, descent: 480 },
+  arabic: { unitsPerEm: 1000, ascent: 1100, descent: 427 },
 } as const;
 
 /** Ink extent in pixels above and below the baseline at a given size. */
@@ -92,8 +114,8 @@ export function inkExtent(
  * The worst case the subtitle band has to clear: the larger of the two track
  * sizes, in whichever face reaches further from the baseline.
  *
- * Almarai wins both directions at the keyword size — 503.86 against 470.86
- * above, 206.00 against 136.96 below — because the 1.07 ratio and its heavier
+ * Almarai wins both directions at the keyword size — 500.23 against 408.81
+ * above, 194.18 against 99.61 below — because the 1.07 ratio and its heavier
  * descenders more than cover Inter's taller nominal ascent.
  */
 export function worstCaseExtent(): { ascentPx: number; descentPx: number } {

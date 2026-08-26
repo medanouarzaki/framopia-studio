@@ -13,8 +13,8 @@ describe('font metrics', () => {
   // editing them is a deliberate act with a re-measurement behind it, rather
   // than a number nudged until a placement fits.
   it('pins the extents read from the installed font files', () => {
-    expect(FONT_METRICS.latin).toEqual({ unitsPerEm: 2048, ascent: 2269, descent: 660 });
-    expect(FONT_METRICS.arabic).toEqual({ unitsPerEm: 1000, ascent: 1108, descent: 453 });
+    expect(FONT_METRICS.latin).toEqual({ unitsPerEm: 2048, ascent: 1970, descent: 480 });
+    expect(FONT_METRICS.arabic).toEqual({ unitsPerEm: 1000, ascent: 1100, descent: 427 });
   });
 
   it('scales linearly with size', () => {
@@ -26,14 +26,14 @@ describe('font metrics', () => {
 
   it('reads Inter at the keyword size', () => {
     const { ascentPx, descentPx } = inkExtent('latin', KEYWORD_FONT_SIZE);
-    expect(ascentPx).toBeCloseTo(470.8618, 3);
-    expect(descentPx).toBeCloseTo(136.9629, 3);
+    expect(ascentPx).toBeCloseTo(408.8135, 3);
+    expect(descentPx).toBeCloseTo(99.6094, 3);
   });
 
   it('reads Almarai at the keyword size, which carries the 1.07 ratio', () => {
     const { ascentPx, descentPx } = inkExtent('arabic', KEYWORD_FONT_SIZE * ARABIC_SIZE_RATIO);
-    expect(ascentPx).toBeCloseTo(503.863, 3);
-    expect(descentPx).toBeCloseTo(206.0018, 3);
+    expect(ascentPx).toBeCloseTo(500.225, 3);
+    expect(descentPx).toBeCloseTo(194.1782, 3);
   });
 });
 

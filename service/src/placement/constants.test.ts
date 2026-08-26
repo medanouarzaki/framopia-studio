@@ -16,10 +16,10 @@ import {
 
 describe('SUBTITLE_BAND', () => {
   it('lands on the values derived from the measured anchor and font metrics', () => {
-    expect(SUBTITLE_BAND_TOP_PX).toBeCloseTo(1976.537, 3);
-    expect(SUBTITLE_BAND_BOTTOM_PX).toBeCloseTo(3009.4017, 3);
-    expect(SUBTITLE_BAND.y).toBeCloseTo(0.5147231771, 9);
-    expect(SUBTITLE_BAND.h).toBeCloseTo(0.2689751953, 9);
+    expect(SUBTITLE_BAND_TOP_PX).toBeCloseTo(1980.175, 3);
+    expect(SUBTITLE_BAND_BOTTOM_PX).toBeCloseTo(2997.5783, 3);
+    expect(SUBTITLE_BAND.y).toBeCloseTo(0.5156705729, 9);
+    expect(SUBTITLE_BAND.h).toBeCloseTo(0.2649487630, 9);
   });
 
   it('clears a two-line keyword in the taller face, top and bottom', () => {

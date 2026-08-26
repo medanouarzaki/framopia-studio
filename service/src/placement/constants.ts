@@ -29,14 +29,26 @@ export const FRAME_ASPECT = FRAME_HEIGHT / FRAME_WIDTH;
  * The worst case is two lines at the keyword size in whichever face reaches
  * further from the baseline, which is Almarai Bold in both directions:
  *
- *   top    = 2480.4 - 503.8630                = 1976.5370 px
- *   bottom = 2480.4 + 323 (line 2) + 206.0018 = 3009.4017 px
+ *   top    = 2480.4 - 500.2250                = 1980.1750 px
+ *   bottom = 2480.4 + 323 (line 2) + 194.1782 = 2997.5783 px
  *
- * **Supersedes the provisional value**, which was full width, 600 px tall,
- * centred at 0.75 of frame height — normalized y 0.671875 to 0.828125, or
- * 2580 to 3180 px. That guess sat 600 px too low and was 1.7x too short: it
- * left the whole of the first line's ascent unprotected and excluded 170 px
- * below the type that nothing ever draws in.
+ * Three values have stood here; both predecessors are kept so the history is
+ * auditable.
+ *
+ *   provisional (Block 5)  y 0.671875     h 0.15625      2580.0000-3180.0000
+ *   usWin       (B6 s3)    y 0.5147231771 h 0.2689751953 1976.5370-3009.4017
+ *   repertoire  (B6 s4)    y 0.5156705729 h 0.2649487630 1980.1750-2997.5783
+ *
+ * The provisional value was a guess: full width, 600 px tall, centred at 0.75
+ * of frame height. It sat 600 px too low and was 1.7x too short, leaving the
+ * whole of the first line's ascent unprotected.
+ *
+ * The usWin value took the fonts' OS/2 maximum-ink figures, which cover the
+ * tallest glyph anywhere in the font. The repertoire value measures the glyphs
+ * the orthography can actually produce. It is **1.50% shorter and recovers
+ * nothing** — in particular it does not bring back the torso zones the usWin
+ * band closed, and no honest measurement of this font at this size would; see
+ * benchmarks/RESULTS-block6-band-repertoire.md.
  *
  * Full frame width is kept. The anchor is centred and a wrapped keyword can
  * run wide, and nothing measures the horizontal extent of a string yet.
