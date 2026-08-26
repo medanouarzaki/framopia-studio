@@ -2132,5 +2132,73 @@ scoped the writing to `npm run place`.
 `npm run place` wrote only `meta` and `pipeline` on both fixtures; the other
 three plans were untouched.
 
+## Block 6 session 4 — the band measured from the real repertoire
+
+**Spent $0.00.** Ledger 105 entries / sha `a7e85e4b…` at both ends.
+
+**The band is measured from real glyph outlines now, not OS/2 usWin.**
+`FONT_METRICS` in `core/src/typography.ts` holds Inter **1970/480** and Almarai
+**1100/427**, against session 3's usWin 2269/660 and 1108/453. Extents come
+from glyph bounding boxes through a pen, so composites resolve, following only
+the layout features a shaper enables without an application opting in
+(`ccmp locl rlig liga clig calt kern mark mkmk init medi fina isol curs rvrn
+rclt`). **Stylistic sets are excluded** — AE does not enable them, and
+including them put Inter's maximum on `zero.slash.circled`.
+
+**`SUBTITLE_BAND` is y 0.5156705729, h 0.2649487630 — 1980.1750 to 2997.5783
+px.** All three values it has ever held are in the comment.
+
+**The answer to the question the session asked is NO.** The honest band is
+**15.46 px shorter out of 1032.86, 1.50%**, and the top moves down only
+**3.64 px**. **No reel recovers a usable torso zone**, and two more aggressive
+readings fail too: dropping the Allah ligature (ascent 997) and corpus-only
+(800) both leave every reel short. For test-1's torso to hold the minimum
+square the band top would have to sit at 2180.6 px, implying a maximum ascent
+of **659 Almarai units against the font's real 1100**. **The band was never the
+cause — the anchor position is.** Record:
+`benchmarks/RESULTS-block6-band-repertoire.md`.
+
+**The corpus repertoire is 81 characters** across the five plans and four
+references: 52 Latin, 26 Arabic, plus `è` and `é`. **Zero Arabic diacritics** —
+nothing in U+064B–U+0652 or U+0670 anywhere, which is what §1 predicts. The
+apostrophe is U+0027 straight throughout; no non-breaking space, no
+presentation forms. **Five reels, one client, two speakers** — the Arabic set
+is missing eleven letters that plainly can occur, which is why the band is not
+measured from the corpus alone.
+
+**The margin is the widening of the measured set, not a round number on top**:
+every unvocalized Arabic letter in all four positional forms, Arabic
+punctuation, printable ASCII, and §5's accented French. Worth **+300 Almarai
+ascent units over corpus-only, 37.5%**. Almarai's ascent is the Allah ligature
+ﷲ, absent from the corpus but permitted by §6(b).
+
+**Full vocalization cannot exceed the band**, resolved from the font rather
+than assumed: harakat outlines top at 747, Almarai's highest GPOS base anchor
+is 407 against a highest mark anchor of 390, so an attached mark's ink is
+bounded by **764 against 1100**.
+
+**Torso zones are now 0 on every reel**, confirmed by re-deriving rather than
+predicted: `npm run zones --all --write-plan` refreshed all five, and 29 torso
+zones across four reels became none.
+
+| reel | zones before | after | torso before | after |
+|---|---|---|---|---|
+| ground-truth | 11 | 7 | 4 | **0** |
+| test-1 | 24 | 18 | 6 | **0** |
+| test-2 | 29 | 19 | 10 | **0** |
+| test-3 | 16 | 7 | 9 | **0** |
+| vitasilk | 20 | 20 | 0 | 0 |
+
+**No placement moved.** vitasilk 5/5 and test-1 4/4 re-solved onto the same
+positions and scales for the third session running, and no slot became
+unplaceable. `npm run place` was re-run **after** the zone refresh as well as
+before, because placements reference zone ids.
+
+**`torso` remains a valid `kind`** in the schema and in `assertPlaceable`; it
+is now reachable only through a manual zone. Recovering it automatically needs
+a product decision — the anchor, the keyword size,
+`MIN_PLACED_SHORT_EDGE`, or the rule that images never overlap the band — not a
+better measurement.
+
 See `docs/BLOCKS.md` for the full block plan and `handoffs/` for prior
 session context.
