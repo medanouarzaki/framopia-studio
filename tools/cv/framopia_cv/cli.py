@@ -106,13 +106,15 @@ def _segment_person(request: dict) -> dict:
         raise ValueError("framePaths must be a non-empty list")
     threshold = float(request.get("threshold", DEFAULT_THRESHOLD))
 
-    frames = segment_frames(frame_paths, request["outDir"], threshold)
+    write_head = bool(request.get("writeHead", True))
+    frames = segment_frames(frame_paths, request["outDir"], threshold, write_head)
     return {
         "ok": True,
         "task": "segment_person",
         "model": MODEL_NAME,
         "modelPath": str(MODEL_PATH),
         "threshold": threshold,
+        "writeHead": write_head,
         "outDir": request["outDir"],
         "frames": frames,
     }
@@ -169,12 +171,37 @@ def _compute_zones(request: dict) -> dict:
         "open_samples": int(request.get("openSamples", OPEN_SAMPLES)),
         "close_samples": int(request.get("closeSamples", CLOSE_SAMPLES)),
     }
-    result = compute_zones(frames, **params)
+    # The maximal-rectangle decomposition replaces the three fixed kinds; the
+    # old one stays selectable because every Block 5 figure before session 5
+    # was measured with it.
+    method = request.get("method", "maximal")
+    if method == "maximal":
+        from .zones import compute_zones_generalized
+
+        result = compute_zones_generalized(
+            frames,
+            threshold=params["threshold"],
+            component_floor=params["component_floor"],
+            open_samples=params["open_samples"],
+            close_samples=params["close_samples"],
+            zone_margin=params["zone_margin"],
+            min_zone_short_edge=params["min_zone_short_edge"],
+            bottom_exclusion=params["bottom_exclusion"],
+            lateral_inset=params["lateral_inset"],
+            vertical_inset=params["vertical_inset"],
+        )
+        result.setdefault("perFrame", [])
+        result.setdefault("emptySamples", 0)
+    elif method == "three":
+        result = compute_zones(frames, **params)
+    else:
+        raise ValueError(f"unknown zone method {method!r}; known: maximal, three")
 
     return {
         "ok": True,
         "task": "compute_zones",
         "sampleFps": request.get("sampleFps"),
+        "method": method,
         "width": result["width"],
         "height": result["height"],
         # Echoed so a result on disk carries the constants it was produced
@@ -183,6 +210,7 @@ def _compute_zones(request: dict) -> dict:
         "zones": result["zones"],
         "perFrame": result["perFrame"],
         "emptySamples": result["emptySamples"],
+        "trackCount": result.get("trackCount"),
     }
 
 
@@ -271,6 +299,19 @@ def _placement_overlay(request: dict) -> dict:
     return {"ok": True, "task": "placement_overlay", "slots": slots, "overview": overview}
 
 
+def _head_overlay(request: dict) -> dict:
+    """The head region tinted over the body, for confirming it is fully covered."""
+    from .overlay import head_contact_sheet
+
+    return {
+        "ok": True,
+        "task": "head_overlay",
+        "contactSheet": head_contact_sheet(
+            request["frames"], f"{request['outDir']}/{request['prefix']}-contactsheet.png"
+        ),
+    }
+
+
 TASKS = {
     "remove_bg": _remove_bg,
     "detect_text": _detect_text,
@@ -281,6 +322,7 @@ TASKS = {
     "zone_overlay": _zone_overlay,
     "short_edge_overlay": _short_edge_overlay,
     "placement_overlay": _placement_overlay,
+    "head_overlay": _head_overlay,
     "component_overlay": _component_overlay,
 }
 

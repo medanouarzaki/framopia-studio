@@ -29,13 +29,15 @@ const noDebug = argv.includes('--no-debug');
 const writePlan = argv.includes('--write-plan');
 const reelIndex = argv.indexOf('--reel');
 const label = reelIndex === -1 ? undefined : argv[reelIndex + 1];
+const methodIndex = argv.indexOf('--method');
+const method = methodIndex === -1 ? undefined : argv[methodIndex + 1];
 const thresholdIndex = argv.indexOf('--threshold');
 const threshold = thresholdIndex === -1 ? undefined : Number(argv[thresholdIndex + 1]);
 
 if (!all && !label) {
   console.error(
     'usage: npm run zones -- (--reel <label> | --all) [--threshold <t>] ' +
-      '[--write-plan] [--no-debug]',
+      '[--method maximal|three] [--write-plan] [--no-debug]',
   );
   process.exit(2);
 }
@@ -61,6 +63,7 @@ for (const reel of reels) {
     })),
     sampleFps: SAMPLE_FPS,
     threshold,
+    method,
   });
   const elapsedS = (Date.now() - started) / 1000;
 

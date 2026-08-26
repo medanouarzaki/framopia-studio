@@ -361,3 +361,137 @@ def compute_zones(
         "height": height,
         "emptySamples": empty_samples,
     }
+
+
+def _clip_to_frame(rect: Rect, kind: str, lateral_inset: float, vertical_inset: float,
+                   bottom_exclusion: float) -> Rect | None:
+    """The old decomposition's frame insets, applied after the kind is known.
+
+    They were kind-specific — the top rectangle was inset laterally, the side
+    rectangles vertically — and a generalized search has no kind until the
+    rectangle exists. Clipping rather than shrinking, so a rectangle already
+    clear of the border is not made smaller for nothing.
+    """
+    x0, y0 = rect.x, rect.y
+    x1, y1 = rect.x + rect.w, rect.y + rect.h
+    y1 = min(y1, 1.0 - bottom_exclusion)
+    if kind == "top":
+        x0, x1 = max(x0, lateral_inset), min(x1, 1.0 - lateral_inset)
+    else:
+        y0 = max(y0, vertical_inset)
+    if x1 <= x0 or y1 <= y0:
+        return None
+    return Rect(x0, y0, x1 - x0, y1 - y0)
+
+
+def frame_rectangles(
+    mask: np.ndarray,
+    zone_margin: float = ZONE_MARGIN,
+    min_zone_short_edge: float = MIN_ZONE_SHORT_EDGE,
+    bottom_exclusion: float = BOTTOM_EXCLUSION,
+    lateral_inset: float = LATERAL_INSET,
+    vertical_inset: float = VERTICAL_INSET,
+    limit: int | None = None,
+) -> list[tuple[str, Rect]]:
+    """Labelled free rectangles for one filtered mask, largest square first."""
+    from .rects import MAX_ZONES_PER_FRAME, free_rectangles, label_kind
+
+    height, width = mask.shape
+    aspect = height / width
+
+    # ZONE_MARGIN as a dilation of the subject: clearance from the person is
+    # the same requirement whatever shape the free region turns out to be.
+    margin_px = int(round(zone_margin * width))
+    blocked = mask.copy()
+    if margin_px > 0:
+        from scipy import ndimage
+
+        blocked = ndimage.binary_dilation(mask, iterations=margin_px)
+    # Nothing below the exclusion is ever free, so the search never sees it.
+    blocked[int(round((1.0 - bottom_exclusion) * height)) :, :] = True
+
+    out: list[tuple[str, Rect]] = []
+    for found in free_rectangles(blocked, limit or MAX_ZONES_PER_FRAME):
+        rect = Rect(found["x"], found["y"], found["w"], found["h"])
+        kind = label_kind(found, mask)
+        if kind is None:
+            continue
+        clipped = _clip_to_frame(rect, kind, lateral_inset, vertical_inset, bottom_exclusion)
+        if clipped is None or short_edge(clipped, aspect) < min_zone_short_edge:
+            continue
+        out.append((kind, clipped))
+    return out
+
+
+def compute_zones_generalized(
+    frames: list[dict],
+    threshold: float | None = None,
+    component_floor: float = PERSON_COMPONENT_FLOOR,
+    open_samples: int = OPEN_SAMPLES,
+    close_samples: int = CLOSE_SAMPLES,
+    **rect_kwargs,
+) -> dict:
+    """Zones from maximal free rectangles, matched across frames then reduced.
+
+    The fixed kinds matched implicitly — a frame's top rectangle was obviously
+    the same zone as the previous frame's top rectangle. Rectangles found by
+    position carry no such identity, so they are matched by intersection over
+    union against the track's most recent rectangle, and a rectangle matching
+    nothing starts a new track. That is a new decision and MATCH_MIN_IOU is
+    CHOSEN, NOT MEASURED.
+    """
+    from .rects import MATCH_MIN_IOU, iou
+
+    if not frames:
+        raise ValueError("compute_zones_generalized needs at least one frame")
+
+    times = [float(frame["timeS"]) for frame in frames]
+    tracks: list[dict] = []
+    shape: tuple[int, int] | None = None
+
+    for index, frame in enumerate(frames):
+        mask = filter_components(load_mask(frame["maskPath"], threshold), component_floor)
+        if shape is None:
+            shape = mask.shape
+        found = frame_rectangles(mask, **rect_kwargs)
+
+        claimed: set[int] = set()
+        for kind, rect in found:
+            as_dict = rect.to_dict()
+            best, best_iou = None, MATCH_MIN_IOU
+            for position, track in enumerate(tracks):
+                if position in claimed or track["kind"] != kind:
+                    continue
+                score = iou(as_dict, track["last"])
+                if score >= best_iou:
+                    best, best_iou = position, score
+            if best is None:
+                tracks.append({"kind": kind, "last": as_dict, "rects": [None] * index + [rect]})
+                claimed.add(len(tracks) - 1)
+            else:
+                tracks[best]["rects"].append(rect)
+                tracks[best]["last"] = as_dict
+                claimed.add(best)
+
+        for position, track in enumerate(tracks):
+            if position not in claimed:
+                track["rects"].append(None)
+
+    zones = []
+    counters: dict[str, int] = {}
+    for track in tracks:
+        rects = track["rects"] + [None] * (len(times) - len(track["rects"]))
+        for start, end, rect in hysteresis_windows(rects, times, open_samples, close_samples):
+            counters[track["kind"]] = counters.get(track["kind"], 0) + 1
+            zones.append(
+                {
+                    "id": f"z_{track['kind']}_{counters[track['kind']]}",
+                    "kind": track["kind"],
+                    "rect": rect.to_dict(),
+                    "valid": [[start, end]],
+                    "manual": False,
+                }
+            )
+
+    height, width = shape if shape else (0, 0)
+    return {"zones": zones, "width": width, "height": height, "trackCount": len(tracks)}

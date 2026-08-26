@@ -41,6 +41,9 @@ export interface ComputeZonesResult {
   zones: Zone[];
   perFrame: PerFrameZones[];
   emptySamples: number;
+  /** Number of matched rectangle tracks; absent for the three-kind method. */
+  trackCount?: number;
+  method?: string;
 }
 
 export interface MaskComponent {
@@ -130,12 +133,14 @@ export function computeZones(options: {
   frames: { maskPath: string; timeS: number }[];
   sampleFps: number;
   threshold?: number;
+  method?: string;
 }): Promise<ComputeZonesResult> {
   return runSidecar<ComputeZonesResult>({
     task: 'compute_zones',
     frames: options.frames,
     sampleFps: options.sampleFps,
     threshold: options.threshold ?? null,
+    method: options.method ?? 'maximal',
   });
 }
 
