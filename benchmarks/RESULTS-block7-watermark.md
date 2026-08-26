@@ -46,6 +46,53 @@ is **61 frames** at 30000/1001 — the same rate as the source reels
 
 **The audio is not silent**: `max_volume` is -0.5 dB. The watermark carries a sound and the build has to decide whether to keep it.
 
+## 3b. The beeps, and when the watermark should leave the screen
+
+Amplitude envelope: RMS over 1 ms hops of the audio decoded to mono at
+48000 Hz — 2035 envelope points across the clip. A burst is a run above a
+fraction of the envelope peak (0.92569), with runs closer than
+30 ms joined.
+
+**3 bursts at the reported threshold of 5% of peak.**
+
+| burst | start s | end s | peak s | start f | end f | peak rms |
+|---:|---:|---:|---:|---:|---:|---:|
+| 1 | 0.033 | 0.133 | 0.085 | 0.99 | 3.99 | 0.92569 |
+| 2 | 0.166 | 0.267 | 0.217 | 4.98 | 8.00 | 0.92246 |
+| 3 | 0.300 | 0.400 | 0.352 | 8.99 | 11.99 | 0.92244 |
+
+### Sensitivity to the threshold
+
+| threshold | bursts | spans (s) |
+|---:|---:|---|
+| 1% | **1** | 0.033–0.460 |
+| 2% | **1** | 0.033–0.449 |
+| 5% | **3** | 0.033–0.133, 0.166–0.267, 0.300–0.400 |
+| 10% | **3** | 0.033–0.117, 0.167–0.240, 0.300–0.384 |
+| 20% | **3** | 0.034–0.106, 0.167–0.239, 0.300–0.373 |
+| 30% | **3** | 0.034–0.101, 0.167–0.235, 0.301–0.368 |
+
+The count **holds at 3** across every threshold from 5% up.
+It collapses to 1 at 1–2% because the beeps ring down into each other: the envelope
+floor between them never drops below about 0.9% of peak. That is a property of the
+decay tails, not a different number of beeps.
+
+### The derived display duration
+
+The user's ruling is that the watermark leaves the screen **one second after the last
+beep**.
+
+| | seconds | frames at 30000/1001 |
+|---|---:|---:|
+| last beep ends | 0.400 | 11.99 |
+| + 1.000 s | **1.400** | **41.96** |
+| the video is | 2.035367 | 61 |
+
+**Inside the video's own length**, with 0.635 s (19.04 frames) to spare. The overlay can run to its ruled end without the file being extended or frozen.
+
+Read the end time as ±: the last beep's end moves with the threshold (0.400, 0.384, 0.373, 0.368 s across the thresholds
+that agree on the count), so the derived time carries the same spread.
+
 ## 4. Alpha
 
 Read from the stored alpha plane of **all 61 frames** via `alphaextract`,

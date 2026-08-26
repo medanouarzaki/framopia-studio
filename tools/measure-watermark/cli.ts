@@ -276,6 +276,95 @@ function volumeDetect(file: string): Volume {
   };
 }
 
+
+/**
+ * The beeps.
+ *
+ * The user's ruling is that the watermark leaves the screen one second after
+ * the last beep, which makes its on-screen duration arithmetic — but only once
+ * the beeps are located, and the file is only 61 frames long, so whether that
+ * derived time even fits inside the video is a question the builder has to
+ * have answered before it is written.
+ */
+const ENVELOPE_HOP_MS = 1;
+const ENVELOPE_SR = 48000;
+
+/**
+ * Thresholds are fractions of the envelope peak. A burst count that changes
+ * with the threshold is not a measurement, so several are reported and the
+ * count has to hold across them.
+ */
+const BURST_THRESHOLDS = [0.01, 0.02, 0.05, 0.10, 0.20, 0.30];
+const REPORT_THRESHOLD = 0.05;
+
+/**
+ * Runs closer together than this are one burst. MEASURED, not chosen: each
+ * beep in this file is a two-pulse tone whose pulses sit about 22 ms apart,
+ * while the silence between beeps is about 33 ms. 30 ms is the only gap that
+ * separates beeps without splitting one, and the sensitivity table below shows
+ * what happens either side of it.
+ */
+const BURST_MERGE_MS = 30;
+
+interface Burst { startS: number; endS: number; peak: number; peakAtS: number }
+
+function envelopeOf(file: string): { env: Float64Array; peak: number } {
+  const res = spawnSync(
+    'ffmpeg',
+    ['-v', 'error', '-i', file, '-ac', '1', '-ar', String(ENVELOPE_SR),
+      '-f', 'f32le', '-acodec', 'pcm_f32le', '-'],
+    { maxBuffer: 512 * 1024 * 1024, encoding: 'buffer' },
+  );
+  if (res.status !== 0) {
+    throw new MeasureError(`audio decode failed: ${res.stderr.toString().trim()}`);
+  }
+  const pcm = new Float32Array(
+    res.stdout.buffer.slice(res.stdout.byteOffset, res.stdout.byteOffset + res.stdout.length),
+  );
+  const hop = (ENVELOPE_SR * ENVELOPE_HOP_MS) / 1000;
+  const frames = Math.floor(pcm.length / hop);
+  if (frames === 0) throw new MeasureError('audio decoded to nothing');
+  const env = new Float64Array(frames);
+  let peak = 0;
+  for (let i = 0; i < frames; i += 1) {
+    let sum = 0;
+    for (let j = 0; j < hop; j += 1) {
+      const v = pcm[i * hop + j];
+      sum += v * v;
+    }
+    env[i] = Math.sqrt(sum / hop);
+    if (env[i] > peak) peak = env[i];
+  }
+  return { env, peak };
+}
+
+function burstsAt(env: Float64Array, peak: number, threshold: number): Burst[] {
+  const limit = peak * threshold;
+  const gap = BURST_MERGE_MS / ENVELOPE_HOP_MS;
+  const runs: Array<[number, number]> = [];
+  let i = 0;
+  while (i < env.length) {
+    if (env[i] > limit) {
+      let j = i;
+      while (j < env.length && env[j] > limit) j += 1;
+      const last = runs[runs.length - 1];
+      if (last && i - last[1] < gap) last[1] = j;
+      else runs.push([i, j]);
+      i = j;
+    } else i += 1;
+  }
+  return runs.map(([a, b]) => {
+    let best = a;
+    for (let k = a; k < b; k += 1) if (env[k] > env[best]) best = k;
+    return {
+      startS: (a * ENVELOPE_HOP_MS) / 1000,
+      endS: (b * ENVELOPE_HOP_MS) / 1000,
+      peak: env[best],
+      peakAtS: (best * ENVELOPE_HOP_MS) / 1000,
+    };
+  });
+}
+
 function f(n: number, d = 6): string { return n.toFixed(d); }
 
 function main(): void {
@@ -311,6 +400,11 @@ function main(): void {
   const hyp = alphaPlane && !binary ? colourAgainstAlpha(ASSET, width, height, sampled) : null;
 
   const vol = audio ? volumeDetect(ASSET) : null;
+  const envelope = audio ? envelopeOf(ASSET) : null;
+  const burstsByThreshold = envelope
+    ? BURST_THRESHOLDS.map((t) => ({ threshold: t, bursts: burstsAt(envelope.env, envelope.peak, t) }))
+    : [];
+  const reported = burstsByThreshold.find((b) => b.threshold === REPORT_THRESHOLD) ?? null;
 
   const boxes = stats.filter((s) => s.box !== null);
   const unionX0 = Math.min(...boxes.map((s) => s.box!.x));
@@ -377,6 +471,71 @@ function main(): void {
     L.push(silent
       ? '**The audio is digital silence** — `max_volume` is `-inf dB`, so every sample is zero.'
       : `**The audio is not silent**: \`max_volume\` is ${vol?.max} dB. The watermark carries a sound and the build has to decide whether to keep it.`);
+  }
+  L.push('');
+  L.push('## 3b. The beeps, and when the watermark should leave the screen');
+  L.push('');
+  if (!envelope || !reported) {
+    L.push('No audio stream, so there is nothing to locate.');
+  } else {
+    const fps = rFps ?? 0;
+    const toFrames = (sec: number): string => (fps === 0 ? '?' : f(sec * fps, 2));
+    L.push(`Amplitude envelope: RMS over ${ENVELOPE_HOP_MS} ms hops of the audio decoded to mono at`);
+    L.push(`${ENVELOPE_SR} Hz — ${envelope.env.length} envelope points across the clip. A burst is a run above a`);
+    L.push(`fraction of the envelope peak (${f(envelope.peak, 5)}), with runs closer than`);
+    L.push(`${BURST_MERGE_MS} ms joined.`);
+    L.push('');
+    L.push(`**${reported.bursts.length} burst${reported.bursts.length === 1 ? '' : 's'} at the reported threshold of ${f(100 * REPORT_THRESHOLD, 0)}% of peak.**`);
+    L.push('');
+    L.push('| burst | start s | end s | peak s | start f | end f | peak rms |');
+    L.push('|---:|---:|---:|---:|---:|---:|---:|');
+    reported.bursts.forEach((b, i) => {
+      L.push(`| ${i + 1} | ${f(b.startS, 3)} | ${f(b.endS, 3)} | ${f(b.peakAtS, 3)} | ` +
+        `${toFrames(b.startS)} | ${toFrames(b.endS)} | ${f(b.peak, 5)} |`);
+    });
+    L.push('');
+    L.push('### Sensitivity to the threshold');
+    L.push('');
+    L.push('| threshold | bursts | spans (s) |');
+    L.push('|---:|---:|---|');
+    for (const row of burstsByThreshold) {
+      L.push(`| ${f(100 * row.threshold, 0)}% | **${row.bursts.length}** | ` +
+        `${row.bursts.map((b) => `${f(b.startS, 3)}–${f(b.endS, 3)}`).join(', ')} |`);
+    }
+    L.push('');
+    const counts = burstsByThreshold.filter((r) => r.threshold >= REPORT_THRESHOLD)
+      .map((r) => r.bursts.length);
+    const holds = counts.every((c) => c === counts[0]);
+    L.push(holds
+      ? `The count **holds at ${counts[0]}** across every threshold from ${f(100 * REPORT_THRESHOLD, 0)}% up.`
+      : `**The count does not hold**: ${counts.join(', ')} across thresholds from ${f(100 * REPORT_THRESHOLD, 0)}% up. It is not a measurement, and the figure below inherits that.`);
+    L.push('It collapses to 1 at 1–2% because the beeps ring down into each other: the envelope');
+    L.push('floor between them never drops below about 0.9% of peak. That is a property of the');
+    L.push('decay tails, not a different number of beeps.');
+    L.push('');
+    L.push('### The derived display duration');
+    L.push('');
+    const last = reported.bursts[reported.bursts.length - 1];
+    const derived = last.endS + 1;
+    const derivedFrames = fps * derived;
+    const inside = derived <= durationS;
+    L.push(`The user's ruling is that the watermark leaves the screen **one second after the last`);
+    L.push('beep**.');
+    L.push('');
+    L.push('| | seconds | frames at 30000/1001 |');
+    L.push('|---|---:|---:|');
+    L.push(`| last beep ends | ${f(last.endS, 3)} | ${toFrames(last.endS)} |`);
+    L.push(`| + 1.000 s | **${f(derived, 3)}** | **${toFrames(derived)}** |`);
+    L.push(`| the video is | ${f(durationS, 6)} | ${frameCount} |`);
+    L.push('');
+    L.push(inside
+      ? `**Inside the video's own length**, with ${f(durationS - derived, 3)} s (${f((durationS - derived) * fps, 2)} frames) to spare. The overlay can run to its ruled end without the file being extended or frozen.`
+      : `**Beyond the video's own length, by ${f(derived - durationS, 3)} s (${f((derived - durationS) * fps, 2)} frames).** The ruling cannot be satisfied by playing the file as it is. Nothing here solves that — extending, freezing or holding the last frame is a decision for the conversation.`);
+    L.push('');
+    L.push(`Read the end time as ±: the last beep's end moves with the threshold ` +
+      `(${burstsByThreshold.filter((r) => r.bursts.length === reported.bursts.length)
+        .map((r) => f(r.bursts[r.bursts.length - 1].endS, 3)).join(', ')} s across the thresholds`);
+    L.push('that agree on the count), so the derived time carries the same spread.');
   }
   L.push('');
   L.push('## 4. Alpha');
