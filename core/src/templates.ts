@@ -289,3 +289,162 @@ export function templatesById(manifest: TemplateManifest): Map<string, TemplateE
 export function assertRenderable(manifest: TemplateManifest, stage: string): void {
   if (manifest.stub) throw new StubTemplatesError(stage);
 }
+
+/*
+ * Auditing the built library against this manifest — TEMPLATE_LIBRARY_GUIDE §9.
+ *
+ * The audit itself is an ExtendScript run inside After Effects
+ * (tools/validate-templates/audit.jsx); what lives here is the pure comparison
+ * of its output against the manifest, so it can be unit tested without AE.
+ */
+/** The measured animation budget, docs/TEMPLATE_BUILD_SPEC.md §4. */
+export const MAX_INTRO_PLUS_OUTRO_S = 0.13;
+
+/**
+ * Comps are authored at 29.97, not §3's 30: every source reel is 30000/1001.
+ * The tolerance is wide enough for 29.97 and 30000/1001 to both pass and far
+ * too narrow for 30 to.
+ */
+export const REQUIRED_FPS = 29.97;
+export const FPS_TOLERANCE = 0.01;
+
+export interface AuditLayer {
+  name: string;
+  kind: string;
+}
+export interface AuditComp {
+  name: string;
+  frameRate: number;
+  width: number;
+  height: number;
+  duration: number;
+  layers: AuditLayer[];
+}
+export interface Audit {
+  ok: boolean;
+  aeVersion?: string;
+  aepSha256?: string;
+  comps?: AuditComp[];
+  error?: string;
+}
+
+/**
+ * A placeholder is replaced by having its source or its text swapped, so what
+ * matters is whether it can carry the content, not which of AE's classes it
+ * is. A text placeholder must be a real text layer; an image placeholder must
+ * be anything with a replaceable source — the built comps use solids rather
+ * than the still §4 suggests, and a solid replaces exactly as well.
+ */
+const ACCEPTS: Record<string, { kinds: string[]; describe: string }> = {
+  TXT_MAIN: { kinds: ['text'], describe: 'an editable text layer' },
+  IMG_MAIN: { kinds: ['footage', 'solid'], describe: 'a footage or solid layer' },
+};
+
+export function validateTemplates(options: {
+  audit: Audit;
+  manifest: { stub: boolean; templates: Record<string, unknown>[] };
+  sfxIds: Set<string>;
+  aepSha256: string;
+}): string[] {
+  const { audit, manifest, sfxIds, aepSha256 } = options;
+  const problems: string[] = [];
+
+  if (!audit.ok) {
+    return [`the audit of templates/library.aep failed: ${audit.error ?? 'no reason given'}`];
+  }
+  if (audit.aepSha256 !== aepSha256) {
+    return [
+      'templates/library.audit.json is stale: it was taken from a different ' +
+        `templates/library.aep (audit ${String(audit.aepSha256).slice(0, 12)}, ` +
+        `file ${aepSha256.slice(0, 12)}). Re-run: npm run audit:templates`,
+    ];
+  }
+
+  const comps = new Map((audit.comps ?? []).map((c) => [c.name, c]));
+  const declared = new Set<string>();
+
+  for (const raw of manifest.templates) {
+    const t = raw as {
+      id: string;
+      type: string;
+      placeholders: string[];
+      introS: number;
+      outroS: number;
+      minHoldS: number;
+      sfx?: { sfxId: string }[];
+    };
+    declared.add(t.id);
+
+    const comp = comps.get(t.id);
+    if (comp === undefined) {
+      problems.push(`manifest template "${t.id}" has no comp of that name in library.aep`);
+      continue;
+    }
+
+    const expectedPrefix = TEMPLATE_PREFIXES[t.type as TemplateKind];
+    if (expectedPrefix !== undefined && !t.id.startsWith(expectedPrefix)) {
+      problems.push(`comp "${t.id}" is type "${t.type}" but does not start with "${expectedPrefix}"`);
+    }
+
+    for (const name of t.placeholders) {
+      const layer = comp.layers.find((l) => l.name === name);
+      if (layer === undefined) {
+        const names = comp.layers.map((l) => l.name).join(', ') || 'none';
+        problems.push(
+          `comp "${t.id}" declares placeholder "${name}" but has no layer of that name ` +
+            `(layers present: ${names})`,
+        );
+        continue;
+      }
+      const accepts = ACCEPTS[name];
+      if (accepts !== undefined && !accepts.kinds.includes(layer.kind)) {
+        problems.push(
+          `comp "${t.id}" layer "${name}" is a ${layer.kind} layer; ${accepts.describe} is required`,
+        );
+      }
+    }
+
+    if (Math.abs(comp.frameRate - REQUIRED_FPS) > FPS_TOLERANCE) {
+      problems.push(
+        `comp "${t.id}" is ${comp.frameRate} fps; ${REQUIRED_FPS} is required ` +
+          '(every source reel is 30000/1001)',
+      );
+    }
+
+    const floor = t.introS + t.minHoldS + t.outroS;
+    if (floor > comp.duration + 1e-9) {
+      problems.push(
+        `comp "${t.id}" is ${comp.duration.toFixed(3)}s long but its manifest timings need ` +
+          `${floor.toFixed(3)}s (introS ${t.introS} + minHoldS ${t.minHoldS} + outroS ${t.outroS})`,
+      );
+    }
+
+    const budget = t.introS + t.outroS;
+    if (budget > MAX_INTRO_PLUS_OUTRO_S + 1e-9) {
+      problems.push(
+        `comp "${t.id}" spends ${budget.toFixed(3)}s on intro+outro; the measured budget is ` +
+          `${MAX_INTRO_PLUS_OUTRO_S}s (introS ${t.introS} + outroS ${t.outroS}) — ` +
+          'see docs/TEMPLATE_BUILD_SPEC.md §4',
+      );
+    }
+
+    for (const binding of t.sfx ?? []) {
+      if (!sfxIds.has(binding.sfxId)) {
+        problems.push(
+          `comp "${t.id}" binds sfxId "${binding.sfxId}", which assets/sfx/sfx.json does not define`,
+        );
+      }
+    }
+  }
+
+  for (const comp of comps.values()) {
+    if (!Object.values(TEMPLATE_PREFIXES).some((p) => comp.name.startsWith(p))) continue;
+    if (!declared.has(comp.name)) {
+      problems.push(
+        `comp "${comp.name}" looks like a template but templates/manifest.json has no entry for it`,
+      );
+    }
+  }
+
+  return problems;
+}

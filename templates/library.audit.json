@@ -1,0 +1,89 @@
+{
+  "ok": true,
+  "aeVersion": "26.0x67",
+  "comps": [
+    {
+      "name": "img_float",
+      "frameRate": 29.9700012207031,
+      "width": 1200,
+      "height": 1200,
+      "duration": 2.002002002002,
+      "layers": [
+        {
+          "name": "IMG_MAIN",
+          "kind": "solid"
+        },
+        {
+          "name": "CARD",
+          "kind": "solid"
+        }
+      ]
+    },
+    {
+      "name": "img_slide_left",
+      "frameRate": 29.9700012207031,
+      "width": 1200,
+      "height": 1200,
+      "duration": 2.002002002002,
+      "layers": [
+        {
+          "name": "IMG_MAIN",
+          "kind": "solid"
+        }
+      ]
+    },
+    {
+      "name": "kw_slam",
+      "frameRate": 29.9700012207031,
+      "width": 2160,
+      "height": 1100,
+      "duration": 2.002002002002,
+      "layers": [
+        {
+          "name": "TXT_MAIN",
+          "kind": "text"
+        }
+      ]
+    },
+    {
+      "name": "kw_slam_ar",
+      "frameRate": 29.9700012207031,
+      "width": 2160,
+      "height": 1100,
+      "duration": 2.002002002002,
+      "layers": [
+        {
+          "name": "TXT_MAIN",
+          "kind": "text"
+        }
+      ]
+    },
+    {
+      "name": "sub_pop",
+      "frameRate": 29.9700012207031,
+      "width": 2160,
+      "height": 1100,
+      "duration": 2.002002002002,
+      "layers": [
+        {
+          "name": "TXT_MAIN",
+          "kind": "text"
+        }
+      ]
+    },
+    {
+      "name": "sub_pop_ar",
+      "frameRate": 29.9700012207031,
+      "width": 2160,
+      "height": 1100,
+      "duration": 2.002002002002,
+      "layers": [
+        {
+          "name": "TXT_MAIN",
+          "kind": "text"
+        }
+      ]
+    }
+  ],
+  "aepSha256": "dac234ce443ec581d75ac7a5c497075b7a618e1d603109901a72d3872fa238fa"
+}

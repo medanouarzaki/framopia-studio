@@ -17,6 +17,10 @@ npm run lint --workspaces --if-present
 npm run test --workspaces --if-present -- --run
 npm run validate:modes --workspace @framopia/core
 
+# TEMPLATE_LIBRARY_GUIDE §9: the manifest against what is really in the .aep.
+# Validates the committed audit, and refuses it if the .aep has changed since.
+npx tsx tools/validate-templates/cli.ts
+
 # Every reference file's declared version against a clean scorer pass. The
 # `ground-truth` reference asserted v1.0.7 conformance for an entire block
 # while violating v1.0.7, and `test-3` carried two standalone conjunctions

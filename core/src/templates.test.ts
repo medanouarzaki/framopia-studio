@@ -7,6 +7,8 @@ import {
   templatesById,
   validateSfxIndex,
   validateTemplateManifest,
+  validateTemplates,
+  type AuditComp,
   type TemplateManifest,
 } from './templates.js';
 
@@ -123,9 +125,22 @@ describe('the files on disk', () => {
     expect(loadSfxIndex().sfx.map((s) => s.id)).toEqual(['hit_01', 'whoosh_01']);
   });
 
-  it('are both still marked as stubs', () => {
-    expect(loaded.stub).toBe(true);
+  // The manifest stopped being a stub in Block 6 session 7, when the six comps
+  // were built and its timings became measurements. The SFX index is still one:
+  // no audio file exists.
+  it('describe real comps, while the sfx index is still a stub', () => {
+    expect(loaded.stub).toBe(false);
     expect(loadSfxIndex().stub).toBe(true);
+  });
+
+  it('declare no sfx anywhere, because no audio file exists yet', () => {
+    for (const t of loaded.templates) expect(t.sfx).toEqual([]);
+  });
+
+  it('carry both script variants of each text template', () => {
+    const ids = loaded.templates.map((t) => t.id);
+    expect(ids).toContain('sub_pop_ar');
+    expect(ids).toContain('kw_slam_ar');
   });
 
   it('declare no sfx on the subtitle template, per §10', () => {
@@ -140,12 +155,152 @@ describe('the files on disk', () => {
 
 describe('assertRenderable', () => {
   it('refuses a stub manifest and names the stage', () => {
-    expect(() => assertRenderable(loadTemplateManifest(), 'build')).toThrow(StubTemplatesError);
-    expect(() => assertRenderable(loadTemplateManifest(), 'build')).toThrow(/stage "build" renders/);
+    const stub = { ...loadTemplateManifest(), stub: true } as TemplateManifest;
+    expect(() => assertRenderable(stub, 'build')).toThrow(StubTemplatesError);
+    expect(() => assertRenderable(stub, 'build')).toThrow(/stage "build" renders/);
   });
 
-  it('allows a manifest that says it is real', () => {
-    const real = { ...loadTemplateManifest(), stub: false } as TemplateManifest;
-    expect(() => assertRenderable(real, 'build')).not.toThrow();
+  it('allows the manifest on disk, which is no longer a stub', () => {
+    expect(() => assertRenderable(loadTemplateManifest(), 'build')).not.toThrow();
+  });
+});
+
+describe('validateTemplates', () => {
+  const SHA = 'a'.repeat(64);
+  const comp = (name: string, over: Partial<AuditComp> = {}): AuditComp => ({
+    name,
+    frameRate: 29.97,
+    width: 2160,
+    height: 1100,
+    duration: 2.002,
+    layers: [{ name: 'TXT_MAIN', kind: 'text' }],
+    ...over,
+  });
+  const entry = (id: string, over: Record<string, unknown> = {}) => ({
+    id,
+    file: 'library.aep',
+    type: 'subtitle',
+    placeholders: ['TXT_MAIN'],
+    introS: 0.13,
+    outroS: 0,
+    minHoldS: 0.1,
+    anchor: 'center',
+    imagePresentation: null,
+    sfx: [],
+    notes: '',
+    ...over,
+  });
+  const run = (comps: AuditComp[], templates: Record<string, unknown>[], sfx: string[] = []) =>
+    validateTemplates({
+      audit: { ok: true, aepSha256: SHA, comps },
+      manifest: { stub: false, templates },
+      sfxIds: new Set(sfx),
+      aepSha256: SHA,
+    });
+
+  it('passes a manifest that matches the audit', () => {
+    expect(run([comp('sub_pop')], [entry('sub_pop')])).toEqual([]);
+  });
+
+  it('reports a stale audit rather than validating against it', () => {
+    const problems = validateTemplates({
+      audit: { ok: true, aepSha256: SHA, comps: [comp('sub_pop')] },
+      manifest: { stub: false, templates: [entry('sub_pop')] },
+      sfxIds: new Set(),
+      aepSha256: 'b'.repeat(64),
+    });
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toMatch(/stale/);
+  });
+
+  it('refuses to pass a failed audit', () => {
+    const problems = validateTemplates({
+      audit: { ok: false, error: 'AE said no' },
+      manifest: { stub: false, templates: [entry('sub_pop')] },
+      sfxIds: new Set(),
+      aepSha256: SHA,
+    });
+    expect(problems[0]).toMatch(/AE said no/);
+  });
+
+  it('names a manifest id with no comp', () => {
+    expect(run([], [entry('sub_pop')])[0]).toMatch(/"sub_pop" has no comp/);
+  });
+
+  it('names a template-looking comp with no manifest entry', () => {
+    expect(run([comp('sub_pop'), comp('sub_ghost')], [entry('sub_pop')])[0]).toMatch(
+      /"sub_ghost" looks like a template/,
+    );
+  });
+
+  it('ignores a non-template comp with no manifest entry', () => {
+    expect(run([comp('sub_pop'), comp('precomp_bg')], [entry('sub_pop')])).toEqual([]);
+  });
+
+  it('names the comp and the missing placeholder layer', () => {
+    const problems = run([comp('sub_pop', { layers: [] })], [entry('sub_pop')]);
+    expect(problems[0]).toContain('comp "sub_pop"');
+    expect(problems[0]).toContain('"TXT_MAIN"');
+  });
+
+  it('rejects a placeholder of the wrong kind', () => {
+    const problems = run(
+      [comp('sub_pop', { layers: [{ name: 'TXT_MAIN', kind: 'solid' }] })],
+      [entry('sub_pop')],
+    );
+    expect(problems[0]).toMatch(/is a solid layer; an editable text layer is required/);
+  });
+
+  // The built comps use solids for IMG_MAIN rather than the still §4 suggests,
+  // and a solid replaces exactly as well.
+  it('accepts a solid or a footage layer for IMG_MAIN', () => {
+    for (const kind of ['solid', 'footage']) {
+      const problems = run(
+        [comp('img_float', { layers: [{ name: 'IMG_MAIN', kind }] })],
+        [entry('img_float', { type: 'image', placeholders: ['IMG_MAIN'], imagePresentation: 'card' })],
+      );
+      expect(problems).toEqual([]);
+    }
+  });
+
+  it('rejects 30 fps and accepts 29.97 and 30000/1001', () => {
+    expect(run([comp('sub_pop', { frameRate: 30 })], [entry('sub_pop')])[0]).toMatch(/30 fps/);
+    expect(run([comp('sub_pop', { frameRate: 29.97 })], [entry('sub_pop')])).toEqual([]);
+    expect(run([comp('sub_pop', { frameRate: 30000 / 1001 })], [entry('sub_pop')])).toEqual([]);
+  });
+
+  it('rejects timings that do not fit the comp duration', () => {
+    const problems = run(
+      [comp('sub_pop', { duration: 0.2 })],
+      [entry('sub_pop', { introS: 0.13, minHoldS: 0.1, outroS: 0 })],
+    );
+    expect(problems[0]).toMatch(/is 0.200s long but its manifest timings need 0.230s/);
+  });
+
+  it('rejects intro+outro over the measured budget', () => {
+    const problems = run([comp('sub_pop')], [entry('sub_pop', { outroS: 0.15 })]);
+    expect(problems[0]).toMatch(/spends 0.280s on intro\+outro/);
+  });
+
+  // outroS 0 is a legitimate value, not a missing one: the card hard-cuts.
+  it('accepts outroS of zero', () => {
+    expect(run([comp('sub_pop')], [entry('sub_pop', { outroS: 0 })])).toEqual([]);
+  });
+
+  it('rejects an sfxId the index does not define', () => {
+    const problems = run(
+      [comp('sub_pop')],
+      [entry('sub_pop', { sfx: [{ sfxId: 'hit_99' }] })],
+      ['hit_01'],
+    );
+    expect(problems[0]).toMatch(/binds sfxId "hit_99"/);
+  });
+
+  it('reports every problem at once rather than the first', () => {
+    const problems = run(
+      [comp('sub_pop', { frameRate: 30, layers: [] })],
+      [entry('sub_pop', { outroS: 0.15 })],
+    );
+    expect(problems.length).toBeGreaterThanOrEqual(3);
   });
 });

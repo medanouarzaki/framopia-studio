@@ -104,3 +104,12 @@ export {
   SUBTITLE_FONT_SIZE,
   worstCaseExtent,
 } from './typography.js';
+export {
+  validateTemplates,
+  MAX_INTRO_PLUS_OUTRO_S,
+  REQUIRED_FPS,
+  FPS_TOLERANCE,
+  type Audit,
+  type AuditComp,
+  type AuditLayer,
+} from './templates.js';
