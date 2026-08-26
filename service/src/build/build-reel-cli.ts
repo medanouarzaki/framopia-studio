@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import {
   REPO_ROOT,
@@ -10,6 +10,7 @@ import {
 import { readEditPlan } from '../editplan/io.js';
 import { runBuildReel } from './drive.js';
 import { imageSize } from './image-size.js';
+import { assertPathsPresent, type PathRef } from './preflight.js';
 import {
   buildReel,
   placeholderScalePercent,
@@ -51,10 +52,32 @@ function candidateFileFor(slotId: string): { path: string; id: string } | null {
   const c = slot?.candidates[0];
   if (slot === undefined || c === undefined) return null;
   const file = slot.presentation === 'cutout' ? (c.cutoutPath ?? c.path) : c.path;
-  if (!existsSync(file)) return null;
   chosenIds.push(`${slotId}:${c.id}:${slot.presentation ?? 'null'}`);
   return { path: file, id: c.id };
 }
+
+/*
+ * Everything the build is about to reference, checked before a single comp is
+ * duplicated. A missing file used to make `candidateFileFor` return null, which
+ * the planner recorded as a skipped slot and the build then quietly produced
+ * without — session 4 lost 4 of 5 images that way and nobody was told.
+ */
+const refs: PathRef[] = [
+  { elementId: 'source', kind: 'footage', path: plan.source.videoPath },
+  { elementId: 'templates', kind: 'aep', path: AEP_PATH },
+];
+for (const slot of plan.images.slots) {
+  const c = slot.candidates[0];
+  if (c === undefined) continue;
+  const file = slot.presentation === 'cutout' ? (c.cutoutPath ?? c.path) : c.path;
+  refs.push({ elementId: slot.id, kind: `image (${slot.presentation ?? 'card'})`, path: file });
+}
+for (const e of plan.sfx.events) {
+  const f = sfxFiles.get(e.sfxId);
+  refs.push({ elementId: e.id, kind: `audio ${e.sfxId}`, path: f ?? '(not in sfx.json)' });
+}
+assertPathsPresent(refs);
+console.log(`pre-flight: ${refs.length} referenced files all present`);
 
 const built = buildReel({
   plan,
