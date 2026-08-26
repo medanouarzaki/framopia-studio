@@ -75,6 +75,11 @@ export function runImageProbe(options: Record<string, unknown>): BuildResult {
   return runJsx('image-probe.jsx', 'framopiaImageProbe', options);
 }
 
+/** Builds a whole reel into one or more master comps in a single project. */
+export function runBuildReel(options: Record<string, unknown>): BuildResult {
+  return runJsx('build-reel.jsx', 'framopiaBuildReel', options);
+}
+
 function runJsx(
   file: string,
   entry: string,

@@ -1,0 +1,194 @@
+/*
+ * Builds a whole reel: every subtitle card, keyword, image and SFX layer, into
+ * one or more master comps in a single project.
+ *
+ * ES3 only. json2.jsx installs JSON.stringify where the host lacks it.
+ *
+ * Two properties this file exists to guarantee:
+ *
+ *   - **One duplicated comp per element, shared by every master.** The text and
+ *     the artwork are then literally the same item in each, so two masters
+ *     built to compare timing cannot differ in anything else.
+ *   - **No decisions here.** Text, timings, positions, scales and template ids
+ *     all arrive computed. This places them and reports what AE stored.
+ */
+function framopiaBuildReel(optionsPath, outPath) {
+    var stage = 'start';
+    var result;
+
+    function readOptions(p) {
+        var f = new File(p);
+        if (!f.exists) throw new Error('options file not found: ' + p);
+        f.encoding = 'UTF-8';
+        f.open('r');
+        var text = f.read();
+        f.close();
+        return eval('(' + text + ')');
+    }
+
+    function findItem(name) {
+        for (var i = 1; i <= app.project.numItems; i++) {
+            if (app.project.item(i).name === name) return app.project.item(i);
+        }
+        return null;
+    }
+
+    function findLayer(comp, name) {
+        for (var i = 1; i <= comp.numLayers; i++) {
+            if (comp.layer(i).name === name) return comp.layer(i);
+        }
+        return null;
+    }
+
+    function importOnce(pathStr, cache) {
+        if (cache[pathStr]) return cache[pathStr];
+        var f = new File(pathStr);
+        if (!f.exists) throw new Error('file not found: ' + pathStr);
+        var item = app.project.importFile(new ImportOptions(f));
+        cache[pathStr] = item;
+        return item;
+    }
+
+    try {
+        var o = readOptions(optionsPath);
+        var imports = {};
+        var warnings = [];
+
+        stage = 'new-project';
+        if (app.project) app.project.close(CloseOptions.DO_NOT_SAVE_CHANGES);
+        app.newProject();
+
+        stage = 'import-footage';
+        var footage = importOnce(o.footagePath, imports);
+
+        stage = 'import-templates';
+        var aepFile = new File(o.templatesAepPath);
+        if (!aepFile.exists) throw new Error('template library not found: ' + o.templatesAepPath);
+        app.project.importFile(new ImportOptions(aepFile));
+
+        /* One duplicate per element, built once and shared by every master. */
+        stage = 'build-elements';
+        var built = {};
+        var i, j, e;
+        for (i = 0; i < o.elements.length; i++) {
+            e = o.elements[i];
+            var template = findItem(e.templateId);
+            if (!template || !(template instanceof CompItem)) {
+                throw new Error('no comp named "' + e.templateId + '" for element ' + e.id);
+            }
+            var instance = template.duplicate();
+            instance.name = e.id + '__' + e.templateId;
+
+            var ph = findLayer(instance, e.placeholder);
+            if (!ph) {
+                throw new Error('comp "' + e.templateId + '" has no layer named "' + e.placeholder + '"');
+            }
+
+            if (e.kind !== 'image') {
+                var doc = ph.property('Source Text').value;
+                doc.text = e.text;
+                ph.property('Source Text').setValue(doc);
+            } else {
+                var img = importOnce(e.imagePath, imports);
+                ph.replaceSource(img, false);
+                // A replaced layer takes the source's dimensions, so the
+                // template's 100% would render the image at the source's size
+                // inside a comp built for the solid. The factor is computed by
+                // the caller from the audited solid size and the real source
+                // size; without it a 2048px image fills 171% of a 1200px comp.
+                ph.property('Scale').setValue([e.placeholderScalePercent, e.placeholderScalePercent]);
+                e.measured = {
+                    sourceWidth: img.width,
+                    sourceHeight: img.height,
+                    layerWidth: ph.width,
+                    layerHeight: ph.height,
+                    anchorPoint: ph.property('Anchor Point').value,
+                    scale: ph.property('Scale').value
+                };
+            }
+            built[e.id] = instance;
+        }
+
+        stage = 'build-masters';
+        var comps = [];
+        for (i = 0; i < o.masters.length; i++) {
+            var spec = o.masters[i];
+            var master = app.project.items.addComp(
+                spec.name, o.masterWidth, o.masterHeight, 1, o.reelDurationS, o.frameRate
+            );
+            master.layers.add(footage).startTime = 0;
+
+            var counts = { subtitle: 0, keyword: 0, image: 0, audio: 0 };
+            for (j = 0; j < spec.placements.length; j++) {
+                var pl = spec.placements[j];
+                var item = built[pl.elementId];
+                if (!item) throw new Error('no built element for ' + pl.elementId);
+                var layer = master.layers.add(item);
+                layer.startTime = pl.inPointS;
+                layer.inPoint = pl.inPointS;
+                layer.outPoint = pl.outPointS;
+                layer.property('Position').setValue([pl.positionX, pl.positionY]);
+                if (pl.scalePercent) {
+                    layer.property('Scale').setValue([pl.scalePercent, pl.scalePercent]);
+                }
+                counts[pl.kind] = counts[pl.kind] + 1;
+            }
+
+            for (j = 0; j < spec.audio.length; j++) {
+                var a = spec.audio[j];
+                var sound = importOnce(a.filePath, imports);
+                var al = master.layers.add(sound);
+                al.startTime = a.timeS;
+                // Audio Levels is in dB and takes a two-channel array.
+                al.property('Audio').property('Audio Levels').setValue([a.gainDb, a.gainDb]);
+                counts.audio = counts.audio + 1;
+            }
+
+            comps.push({
+                name: master.name,
+                frameRate: master.frameRate,
+                duration: master.duration,
+                numLayers: master.numLayers,
+                counts: counts
+            });
+        }
+
+        stage = 'save';
+        app.project.save(new File(o.savePath));
+
+        stage = 'park-playhead';
+        var active = findItem(o.activeComp);
+        if (active && active instanceof CompItem) {
+            active.openInViewer();
+            active.time = o.parkAtS;
+        } else {
+            warnings.push('no comp named "' + o.activeComp + '" to open');
+        }
+
+        var measured = [];
+        for (i = 0; i < o.elements.length; i++) {
+            if (o.elements[i].measured) {
+                measured.push({ id: o.elements[i].id, measured: o.elements[i].measured });
+            }
+        }
+
+        result = {
+            ok: true,
+            aeVersion: app.version,
+            elementsBuilt: o.elements.length,
+            masters: comps,
+            imageMeasurements: measured,
+            projectItems: app.project.numItems,
+            warnings: warnings
+        };
+    } catch (err) {
+        result = { ok: false, stage: stage, message: String(err) };
+    }
+
+    var out = new File(outPath);
+    out.encoding = 'UTF-8';
+    out.open('w');
+    out.write(JSON.stringify(result));
+    out.close();
+    return result.ok ? 'ok' : 'error';
+}
