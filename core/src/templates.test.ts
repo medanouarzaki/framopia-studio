@@ -1,3 +1,5 @@
+import { existsSync } from 'node:fs';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   assertRenderable,
@@ -8,6 +10,7 @@ import {
   validateSfxIndex,
   validateTemplateManifest,
   validateTemplates,
+  SFX_DIR,
   type AuditComp,
   type TemplateManifest,
 } from './templates.js';
@@ -122,18 +125,28 @@ describe('the files on disk', () => {
 
   it('load and validate together', () => {
     expect(loaded.templates.length).toBeGreaterThan(0);
-    expect(loadSfxIndex().sfx.map((s) => s.id)).toEqual(['hit_01', 'whoosh_01']);
+    expect(loadSfxIndex().sfx.map((s) => s.id)).toEqual([
+      'hit_01', 'hit_02', 'whoosh_01', 'whoosh_02',
+    ]);
   });
 
-  // The manifest stopped being a stub in Block 6 session 7, when the six comps
-  // were built and its timings became measurements. The SFX index is still one:
-  // no audio file exists.
-  it('describe real comps, while the sfx index is still a stub', () => {
+  // The manifest stopped being a stub in Block 6 session 7 when the six comps
+  // were built; the SFX index stopped being one in Block 7 session 2 when the
+  // four audio files arrived.
+  it('describe real comps and a real sfx index', () => {
     expect(loaded.stub).toBe(false);
-    expect(loadSfxIndex().stub).toBe(true);
+    expect(loadSfxIndex().stub).toBe(false);
   });
 
-  it('declare no sfx anywhere, because no audio file exists yet', () => {
+  it('name a file that is actually on disk for every sfx id', () => {
+    for (const s of loadSfxIndex().sfx) {
+      expect(existsSync(path.join(SFX_DIR, s.file))).toBe(true);
+    }
+  });
+
+  // No template binds a sound yet: which template fires which is a user ruling
+  // that has not been made. The index existing does not change that.
+  it('declare no sfx on any template, pending that ruling', () => {
     for (const t of loaded.templates) expect(t.sfx).toEqual([]);
   });
 
