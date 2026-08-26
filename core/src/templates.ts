@@ -421,10 +421,17 @@ export function validateTemplates(options: {
 
     const budget = t.introS + t.outroS;
     if (budget > MAX_INTRO_PLUS_OUTRO_S + 1e-9) {
+      // Declared values are quoted as authored and computed ones to three
+      // decimals, because the budget and one of the addends can be the same
+      // number: "budget 0.13, introS 0.13" reads as the intro alone having
+      // blown it. The sentences keep the two roles apart and the lead says
+      // what to change.
       problems.push(
-        `comp "${t.id}" spends ${budget.toFixed(3)}s on intro+outro; the measured budget is ` +
-          `${MAX_INTRO_PLUS_OUTRO_S}s (introS ${t.introS} + outroS ${t.outroS}) — ` +
-          'see docs/TEMPLATE_BUILD_SPEC.md §4',
+        `comp "${t.id}" exceeds the intro+outro budget — reduce introS+outroS by ` +
+          `${(budget - MAX_INTRO_PLUS_OUTRO_S).toFixed(3)}s. ` +
+          `Declared: introS ${t.introS} + outroS ${t.outroS} = ${budget.toFixed(3)}s. ` +
+          `Allowed: ${MAX_INTRO_PLUS_OUTRO_S.toFixed(3)}s. ` +
+          'See docs/TEMPLATE_BUILD_SPEC.md §4',
       );
     }
 

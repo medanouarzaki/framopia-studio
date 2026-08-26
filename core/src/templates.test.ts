@@ -279,7 +279,10 @@ describe('validateTemplates', () => {
 
   it('rejects intro+outro over the measured budget', () => {
     const problems = run([comp('sub_pop')], [entry('sub_pop', { outroS: 0.15 })]);
-    expect(problems[0]).toMatch(/spends 0.280s on intro\+outro/);
+    expect(problems[0]).toMatch(/exceeds the intro\+outro budget/);
+    expect(problems[0]).toContain('reduce introS+outroS by 0.150s');
+    expect(problems[0]).toContain('introS 0.13 + outroS 0.15 = 0.280s');
+    expect(problems[0]).toContain('Allowed: 0.130s');
   });
 
   // outroS 0 is a legitimate value, not a missing one: the card hard-cuts.
