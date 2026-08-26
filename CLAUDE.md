@@ -2436,5 +2436,51 @@ scales on its own** — `BOTTOM_EXCLUSION`, `MIN_ZONE_SHORT_EDGE`,
 derivation, which divides by `FRAME_HEIGHT` at the end. The template comps
 themselves are the harder half: they are authored at fixed pixel sizes.
 
+## Block 6 is complete — deliberately left open
+
+**Five things are unfinished on purpose.** None is an oversight; each has its
+reasoning in the report named beside it. Read this before "fixing" any of them.
+
+- **Whole-term grouping is unimplemented.** Eleven ORTHOGRAPHY_GUIDE §6 terms
+  render split across subtitle cards. `Transcript.terms`,
+  `service/src/analysis/terms.ts`, `ACTIVE_ANALYSIS_PROMPT_VERSION` 4 and the
+  validator's term rules are all **live and unread by grouping** — groundwork
+  for the revisit, **not dead code**. Term spans proved unstable across
+  identical calls: three cache-bypassed runs, three different answers, one
+  matching the guide (`reports/block-6-session-5.md`). Block 7 revisits with
+  the user's eye on a built comp.
+  Terms itemized in `benchmarks/RESULTS-block6-script-grouping.md` §5.
+
+- **The image cache over-invalidates on mode version. Fix before Block 9.**
+  `service/src/images/fingerprint.ts` keys on `modeVersion`, while the analysis
+  stages key on a content hash of the fields their own call reads — session 4's
+  fix, never extended to images. Session 7's v6 bump added two template ids no
+  image call reads and **stranded 14 cached images, ~$1.55 to regenerate**.
+  **A font landing at Block 9 will strand every cached image on every reel.**
+  Nothing was re-run; the image files are still on disk.
+  (`reports/block-6-session-7.md`)
+
+- **The pipeline is 4K-only.** PROJECT_SPEC §4 locks 2160x3840 and nothing
+  reads a frame size from the footage. Scoped in
+  `reports/block-6-session-7.md`: six constant groups, the duplicated
+  `FRAME_WIDTH`/`SOURCE_WIDTH` pair that can drift today, and the comps
+  themselves as the hard half. The user does not deliver HD now and may with
+  future clients. Block 10.
+
+- **`assertRenderable` no longer guards anything.** `templates/manifest.json`
+  stopped being a stub in session 7, so the gate that kept rendering stages
+  away from placeholder timings is off — and **`assets/sfx/sfx.json` is still a
+  stub with no audio files**, which nothing checks before a build. Block 7
+  collects the audio. (`reports/block-6-session-7.md`)
+
+- **`npm run validate-plan` says 11 where `npm run timing-budget` says 7.**
+  **Trust the 7.** `timing-budget` re-derives display timing from speech
+  timings, which is what a build will do. `validate-plan` reads *stored*
+  `displayStart`/`displayEnd` that no plan carries, so it measures the case
+  with no extension into silence and no merge, and it **skips any group with no
+  `templateId`** — every group on ground-truth, test-2 and test-3, so three of
+  five reels are not duration-checked by it at all.
+  (`reports/block-6-session-7.md`)
+
 See `docs/BLOCKS.md` for the full block plan and `handoffs/` for prior
 session context.
