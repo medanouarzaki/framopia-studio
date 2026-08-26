@@ -161,9 +161,38 @@ function framopiaBuildReel(optionsPath, outPath) {
 
         stage = 'park-playhead';
         var active = findItem(o.activeComp);
+        var parkedAt = o.parkAtS;
+        var parkedOn = null;
+        /*
+         * Park on a card that actually wrapped, so the fix is the first thing
+         * on screen rather than something to go hunting for. Which cards
+         * wrapped is only known here, after measuring, so the choice cannot be
+         * made by the caller.
+         */
+        if (o.parkOnWrapped) {
+            var wrappedId = null;
+            for (i = 0; i < o.elements.length; i++) {
+                if (o.elements[i].fit && o.elements[i].fit.wrapped && !o.elements[i].fit.overflows) {
+                    wrappedId = o.elements[i].id;
+                    break;
+                }
+            }
+            if (wrappedId) {
+                for (i = 0; i < o.masters.length; i++) {
+                    if (o.masters[i].name !== o.activeComp) continue;
+                    for (j = 0; j < o.masters[i].placements.length; j++) {
+                        var cand = o.masters[i].placements[j];
+                        if (cand.elementId !== wrappedId) continue;
+                        parkedAt = (cand.inPointS + cand.outPointS) / 2;
+                        parkedOn = wrappedId;
+                    }
+                }
+            }
+            if (!parkedOn) warnings.push('no wrapped card to park on; used the midpoint');
+        }
         if (active && active instanceof CompItem) {
             active.openInViewer();
-            active.time = o.parkAtS;
+            active.time = parkedAt;
         } else {
             warnings.push('no comp named "' + o.activeComp + '" to open');
         }
@@ -191,6 +220,8 @@ function framopiaBuildReel(optionsPath, outPath) {
             masters: comps,
             imageMeasurements: measured,
             textFits: fits,
+            parkedOn: parkedOn,
+            parkedAtS: parkedAt,
             projectItems: app.project.numItems,
             warnings: warnings
         };

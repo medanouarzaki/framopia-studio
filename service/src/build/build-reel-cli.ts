@@ -133,6 +133,7 @@ const result = runBuildReel({
   ],
   activeComp: `master_${reel}_C`,
   parkAtS: plan.source.durationS / 2,
+  parkOnWrapped: true,
   savePath: flag('out') ?? path.join(REPO_ROOT, '.local', 'build', `${reel}-full.aep`),
 });
 const wallS = (Date.now() - startedAt) / 1000;
