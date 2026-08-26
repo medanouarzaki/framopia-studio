@@ -72,6 +72,55 @@ describe('imageFingerprintOf', () => {
     expect(imageFingerprintOf(imageFingerprintInputs(negatives))).not.toBe(original);
   });
 
+  /**
+   * The frozen config, docs/DECISION-image-config.md: gemini-3-pro-image at 2K,
+   * 1:1. Session 1 removed the mode from the key on the reasoning that every
+   * mode field reaches the request as prompt text; these five are what the key
+   * has to carry for that reasoning to hold, so each is pinned on its own
+   * rather than left to the omnibus "changes when any single input changes"
+   * test above. A silent drop here does not fail anything — it serves one
+   * slot's image for a different request.
+   */
+  describe('the frozen image config is in the key', () => {
+    const frozen = {
+      ...base,
+      modelId: 'gemini-3-pro-image',
+      resolution: '2K' as const,
+      aspectRatio: '1:1',
+    };
+    const key = imageFingerprintOf(imageFingerprintInputs(frozen));
+
+    it('the model pin', () => {
+      expect(imageFingerprintOf(imageFingerprintInputs({
+        ...frozen, modelId: 'gemini-3.1-flash-image',
+      }))).not.toBe(key);
+    });
+
+    it('the image size', () => {
+      expect(imageFingerprintOf(imageFingerprintInputs({
+        ...frozen, resolution: '1K' as const,
+      }))).not.toBe(key);
+    });
+
+    it('the aspect ratio', () => {
+      expect(imageFingerprintOf(imageFingerprintInputs({
+        ...frozen, aspectRatio: '9:16',
+      }))).not.toBe(key);
+    });
+
+    it('the composed prompt', () => {
+      expect(imageFingerprintOf(imageFingerprintInputs({
+        ...frozen, prompt: `${frozen.prompt}, seen from below`,
+      }))).not.toBe(key);
+    });
+
+    it('the negative prompt', () => {
+      expect(imageFingerprintOf(imageFingerprintInputs({
+        ...frozen, negativePrompt: `${frozen.negativePrompt}, no hands`,
+      }))).not.toBe(key);
+    });
+  });
+
   it('does not depend on the order the fields were written in', () => {
     const forwards = imageFingerprintInputs(base);
     const backwards = {
