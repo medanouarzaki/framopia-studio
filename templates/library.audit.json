@@ -11,11 +11,151 @@
       "layers": [
         {
           "name": "IMG_MAIN",
-          "kind": "solid"
+          "kind": "solid",
+          "position": {
+            "value": [
+              540,
+              540,
+              0
+            ],
+            "valueAtSampleTime": [
+              540,
+              540,
+              0
+            ],
+            "keyframes": 0,
+            "unreadable": null
+          },
+          "anchorPoint": {
+            "value": [
+              500,
+              500,
+              0
+            ],
+            "valueAtSampleTime": [
+              500,
+              500,
+              0
+            ],
+            "keyframes": 0,
+            "unreadable": null
+          },
+          "scale": {
+            "value": [
+              100,
+              100,
+              100
+            ],
+            "valueAtSampleTime": [
+              100,
+              100,
+              100
+            ],
+            "keyframes": 0,
+            "unreadable": null
+          },
+          "opacity": {
+            "value": 68.7097525652997,
+            "valueAtSampleTime": 100,
+            "keyframes": 2,
+            "unreadable": null
+          },
+          "width": 1000,
+          "height": 1000,
+          "sampleTime": 1.001001001001,
+          "sourceRect": {
+            "top": 0,
+            "left": 0,
+            "width": 1000,
+            "height": 1000
+          },
+          "text": null,
+          "animated": [
+            {
+              "path": "Effects/Fast Box Blur/Blur Radius",
+              "keyframes": 2
+            },
+            {
+              "path": "Transform/Opacity",
+              "keyframes": 2
+            }
+          ]
         },
         {
           "name": "CARD",
-          "kind": "solid"
+          "kind": "solid",
+          "position": {
+            "value": [
+              600,
+              600,
+              0
+            ],
+            "valueAtSampleTime": [
+              600,
+              600,
+              0
+            ],
+            "keyframes": 0,
+            "unreadable": null
+          },
+          "anchorPoint": {
+            "value": [
+              540,
+              540,
+              0
+            ],
+            "valueAtSampleTime": [
+              540,
+              540,
+              0
+            ],
+            "keyframes": 0,
+            "unreadable": null
+          },
+          "scale": {
+            "value": [
+              95.306462884795,
+              95.306462884795,
+              100
+            ],
+            "valueAtSampleTime": [
+              100,
+              100,
+              100
+            ],
+            "keyframes": 2,
+            "unreadable": null
+          },
+          "opacity": {
+            "value": 68.7097525652997,
+            "valueAtSampleTime": 100,
+            "keyframes": 2,
+            "unreadable": null
+          },
+          "width": 1080,
+          "height": 1080,
+          "sampleTime": 1.001001001001,
+          "sourceRect": {
+            "top": 0,
+            "left": 0,
+            "width": 1080,
+            "height": 1080
+          },
+          "text": null,
+          "animated": [
+            {
+              "path": "Effects/Fast Box Blur/Blur Radius",
+              "keyframes": 2
+            },
+            {
+              "path": "Transform/Scale",
+              "keyframes": 2
+            },
+            {
+              "path": "Transform/Opacity",
+              "keyframes": 2
+            }
+          ]
         }
       ]
     },
@@ -28,7 +168,79 @@
       "layers": [
         {
           "name": "IMG_MAIN",
-          "kind": "solid"
+          "kind": "solid",
+          "position": {
+            "value": [
+              600,
+              600,
+              0
+            ],
+            "valueAtSampleTime": [
+              600,
+              600,
+              0
+            ],
+            "keyframes": 2,
+            "unreadable": null
+          },
+          "anchorPoint": {
+            "value": [
+              500,
+              500,
+              0
+            ],
+            "valueAtSampleTime": [
+              500,
+              500,
+              0
+            ],
+            "keyframes": 0,
+            "unreadable": null
+          },
+          "scale": {
+            "value": [
+              100,
+              100,
+              100
+            ],
+            "valueAtSampleTime": [
+              100,
+              100,
+              100
+            ],
+            "keyframes": 0,
+            "unreadable": null
+          },
+          "opacity": {
+            "value": 100,
+            "valueAtSampleTime": 100,
+            "keyframes": 2,
+            "unreadable": null
+          },
+          "width": 1000,
+          "height": 1000,
+          "sampleTime": 1.001001001001,
+          "sourceRect": {
+            "top": 0,
+            "left": 0,
+            "width": 1000,
+            "height": 1000
+          },
+          "text": null,
+          "animated": [
+            {
+              "path": "Effects/Fast Box Blur/Blur Radius",
+              "keyframes": 2
+            },
+            {
+              "path": "Transform/Position",
+              "keyframes": 2
+            },
+            {
+              "path": "Transform/Opacity",
+              "keyframes": 2
+            }
+          ]
         }
       ]
     },
@@ -41,7 +253,85 @@
       "layers": [
         {
           "name": "TXT_MAIN",
-          "kind": "text"
+          "kind": "text",
+          "position": {
+            "value": [
+              1080,
+              700,
+              0
+            ],
+            "valueAtSampleTime": [
+              1080,
+              700,
+              0
+            ],
+            "keyframes": 2,
+            "unreadable": null
+          },
+          "anchorPoint": {
+            "value": [
+              0,
+              0,
+              0
+            ],
+            "valueAtSampleTime": [
+              0,
+              0,
+              0
+            ],
+            "keyframes": 0,
+            "unreadable": null
+          },
+          "scale": {
+            "value": [
+              100,
+              100,
+              100
+            ],
+            "valueAtSampleTime": [
+              100,
+              100,
+              100
+            ],
+            "keyframes": 0,
+            "unreadable": null
+          },
+          "opacity": {
+            "value": 100,
+            "valueAtSampleTime": 100,
+            "keyframes": 2,
+            "unreadable": null
+          },
+          "width": 2160,
+          "height": 1100,
+          "sampleTime": 1.001001001001,
+          "sourceRect": {
+            "top": -309.2041015625,
+            "left": -767.4072265625,
+            "width": 1557.6416015625,
+            "height": 313.97705078125
+          },
+          "text": {
+            "font": "Inter-SemiBold",
+            "fontSize": 425,
+            "justification": "CENTER_JUSTIFY",
+            "justificationRaw": 7415,
+            "tracking": 0
+          },
+          "animated": [
+            {
+              "path": "Effects/Fast Box Blur/Blur Radius",
+              "keyframes": 2
+            },
+            {
+              "path": "Transform/Position",
+              "keyframes": 2
+            },
+            {
+              "path": "Transform/Opacity",
+              "keyframes": 2
+            }
+          ]
         }
       ]
     },
@@ -54,7 +344,85 @@
       "layers": [
         {
           "name": "TXT_MAIN",
-          "kind": "text"
+          "kind": "text",
+          "position": {
+            "value": [
+              1080,
+              700,
+              0
+            ],
+            "valueAtSampleTime": [
+              1080,
+              700,
+              0
+            ],
+            "keyframes": 2,
+            "unreadable": null
+          },
+          "anchorPoint": {
+            "value": [
+              0,
+              0,
+              0
+            ],
+            "valueAtSampleTime": [
+              0,
+              0,
+              0
+            ],
+            "keyframes": 0,
+            "unreadable": null
+          },
+          "scale": {
+            "value": [
+              100,
+              100,
+              100
+            ],
+            "valueAtSampleTime": [
+              100,
+              100,
+              100
+            ],
+            "keyframes": 0,
+            "unreadable": null
+          },
+          "opacity": {
+            "value": 100,
+            "valueAtSampleTime": 100,
+            "keyframes": 2,
+            "unreadable": null
+          },
+          "width": 2160,
+          "height": 1100,
+          "sampleTime": 1.001001001001,
+          "sourceRect": {
+            "top": -364.000005424023,
+            "left": -1061.03273177147,
+            "width": 2122.12015938759,
+            "height": 558.285012692213
+          },
+          "text": {
+            "font": "Almarai-Bold",
+            "fontSize": 455,
+            "justification": "CENTER_JUSTIFY",
+            "justificationRaw": 7415,
+            "tracking": 0
+          },
+          "animated": [
+            {
+              "path": "Effects/Fast Box Blur/Blur Radius",
+              "keyframes": 2
+            },
+            {
+              "path": "Transform/Position",
+              "keyframes": 2
+            },
+            {
+              "path": "Transform/Opacity",
+              "keyframes": 2
+            }
+          ]
         }
       ]
     },
@@ -67,7 +435,85 @@
       "layers": [
         {
           "name": "TXT_MAIN",
-          "kind": "text"
+          "kind": "text",
+          "position": {
+            "value": [
+              1080,
+              750,
+              0
+            ],
+            "valueAtSampleTime": [
+              1080,
+              700,
+              0
+            ],
+            "keyframes": 2,
+            "unreadable": null
+          },
+          "anchorPoint": {
+            "value": [
+              0,
+              0,
+              0
+            ],
+            "valueAtSampleTime": [
+              0,
+              0,
+              0
+            ],
+            "keyframes": 0,
+            "unreadable": null
+          },
+          "scale": {
+            "value": [
+              100,
+              100,
+              100
+            ],
+            "valueAtSampleTime": [
+              100,
+              100,
+              100
+            ],
+            "keyframes": 0,
+            "unreadable": null
+          },
+          "opacity": {
+            "value": 0,
+            "valueAtSampleTime": 100,
+            "keyframes": 2,
+            "unreadable": null
+          },
+          "width": 2160,
+          "height": 1100,
+          "sampleTime": 1.001001001001,
+          "sourceRect": {
+            "top": -253.285423278809,
+            "left": -641.366455078125,
+            "width": 1290.939453125,
+            "height": 257.137474060059
+          },
+          "text": {
+            "font": "Inter-SemiBold",
+            "fontSize": 343,
+            "justification": "CENTER_JUSTIFY",
+            "justificationRaw": 7415,
+            "tracking": 0
+          },
+          "animated": [
+            {
+              "path": "Effects/Fast Box Blur/Blur Radius",
+              "keyframes": 2
+            },
+            {
+              "path": "Transform/Position",
+              "keyframes": 2
+            },
+            {
+              "path": "Transform/Opacity",
+              "keyframes": 2
+            }
+          ]
         }
       ]
     },
@@ -80,7 +526,85 @@
       "layers": [
         {
           "name": "TXT_MAIN",
-          "kind": "text"
+          "kind": "text",
+          "position": {
+            "value": [
+              1080,
+              700,
+              0
+            ],
+            "valueAtSampleTime": [
+              1080,
+              700,
+              0
+            ],
+            "keyframes": 2,
+            "unreadable": null
+          },
+          "anchorPoint": {
+            "value": [
+              0,
+              0,
+              0
+            ],
+            "valueAtSampleTime": [
+              0,
+              0,
+              0
+            ],
+            "keyframes": 0,
+            "unreadable": null
+          },
+          "scale": {
+            "value": [
+              100,
+              100,
+              100
+            ],
+            "valueAtSampleTime": [
+              100,
+              100,
+              100
+            ],
+            "keyframes": 0,
+            "unreadable": null
+          },
+          "opacity": {
+            "value": 100,
+            "valueAtSampleTime": 100,
+            "keyframes": 2,
+            "unreadable": null
+          },
+          "width": 2160,
+          "height": 1100,
+          "sampleTime": 1.001001001001,
+          "sourceRect": {
+            "top": -262.772007524967,
+            "left": -651.633052941412,
+            "width": 1298.07905730233,
+            "height": 273.782007962465
+          },
+          "text": {
+            "font": "Almarai-Bold",
+            "fontSize": 367,
+            "justification": "CENTER_JUSTIFY",
+            "justificationRaw": 7415,
+            "tracking": 0
+          },
+          "animated": [
+            {
+              "path": "Effects/Fast Box Blur/Blur Radius",
+              "keyframes": 2
+            },
+            {
+              "path": "Transform/Position",
+              "keyframes": 2
+            },
+            {
+              "path": "Transform/Opacity",
+              "keyframes": 2
+            }
+          ]
         }
       ]
     }
