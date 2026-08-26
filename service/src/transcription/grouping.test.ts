@@ -3,6 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import {
+  MAX_WORDS_PER_CARD,
   groupWordsIntoSubtitles,
   MAX_GROUP_DURATION_S,
   MAX_INTRA_GROUP_GAP_S,
@@ -46,25 +47,37 @@ function fixtureWords(): PlanWord[] {
   }));
 }
 
+/*
+ * The two-word rule was the default until Block 7 session 6, when the user
+ * ruled one word per card. The pairing tests below are kept and pointed at the
+ * option explicitly: the gap and duration rules still have to work if the
+ * ruling is revisited, and deleting them would lose that.
+ */
+const PAIRED = { maxWords: 2 } as const;
+const pairedGroups = (
+  words: Parameters<typeof groupWordsIntoSubtitles>[0],
+  options: Parameters<typeof groupWordsIntoSubtitles>[1] = {},
+) => groupWordsIntoSubtitles(words, { ...PAIRED, ...options });
+
 describe('groupWordsIntoSubtitles', () => {
   it('pairs two words separated by a short gap', () => {
-    const groups = groupWordsIntoSubtitles([word('w1', 0, 0.3), word('w2', 0.4, 0.7)]);
+    const groups = pairedGroups([word('w1', 0, 0.3), word('w2', 0.4, 0.7)]);
     expect(groups).toHaveLength(1);
     expect(groups[0]).toMatchObject({ wordIds: ['w1', 'w2'], start: 0, end: 0.7 });
   });
 
   it('splits two words separated by a long gap', () => {
-    const groups = groupWordsIntoSubtitles([word('w1', 0, 0.3), word('w2', 2.0, 2.3)]);
+    const groups = pairedGroups([word('w1', 0, 0.3), word('w2', 2.0, 2.3)]);
     expect(groups.map((g) => g.wordIds)).toEqual([['w1'], ['w2']]);
   });
 
   it('splits a pair that would linger past the duration cap', () => {
-    const groups = groupWordsIntoSubtitles([word('w1', 0, 0.8), word('w2', 0.9, 2.0)]);
+    const groups = pairedGroups([word('w1', 0, 0.8), word('w2', 0.9, 2.0)]);
     expect(groups.map((g) => g.wordIds)).toEqual([['w1'], ['w2']]);
   });
 
   it('pairs exactly at the gap and duration limits', () => {
-    const groups = groupWordsIntoSubtitles([
+    const groups = pairedGroups([
       word('w1', 0, 0.3),
       word('w2', 0.3 + MAX_INTRA_GROUP_GAP_S, MAX_GROUP_DURATION_S),
     ]);
@@ -72,7 +85,7 @@ describe('groupWordsIntoSubtitles', () => {
   });
 
   it('never puts more than two words in a group', () => {
-    const groups = groupWordsIntoSubtitles([
+    const groups = pairedGroups([
       word('w1', 0, 0.1),
       word('w2', 0.15, 0.25),
       word('w3', 0.3, 0.4),
@@ -85,7 +98,7 @@ describe('groupWordsIntoSubtitles', () => {
   });
 
   it('leaves a trailing odd word in a group of one', () => {
-    const groups = groupWordsIntoSubtitles([
+    const groups = pairedGroups([
       word('w1', 0, 0.1),
       word('w2', 0.15, 0.25),
       word('w3', 0.3, 0.4),
@@ -94,7 +107,7 @@ describe('groupWordsIntoSubtitles', () => {
   });
 
   it('never puts a removed word in a group', () => {
-    const groups = groupWordsIntoSubtitles([
+    const groups = pairedGroups([
       word('w1', 0, 0.1),
       word('w2', 0.15, 0.25, true),
       word('w3', 0.3, 0.4),
@@ -105,7 +118,7 @@ describe('groupWordsIntoSubtitles', () => {
   it('still counts the audio a removed word occupies when measuring the gap', () => {
     // w1 and w3 are 0.2s apart, past the gap limit, and the filler between
     // them was still spoken — so they stay separate cards.
-    const spread = groupWordsIntoSubtitles([
+    const spread = pairedGroups([
       word('w1', 0, 0.1),
       word('w2', 0.15, 0.25, true),
       word('w3', 0.3, 0.4),
@@ -113,7 +126,7 @@ describe('groupWordsIntoSubtitles', () => {
     expect(spread.map((g) => g.wordIds)).toEqual([['w1'], ['w3']]);
 
     // With a shorter filler the neighbours fall inside the limit and pair.
-    const tight = groupWordsIntoSubtitles([
+    const tight = pairedGroups([
       word('w1', 0, 0.1),
       word('w2', 0.11, 0.15, true),
       word('w3', 0.2, 0.3),
@@ -122,8 +135,8 @@ describe('groupWordsIntoSubtitles', () => {
   });
 
   it('returns nothing for an empty or fully removed transcript', () => {
-    expect(groupWordsIntoSubtitles([])).toEqual([]);
-    expect(groupWordsIntoSubtitles([word('w1', 0, 0.1, true)])).toEqual([]);
+    expect(pairedGroups([])).toEqual([]);
+    expect(pairedGroups([word('w1', 0, 0.1, true)])).toEqual([]);
   });
 });
 
@@ -131,12 +144,12 @@ describe('groupWordsIntoSubtitles on the recorded vitasilk opening', () => {
   const words = fixtureWords();
 
   it('covers every displayable word exactly once, in order', () => {
-    const groups = groupWordsIntoSubtitles(words);
+    const groups = pairedGroups(words);
     expect(groups.flatMap((g) => g.wordIds)).toEqual(words.map((w) => w.id));
   });
 
   it('holds each group to one or two words and to the duration cap', () => {
-    for (const group of groupWordsIntoSubtitles(words)) {
+    for (const group of pairedGroups(words)) {
       expect(group.wordIds.length).toBeGreaterThanOrEqual(1);
       expect(group.wordIds.length).toBeLessThanOrEqual(2);
       expect(group.end - group.start).toBeLessThanOrEqual(MAX_GROUP_DURATION_S);
@@ -145,7 +158,7 @@ describe('groupWordsIntoSubtitles on the recorded vitasilk opening', () => {
 
   it('derives group timings from the words they contain', () => {
     const byId = new Map(words.map((w) => [w.id, w]));
-    for (const group of groupWordsIntoSubtitles(words)) {
+    for (const group of pairedGroups(words)) {
       const first = byId.get(group.wordIds[0]!)!;
       const last = byId.get(group.wordIds[group.wordIds.length - 1]!)!;
       expect(group.start).toBe(first.start);
@@ -154,13 +167,50 @@ describe('groupWordsIntoSubtitles on the recorded vitasilk opening', () => {
   });
 
   it('is re-derivable: the same words always give the same groups', () => {
-    expect(groupWordsIntoSubtitles(words)).toEqual(groupWordsIntoSubtitles(fixtureWords()));
+    expect(pairedGroups(words)).toEqual(pairedGroups(fixtureWords()));
   });
 
   it('regroups around an edit without reading the previous groups', () => {
     const edited = words.map((w, i) => (i === 2 ? { ...w, removed: true, removedReason: 'filler' as const } : w));
-    const groups = groupWordsIntoSubtitles(edited);
+    const groups = pairedGroups(edited);
     expect(groups.flatMap((g) => g.wordIds)).not.toContain(words[2]!.id);
     expect(groups.flatMap((g) => g.wordIds)).toHaveLength(words.length - 1);
+  });
+});
+
+
+describe('one word per card', () => {
+  it('is the default, by the Block 7 session 6 ruling', () => {
+    expect(MAX_WORDS_PER_CARD).toBe(1);
+  });
+
+  it('never pairs, however short the gap between two words', () => {
+    const groups = groupWordsIntoSubtitles([word('w1', 0, 0.3), word('w2', 0.31, 0.5)]);
+    expect(groups.map((g) => g.wordIds)).toEqual([['w1'], ['w2']]);
+  });
+
+  it('puts exactly one word on every card of a real reel', () => {
+    const groups = groupWordsIntoSubtitles(fixtureWords());
+    expect(groups.length).toBeGreaterThan(0);
+    for (const g of groups) expect(g.wordIds).toHaveLength(1);
+  });
+
+  it('covers every displayable word exactly once, in order', () => {
+    const words = fixtureWords();
+    const groups = groupWordsIntoSubtitles(words);
+    expect(groups.flatMap((g) => g.wordIds)).toEqual(
+      words.filter((w) => !w.removed).map((w) => w.id),
+    );
+  });
+
+  it('is deterministic across two runs on the same input', () => {
+    const words = fixtureWords();
+    expect(groupWordsIntoSubtitles(words)).toEqual(groupWordsIntoSubtitles(words));
+  });
+
+  it('takes each card window from its own word', () => {
+    const groups = groupWordsIntoSubtitles([word('w1', 1, 1.4), word('w2', 1.5, 1.9)]);
+    expect(groups[0]).toMatchObject({ start: 1, end: 1.4 });
+    expect(groups[1]).toMatchObject({ start: 1.5, end: 1.9 });
   });
 });

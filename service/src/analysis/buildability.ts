@@ -82,20 +82,41 @@ export function checkBuildability(
     durationCheck(`images.slots[${i}]`, s.start, s.end, s.templateId);
   });
 
-  // Every keyword span maps to exactly one subtitle group, which is the
-  // property the re-grouping pass exists to establish.
-  const groupByWords = new Map(plan.subtitles.groups.map((g) => [g.wordIds.join(' '), g]));
+  /*
+   * A keyword span covers a run of consecutive subtitle cards and supersedes
+   * every one of them. It used to have to be exactly one card, which held while
+   * cards were 1-2 words and a span could always be collapsed into one; at one
+   * word per card (Block 7 session 6) a two-word span covers two cards and both
+   * are marked. What still has to hold is that the span's words and the
+   * superseded cards' words are the same set, in the same order.
+   */
+  const wordToGroup = new Map<string, (typeof plan.subtitles.groups)[number]>();
+  for (const g of plan.subtitles.groups) for (const id of g.wordIds) wordToGroup.set(id, g);
   plan.keywords.items.forEach((k, i) => {
-    const group = groupByWords.get(k.wordIds.join(' '));
-    if (group === undefined) {
+    const covering = k.wordIds.map((id) => wordToGroup.get(id));
+    if (covering.some((g) => g === undefined)) {
       issues.push({
         path: `keywords.items[${i}]`,
-        message: 'span does not map to exactly one subtitle group',
+        message: 'span names a word that is in no subtitle group',
       });
-    } else if (group.supersededBy !== k.id) {
+      return;
+    }
+    const groups = covering as NonNullable<(typeof covering)[number]>[];
+    const unique = [...new Set(groups.map((g) => g.id))];
+    const covered = groups.flatMap((g) => g.wordIds);
+    if ([...new Set(covered)].length !== k.wordIds.length) {
       issues.push({
         path: `keywords.items[${i}]`,
-        message: `group ${group.id} matches the span but is not marked superseded by ${k.id}`,
+        message:
+          `span covers group(s) ${unique.join(', ')}, which hold words the span does not`,
+      });
+      return;
+    }
+    const notMarked = groups.filter((g) => g.supersededBy !== k.id).map((g) => g.id);
+    if (notMarked.length > 0) {
+      issues.push({
+        path: `keywords.items[${i}]`,
+        message: `group(s) ${[...new Set(notMarked)].join(', ')} are covered by the span but not marked superseded by ${k.id}`,
       });
     }
   });

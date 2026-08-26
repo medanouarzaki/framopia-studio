@@ -146,14 +146,19 @@ describe('evaluateBudget', () => {
 
   // The merge path does exist and is exercised here, even though it fires in
   // only 20 of 125 reel-cells on the real corpus.
-  it('merges two adjacent single-word groups when extension cannot reach', () => {
+  /*
+   * The merge rescue is off at one word per card (Block 7 session 6): reaching
+   * the floor by putting two words on a card is what the ruling forbids, so a
+   * card that cannot reach it is reported instead of rescued.
+   */
+  it('does not merge two adjacent cards to reach the floor', () => {
     const plan = planWith(
       [word('w1', 'alpha', 1.0, 1.1), word('w2', 'beta', 1.1, 1.5)],
       [group('g001', ['w1'], 1.0, 1.1), group('g002', ['w2'], 1.1, 1.5)],
     );
     const cell = evaluateBudget(plan, BUDGET.introOutroS, BUDGET.minHoldS);
-    expect(cell.merges).toBe(1);
-    expect(cell.groups).toEqual({ buildable: 1, total: 1 });
+    expect(cell.merges).toBe(0);
+    expect(cell.groups).toEqual({ buildable: 1, total: 2 });
   });
 
   it('grows harder as the budget grows', () => {

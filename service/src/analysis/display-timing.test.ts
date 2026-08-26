@@ -32,7 +32,7 @@ const group = (o: Partial<SubtitleGroup> & { id: string; start: number; end: num
 });
 
 const run = (groups: SubtitleGroup[], reelDurationS = 30) =>
-  applyDisplayTiming({ groups, templates, reelDurationS });
+  applyDisplayTiming({ maxWords: 2, groups, templates, reelDurationS });
 
 describe('displayWindow', () => {
   it('falls back to the speech window when a plan predates the fields', () => {

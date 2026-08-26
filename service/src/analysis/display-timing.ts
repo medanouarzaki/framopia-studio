@@ -1,4 +1,5 @@
 import type { TemplateEntry } from '@framopia/core';
+import { MAX_WORDS_PER_CARD } from '../transcription/grouping.js';
 import type { SubtitleGroup } from '../editplan/types.js';
 
 /**
@@ -47,7 +48,14 @@ function floorFor(templates: Map<string, TemplateEntry>, templateId: string | nu
   return t === undefined ? null : t.introS + t.minHoldS + t.outroS;
 }
 
-const MAX_GROUP_WORDS = 2;
+/**
+ * A merge may not build a card larger than the grouping rule allows. At
+ * `MAX_WORDS_PER_CARD` 1 that disables merging entirely, which is correct and
+ * deliberate: the rescue exists to reach the template floor, and reaching it by
+ * putting two words on a card is exactly what the Block 7 session 6 ruling
+ * forbids. A card that still cannot reach its floor is reported, as before.
+ */
+const DEFAULT_MAX_GROUP_WORDS = MAX_WORDS_PER_CARD;
 
 /**
  * Float slack. `0.13 + 0.07 + 0.13` is 0.33000000000000007, so a card that is
@@ -76,8 +84,13 @@ export function applyDisplayTiming(options: {
   templates: Map<string, TemplateEntry>;
   reelDurationS: number;
   idPrefix?: string;
+  /** Cards a merge may build. Defaults to the grouping rule. */
+  maxWords?: number;
 }): DisplayTimingResult {
-  const { groups, templates, reelDurationS, idPrefix = 'g' } = options;
+  const {
+    groups, templates, reelDurationS, idPrefix = 'g',
+    maxWords: MAX_GROUP_WORDS = DEFAULT_MAX_GROUP_WORDS,
+  } = options;
   const merged: DisplayTimingMerge[] = [];
 
   // Merge first, because a merged group's window is computed from the pair.

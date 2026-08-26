@@ -13,14 +13,32 @@ export const MAX_INTRA_GROUP_GAP_S = 0.18;
  */
 export const MAX_GROUP_DURATION_S = 1.2;
 
+/**
+ * Words on one subtitle card.
+ *
+ * **One**, by the user's ruling in Block 7 session 6, amending PROJECT_SPEC
+ * §5's "groups of 1-2 words". A two-word card puts its second word on screen
+ * when the first is spoken and holds it there until the second is said — the
+ * eye reads ahead of the ear on every such card, measured across the corpus at
+ * a median of 0.410 s and a maximum of 0.870 s. No retiming fixes it, because
+ * the two words are one layer.
+ *
+ * The pairing machinery below is kept rather than deleted: the gap and
+ * duration rules are what a two-word card would need if the ruling is ever
+ * revisited, and `maxWords` makes the change one argument rather than a
+ * rewrite.
+ */
+export const MAX_WORDS_PER_CARD = 1;
+
 export interface GroupingOptions {
   maxGapS?: number;
   maxDurationS?: number;
+  maxWords?: number;
   idPrefix?: string;
 }
 
 /**
- * Groups of 1-2 words per PROJECT_SPEC §5, derived from wordIds and
+ * One word per card by default (`MAX_WORDS_PER_CARD`), derived from wordIds and
  * re-derivable after any transcript edit — nothing here reads previous
  * groups.
  *
@@ -43,6 +61,7 @@ export function groupWordsIntoSubtitles(
   const {
     maxGapS = MAX_INTRA_GROUP_GAP_S,
     maxDurationS = MAX_GROUP_DURATION_S,
+    maxWords = MAX_WORDS_PER_CARD,
     idPrefix = 'g',
   } = options;
 
@@ -55,6 +74,7 @@ export function groupWordsIntoSubtitles(
     const second = displayable[i + 1];
 
     const pairs =
+      maxWords >= 2 &&
       second !== undefined &&
       second.start - first.end <= maxGapS &&
       second.end - first.start <= maxDurationS;

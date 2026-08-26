@@ -368,15 +368,29 @@ describe('checkBuildability', () => {
     expect(p.subtitles.groups.map((g) => g.end - g.start)).toEqual(before);
   });
 
-  it('reports a keyword whose span is not exactly one group', () => {
+  // At one word per card a two-word span legitimately covers two cards; what
+  // is still a defect is a card inside the span not marked as superseded.
+  it('reports a card the span covers but does not supersede', () => {
     const p = plan();
     assignTemplates(p, mode(), templates());
     p.keywords.items[0]!.wordIds = ['w0', 'w1'];
     expect(
       checkBuildability(p, templates()).issues.some((i) =>
-        i.message.includes('does not map to exactly one subtitle group'),
+        i.message.includes('not marked superseded by k001'),
       ),
     ).toBe(true);
+  });
+
+  it('accepts a two-word span when both cards it covers are superseded', () => {
+    const p = plan();
+    assignTemplates(p, mode(), templates());
+    p.keywords.items[0]!.wordIds = ['w0', 'w1'];
+    p.subtitles.groups[0]!.supersededBy = 'k001';
+    p.subtitles.groups[1]!.supersededBy = 'k001';
+    p.keywords.items = [p.keywords.items[0]!];
+    expect(
+      checkBuildability(p, templates()).issues.filter((i) => i.path.startsWith('keywords')),
+    ).toEqual([]);
   });
 
   it('reports a group that matches a span but is not marked superseded', () => {

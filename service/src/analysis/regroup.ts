@@ -1,6 +1,21 @@
+import { MAX_WORDS_PER_CARD } from '../transcription/grouping.js';
 import type { PlanWord, SubtitleGroup } from '../editplan/types.js';
 
-export const MAX_GROUP_WORDS = 2;
+/**
+ * The largest card the re-grouping pass may produce. It follows the grouping
+ * rule rather than restating it: at `MAX_WORDS_PER_CARD` 1, a keyword span of
+ * two words can no longer be collapsed into one card, so it supersedes the two
+ * cards it covers instead of replacing them with one.
+ */
+export const MAX_GROUP_WORDS = MAX_WORDS_PER_CARD;
+
+
+/**
+ * Keyword spans stay at up to two words (Block 3 session 3): the emphasis
+ * templates are built for 1-2 words and a keyword is its own element, not a
+ * subtitle card.
+ */
+export const MAX_KEYWORD_WORDS = 2;
 
 export interface RegroupKeyword {
   id: string;
@@ -67,8 +82,13 @@ export function regroupForKeywords(options: {
   words: PlanWord[];
   keywords: RegroupKeyword[];
   idPrefix?: string;
+  /** Cards this pass may build. Defaults to the grouping rule. */
+  maxWords?: number;
 }): RegroupResult {
-  const { groups, words, keywords, idPrefix = 'g' } = options;
+  const {
+    groups, words, keywords, idPrefix = 'g',
+    maxWords: cardWords = MAX_GROUP_WORDS,
+  } = options;
 
   // The sequence groups actually partition: removed words never appear.
   const displayable = words.filter((w) => !w.removed);
@@ -114,7 +134,11 @@ export function regroupForKeywords(options: {
       dropped.push({ keywordId: keyword.id, reason: 'span-not-contiguous' });
       continue;
     }
-    if (sorted.length > MAX_GROUP_WORDS) {
+    // A span longer than a card used to be dropped. It is now allowed to cover
+    // several consecutive cards, all of them superseded: the keyword renders as
+    // one element in their place, and the emphasis templates take 1-2 words.
+    // Only a span longer than the keyword rule itself is refused.
+    if (sorted.length > MAX_KEYWORD_WORDS) {
       dropped.push({ keywordId: keyword.id, reason: 'would-exceed-group-size' });
       continue;
     }
@@ -141,10 +165,15 @@ export function regroupForKeywords(options: {
       continue;
     }
 
-    for (let i = first + 1; i <= last; i += 1) cuts.delete(i);
+    // Cut so the span begins and ends on card boundaries. Inner cuts are
+    // removed only up to the card size, so at one word per card every word in
+    // the span keeps its own card and each is marked superseded.
+    if (cardWords > 1) {
+      for (let i = first + 1; i <= last; i += 1) cuts.delete(i);
+    }
     cuts.add(first);
     if (last + 1 < displayable.length) cuts.add(last + 1);
-    spanOwner.set(first, keyword.id);
+    for (let i = first; i <= last; i += 1) spanOwner.set(i, keyword.id);
     keptKeywordIds.push(keyword.id);
   }
 
@@ -190,12 +219,12 @@ export function regroupForKeywords(options: {
     });
   }
 
-  const oversized = rebuilt.filter((g) => g.wordIds.length > MAX_GROUP_WORDS);
+  const oversized = rebuilt.filter((g) => g.wordIds.length > cardWords);
   if (oversized.length > 0) {
     // Unreachable by construction — the pass only splits — but a silent
     // 3-word group would reach a client's screen, so it fails loudly.
     throw new Error(
-      `re-grouping produced ${oversized.length} group(s) longer than ${MAX_GROUP_WORDS} words: ` +
+      `re-grouping produced ${oversized.length} group(s) longer than ${cardWords} words: ` +
         oversized.map((g) => g.id).join(', '),
     );
   }

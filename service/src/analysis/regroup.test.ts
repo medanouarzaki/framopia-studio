@@ -22,7 +22,7 @@ const words: PlanWord[] = ['a', 'b', 'c', 'd', 'e', 'f'].map((t, i) =>
   word(`w${i}`, t, i * 0.4),
 );
 
-const baseGroups = (): SubtitleGroup[] => groupWordsIntoSubtitles(words);
+const baseGroups = (): SubtitleGroup[] => groupWordsIntoSubtitles(words, { maxWords: 2 });
 
 const shape = (groups: SubtitleGroup[]): string[] =>
   groups.map((g) => `${g.wordIds.join('+')}${g.supersededBy ? `>${g.supersededBy}` : ''}`);
@@ -35,13 +35,13 @@ describe('the fixture groups the way transcription would', () => {
 
 describe('regroupForKeywords', () => {
   it('leaves a plan with no keywords exactly as it found it', () => {
-    const result = regroupForKeywords({ groups: baseGroups(), words, keywords: [] });
+    const result = regroupForKeywords({ maxWords: 2, groups: baseGroups(), words, keywords: [] });
     expect(shape(result.groups)).toEqual(['w0+w1', 'w2+w3', 'w4+w5']);
     expect(result.dropped).toEqual([]);
   });
 
   it('marks a span that already is a group, without re-cutting anything', () => {
-    const result = regroupForKeywords({
+    const result = regroupForKeywords({ maxWords: 2,
       groups: baseGroups(),
       words,
       keywords: [{ id: 'k001', wordIds: ['w2', 'w3'] }],
@@ -51,7 +51,7 @@ describe('regroupForKeywords', () => {
   });
 
   it('splits a two-word group when the span sits inside it', () => {
-    const result = regroupForKeywords({
+    const result = regroupForKeywords({ maxWords: 2,
       groups: baseGroups(),
       words,
       keywords: [{ id: 'k001', wordIds: ['w3'] }],
@@ -61,7 +61,7 @@ describe('regroupForKeywords', () => {
 
   it('re-cuts around a span that straddles two groups', () => {
     // w1+w2 crosses the g001/g002 boundary, which is what vitasilk did twice.
-    const result = regroupForKeywords({
+    const result = regroupForKeywords({ maxWords: 2,
       groups: baseGroups(),
       words,
       keywords: [{ id: 'k001', wordIds: ['w1', 'w2'] }],
@@ -71,7 +71,7 @@ describe('regroupForKeywords', () => {
   });
 
   it('never lets a re-group exceed two words', () => {
-    const result = regroupForKeywords({
+    const result = regroupForKeywords({ maxWords: 2,
       groups: baseGroups(),
       words,
       keywords: [
@@ -84,7 +84,7 @@ describe('regroupForKeywords', () => {
   });
 
   it('drops a keyword whose span is longer than a group may be', () => {
-    const result = regroupForKeywords({
+    const result = regroupForKeywords({ maxWords: 2,
       groups: baseGroups(),
       words,
       keywords: [{ id: 'k001', wordIds: ['w1', 'w2', 'w3'] }],
@@ -97,7 +97,7 @@ describe('regroupForKeywords', () => {
   });
 
   it('drops a keyword whose words are not adjacent in the transcript', () => {
-    const result = regroupForKeywords({
+    const result = regroupForKeywords({ maxWords: 2,
       groups: baseGroups(),
       words,
       keywords: [{ id: 'k001', wordIds: ['w0', 'w3'] }],
@@ -107,7 +107,7 @@ describe('regroupForKeywords', () => {
 
   it('drops a keyword rather than re-deriving a human-edited group', () => {
     const groups = baseGroups().map((g) => (g.id === 'g001' ? { ...g, edited: true } : g));
-    const result = regroupForKeywords({
+    const result = regroupForKeywords({ maxWords: 2,
       groups,
       words,
       keywords: [{ id: 'k001', wordIds: ['w1', 'w2'] }],
@@ -120,7 +120,7 @@ describe('regroupForKeywords', () => {
 
   it('does not block on a human-edited group the span exactly matches', () => {
     const groups = baseGroups().map((g) => (g.id === 'g001' ? { ...g, edited: true } : g));
-    const result = regroupForKeywords({
+    const result = regroupForKeywords({ maxWords: 2,
       groups,
       words,
       keywords: [{ id: 'k001', wordIds: ['w0', 'w1'] }],
@@ -131,8 +131,8 @@ describe('regroupForKeywords', () => {
 
   it('keeps every displayable word and skips removed ones', () => {
     const withFiller = [...words.slice(0, 3), word('wx', 'euh', 1.25, true), ...words.slice(3)];
-    const groups = groupWordsIntoSubtitles(withFiller);
-    const result = regroupForKeywords({
+    const groups = groupWordsIntoSubtitles(withFiller, { maxWords: 2 });
+    const result = regroupForKeywords({ maxWords: 2,
       groups,
       words: withFiller,
       keywords: [{ id: 'k001', wordIds: ['w3'] }],
@@ -143,12 +143,12 @@ describe('regroupForKeywords', () => {
   });
 
   it('is deterministic: the same input always gives the same groups', () => {
-    const once = regroupForKeywords({
+    const once = regroupForKeywords({ maxWords: 2,
       groups: baseGroups(),
       words,
       keywords: [{ id: 'k001', wordIds: ['w1', 'w2'] }],
     });
-    const again = regroupForKeywords({
+    const again = regroupForKeywords({ maxWords: 2,
       groups: baseGroups(),
       words,
       keywords: [{ id: 'k001', wordIds: ['w1', 'w2'] }],
@@ -168,7 +168,7 @@ describe('script-aware grouping', () => {
     }));
 
   const regroup = (ws: PlanWord[], keywords: { id: string; wordIds: string[] }[] = []) =>
-    regroupForKeywords({ groups: groupWordsIntoSubtitles(ws), words: ws, keywords });
+    regroupForKeywords({ maxWords: 2, groups: groupWordsIntoSubtitles(ws, { maxWords: 2 }), words: ws, keywords });
 
   it('splits a Latin word away from an Arabic-script word', () => {
     const ws = scripted([
@@ -274,7 +274,7 @@ describe('display timing across a regroup', () => {
 
   it('carries the window through a group that came out untouched', () => {
     const before = timed();
-    const result = regroupForKeywords({ groups: before, words, keywords: [] });
+    const result = regroupForKeywords({ maxWords: 2, groups: before, words, keywords: [] });
     expect(result.groups.map((g) => [g.displayStart, g.displayEnd])).toEqual(
       before.map((g) => [g.displayStart, g.displayEnd]),
     );
@@ -286,7 +286,7 @@ describe('display timing across a regroup', () => {
    * is dropped so the caller re-derives it rather than trusting it.
    */
   it('drops the window from a group the pass had to split', () => {
-    const result = regroupForKeywords({
+    const result = regroupForKeywords({ maxWords: 2,
       groups: timed(),
       words,
       keywords: [{ id: 'k001', wordIds: ['w3'] }],
@@ -300,7 +300,52 @@ describe('display timing across a regroup', () => {
   });
 
   it('leaves a plan with no display timing without inventing any', () => {
-    const result = regroupForKeywords({ groups: baseGroups(), words, keywords: [] });
+    const result = regroupForKeywords({ maxWords: 2, groups: baseGroups(), words, keywords: [] });
     for (const g of result.groups) expect(g.displayStart).toBeUndefined();
+  });
+});
+
+/*
+ * At one word per card a two-word keyword can no longer be collapsed into a
+ * single group. It supersedes both cards it covers instead: the keyword is its
+ * own element and renders in their place, and the emphasis templates are built
+ * for 1-2 words.
+ */
+describe('one word per card', () => {
+  const oneWord = (): SubtitleGroup[] => groupWordsIntoSubtitles(words);
+
+  it('keeps a two-word keyword and marks both cards superseded', () => {
+    const result = regroupForKeywords({
+      groups: oneWord(),
+      words,
+      keywords: [{ id: 'k001', wordIds: ['w2', 'w3'] }],
+    });
+    expect(result.dropped).toEqual([]);
+    expect(result.keptKeywordIds).toEqual(['k001']);
+    expect(shape(result.groups)).toEqual(['w0', 'w1', 'w2>k001', 'w3>k001', 'w4', 'w5']);
+  });
+
+  it('still marks a one-word keyword on its single card', () => {
+    const result = regroupForKeywords({
+      groups: oneWord(),
+      words,
+      keywords: [{ id: 'k001', wordIds: ['w3'] }],
+    });
+    expect(shape(result.groups)).toEqual(['w0', 'w1', 'w2', 'w3>k001', 'w4', 'w5']);
+  });
+
+  it('never builds a card of more than one word', () => {
+    const result = regroupForKeywords({
+      groups: oneWord(),
+      words,
+      keywords: [{ id: 'k001', wordIds: ['w1', 'w2'] }],
+    });
+    for (const g of result.groups) expect(g.wordIds).toHaveLength(1);
+  });
+
+  it('is deterministic across two runs on the same input', () => {
+    const run = () =>
+      regroupForKeywords({ groups: oneWord(), words, keywords: [{ id: 'k001', wordIds: ['w2', 'w3'] }] });
+    expect(run().groups).toEqual(run().groups);
   });
 });
