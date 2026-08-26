@@ -180,6 +180,9 @@ AI-generated contextual images, SFX, and a watermark. Full spec in
   straight-vs-premultiplied verdict with its separation check, and the
   per-frame alpha bounding box. Nothing about that file is hand-typed into a
   document.
+- `npm run wrap:survey` — free, local. Measures every card in the corpus in
+  After Effects and writes `benchmarks/RESULTS-block7-wrapping.md`. Reads
+  `library.aep` as an import source; builds no master and writes no comp.
 - `npm run build:reel -- --plan <abs path.editplan.json> [--out <abs path.aep>]`
   — free, local. Builds a whole reel into **two master comps in one project**,
   `_A` and `_C`, differing only in subtitle out-points so the retiming question
@@ -3002,6 +3005,111 @@ that already scales its placeholder, and the identity case.
 left open: AE moved `IMG_MAIN`'s anchor [500,500] → [1024,1024] when the source
 changed, and both are the centre of their layer, so the keyframed position
 still points at the image centre. No template edit is needed.
+
+
+## Block 7 session 5 — text is measured by After Effects
+
+**Spent $0.00; no API was called.** Ledger 108 entries / sha `50ec3f57…` at
+both ends. `templates/library.aep` byte-identical at `dac234ce…`. One After
+Effects instance (PID 44015) throughout.
+
+**Subtitles wrap now, and the width comes from After Effects.** Session 4
+stopped because no font-metrics machinery existed and a hand-rolled one would
+have to model advance widths, kerning and Arabic positional shaping. The
+ruling: measure inside AE with **`sourceRectAtTime`**, because a library models
+what AE will draw while AE reports what AE draws, and the builder is already
+inside AE when it needs the answer. **No font library, no font files, no new
+dependency.**
+
+`SUBTITLE_SAFE_WIDTH = 1940` in `core/src/typography.ts` — 110 px clear each
+side of a 2160-wide comp. **CHOSEN, NOT MEASURED**; the user's eye on a built
+reel is what would move it.
+
+**The split between what is tested and what is not is deliberate and stated.**
+`service/src/build/wrap.ts` decides *where* a break goes and is pure and unit
+tested against real corpus strings; `panel/jsx/text-fit.jsx` decides *whether*
+one is needed and **cannot be tested outside a running AE**. The report says
+which is which rather than implying the whole is covered.
+
+### What the corpus actually measures
+
+`npm run wrap:survey` — **193 cards in 2.9 s**, so measuring every card is not
+a cost a production build needs to design around.
+
+| | |
+|---|---|
+| one line | 140 |
+| wrapped to two | **53** |
+| single word wider than the bound | **0** |
+| still over the bound after breaking | **7** |
+
+**The case the ruling does not cover never arises as a whole card** — every
+card that exceeded the bound had a space to break at. It arises as a *line*:
+**7 cards have one line still over after breaking**, all of them a single long
+word — `polynucléotides`, `mésothérapie` ×2, `hyaluronique` ×2, and
+`matrddadich`. They are emitted whole and flagged; nothing is shrunk and
+nothing is broken mid-word. **This is the conversation's to settle.**
+
+**The source rect is transform-independent, checked rather than assumed.**
+`TXT_MAIN`'s Position is keyframed 750 → 700, and the rect is byte-identical at
+t=0 and at the sample time on all four text templates. The sample time is the
+comp mid-point, past the intro, explicit — never `prop.value`, which Block 7
+session 3 lost 50 px of baseline to.
+
+**Wrapping does not move the first line, on any of the 53 wrapped cards.** The
+approved baseline at y 2480.4 survives, and `EXTRA_LINES_RENDER_BELOW` is now
+confirmed against real cards.
+
+**The obvious test for that would have been wrong, and nearly was reported.**
+Comparing the one-line rect's `top` against the wrapped rect's `top` flags **19
+of 53** — but `top` is the distance from the anchor to the top of the *ink*, so
+it moves whenever the break sends the tallest glyph to line two. A card losing
+its only capital reads as "the line moved" when nothing moved. The honest
+comparison is the wrapped rect's top against **line one measured on its own**,
+and by that measure nothing moved.
+
+### A build refuses to run on stale pointers
+
+`service/src/build/preflight.ts`. Session 4's first full build **silently
+skipped 4 of 5 image slots** because session 1's cache re-key had left the
+plan's candidate paths dead. Every referenced file — footage, candidates,
+cutouts, SFX audio, the template AEP — is now checked **before anything is
+built**, every missing path is collected and reported together, and the build
+fails rather than producing a comp with gaps. Proven live on a deliberately
+broken plan copy; **the check fires in TypeScript before any `DoScript`, so AE
+is never touched.** The message wording is asserted by test.
+
+**No plan currently has a dead pointer**: 42 references across the five plans,
+0 missing.
+
+### timing-budget and validate-plan now agree
+
+They disagreed 11 to 7 since Block 6, and both causes are gone. Re-running them
+found a **third** problem first: session 4 computed display timing **before**
+templates were assigned, so on ground-truth, test-2 and test-3 the floor was
+null, nothing extended and nothing merged, and the stored windows were wrong.
+Recomputing after assignment fixed it — and a merge creates a new group with no
+template, so `migrate:templates-sfx` has to run **after**
+`migrate:display-timing`, not before.
+
+Both tools now report the same thing across the corpus: **7 unbuildable
+subtitle groups and 1 unbuildable keyword**. Group counts moved as merges were
+applied: ground-truth 40 → 39, test-1 43 → 42, test-2 38 → 37.
+
+### The reel, rebuilt
+
+`.local/build/vitasilk-full.aep` — `master_vitasilk_A` and `master_vitasilk_C`,
+**55 layers each** (38 subtitles, 3 keywords, 5 images, 8 audio, 1 footage),
+46 elements, 0 skipped, **1.3 s**. Still differing in exactly one thing:
+subtitle out-points.
+
+**9 of vitasilk's 41 cards wrap**, including `g027` "dernière génération"
+(3228 → 1361 / 1751) and `k001` "filler glow". **`g040` "matrddadich wla" still
+overflows**: line 1 alone is 2048 px against the 1940 bound.
+
+The playhead is parked on **`g004` "minutes ymkn" at 2.609 s**, a card that
+wrapped cleanly — chosen inside AE after measuring, since nothing outside knows
+which cards wrapped.
 
 
 See `docs/BLOCKS.md` for the full block plan and `handoffs/` for prior
