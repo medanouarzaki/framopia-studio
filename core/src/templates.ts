@@ -308,9 +308,59 @@ export const MAX_INTRO_PLUS_OUTRO_S = 0.13;
 export const REQUIRED_FPS = 29.97;
 export const FPS_TOLERANCE = 0.01;
 
+/**
+ * One property as the audit read it. `value` is whatever AE reported at the
+ * project's current time indicator, which is not a time this pipeline chose;
+ * `valueAtSampleTime` is the value at `AuditLayer.sampleTime` and is the one
+ * to compute from. Block 7 session 3 found sub_pop's TXT_MAIN reporting y 750
+ * through `value` — the start of its intro — against 700 settled.
+ */
+export interface AuditProperty {
+  value: unknown;
+  valueAtSampleTime: unknown;
+  keyframes: number | null;
+  unreadable: string | null;
+}
+
+export interface AuditAnimatedProperty {
+  path: string;
+  keyframes: number;
+}
+
+export interface AuditSourceRect {
+  top: number;
+  left: number;
+  width: number;
+  height: number;
+}
+
+export interface AuditTextStyle {
+  font: string;
+  fontSize: number;
+  justification: string | null;
+  justificationRaw: number;
+  tracking: number;
+}
+
+/**
+ * Every geometry field is optional so an audit taken before Block 7 session 3
+ * still parses — the standing schema rule. Optional does not mean skippable:
+ * `requireGeometry` below refuses to read a default in place of a measurement
+ * on any layer a template actually declares as a placeholder.
+ */
 export interface AuditLayer {
   name: string;
   kind: string;
+  position?: AuditProperty;
+  anchorPoint?: AuditProperty;
+  scale?: AuditProperty;
+  opacity?: AuditProperty;
+  width?: number | null;
+  height?: number | null;
+  sampleTime?: number;
+  sourceRect?: AuditSourceRect | null;
+  text?: AuditTextStyle | null;
+  animated?: AuditAnimatedProperty[];
 }
 export interface AuditComp {
   name: string;
@@ -339,6 +389,39 @@ const ACCEPTS: Record<string, { kinds: string[]; describe: string }> = {
   TXT_MAIN: { kinds: ['text'], describe: 'an editable text layer' },
   IMG_MAIN: { kinds: ['footage', 'solid'], describe: 'a footage or solid layer' },
 };
+
+/**
+ * Geometry a build stage cannot proceed without, checked only on the layers a
+ * template declares as placeholders — those are the layers a build reads, and
+ * a decorative layer having no measurable anchor is not a manifest error.
+ *
+ * The message names the comp, the layer and the field, and says what to do,
+ * because the failure mode this guards against is a stale audit file silently
+ * supplying a default. An absent measurement is not a measurement of zero.
+ */
+const REQUIRED_PLACEHOLDER_GEOMETRY = ['position', 'anchorPoint'] as const;
+
+function requireGeometry(compId: string, layer: AuditLayer): string[] {
+  const problems: string[] = [];
+  for (const field of REQUIRED_PLACEHOLDER_GEOMETRY) {
+    const prop = layer[field];
+    if (prop === undefined) {
+      problems.push(
+        `comp "${compId}" layer "${layer.name}" has no audited ${field}: ` +
+          'templates/library.audit.json predates layer geometry. ' +
+          'Re-run: npm run audit:templates (After Effects must be open)',
+      );
+      continue;
+    }
+    if (prop.valueAtSampleTime === null || prop.valueAtSampleTime === undefined) {
+      problems.push(
+        `comp "${compId}" layer "${layer.name}" has an unreadable ${field}: ` +
+          `${prop.unreadable ?? 'no reason recorded'}`,
+      );
+    }
+  }
+  return problems;
+}
 
 export function validateTemplates(options: {
   audit: Audit;
@@ -402,6 +485,7 @@ export function validateTemplates(options: {
           `comp "${t.id}" layer "${name}" is a ${layer.kind} layer; ${accepts.describe} is required`,
         );
       }
+      problems.push(...requireGeometry(t.id, layer));
     }
 
     if (Math.abs(comp.frameRate - REQUIRED_FPS) > FPS_TOLERANCE) {

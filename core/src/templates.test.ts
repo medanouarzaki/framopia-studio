@@ -12,6 +12,8 @@ import {
   validateTemplates,
   SFX_DIR,
   type AuditComp,
+  type AuditLayer,
+  type AuditProperty,
   type TemplateManifest,
 } from './templates.js';
 
@@ -180,13 +182,26 @@ describe('assertRenderable', () => {
 
 describe('validateTemplates', () => {
   const SHA = 'a'.repeat(64);
+  const prop = (value: unknown): AuditProperty => ({
+    value,
+    valueAtSampleTime: value,
+    keyframes: 0,
+    unreadable: null,
+  });
+  const layer = (over: Partial<AuditLayer> = {}): AuditLayer => ({
+    name: 'TXT_MAIN',
+    kind: 'text',
+    position: prop([1080, 700, 0]),
+    anchorPoint: prop([0, 0, 0]),
+    ...over,
+  });
   const comp = (name: string, over: Partial<AuditComp> = {}): AuditComp => ({
     name,
     frameRate: 29.97,
     width: 2160,
     height: 1100,
     duration: 2.002,
-    layers: [{ name: 'TXT_MAIN', kind: 'text' }],
+    layers: [layer()],
     ...over,
   });
   const entry = (id: string, over: Record<string, unknown> = {}) => ({
@@ -210,6 +225,46 @@ describe('validateTemplates', () => {
       sfxIds: new Set(sfx),
       aepSha256: SHA,
     });
+
+  // The audit is what measures geometry, so a stale audit file must fail
+  // loudly rather than let a build read a default. The wording is asserted,
+  // not just the count: a message that stops naming the comp, the layer or the
+  // field stops being actionable, and this repo has messages pinned only by
+  // reading elsewhere.
+  describe('placeholder geometry', () => {
+    it('names comp, layer and field when position was never audited', () => {
+      const stale = comp('sub_pop', { layers: [{ name: 'TXT_MAIN', kind: 'text' }] });
+      expect(run([stale], [entry('sub_pop')])).toEqual([
+        'comp "sub_pop" layer "TXT_MAIN" has no audited position: ' +
+          'templates/library.audit.json predates layer geometry. ' +
+          'Re-run: npm run audit:templates (After Effects must be open)',
+        'comp "sub_pop" layer "TXT_MAIN" has no audited anchorPoint: ' +
+          'templates/library.audit.json predates layer geometry. ' +
+          'Re-run: npm run audit:templates (After Effects must be open)',
+      ]);
+    });
+
+    it('reports the reason AE gave when a field was audited but unreadable', () => {
+      const broken = comp('sub_pop', {
+        layers: [layer({
+          anchorPoint: {
+            value: null, valueAtSampleTime: null, keyframes: null,
+            unreadable: 'valueAtTime threw: Error',
+          },
+        })],
+      });
+      expect(run([broken], [entry('sub_pop')])).toEqual([
+        'comp "sub_pop" layer "TXT_MAIN" has an unreadable anchorPoint: valueAtTime threw: Error',
+      ]);
+    });
+
+    it('checks only declared placeholders, not decorative layers', () => {
+      const withCard = comp('sub_pop', {
+        layers: [layer(), { name: 'CARD', kind: 'solid' }],
+      });
+      expect(run([withCard], [entry('sub_pop')])).toEqual([]);
+    });
+  });
 
   it('passes a manifest that matches the audit', () => {
     expect(run([comp('sub_pop')], [entry('sub_pop')])).toEqual([]);
@@ -269,7 +324,7 @@ describe('validateTemplates', () => {
   it('accepts a solid or a footage layer for IMG_MAIN', () => {
     for (const kind of ['solid', 'footage']) {
       const problems = run(
-        [comp('img_float', { layers: [{ name: 'IMG_MAIN', kind }] })],
+        [comp('img_float', { layers: [layer({ name: 'IMG_MAIN', kind })] })],
         [entry('img_float', { type: 'image', placeholders: ['IMG_MAIN'], imagePresentation: 'card' })],
       );
       expect(problems).toEqual([]);

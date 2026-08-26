@@ -112,4 +112,8 @@ export {
   type Audit,
   type AuditComp,
   type AuditLayer,
+  type AuditProperty,
+  type AuditAnimatedProperty,
+  type AuditSourceRect,
+  type AuditTextStyle,
 } from './templates.js';
