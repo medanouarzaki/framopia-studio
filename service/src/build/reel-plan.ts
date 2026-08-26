@@ -6,6 +6,7 @@ import {
 } from '@framopia/core';
 import type { EditPlan, SubtitleGroup } from '../editplan/types.js';
 import { displayWindow } from '../analysis/display-timing.js';
+import { chooseBreak, type BreakCandidate } from './wrap.js';
 
 /**
  * Turns a plan into the element list and per-master placements the reel
@@ -25,6 +26,8 @@ export interface ReelElement {
   templateId: string;
   placeholder: string;
   text?: string;
+  /** Where a break would go if AE's measurement says one is needed. */
+  candidate?: BreakCandidate;
   imagePath?: string;
   placeholderScalePercent?: number;
 }
@@ -199,6 +202,7 @@ export function buildReel(options: {
       templateId: card.templateId,
       placeholder: 'TXT_MAIN',
       text: card.text,
+      candidate: chooseBreak(card.text),
     });
     const inPointS = inPoints[i] as number;
     placementsA.push({

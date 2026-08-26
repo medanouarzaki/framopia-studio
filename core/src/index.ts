@@ -101,6 +101,7 @@ export {
   MAX_SUBTITLE_LINES,
   SUBTITLE_ANCHOR_BASELINE_Y,
   SUBTITLE_ANCHOR_X,
+  SUBTITLE_SAFE_WIDTH,
   SUBTITLE_FONT_SIZE,
   worstCaseExtent,
 } from './typography.js';

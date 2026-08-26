@@ -44,6 +44,23 @@ export const SUBTITLE_ANCHOR_BASELINE_Y = 2480.4;
 export const MAX_SUBTITLE_LINES = 2;
 
 /**
+ * The widest a rendered line may be inside a 2160-wide text comp: 1940 px,
+ * leaving 110 px clear on each side.
+ *
+ * **CHOSEN, NOT MEASURED.** Nothing was fitted to the corpus; it is a margin
+ * that looked right against a 2160 frame. What would change it is the user's
+ * eye on a built reel — a card that reads as crowded at the edge argues the
+ * number down, one that reads as needlessly narrow argues it up.
+ *
+ * It is compared against a width **After Effects reports**, not one this repo
+ * computes: `sourceRectAtTime` on the populated text layer. Block 7 session 4
+ * established that no font-metrics library in this repo can answer the
+ * question — advance widths, kerning and Arabic positional shaping would all
+ * have to be modelled, and a model of what AE will draw is not what AE draws.
+ */
+export const SUBTITLE_SAFE_WIDTH = 1940;
+
+/**
  * Extra lines render **below** the first, which is what a point-text layer
  * anchored at 0,0 does in After Effects: the anchor is the first line's
  * baseline and subsequent lines descend by the leading. The band is built on

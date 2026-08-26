@@ -85,9 +85,12 @@ function framopiaBuildReel(optionsPath, outPath) {
             }
 
             if (e.kind !== 'image') {
-                var doc = ph.property('Source Text').value;
-                doc.text = e.text;
-                ph.property('Source Text').setValue(doc);
+                // Measured by AE, then broken only if the measurement says so.
+                // The break point arrived precomputed; the decision is here
+                // because only AE knows the rendered width.
+                e.fit = framopiaFitText(
+                    ph, instance.duration / 2, e.candidate, o.safeWidth
+                );
             } else {
                 var img = importOnce(e.imagePath, imports);
                 ph.replaceSource(img, false);
@@ -166,9 +169,18 @@ function framopiaBuildReel(optionsPath, outPath) {
         }
 
         var measured = [];
+        var fits = [];
         for (i = 0; i < o.elements.length; i++) {
             if (o.elements[i].measured) {
                 measured.push({ id: o.elements[i].id, measured: o.elements[i].measured });
+            }
+            if (o.elements[i].fit) {
+                fits.push({
+                    id: o.elements[i].id,
+                    kind: o.elements[i].kind,
+                    text: o.elements[i].candidate.oneLine,
+                    fit: o.elements[i].fit
+                });
             }
         }
 
@@ -178,6 +190,7 @@ function framopiaBuildReel(optionsPath, outPath) {
             elementsBuilt: o.elements.length,
             masters: comps,
             imageMeasurements: measured,
+            textFits: fits,
             projectItems: app.project.numItems,
             warnings: warnings
         };

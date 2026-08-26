@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import {
   REPO_ROOT,
+  SUBTITLE_SAFE_WIDTH,
   loadSfxIndex,
   loadTemplateManifest,
   templatesById,
@@ -101,6 +102,7 @@ const result = runBuildReel({
   masterHeight: plan.source.height,
   reelDurationS: plan.source.durationS,
   frameRate: 30000 / 1001,
+  safeWidth: SUBTITLE_SAFE_WIDTH,
   elements: built.elements,
   masters: [
     { name: `master_${reel}_A`, placements: built.placementsA, audio: built.audio },

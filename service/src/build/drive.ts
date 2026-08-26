@@ -80,6 +80,11 @@ export function runBuildReel(options: Record<string, unknown>): BuildResult {
   return runJsx('build-reel.jsx', 'framopiaBuildReel', options);
 }
 
+/** Measures every card in the corpus. Reads the library; writes no comp. */
+export function runMeasureSurvey(options: Record<string, unknown>): BuildResult {
+  return runJsx('measure-survey.jsx', 'framopiaMeasureSurvey', options);
+}
+
 function runJsx(
   file: string,
   entry: string,
@@ -95,6 +100,7 @@ function runJsx(
 
   const script = [
     `$.evalFile("${path.join(JSX_DIR, 'json2.jsx')}");`,
+    `$.evalFile("${path.join(JSX_DIR, 'text-fit.jsx')}");`,
     `$.evalFile("${path.join(JSX_DIR, file)}");`,
     `${entry}("${optionsPath}", "${resultPath}");`,
   ]
