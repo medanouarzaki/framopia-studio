@@ -22,6 +22,7 @@
     "zones": "tsx src/frames/zones-cli.ts",
     "components": "tsx src/frames/components-cli.ts",
     "place": "tsx src/placement/place-cli.ts",
+    "retiming": "tsx src/analysis/retiming-cli.ts",
     "timing-budget": "tsx src/analysis/timing-budget-cli.ts"
   },
   "dependencies": {
