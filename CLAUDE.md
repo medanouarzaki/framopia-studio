@@ -150,6 +150,12 @@ AI-generated contextual images, SFX, and a watermark. Full spec in
   stored **confidence** masks at that value instead of the binary ones, which
   is how the sensitivity sweep varies one thing. `--write-plan` persists the
   zones onto the reel's Edit Plan, preserving every `manual: true` zone.
+- `npm run timing-budget [-- --out <path>]` — free, local, **read-only**. Sweeps
+  every plan's subtitle groups, keywords and image slots against a grid of
+  (intro+outro, minHold) budgets, **re-deriving display timing from the word
+  speech timings** for each cell rather than reading the stored values, and
+  writes `benchmarks/RESULTS-block6-timing-budget.md`. Reuses
+  `checkBuildability` and `applyDisplayTiming`; no plan is modified.
 - `npm run place -- (--reel <label> | --all) [--dry-run] [--no-debug]` — free,
   local, deterministic. The placement solver: assigns each image slot a zone, a
   position and a uniform scale, writes them onto the plan and renders
@@ -1971,6 +1977,58 @@ vitasilk, one on test-1. **Zero concurrent overlaps.**
 | computed zones visibly avoid the speaker on real footage | **yes** | user reviewed the reworked zone renders and the head contact sheets on all five reels this conversation |
 | the solver places all fixture slots without overlaps | **yes** | 5/5 and 4/4; every overlap non-concurrent |
 | manual override round-trips | **yes** | a `torso`-kind manual zone survived recomputation byte-identical, listed first, with 24 automatic zones refreshed around it |
+
+## Block 6 session 1 — the timing budget, before any comp is animated
+
+**Spent $0.00; no API was called.** Ledger 105 entries / sha `a7e85e4b…` at
+both ends, byte-identical. No plan on disk was modified.
+
+`service/src/analysis/timing-budget.ts` sweeps every reel against
+intro+outro ∈ {0.13, 0.20, 0.27, 0.33, 0.40} s (4, 6, 8, 10, 12 frames at
+29.97) × minHold ∈ {0.10, 0.15, 0.20, 0.25, 0.30} s. It **reuses**
+`checkBuildability` and `applyDisplayTiming` rather than reimplementing either:
+both already take a caller-supplied templates map, so a synthetic template
+carrying the candidate triple is all that is needed. Only the sum
+intro + minHold + outro is ever compared, so how a budget splits between intro
+and outro changes nothing.
+
+**Display timing is re-derived from speech timings for every cell.** Reading
+the stored `displayStart`/`displayEnd` would measure the stub manifest's floor
+instead of the budget under test. In fact **no plan currently stores display
+timing at all** — `groupsWithDisplayTiming` is 0 on all five — so
+`displayWindow` has been falling back to speech timings everywhere.
+
+**No swept budget makes every subtitle group buildable.** The best cell is the
+loosest, intro+outro 0.13 s with minHold 0.10 s (floor 0.23 s), at **176 of 182
+groups (97%)**. Against the stub's current 0.33 s floor the corpus is at 86%.
+
+| intro+outro | 0.10 | 0.15 | 0.20 | 0.25 | 0.30 |
+|---|---|---|---|---|---|
+| 0.13 s (4f) | **97%** | 93% | 86% | 81% | 74% |
+| 0.20 s (6f) | 92% | 84% | 78% | 72% | 66% |
+| 0.27 s (8f) | 81% | 77% | 67% | 63% | 55% |
+| 0.33 s (10f) | 74% | 67% | 62% | 55% | 47% |
+| 0.40 s (12f) | 66% | 57% | 53% | 43% | 35% |
+
+**Two structural findings decide how to read that.** The merge rescue barely
+fires — 20 merges in 20 of 125 reel-cells, **0 at the loosest budget** — because
+it merges only when a pair totals two words or fewer and grouping has already
+paired words wherever it could. And **silence is the scarce resource**: the
+pooled median gap after a group is **0.059 s** and the p10 is **0.020 s**, so a
+card can rarely be held more than hundredths of a second past its words. Pooled
+group speech duration is min 0.000 · p10 0.241 · median 0.520 · max 1.260 s.
+
+Two of the six failures at the loosest budget are **degenerate word timings**,
+not display problems: vitasilk `g017` "mn" has a speech duration of **0.000 s**
+and test-1 `g007` "tb3i m3aya" of 0.030 s. `findShortWords` already reports
+them as Block 2 alignment artifacts; no intro or outro choice rescues them.
+
+**The corpus is not single-script.** A scan of all five plans found **10
+subtitle groups mixing Latin and Arabic script within one 1–2 word group** —
+ground-truth 2, test-1 6, test-2 1, test-3 1, vitasilk 0 — and **1 of 3
+keyword spans on test-1 is mixed-script** (`k003` "jawdat البشرة"), with 2 of 3
+wholly Arabic. **A single-script subtitle or keyword template contract does not
+stand.** Image slots: vitasilk 1 cutout / 4 card, test-1 4 null.
 
 Panel and real job types are not started; templates exist only as a stub.
 
