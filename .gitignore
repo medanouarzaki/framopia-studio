@@ -14,6 +14,9 @@ benchmarks/whisper/models/
 # generated edit plans: derived from footage that is itself gitignored, and
 # rewritten on every run
 *.editplan.json
+# and the backups a migration takes beside them; *.editplan.json does not
+# match a suffixed name, so these were committable until Block 6 session 5
+*.editplan.json.*
 
 # video files (watermark master is committed explicitly)
 *.mp4
