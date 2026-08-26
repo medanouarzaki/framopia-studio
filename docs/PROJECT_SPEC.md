@@ -47,7 +47,8 @@ The output is **not a rendered video**. It is a fully built After Effects compos
 - Display in groups of 1–2 words (fast reel style). Word-level timestamps are mandatory.
 - Same language as speech; no translation.
 - Subtitle visual style and position are global across all clients; per-client only font/palette applied through the template.
-- Global subtitle fonts: **Inter Semi-Bold** for Latin script; Arabic companion font: `TBD_ARABIC_FONT` (the user has one in use; its exact name is collected at the start of Block 6 and recorded here by amendment).
+- Global subtitle fonts: **Inter Semi-Bold** for Latin script; Arabic companion font: **Almarai Bold**, set at **1.07x** the Latin size so the two faces read at the same optical weight.
+- Global subtitle geometry, measured off a delivered reel by the user (Block 6 session 3): first-baseline anchor **(1080, 2480.4)** in the 2160x3840 frame — `y` is the text baseline, not the top of the type — subtitle size **343**, keyword size **425**, line spacing **323**. Both tracks may wrap to a second line. The user's comp reads 381.1 / 472.1 / 359 because its text layers run at 90% scale; the sizes above are the same type at 100%, which is what the templates are authored at. Declared once in `core/src/typography.ts`; the placement exclusion `SUBTITLE_BAND` is derived from them and from the fonts' own ink extents, never written by hand.
 
 ### Important words
 - 3–5 emphasized words per 30 s.
