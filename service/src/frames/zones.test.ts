@@ -7,7 +7,7 @@ const zone = (id: string, kind: Zone['kind'], w: number, h: number, valid: [numb
 describe('summariseZones', () => {
   it('reports every kind even when one produced nothing', () => {
     const rows = summariseZones([zone('z_top_1', 'top', 0.5, 0.4, [[0, 10]])]);
-    expect(rows.map((row) => row.kind)).toEqual(['top', 'left', 'right']);
+    expect(rows.map((row) => row.kind)).toEqual(['top', 'left', 'right', 'torso']);
     expect(rows.find((row) => row.kind === 'right')).toMatchObject({
       count: 0,
       meanRectArea: 0,

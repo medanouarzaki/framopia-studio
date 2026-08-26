@@ -189,6 +189,7 @@ def _compute_zones(request: dict) -> dict:
             bottom_exclusion=params["bottom_exclusion"],
             lateral_inset=params["lateral_inset"],
             vertical_inset=params["vertical_inset"],
+            subtitle_band_y=request.get("subtitleBandY"),
         )
         result.setdefault("perFrame", [])
         result.setdefault("emptySamples", 0)
@@ -312,6 +313,46 @@ def _head_overlay(request: dict) -> dict:
     }
 
 
+def _torso_overlay(request: dict) -> dict:
+    """Torso debug renders, including the one frame that bounded the zone.
+
+    The bounding frame is rendered separately and named because it alone
+    governs the whole window: the emitted rectangle is the intersection, so the
+    lowest head pixel anywhere in the window sets the top edge everywhere.
+    """
+    from .overlay import torso_contact_sheet, torso_render
+
+    out_dir = request["outDir"]
+    prefix = request["prefix"]
+    frames = request["frames"]
+
+    sheet = torso_contact_sheet(frames, f"{out_dir}/{prefix}-contactsheet.png")
+
+    from .overlay import evenly_spaced
+
+    written = []
+    for position in evenly_spaced(len(frames), 6):
+        frame = frames[position]
+        path = f"{out_dir}/{prefix}-frame-{frame['index']}.png"
+        torso_render(frame).save(path, "PNG")
+        written.append(path)
+
+    bounding = None
+    if request.get("boundingIndex") is not None:
+        match = [f for f in frames if f["index"] == request["boundingIndex"]]
+        if match:
+            bounding = f"{out_dir}/{prefix}-bounding-frame-{match[0]['index']}.png"
+            torso_render(match[0]).save(bounding, "PNG")
+
+    return {
+        "ok": True,
+        "task": "torso_overlay",
+        "contactSheet": sheet,
+        "frames": written,
+        "boundingFrame": bounding,
+    }
+
+
 TASKS = {
     "remove_bg": _remove_bg,
     "detect_text": _detect_text,
@@ -323,6 +364,7 @@ TASKS = {
     "short_edge_overlay": _short_edge_overlay,
     "placement_overlay": _placement_overlay,
     "head_overlay": _head_overlay,
+    "torso_overlay": _torso_overlay,
     "component_overlay": _component_overlay,
 }
 

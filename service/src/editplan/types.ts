@@ -346,7 +346,14 @@ export interface ZoneRect {
 
 export interface Zone {
   id: string;
-  kind: 'top' | 'left' | 'right';
+  /**
+   * `torso` is a widening of ARCHITECTURE §3's `top|left|right`, added in
+   * Block 5 session 6: an image may be placed over the speaker's
+   * middle-to-lower torso, never over the head or face. A widening cannot be
+   * optional-with-default the way a new field can, so every existing plan was
+   * reopened to prove nothing was made unreadable.
+   */
+  kind: 'top' | 'left' | 'right' | 'torso';
   rect: ZoneRect;
   /** Time windows where the zone is actually free, as [startS, endS] pairs. */
   valid: [number, number][];

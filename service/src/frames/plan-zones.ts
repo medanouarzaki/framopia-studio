@@ -1,5 +1,6 @@
 import { readEditPlan, writeEditPlan } from '../editplan/io.js';
 import type { EditPlan, Zone, Zones } from '../editplan/types.js';
+import { ZONE_KINDS } from './zones.js';
 
 /**
  * Zones onto an Edit Plan, ARCHITECTURE §3 and §5.5.
@@ -66,7 +67,7 @@ function assertPlaceable(zone: Zone): void {
   if (x < 0 || y < 0 || x + w > 1.0000001 || y + h > 1.0000001) {
     throw new ManualZoneError('rect must lie inside the normalized frame');
   }
-  if (!['top', 'left', 'right'].includes(zone.kind)) {
+  if (!ZONE_KINDS.includes(zone.kind)) {
     throw new ManualZoneError(`unknown zone kind ${zone.kind}`);
   }
   if (zone.valid.some(([start, end]) => start < 0 || end < start)) {

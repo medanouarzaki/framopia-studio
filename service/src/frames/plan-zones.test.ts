@@ -180,3 +180,48 @@ describe('the schema addition', () => {
     ).rejects.toThrow(/duplicate zone id/);
   });
 });
+
+describe('the torso kind widening', () => {
+  const torso: Zone = {
+    id: 'z_manual_torso',
+    kind: 'torso',
+    rect: { x: 0.28, y: 0.46, w: 0.44, h: 0.2 },
+    valid: [[2, 20]],
+    manual: true,
+  };
+
+  // A widening of the kind enum cannot be optional-with-default the way a new
+  // field can, so what is proven here is that a plan carrying the new value
+  // round-trips and one carrying only the old values still opens.
+  it('accepts a torso zone through the validator', async () => {
+    const file = await tempPlan((p) => {
+      p.zones = { sampleFps: 2, zones: [torso] };
+    });
+    const reopened = await readEditPlan(file);
+    expect(reopened.zones.zones[0]?.kind).toBe('torso');
+  });
+
+  it('still opens a plan whose zones are all pre-widening kinds', async () => {
+    const file = await tempPlan((p) => {
+      p.zones = { sampleFps: 2, zones: [auto('z_top_1', 'top'), auto('z_left_1', 'left')] };
+    });
+    const reopened = await readEditPlan(file);
+    expect(reopened.zones.zones.map((z) => z.kind)).toEqual(['top', 'left']);
+  });
+
+  it('keeps a manual torso zone byte-identical across a recomputation', async () => {
+    const file = await tempPlan((p) => {
+      p.zones = { sampleFps: 2, zones: [auto('z_top_1', 'top'), torso] };
+    });
+    await writeZonesToPlan(file, [auto('z_top_1', 'top', 0.5, 0.5)], 2, NOW);
+    const reopened = await readEditPlan(file);
+    const survivor = reopened.zones.zones.find((z) => z.id === 'z_manual_torso');
+    expect(JSON.stringify(survivor)).toBe(JSON.stringify(torso));
+  });
+
+  it('accepts a torso zone as a manual override', () => {
+    const zones = setManualZone({ sampleFps: 2, zones: [] }, { ...torso, manual: false });
+    expect(zones.zones[0]?.kind).toBe('torso');
+    expect(zones.zones[0]?.manual).toBe(true);
+  });
+});

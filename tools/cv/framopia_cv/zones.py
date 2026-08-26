@@ -70,6 +70,21 @@ OPEN_SAMPLES = 2
 CLOSE_SAMPLES = 1
 
 
+# The head mask is a confidence map, and thresholding it at the body mask's 0.5
+# trims exactly the low-confidence pixels at hair edges and jaw boundaries —
+# which is where under-coverage would come from. Over-including costs a few
+# pixels of torso zone; under-including puts an image on a chin.
+# CHOSEN, NOT MEASURED.
+HEAD_THRESHOLD = 0.25
+
+# Vertical gap between the lowest head pixel and the top of a torso zone, in
+# units of frame width. Twice ZONE_MARGIN because the consequence of touching
+# is worse than for a background zone, and it has to absorb both the 16px grid
+# quantization and hair that moves between two samples half a second apart.
+# CHOSEN, NOT MEASURED.
+HEAD_CLEARANCE = 0.04
+
+
 class Rect:
     __slots__ = ("x", "y", "w", "h")
 
@@ -118,6 +133,14 @@ def load_mask(path: str, threshold: float | None = None) -> np.ndarray:
     if threshold is None:
         return values > 127
     return values > threshold * 255.0
+
+
+def load_mask_values(path: str) -> np.ndarray:
+    """A stored mask as float 0-1, without thresholding it."""
+    if not Path(path).is_file():
+        raise FileNotFoundError(f"mask not found: {path}")
+    with Image.open(path) as handle:
+        return np.asarray(handle.convert("L"), dtype=np.float64) / 255.0
 
 
 def filter_components(mask: np.ndarray, floor: float = PERSON_COMPONENT_FLOOR) -> np.ndarray:
@@ -429,6 +452,9 @@ def compute_zones_generalized(
     component_floor: float = PERSON_COMPONENT_FLOOR,
     open_samples: int = OPEN_SAMPLES,
     close_samples: int = CLOSE_SAMPLES,
+    subtitle_band_y: float | None = None,
+    head_threshold: float = HEAD_THRESHOLD,
+    head_clearance: float = HEAD_CLEARANCE,
     **rect_kwargs,
 ) -> dict:
     """Zones from maximal free rectangles, matched across frames then reduced.
@@ -439,6 +465,15 @@ def compute_zones_generalized(
     union against the track's most recent rectangle, and a rectangle matching
     nothing starts a new track. That is a new decision and MATCH_MIN_IOU is
     CHOSEN, NOT MEASURED.
+
+    Torso zones are produced per frame like any other rectangle and go through
+    the same matching and hysteresis. That is what enforces ruling 3: a frame
+    whose head drops lower either shrinks its window's intersected rectangle
+    or fails the IoU match and splits the window in two, and in both cases no
+    emitted rectangle overlaps a head pixel on any frame it claims. Never a
+    median and never a percentile. `subtitle_band_y` is passed in rather than mirrored here:
+    the band is declared once, in service/src/placement/constants.ts, and a
+    second copy would drift. Without it no torso zone is derived.
     """
     from .rects import MATCH_MIN_IOU, iou
 
@@ -454,6 +489,20 @@ def compute_zones_generalized(
         if shape is None:
             shape = mask.shape
         found = frame_rectangles(mask, **rect_kwargs)
+        if subtitle_band_y is not None and frame.get("headMaskPath"):
+            head = load_mask_values(frame["headMaskPath"])
+            torso = torso_rect(
+                mask,
+                head,
+                subtitle_band_y,
+                head_threshold,
+                head_clearance,
+                rect_kwargs.get("bottom_exclusion", BOTTOM_EXCLUSION),
+            )
+            aspect = mask.shape[0] / mask.shape[1]
+            floor = rect_kwargs.get("min_zone_short_edge", MIN_ZONE_SHORT_EDGE)
+            if torso is not None and short_edge(torso, aspect) >= floor:
+                found = found + [("torso", torso)]
 
         claimed: set[int] = set()
         for kind, rect in found:
@@ -495,3 +544,64 @@ def compute_zones_generalized(
 
     height, width = shape if shape else (0, 0)
     return {"zones": zones, "width": width, "height": height, "trackCount": len(tracks)}
+
+
+
+def head_bottom_y(head_mask: np.ndarray, threshold: float = HEAD_THRESHOLD) -> float | None:
+    """Normalized y below which no head pixel appears, or None when no head."""
+    rows = head_mask.shape[0]
+    occupied = np.flatnonzero((head_mask > threshold).any(axis=1))
+    if occupied.size == 0:
+        return None
+    return (int(occupied[-1]) + 1) / rows
+
+
+def torso_rect(
+    person: np.ndarray,
+    head: np.ndarray,
+    subtitle_band_y: float,
+    head_threshold: float = HEAD_THRESHOLD,
+    head_clearance: float = HEAD_CLEARANCE,
+    bottom_exclusion: float = BOTTOM_EXCLUSION,
+) -> Rect | None:
+    """The free rectangle over the speaker's middle-to-lower torso, or None.
+
+    A deliberate departure from PROJECT_SPEC §4 and ARCHITECTURE §5.5, which
+    place images only in negative space: the user ruled that mid-to-lower torso
+    is dead visual weight in a talking-head reel and an image there reads as
+    deliberate composition. The head and face are never covered.
+
+    Bounded above by the lowest head pixel plus clearance, below by whichever
+    of the bottom exclusion and the subtitle band sits higher in the frame, and
+    **laterally by where the body IS** — a torso zone sits on the person, so it
+    takes the person's own column extent within its rows. The narrow side of
+    that boundary is taken deliberately: a rectangle inside the body on every
+    frame reads as placed on the speaker, while one overhanging the background
+    reads as a mistake.
+
+    Returns None when the head leaves no room, which ruling 3 makes a correct
+    outcome rather than a failure.
+    """
+    height, width = person.shape
+    aspect = height / width
+
+    bottom = min(1.0 - bottom_exclusion, subtitle_band_y)
+    head_y = head_bottom_y(head, head_threshold)
+    if head_y is None:
+        # No head in frame at all. Nothing here can establish where the face
+        # is, so no torso zone is offered rather than one guessed at.
+        return None
+    top = head_y + head_clearance / aspect
+    if bottom <= top:
+        return None
+
+    y0 = int(round(top * height))
+    y1 = int(round(bottom * height))
+    band = person[y0:y1, :]
+    columns = np.flatnonzero(band.any(axis=0))
+    if columns.size == 0:
+        return None
+
+    x0 = int(columns[0]) / width
+    x1 = (int(columns[-1]) + 1) / width
+    return Rect(x0, top, x1 - x0, bottom - top)

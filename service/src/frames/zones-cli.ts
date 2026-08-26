@@ -1,6 +1,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { runSidecar } from '../images/sidecar.js';
+import { SUBTITLE_BAND } from '../placement/constants.js';
 import { editPlanPathFor } from '../editplan/io.js';
 import { writeZonesToPlan } from './plan-zones.js';
 import { loadReels, reelByLabel } from './footage.js';
@@ -60,10 +61,14 @@ for (const reel of reels) {
     frames: maskPaths.map((maskPath, index) => ({
       maskPath,
       timeS: frames[index]?.timeS ?? 0,
+      headMaskPath: frames[index]?.headMaskPath,
     })),
     sampleFps: SAMPLE_FPS,
     threshold,
     method,
+    // Declared once, in the placement constants; the sidecar is told rather
+    // than keeping a second copy that could drift.
+    subtitleBandY: SUBTITLE_BAND.y,
   });
   const elapsedS = (Date.now() - started) / 1000;
 

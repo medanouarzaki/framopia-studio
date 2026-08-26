@@ -47,7 +47,7 @@ const REMOVED_REASONS = new Set(['filler', 'stutter', 'falseStart']);
 // image comps work at 1200x1200, so it is paid-for pixels that get scaled
 // away, and config validation rejects it before anything is generated.
 const CANDIDATE_RESOLUTIONS = new Set(['1K', '2K']);
-const ZONE_KINDS = new Set(['top', 'left', 'right']);
+const ZONE_KINDS = new Set(['top', 'left', 'right', 'torso']);
 
 class Checker {
   readonly issues: PlanValidationIssue[] = [];

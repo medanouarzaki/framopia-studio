@@ -13,8 +13,8 @@ export interface ZoneRect {
   h: number;
 }
 
-export type ZoneKind = 'top' | 'left' | 'right';
-export const ZONE_KINDS: ZoneKind[] = ['top', 'left', 'right'];
+export type ZoneKind = 'top' | 'left' | 'right' | 'torso';
+export const ZONE_KINDS: ZoneKind[] = ['top', 'left', 'right', 'torso'];
 
 export interface Zone {
   id: string;
@@ -87,6 +87,7 @@ export interface MaskFrame {
   framePath: string;
   binaryMaskPath: string;
   confidenceMaskPath: string;
+  headMaskPath?: string;
 }
 
 export function maskFramesFor(reelPath: string): MaskFrame[] {
@@ -106,6 +107,7 @@ export function maskFramesFor(reelPath: string): MaskFrame[] {
       framePath: mask.framePath,
       binaryMaskPath: mask.binaryMaskPath,
       confidenceMaskPath: mask.confidenceMaskPath,
+      headMaskPath: mask.headMaskPath,
     };
   });
 }
@@ -114,6 +116,7 @@ interface SegmentationRecord {
   framePath: string;
   binaryMaskPath: string;
   confidenceMaskPath: string;
+  headMaskPath?: string;
 }
 
 function readSegmentation(reelPath: string): SegmentationRecord[] {
@@ -134,6 +137,8 @@ export function computeZones(options: {
   sampleFps: number;
   threshold?: number;
   method?: string;
+  /** Top of the subtitle band; without it no torso zone is derived. */
+  subtitleBandY?: number;
 }): Promise<ComputeZonesResult> {
   return runSidecar<ComputeZonesResult>({
     task: 'compute_zones',
@@ -141,6 +146,7 @@ export function computeZones(options: {
     sampleFps: options.sampleFps,
     threshold: options.threshold ?? null,
     method: options.method ?? 'maximal',
+    subtitleBandY: options.subtitleBandY,
   });
 }
 
