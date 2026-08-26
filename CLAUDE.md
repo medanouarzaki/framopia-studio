@@ -47,7 +47,10 @@ AI-generated contextual images, SFX, and a watermark. Full spec in
 - `templates/` — AE templates (not started)
 - `modes/` — per-client config. `k2-syndicalia.json` is a validated stub at
   version 2; the schema, loader and validation live in `core/src/mode.ts`
-- `assets/brand/`, `assets/watermark/`, `assets/sfx/` — shared assets (not started)
+- `assets/brand/`, `assets/sfx/` — shared assets (not started).
+  `assets/watermark/intro.mov` **exists**: the ProRes 4444 intro overlay,
+  22,969,368 bytes, in git (`.gitignore` negates `*.mov` for this directory).
+  Measured in `benchmarks/RESULTS-block7-watermark.md`.
 - `.local/` — machine-local config, secrets, run state (gitignored, never committed)
 
 ## Commands
@@ -165,6 +168,18 @@ AI-generated contextual images, SFX, and a watermark. Full spec in
   analysis over every stored binary mask, plus the twelve frames with the
   largest dropped component rendered to `benchmarks/results/latest-components/`.
   Modifies no mask.
+- `npm run watermark:measure` — free, local. Measures
+  `assets/watermark/intro.mov` with ffprobe/ffmpeg and **emits** every claim
+  into `benchmarks/RESULTS-block7-watermark.md`: duration in seconds and
+  frames, both frame rates, pixel format and whether an alpha plane is really
+  there, SAR, colour tags, the audio stream and its `volumedetect` figures, the
+  straight-vs-premultiplied verdict with its separation check, and the
+  per-frame alpha bounding box. Nothing about that file is hand-typed into a
+  document.
+- `npm run migrate:image-cache [-- --apply]` — free, local, one-shot. Re-keys
+  image cache entries onto the Block 7 fingerprint. Dry-run by default; it
+  refuses to move an entry whose **old** key does not reproduce from its own
+  manifest, so a rename is never made on a guess.
 
 **`.local/cv/` is not a cache.** Nothing fingerprints it, no stage looks
 entries up in it, and it is deliberately outside `.local/cache/` so that it is
@@ -2481,6 +2496,90 @@ reasoning in the report named beside it. Read this before "fixing" any of them.
   `templateId`** — every group on ground-truth, test-2 and test-3, so three of
   five reels are not duration-checked by it at all.
   (`reports/block-6-session-7.md`)
+
+## Block 7 session 1 — housekeeping, the cache fix, the watermark measured
+
+**Spent $0.00; no API was called.** Ledger 108 entries / sha `50ec3f57…` at
+both ends, byte-identical.
+
+**PROJECT_SPEC §4 was not the last document carrying 30 fps.** The sweep the
+session was asked to run refuted its own premise: `docs/TEMPLATE_BUILD_SPEC.md`
+§2 and `docs/TEMPLATE_LIBRARY_GUIDE.md` §9 and §10 carried it too, and the
+build spec carried a whole paragraph reasoning *from* the pre-amendment guide —
+"the build spec keeps 30 fps because that is what the guide fixes" — which
+would have told the next person to build a comp `npm run validate:templates`
+rejects. All four sites are corrected; §10 and the build spec also said
+2160×600, which guide §3 amended to 2160×1100 in Block 6. **No code constant
+asserts 30**: `core/src/templates.ts` requires 29.97 and uses 30 only as the
+rejected case, and the `fps: 30` occurrences in `service/src/**` are test
+fixtures. Handoffs and per-session reports were left alone — they are
+historical records.
+
+**The image cache no longer keys on `mode.version`.** Every mode field the
+image request carries reaches the model *only* as `prompt` or `negativePrompt`,
+and both are hashed verbatim, so a mode content hash would be redundant at
+best: `modeId` plus the two strings is the whole key. The old comment's
+justification — that a bump may change what a **later** slot draws from the
+variation axes — does not hold, because that later slot's own prompt then
+changes and it misses on its own key, while this slot's cached bytes are still
+the right answer to this slot's unchanged request. Two tests pin it: a bump
+that adds a template id ⇒ **same** key, an edit reaching either prompt string ⇒
+different key. `generate.test.ts`'s "regenerates when the mode version bumps"
+asserted the defect and is inverted.
+
+**All 14 existing entries were migrated, free and provably.** Their manifests
+record every fingerprint input **except `aspectRatio`** — which was *recovered,
+not assumed*: the pre-Block-7 key was recomputed from the manifest plus each
+allowed ratio and had to reproduce the directory name, and 14 of 14 did at
+`1:1`. $2.064064 of billed spend was on disk. **Verified, not asserted:** all
+ten vitasilk production images now hit under the current mode v6, 0 miss. The
+other four are Block 4 bake-off entries whose *prompts* were composed at mode
+v3; they still miss, and correctly so — the request changed. The migration
+renames directories and touches no bytes and no ledger line.
+
+**`ImageCachePayload.modeVersion` is still written** and is now provenance
+only, annotated as such at its definition.
+
+### The watermark file
+
+`assets/watermark/intro.mov`, sha256
+`99edc6499392f2e72ce3df83b5a0f6a69246b7ab57f1b44c97092e8b8811886e`, copied
+byte-identical from `/Volumes/T7 Shield/Framopia/Brand/Logos/Tititit.mov`
+(untouched). **23 MB of binary entered git deliberately.**
+
+| | |
+|---|---|
+| codec | ProRes 4444 (`ap4h`), `yuva444p12le`, 12-bit |
+| size | 1924 × 2154, SAR 1:1, **square pixels** |
+| duration | **2.035367 s = 61 frames at 30000/1001** |
+| colour | bt709 / bt709 / bt709 |
+| audio | pcm_s16le stereo 48 kHz |
+
+**Three facts Finder does not show, and each changes what the builder does:**
+
+- **The frame rate is 30000/1001**, the same as every source reel, so the
+  overlay needs no rate conversion. Finder's `00:02` hides 61 frames.
+- **The audio is NOT silent** — mean −18.3 dB, max −0.5 dB. The watermark
+  carries a full-level sound and the build has to decide whether to keep it.
+  Nothing in PROJECT_SPEC or ARCHITECTURE anticipates watermark audio.
+- **The alpha is premultiplied against black**, and the measurement separates
+  the hypotheses rather than assuming they are separable. 2,958,234 partial
+  alpha pixels exist across the 61 frames; over 439,105 of them on nine sampled
+  frames, **0.0000%** violate the premultiplied prediction and **100%** violate
+  the straight one, max excess **0** levels. The guard that makes that
+  evidence: the artwork is essentially white (mean max(r,g,b) **252.7** on
+  16.8M opaque pixels), so a straight reading would leave a half-transparent
+  edge near 255 — it sits at **0.9854** of its alpha instead. On dark artwork
+  the same test would decide nothing, and the tool reports **undecided** in
+  that case rather than taking the larger number.
+
+**The artwork is full-bleed**: non-zero alpha touches all four frame edges
+somewhere in the clip, so the file carries no margin of its own to crop to.
+
+**PROJECT_SPEC §5's watermark TODO is deliberately still open.** Where the
+watermark sits in a 2160 × 3840 frame and at what scale is a user ruling, not a
+property of the file; the amendment lands in one pass when it arrives.
+
 
 See `docs/BLOCKS.md` for the full block plan and `handoffs/` for prior
 session context.
