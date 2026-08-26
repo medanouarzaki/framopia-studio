@@ -2200,5 +2200,70 @@ a product decision — the anchor, the keyword size,
 `MIN_PLACED_SHORT_EDGE`, or the rule that images never overlap the band — not a
 better measurement.
 
+## Block 6 session 5 — torso retired, term spans built and found unstable
+
+**Spent $0.412818** of a $0.60 ceiling, over 3 keyword calls on test-2. Ledger
+105 → 108 entries, $10.555772 → $10.968590, sha `a7e85e4b…` → `50ec3f57…`.
+
+**Automatic torso derivation is retired** (user ruling). `compute_zones` no
+longer emits `kind: "torso"`; **the kind itself is not retired** — it stays in
+the schema, `assertPlaceable` accepts it, and a manual torso zone still
+round-trips byte-identical, pinned by a test. `torso_rect` and its unit tests
+are kept because the ruling turns on where the subtitle anchor sits, not on the
+geometry being wrong: the measured band leaves **71–295 px where
+`MIN_PLACED_SHORT_EDGE` needs 324**, and session 4 established that no honest
+measurement of the fonts recovers it. Move the anchor and it is one edit back.
+
+**`ACTIVE_ANALYSIS_PROMPT_VERSION` is 4** — version 3 plus §6 term boundaries,
+and nothing else. **In the analysis pass, not transcription**: that config is
+frozen and a bump there invalidates the transcription cache for every reel,
+where this invalidates **keywords only** (the slot stage keys on
+`ACTIVE_SLOT_PROMPT_VERSION` separately, confirmed in `fingerprint.ts`).
+
+`Transcript.terms?: TermSpan[]` is a **schema addition, optional with a
+default**; absent means "not analysed", which is deliberately **not** the same
+as "every run is one term". All five plans reopen. `service/src/analysis/
+terms.ts` is the pure selector: a term whose ids do not resolve, that names a
+removed or Latin word, that is non-contiguous, or that overlaps another term is
+**dropped and counted, never fuzzy-matched**; Arabic words no term covers are
+reported. `validate.ts` enforces the same on write. Terms are parsed from the
+cached `rawText`, so a cache hit and a live call go down one path.
+
+**The mechanism works. The model's answer does not.** Three cache-bypassed
+calls on test-2 returned **three different term sets, and only the first
+matched ORTHOGRAPHY_GUIDE §6**:
+
+| run | terms | verdict |
+|---|---|---|
+| 1 | `ترطيب عميق للبشرة` / `شد خفيف للبشرة` / `إشراقة ونضارة` / `الوجه` | **correct** |
+| 2 | all seven words split minimally | wrong |
+| 3 | the two 3-word terms right, `إشراقة ونضارة` split in two | wrong |
+
+Runs 2 and 3 break `ترطيب عميق للبشرة` or `إشراقة ونضارة` across cards — **the
+exact §6c violation the ruling exists to prevent**. §6 line 87 lists
+`ترطيب عميق للبشرة` verbatim as one term, so run 1 is right and the others are
+not a matter of taste.
+
+**Keyword spans were stable across all three** (same three spans every time,
+only scores moving: 0.95/0.99, 0.90/0.95/0.95), which matches Block 3's
+finding. **Term spans are a harder question than keyword spans and the model is
+not reliable on it at n=3.**
+
+**Session 5 therefore stopped at goal 3.** Script-aware grouping (goal 4), the
+cost measurement (goal 5) and the corpus write (goal 6) were **not attempted**:
+grouping built on a span set that is wrong two times in three is not
+deliverable, and the remaining budget could not have covered the other reels
+anyway.
+
+**test-2 carries its first keywords** — `Profhilo`, `ترطيب عميق`, `شد خفيف`,
+**unreviewed** — and `transcript.terms` was **cleared** so the plan does not
+assert boundaries nothing trusts. **The analysis cache still holds run 3's
+response**, so a plain re-run restores run 3's terms; bypass the cache to get a
+fresh answer.
+
+Cost note: the keyword call now bills **$0.1136–$0.1835** against a $0.0539
+estimate, roughly double to triple. The added term question costs real thinking
+tokens and `estimateGeminiTextCallCost` has not been re-tuned for it.
+
 See `docs/BLOCKS.md` for the full block plan and `handoffs/` for prior
 session context.
