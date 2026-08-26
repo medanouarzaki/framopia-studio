@@ -1,9 +1,11 @@
 {
   "schemaVersion": 1,
-  "stub": true,
-  "stubNote": "Ids and default gains only. No audio file exists in this directory yet; every `file` below names what Block 6 supplies. Code that renders must refuse to run while `stub` is true.",
+  "stub": false,
+  "gainNote": "defaultGainDb values are starting points chosen by the user before any comp existed, deliberately quiet so a sound never competes with speech. They are to be judged by ear on a built comp and are expected to move.",
   "sfx": [
-    { "id": "hit_01", "file": "hit_01.wav", "defaultGainDb": -6, "notes": "short percussive hit for keyword slams" },
-    { "id": "whoosh_01", "file": "whoosh_01.wav", "defaultGainDb": -9, "notes": "short whoosh for image entrances" }
+    { "id": "hit_01", "file": "hit_01.mp3", "defaultGainDb": -20, "notes": "percussive hit; source hit-2.mp3" },
+    { "id": "hit_02", "file": "hit_02.wav", "defaultGainDb": -20, "notes": "percussive hit, distinct sound from hit_01; source hit-2.wav" },
+    { "id": "whoosh_01", "file": "whoosh_01.wav", "defaultGainDb": -24, "notes": "whoosh; source whoosh-1.wav" },
+    { "id": "whoosh_02", "file": "whoosh_02.mp3", "defaultGainDb": -24, "notes": "whoosh; source whoosh-2.mp3" }
   ]
 }
