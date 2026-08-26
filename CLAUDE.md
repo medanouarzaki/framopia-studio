@@ -180,6 +180,19 @@ AI-generated contextual images, SFX, and a watermark. Full spec in
   straight-vs-premultiplied verdict with its separation check, and the
   per-frame alpha bounding box. Nothing about that file is hand-typed into a
   document.
+- `npm run build:reel -- --plan <abs path.editplan.json> [--out <abs path.aep>]`
+  — free, local. Builds a whole reel into **two master comps in one project**,
+  `_A` and `_C`, differing only in subtitle out-points so the retiming question
+  can be judged by flipping between them. One duplicated comp per element,
+  shared by both masters, so nothing else can differ.
+- `npm run migrate:display-timing [-- --apply]` — free, local. Gives existing
+  plans the display timing `applyDisplayTiming` has always computed but never
+  persisted. Dry-run by default.
+- `npm run migrate:templates-sfx [-- --apply]` — free, local. Assigns template
+  ids to every element and re-derives SFX from the current manifest.
+- `npm run repair:candidate-paths [-- --apply]` — free, local. Repoints a
+  plan's `candidates[].path` at the cache entry it describes, recomputing the
+  fingerprint rather than guessing.
 - `npm run build:comp -- --plan <abs path.editplan.json> --group <groupId>
   [--out <abs path.aep>] [--template <id>] [--placeholder <layer>]` — free,
   local. Places one subtitle card in a master comp by driving the **already
@@ -2908,6 +2921,89 @@ only correct for the original solid.
 
 The cache holds **JPEGs**, not PNGs — the API returns `image/jpeg` — so the
 PNG used is the cutout beside the plan.
+
+
+## Block 7 session 4 — the whole reel, twice
+
+**Spent $0.00; no API was called.** Ledger 108 entries / sha `50ec3f57…` at
+both ends. `templates/library.aep` byte-identical at `dac234ce…`. One After
+Effects instance (PID 44015) throughout.
+
+`.local/build/vitasilk-full.aep` holds **`master_vitasilk_A`** and
+**`master_vitasilk_C`**, 55 layers each: 38 subtitle cards, 3 keywords, 5
+images, 8 SFX layers and the reel. **They differ only in subtitle out-points**
+— one duplicated comp per element is shared by both masters, so the text and
+the artwork are literally the same item in each, and a test in the planner
+throws if any other field diverges. 33 of 46 placements are shortened in C, by
+0.0706 s on average, 2.331 s across the reel.
+
+### Subtitle wrapping is NOT implemented
+
+Goal 1's premise was that Block 6 session 4 built reusable glyph-outline
+machinery. **It did not.** Only its *output* survives: `FONT_METRICS` in
+`core/src/typography.ts` carries vertical ink extents (ascent/descent per face)
+and nothing horizontal, `benchmarks/RESULTS-block6-band-repertoire.md` is
+hand-written and referenced by nothing as an output path, and no committed file
+imports fontTools. fontTools 4.63.0 exists in `tools/cv/.venv` but is **absent
+from `tools/cv/requirements.txt`**, so it is an unpinned incidental. The
+session's instruction was to stop rather than duplicate, and it stopped.
+**Every card in the built reel is still clipped at the comp edges.**
+
+### Four data defects, all fixed free and locally
+
+- **`regroup.ts` discarded display timing.** It builds fresh group objects and
+  the field was not among them, so every grouping pass silently cleared it. It
+  now carries the window through a group that came out **unchanged**, and drops
+  it from one it had to **split** — a split group's inherited window was
+  computed against a different word set and could hold its card over the next
+  one's words. A test fails on the old behaviour.
+- **Display timing is on all five plans**: 193 groups gained it, 0 already had
+  it. `npm run migrate:display-timing` imports `applyDisplayTiming` rather than
+  copying it, so a migrated plan and one written by the slot stage carry
+  identical windows.
+- **The keyword stage never assigned templates.** `assignTemplates` always
+  handled keywords correctly and its own tests passed; the stage wrote every
+  keyword with `templateId: null` and never called it, so any keyword run after
+  a slot run left them null and SFX had nothing to attach a hit to. The stage
+  assigns before writing now.
+- **Assignment was script-blind**, and this was found only because goal 4 tried
+  to apply it: the seeded shuffle drew from all allowed variants regardless of
+  script and would have put `sub_pop_ar` under **20 of vitasilk's 41 Latin
+  cards**. It draws per script now, partitioning on the `_ar` suffix
+  (`SCRIPT_VARIANT_SUFFIX`), with a per-script counter so each face still
+  spreads. Re-derived across the corpus: **0 script mismatches on all five
+  reels**, 0 of 8 keywords.
+
+**A fifth defect, inherited from session 1**: re-keying the image cache renamed
+every entry's directory and **did not update the plans that name them**, so all
+10 of vitasilk's `candidates[].path` pointed at directories that no longer
+existed and 4 of 5 image slots were skipped on the first build attempt.
+**Nothing was lost** — every file was on disk under its new key.
+`npm run repair:candidate-paths` recomputes the fingerprint from the slot's own
+prompt and the frozen config; 10 repaired, 0 unresolved, and the mapping
+reproduces session 1's migration table exactly.
+
+### SFX re-derived
+
+vitasilk 8 → 8 events but **every one changed**: the stub-era gains −12/−9/−6
+became −24 (whooshes) and −20 (hits), and the image offsets moved by up to
+0.05 s. test-2 gained its first 3 events. **test-1 went 7 → 6: `hit_01` on
+`k003` is gone**, correctly — that keyword was dropped in Block 6 session 6 for
+straddling a script boundary, and the stored event had outlived it. A test pins
+that derivation cannot produce a gain absent from `assets/sfx/sfx.json`.
+
+### A replaced image is scaled by the builder now
+
+`placeholderScalePercent` = audited solid width / real source width × the
+template's own scale. For vitasilk: **1000 px solid at 100% / 2048 px source →
+48.828125%**, applied to all five slots and confirmed by AE. **The factor is
+never hardcoded** and is tested on a larger source, a smaller one, a template
+that already scales its placeholder, and the identity case.
+
+**The rescaled anchor is correct for the template's animation**, which session 3
+left open: AE moved `IMG_MAIN`'s anchor [500,500] → [1024,1024] when the source
+changed, and both are the centre of their layer, so the keyframed position
+still points at the image centre. No template edit is needed.
 
 
 See `docs/BLOCKS.md` for the full block plan and `handoffs/` for prior
