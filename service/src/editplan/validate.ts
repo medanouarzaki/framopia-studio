@@ -466,8 +466,14 @@ function checkImages(c: Checker, value: unknown, words: Map<string, Rec>): void 
 
 /**
  * Structural agreement between a `supersededBy` and the keyword it names: the
- * keyword exists, no keyword supersedes two groups, and the group's words are
- * exactly the span.
+ * keyword exists, and the cards it supersedes are consecutive and hold exactly
+ * the span's words, in order.
+ *
+ * **A keyword may supersede more than one card.** It had to be exactly one
+ * while cards held 1-2 words and a span could always be collapsed into a single
+ * card; at one word per card (Block 7 session 6) a two-word keyword covers two
+ * cards and marks both. What is still a defect is a span whose superseded cards
+ * hold words the span does not, or hold them in a different order.
  *
  * The completeness half — that *every* keyword supersedes some group — is
  * deliberately not here. It is a buildability property, checked by
@@ -487,7 +493,7 @@ function checkSupersession(c: Checker, plan: Rec): void {
     }
   }
 
-  const owned = new Map<string, string>();
+  const claimed = new Map<string, { index: number; words: string[] }[]>();
   groups.forEach((raw, i) => {
     if (typeof raw !== 'object' || raw === null) return;
     const g = raw as Rec;
@@ -498,22 +504,29 @@ function checkSupersession(c: Checker, plan: Rec): void {
       c.fail(p, `no keyword has id ${owner}`);
       return;
     }
-    const previous = owned.get(owner);
-    if (previous !== undefined) {
-      c.fail(p, `keyword ${owner} already supersedes ${previous}`);
-      return;
-    }
-    owned.set(owner, g.id as string);
-    const span = keywordById.get(owner)?.wordIds;
-    const members = g.wordIds;
-    if (Array.isArray(span) && Array.isArray(members)) {
-      const same = span.length === members.length && span.every((id, j) => id === members[j]);
-      if (!same) {
-        c.fail(p, `keyword ${owner} does not span exactly this group's words`);
-      }
-    }
+    const list = claimed.get(owner) ?? [];
+    list.push({ index: i, words: Array.isArray(g.wordIds) ? (g.wordIds as string[]) : [] });
+    claimed.set(owner, list);
   });
 
+  for (const [owner, cards] of claimed) {
+    const first = cards[0];
+    if (first === undefined) continue;
+    const p = `subtitles.groups[${first.index}].supersededBy`;
+    for (let k = 1; k < cards.length; k += 1) {
+      if ((cards[k] as { index: number }).index !== (cards[k - 1] as { index: number }).index + 1) {
+        c.fail(p, `keyword ${owner} supersedes cards that are not consecutive`);
+        break;
+      }
+    }
+    const span = keywordById.get(owner)?.wordIds;
+    if (!Array.isArray(span)) continue;
+    const covered = cards.flatMap((x) => x.words);
+    const same = span.length === covered.length && span.every((id, j) => id === covered[j]);
+    if (!same) {
+      c.fail(p, `keyword ${owner} does not span exactly the words of the card(s) it supersedes`);
+    }
+  }
 }
 
 /**

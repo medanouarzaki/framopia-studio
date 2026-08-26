@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import {
   REPO_ROOT,
@@ -79,9 +79,33 @@ for (const e of plan.sfx.events) {
 assertPathsPresent(refs);
 console.log(`pre-flight: ${refs.length} referenced files all present`);
 
+/*
+ * Image sizes to compare, from `npm run image-size`. `a` is what the plan
+ * carries; `b` fills the assigned zone; `c` is the largest square the real
+ * constraints allow. **No constant is changed** — the three are built side by
+ * side so the choice is the user's eye, not an argument.
+ */
+const sizesPath = path.join(REPO_ROOT, '.local', 'build', 'image-sizes.json');
+const variantSizes: Record<string, Record<string, number>> = existsSync(sizesPath)
+  ? (JSON.parse(readFileSync(sizesPath, 'utf8')) as Record<string, Record<string, number>>)
+  : {};
+const sizeFor = (variant: 'a' | 'b' | 'c') => (slotId: string): number => {
+  const px = variantSizes[variant]?.[slotId];
+  const slot = plan.images.slots.find((s) => s.id === slotId);
+  const fallback = (slot?.scale ?? 0) * 1200;
+  return px ?? fallback;
+};
+
 const built = buildReel({
   plan,
   audit,
+  imageVariants: Object.keys(variantSizes).length === 0
+    ? []
+    : [
+        { name: 'a' as const, scaleFor: sizeFor('a') },
+        { name: 'b' as const, scaleFor: sizeFor('b') },
+        { name: 'c' as const, scaleFor: sizeFor('c') },
+      ],
   introFor: (id) => entries.get(id)?.introS ?? 0,
   sfxFileFor: (id) => {
     const f = sfxFiles.get(id);
@@ -130,10 +154,18 @@ const result = runBuildReel({
   masters: [
     { name: `master_${reel}_A`, placements: built.placementsA, audio: built.audio },
     { name: `master_${reel}_C`, placements: built.placementsC, audio: built.audio },
+    ...[...built.variantPlacements].map(([name, images]) => ({
+      // Retiming held at C so the only difference between the three is size.
+      name: `master_img_${name}`,
+      placements: [...built.placementsC.filter((p) => p.kind !== 'image'), ...images],
+      audio: built.audio,
+    })),
   ],
-  activeComp: `master_${reel}_C`,
-  parkAtS: plan.source.durationS / 2,
-  parkOnWrapped: true,
+  activeComp: flag('active') ?? `master_${reel}_C`,
+  parkAtS: Number(flag('park') ?? plan.source.durationS / 2),
+  // --park pins the playhead at a named moment; without it the build finds a
+  // wrapped card, which is only useful when wrapping is what is being judged.
+  parkOnWrapped: flag('park') === undefined,
   savePath: flag('out') ?? path.join(REPO_ROOT, '.local', 'build', `${reel}-full.aep`),
 });
 const wallS = (Date.now() - startedAt) / 1000;

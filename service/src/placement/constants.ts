@@ -85,6 +85,13 @@ export const KEYWORDS_ARE_INSIDE_SUBTITLE_BAND = true;
 export const BOTTOM_EXCLUSION = 0.15;
 
 /**
+ * Clearance kept between an image and the speaker's head, as a fraction of
+ * frame width. **Mirrors HEAD_CLEARANCE in tools/cv/framopia_cv/zones.py**,
+ * which is the authority; a test pins the two equal.
+ */
+export const HEAD_CLEARANCE = 0.04;
+
+/**
  * Mirrors MIN_ZONE_SHORT_EDGE in the same file, and is applied here to the
  * **placed square** rather than to the zone. The constant's stated reason is
  * about the image a viewer sees, and after clearance and fill a placed square

@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@framopia/core';
 import { createEditPlan, readEditPlan, writeEditPlan } from '../editplan/io.js';
 import type { EditPlan, ImageSlot, Zone } from '../editplan/types.js';
-import { BOTTOM_EXCLUSION, MIN_PLACED_SHORT_EDGE } from './constants.js';
+import { BOTTOM_EXCLUSION, HEAD_CLEARANCE, MIN_PLACED_SHORT_EDGE } from './constants.js';
 import { writePlacementsToPlan } from './plan-placement.js';
 
 const NOW = '2026-08-26T00:00:00.000Z';
@@ -155,5 +155,9 @@ describe('the constants mirrored from the sidecar', () => {
 
   it('MIN_PLACED_SHORT_EDGE matches MIN_ZONE_SHORT_EDGE in zones.py', () => {
     expect(MIN_PLACED_SHORT_EDGE).toBe(pythonValue('MIN_ZONE_SHORT_EDGE'));
+  });
+
+  it('HEAD_CLEARANCE matches zones.py', () => {
+    expect(HEAD_CLEARANCE).toBe(pythonValue('HEAD_CLEARANCE'));
   });
 });

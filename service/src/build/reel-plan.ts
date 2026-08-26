@@ -114,12 +114,23 @@ export function auditedSolid(c: AuditComp, placeholder: string): {
   return { width: l.width, scalePercent: settled(l, 'scale')[0] as number };
 }
 
+/**
+ * How large the images are placed, as a multiplier on the plan's own scale.
+ *
+ * A parameter rather than a constant because Block 7 session 6 ruled the
+ * images too small and nothing should be locked before the user has compared
+ * them on screen. `a` is what the plan carries; the others are measured
+ * ceilings from `npm run image-size`.
+ */
+export type ImageSizeVariant = 'a' | 'b' | 'c';
+
 export interface ReelBuild {
   elements: ReelElement[];
   placementsA: ReelPlacement[];
   placementsC: ReelPlacement[];
   audio: { id: string; filePath: string; timeS: number; gainDb: number }[];
   skipped: Skipped[];
+  variantPlacements: Map<ImageSizeVariant, ReelPlacement[]>;
 }
 
 /**
@@ -134,8 +145,13 @@ export function buildReel(options: {
   introFor: (templateId: string) => number;
   sfxFileFor: (sfxId: string) => string;
   candidateFileFor: (slotId: string) => { path: string; id: string } | null;
+  /** Extra placements, each a copy of the image set at a different size. */
+  imageVariants?: { name: ImageSizeVariant; scaleFor: (slotId: string) => number }[];
 }): ReelBuild {
-  const { plan, audit, introFor, sfxFileFor, candidateFileFor } = options;
+  const { plan, audit, introFor, sfxFileFor, candidateFileFor, imageVariants = [] } = options;
+  const variantPlacements = new Map<ImageSizeVariant, ReelPlacement[]>(
+    imageVariants.map((v) => [v.name, []]),
+  );
   const elements: ReelElement[] = [];
   const placementsA: ReelPlacement[] = [];
   const placementsC: ReelPlacement[] = [];
@@ -258,6 +274,25 @@ export function buildReel(options: {
     };
     placementsA.push(placement);
     placementsC.push({ ...placement });
+
+    /*
+     * The same slot at other sizes, on the same centre, so size is the only
+     * thing that differs between the variants. `scaleFor` gives the placed side
+     * in source pixels; the comp layer's scale is that against the comp's own
+     * side.
+     */
+    for (const v of imageVariants) {
+      const sidePx = v.scaleFor(slot.id);
+      variantPlacements.get(v.name)?.push({
+        elementId: slot.id,
+        kind: 'image',
+        inPointS: slot.start,
+        outPointS: slot.end,
+        positionX,
+        positionY,
+        scalePercent: (sidePx / c.width) * 100,
+      });
+    }
   }
 
   const audio = plan.sfx.events.map((e) => ({
@@ -267,7 +302,7 @@ export function buildReel(options: {
     gainDb: e.gainDb,
   }));
 
-  return { elements, placementsA, placementsC, audio, skipped };
+  return { elements, placementsA, placementsC, audio, skipped, variantPlacements };
 }
 
 export function resolveSfxDir(repoRoot: string): string {
