@@ -47,8 +47,9 @@ AI-generated contextual images, SFX, and a watermark. Full spec in
 - `templates/` — AE templates (not started)
 - `modes/` — per-client config. `k2-syndicalia.json` is a validated stub at
   version 2; the schema, loader and validation live in `core/src/mode.ts`
-- `assets/brand/`, `assets/sfx/` — shared assets (not started).
-  `assets/watermark/intro.mov` **exists**: the ProRes 4444 intro overlay,
+- `assets/brand/` — shared assets (not started).
+  **`assets/sfx/` is real** as of Block 7 session 2: four audio files and an
+  index that is no longer a stub. `assets/watermark/intro.mov` **exists**: the ProRes 4444 intro overlay,
   22,969,368 bytes, in git (`.gitignore` negates `*.mov` for this directory).
   Measured in `benchmarks/RESULTS-block7-watermark.md`.
 - `.local/` — machine-local config, secrets, run state (gitignored, never committed)
@@ -176,6 +177,10 @@ AI-generated contextual images, SFX, and a watermark. Full spec in
   straight-vs-premultiplied verdict with its separation check, and the
   per-frame alpha bounding box. Nothing about that file is hand-typed into a
   document.
+- `npm run retiming` — free, local, **read-only**. Counts, across every plan,
+  how many consecutive subtitle pairs would overlap on screen under each
+  reading of TEMPLATE_LIBRARY_GUIDE §5's retiming rule. Writes
+  `benchmarks/RESULTS-block7-retiming.md`. Modifies no plan.
 - `npm run migrate:image-cache [-- --apply]` — free, local, one-shot. Re-keys
   image cache entries onto the Block 7 fingerprint. Dry-run by default; it
   refuses to move an entry whose **old** key does not reproduce from its own
@@ -2579,6 +2584,120 @@ somewhere in the clip, so the file carries no margin of its own to crop to.
 **PROJECT_SPEC §5's watermark TODO is deliberately still open.** Where the
 watermark sits in a 2160 × 3840 frame and at what scale is a user ruling, not a
 property of the file; the amendment lands in one pass when it arrives.
+
+
+## Block 7 session 2 — sfx collected, beeps located, the builder blocked
+
+**Spent $0.00; no API was called.** Ledger 108 entries / sha `50ec3f57…` at
+both ends, byte-identical. `templates/library.aep` unchanged at
+sha `dac234ce…`.
+
+**Status: the session's headline goal did not happen.** No template instance
+has been placed. The blocker is below and it is a one-line gap in a tool, not a
+design problem.
+
+### The SFX index is real
+
+Four files, copied from `~/Documents/sfx` (**originals untouched**) and renamed
+so that two different sounds no longer share a stem. **`hit-2.mp3` and
+`hit-2.wav` are different sounds** — the user said so and it was verified, not
+assumed: best waveform cross-correlation **0.0537** at any lag, energy spanning
+1.06–5.10 s against 0.50–4.27 s, peaks at 2.49 s against 0.59 s, onset spectral
+centroid 555 Hz against 136 Hz. Identical audio would correlate at ~1.0.
+
+**Nothing else records which original became which**, so the mapping lives here
+and in `reports/block-7-session-2.md`:
+
+| source | repo file | sha256 |
+|---|---|---|
+| `hit-2.mp3` | `hit_01.mp3` | `67bd3984…` |
+| `hit-2.wav` | `hit_02.wav` | `08b9483c…` |
+| `whoosh-1.wav` | `whoosh_01.wav` | `9ed0c7ec…` |
+| `whoosh-2.mp3` | `whoosh_02.mp3` | `64c4ea6f…` |
+
+The mapping is sorted-filename order. **Nothing was converted, normalised or
+re-encoded** — the mp3s stay mp3, at their original sample rates (48 kHz and
+44.1 kHz) alongside two 96 kHz wavs. Gains are the user's, deliberately quiet:
+**hits −20 dB, whooshes −24 dB**, recorded in `sfx.json`'s own `gainNote` as
+starting values to be judged by ear.
+
+**`templates/manifest.json` was not touched: every entry still declares
+`sfx: []`.** Which template fires which sound is an unmade ruling. No validator
+failed as a result — `validateTemplateManifest` only checks that a *declared*
+`sfxId` exists in the index, and none is declared.
+
+**`assertRenderable` still guards nothing, and a real index does not change
+that.** It throws only on `manifest.stub`, which has been `false` since Block 6
+session 7. `SfxIndex.stub` is validated as a boolean and **read by nothing**;
+no code path has ever checked that an sfx file exists before a build. That gap
+is unchanged and no guard was added this session.
+
+### The watermark's three beeps
+
+`npm run watermark:measure` now locates them and emits the arithmetic.
+**Three bursts**, from an RMS envelope at 1 ms hops with runs closer than 30 ms
+joined:
+
+| beep | start s | end s | peak s | frames (start–end) |
+|---:|---:|---:|---:|---|
+| 1 | 0.033 | 0.133 | 0.085 | 0.99–3.99 |
+| 2 | 0.166 | 0.267 | 0.217 | 4.98–8.00 |
+| 3 | 0.300 | 0.400 | 0.352 | 8.99–11.99 |
+
+**The count holds at 3 across every threshold from 5% to 30% of peak.** It
+collapses to 1 at 1–2% because the beeps ring down into each other and the
+envelope floor between them never drops below ~0.9% of peak — a property of the
+decay tails, not a different number of beeps. The 30 ms merge gap is
+**measured, not chosen**: each beep is a two-pulse tone whose pulses sit ~22 ms
+apart while the silence between beeps is ~33 ms.
+
+**The user's ruling resolves comfortably.** Last beep ends 0.400 s; + 1.000 s =
+**1.400 s = frame 41.96**, against a video of 2.035367 s / 61 frames —
+**inside, with 0.635 s (19 frames) to spare.** Nothing needs extending or
+freezing. Read the end time as ±: it moves 0.368–0.400 s across the thresholds
+that agree on the count.
+
+### The retiming conflict, counted
+
+`npm run retiming` → `benchmarks/RESULTS-block7-retiming.md`. Every subtitle
+card sits at the same place on screen, so a card whose intro begins while the
+previous is still held is two cards stacked.
+
+| reading | pairs overlapping | min | median | max |
+|---|---|---|---|---|
+| A: `inPoint = displayStart − introS` (guide §5 as written) | **162/189 (86%)** | 0.009 s | ~0.090 s | 0.130 s |
+| B: `inPoint = displayStart` (intro inside the window) | **0/189 (0%)** | — | — | — |
+
+**Nothing was changed and nothing is recommended** — the choice is the user's
+eye on a built comp. Two things qualify the numbers: **no plan in the corpus
+stores display timing** (`displayStart` absent on all 194 groups across all five
+reels), so these are speech windows and writing display timing can only raise
+the count; and 42 groups carry no `templateId` and used the subtitle fallback of
+0.13 s, which is not a guess because all four text templates declare the same
+`introS`.
+
+### The blocker
+
+**`templates/library.audit.json` does not record layer positions.**
+`tools/validate-templates/audit.jsx` emits `{ name, kind }` per layer and
+nothing else, so there is no way to compute where a 2160×1100 `sub_pop` comp
+must sit inside a 2160×3840 master for `TXT_MAIN`'s baseline to land on
+`SUBTITLE_ANCHOR_BASELINE_Y`. The session prompt forbade the two workarounds —
+measuring by hand in the AEP, or assuming the layer is centred — so the comp
+builder was not written and **no AE work was done at all**. `panel/jsx/build.jsx`
+and `service/src/build/` do not exist.
+
+The fix is small and belongs to the audit, which is the thing that verifies:
+`audit.jsx` should emit each layer's `Position` and `Anchor Point`, with the
+`AuditLayer` type and `validateTemplates` widened to match, then
+`npm run audit:templates` re-run. That is a change to a tool, and the ruling the
+conversation owes is only whether to make it.
+
+**The subtitle group that was chosen and not built:** vitasilk `g027`,
+wordIds `w0045`/`w0046`, text `dernière génération`, start 14.439 s, end
+15.319 s, no display timing, script `latin`, `templateId: sub_pop`,
+`supersededBy: null`, group 27 of 41. Retiming under reading A would have been
+`inPoint` 14.309, `outPoint` 15.319.
 
 
 See `docs/BLOCKS.md` for the full block plan and `handoffs/` for prior
