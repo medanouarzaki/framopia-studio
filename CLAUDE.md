@@ -21,7 +21,10 @@ AI-generated contextual images, SFX, and a watermark. Full spec in
 - `docs/` — locked spec, architecture, orthography, template library guide
 - `handoffs/` — session handoff documents
 - `reports/` — per-session work reports
-- `panel/` — After Effects CEP panel (not started)
+- `panel/` — After Effects CEP panel. The UI is not started; `panel/jsx/`
+  holds the ExtendScript the service drives: `build.jsx` (places one template
+  instance), `image-probe.jsx` (source replacement), `json2.jsx` (a guarded
+  `JSON.stringify` for hosts without one). ES3 only.
 - `core/` — `@framopia/core`, the shared workspace package: config loading,
   the cost ledger, pricing constants and the Gemini model pins — text and
   **image** — (`core/src/model-config.json`), the token normalizer, the Levenshtein
@@ -177,6 +180,15 @@ AI-generated contextual images, SFX, and a watermark. Full spec in
   straight-vs-premultiplied verdict with its separation check, and the
   per-frame alpha bounding box. Nothing about that file is hand-typed into a
   document.
+- `npm run build:comp -- --plan <abs path.editplan.json> --group <groupId>
+  [--out <abs path.aep>] [--template <id>] [--placeholder <layer>]` — free,
+  local. Places one subtitle card in a master comp by driving the **already
+  running** After Effects over AppleScript `DoScript`, and reports what AE
+  actually did. Starts a new project every time; never opens or writes
+  `templates/library.aep`. Saves to `.local/build/`.
+- `npm run probe:image -- --image <abs path> --master <comp name>` — free,
+  local. Runs on the project `build:comp` left open: duplicates an image
+  template, replaces `IMG_MAIN`'s source and reports whether it took.
 - `npm run retiming` — free, local, **read-only**. Counts, across every plan,
   how many consecutive subtitle pairs would overlap on screen under each
   reading of TEMPLATE_LIBRARY_GUIDE §5's retiming rule. Writes
@@ -2709,6 +2721,193 @@ wordIds `w0045`/`w0046`, text `dernière génération`, start 14.439 s, end
 15.319 s, no display timing, script `latin`, `templateId: sub_pop`,
 `supersededBy: null`, group 27 of 41. Retiming under reading A would have been
 `inPoint` 14.309, `outPoint` 15.319.
+
+
+## Block 7 session 3 — the first template instance placed in After Effects
+
+**Spent $0.00; no API was called.** Ledger 108 entries / sha `50ec3f57…` at
+both ends. `templates/library.aep` byte-identical at sha `dac234ce…` — every
+AE operation started a new project.
+
+**A subtitle card is on screen for the first time in this project's history.**
+`.local/build/vitasilk-probe.aep` holds a 2160x3840 master with the vitasilk
+reel, one `sub_pop` instance carrying `dernière génération`, and one
+`img_float` instance carrying a generated cutout.
+
+### The audit records layer geometry now
+
+That was session 2's blocker and it is fixed at source rather than worked
+around. `audit.jsx` emits, per layer: `position`, `anchorPoint`, `scale`,
+`opacity`, `width`/`height`, `sourceRect` at a named `sampleTime`, the text
+style (`font`, `fontSize`, `justification`, `tracking`) and a **keyframe count
+per animated property, path-qualified**, found by walking every property group
+so effects are covered as well as transform.
+
+**`prop.value` is a trap and the audit now says so in its own output.** An
+animated property reports its value at the project's current time indicator —
+not at any time the script chose. `sub_pop`'s `TXT_MAIN` first came back at
+y **750** with opacity **0**, which is the *start of its intro*, because the
+CTI happened to sit on frame 0. Every property therefore carries both `value`
+and **`valueAtSampleTime`**, and everything downstream computes from the
+latter. Reading the first draft's numbers as settled geometry would have put
+every subtitle card 50 px low.
+
+Measured, `sub_pop` / `TXT_MAIN` at sampleTime 1.001001001 s:
+
+| field | value |
+|---|---|
+| position | `value` [1080, **750**, 0] · **`valueAtSampleTime` [1080, 700, 0]** · 2 keyframes |
+| anchorPoint | [0, 0, 0], 0 keyframes |
+| scale | [100, 100, 100] · opacity 100 at sample time, 2 keyframes |
+| width x height | 2160 x 1100 |
+| sourceRect | top −253.285423278809, left −641.366455078125, w 1290.939453125, h 257.137474060059 |
+| text | Inter-SemiBold, 343, CENTER_JUSTIFY (raw 7415), tracking 0 |
+| animated | Fast Box Blur/Blur Radius 2 · Transform/Position 2 · Transform/Opacity 2 |
+
+`img_float` / `IMG_MAIN`: solid, position [540, 540, 0], anchorPoint
+[500, 500, 0], 1000 x 1000 **inside a 1200 x 1200 comp** — it is parented to
+`CARD` (1080 x 1080, position [600, 600, 0], anchor [540, 540, 0]), so its
+position is in `CARD`'s space, not the comp's.
+
+**`AuditLayer`'s new fields are optional with a default**, so an older audit
+still parses — but `requireGeometry` in `core/src/templates.ts` **fails the
+validator** when a declared placeholder has no audited `position` or
+`anchorPoint`, naming comp, layer and field and saying to re-run the audit. An
+absent measurement is not a measurement of zero. The message wording is
+asserted by test, not left pinned by reading.
+
+### SFX are bound
+
+Keyword templates fire `hit_01` at `offsetS` 0.13 (where the animation lands,
+frame 4); image templates fire `whoosh_01` at `offsetS` 0 (a whoosh leads
+motion); **subtitles stay silent** — they fire ~190 times a reel. `hit_02` and
+`whoosh_02` are unused on purpose, for template styles not yet built.
+
+`gainDb` is now mirrored in `templates/manifest.json` and `assets/sfx/sfx.json`,
+so **a test pins them equal**, along with one pinning the offsets by element
+type.
+
+**Derivation fires, and what it exposes matters more than that it works.**
+Re-deriving read-only over the corpus: vitasilk 5 events, test-1 4 — **all
+whooshes, no hits anywhere**, because **no keyword on any plan carries a
+`templateId`** (0 of 2, 0 of 3, 0 of 3). The keyword binding is live and
+unexercised.
+
+**The stored events on both plans are stale** and a re-derive contradicts them:
+vitasilk stores 8 where derivation gives 5, test-1 stores 7 against 4. The
+stored ones carry gains **−12 / −9 / −6** and keyword events for `k001`–`k003`
+— the fingerprint of a run against the *stub* manifest, which stopped existing
+in Block 6 session 7. **No plan was rewritten**; this is reported, not fixed.
+
+**Validation does not check that a bound sound's file exists on disk.**
+`validateTemplateManifest` checks only that the `sfxId` is in the index, and
+`validateSfxIndex` never opens the `file` it names. A core test added in
+session 2 checks existence at `npm run check` time, which is not a build-time
+gate. No new guard was added this session.
+
+### Where display timing went
+
+**`applyDisplayTiming` exists, is complete, and is called** — from
+`planImageSlotsForPlan` (`service/src/analysis/job.ts:319`), the image-slot
+stage. Line 150 always sets both fields. It is **pure local computation over an
+existing plan: no API, no cost.** Run read-only on vitasilk it produces
+**41/41** windows, 0 merges, 1 unbuildable.
+
+So the field is absent for a different reason: **the only stage that calls it
+has not been run since the call was added.** The evidence is on the plans
+themselves — their stored SFX events still carry the stub manifest's gains, and
+`deriveSfxEvents` is called eleven lines after `applyDisplayTiming` in the same
+function, so both last ran together, before either the display-timing wiring or
+the real manifest existed. The `pre-script-grouping` backups from Block 6
+session 6 already have zero display timing, which rules out re-grouping as the
+cause.
+
+**But `regroup.ts` would drop it anyway.** It constructs fresh group objects
+(`service/src/analysis/regroup.ts:167-178`) carrying `id`, `wordIds`, `start`,
+`end`, `templateId`, `supersededBy` and optionally `edited` — display timing is
+not among them. So re-running the slot stage restores the windows only until
+the next re-group.
+
+Consumers, and what each does when it is absent: `displayWindow`
+(`display-timing.ts:20`) falls back to speech timing, and `buildability.ts:75`
+and `retiming.ts:35` both go through it, so **nothing fails and nothing skips —
+every consumer silently measures speech instead.** `validate.ts:234-241`
+validates the fields only when present. `timing-budget.ts:111` deliberately
+clears them to sweep budgets from speech.
+
+### What After Effects actually did
+
+Every line below is an observation; all of it was assertion before this
+session.
+
+| | |
+|---|---|
+| master fps requested | 29.97002997003 (30000/1001) |
+| **master fps as AE stores it** | **29.9700317382812** — off by 1.77e-06 |
+| library comps as AE stores them | **29.9700012207031** — a *different* float |
+| inPoint requested / AE | 14.309 / 14.309017350684 (+0.00052 frames) |
+| outPoint requested / AE | 15.319 / 15.318985652319 (−0.00043 frames) |
+| layer anchorPoint (read, not assumed) | [1080, 550, 0] |
+| layer position (computed) | [1080, 2330.39990234375, 0] |
+| **baseline landed at** | **y 2480.39990234375** against a target of 2480.4 |
+
+**AE stores frame rate as a float32 and the two comps disagree.** The library
+comps read 29.9700012207031 — the value of a comp authored by typing "29.97" —
+while a comp created from the exact rational reads 29.9700317382812. Both pass
+`REQUIRED_FPS` 29.97 with its tolerance. The gap is 3.05e-05 fps, about
+7.8e-04 frames across a 25.7 s reel, so it changes nothing today; it is
+recorded because "the comps and the master are the same frame rate" is now
+known to be false in the strict sense.
+
+The position arithmetic, every term sourced:
+
+```
+target baseline (core/src/typography.ts)          x 1080     y 2480.4
+placeholder baseline in sub_pop (audit, settled)  x 1080     y 700
+comp-layer anchor in master (AE, read back)       x 1080     y 550
+position = target − (placeholder − anchor)
+  x = 1080   − (1080 − 1080) = 1080
+  y = 2480.4 − ( 700 −  550) = 2330.4
+```
+
+**Baseline error −9.77e-05 px**, which is float32 storage of 2330.4, four
+orders of magnitude below a pixel.
+
+**Nothing was disturbed.** The duplicate's keyframes survived exactly (Blur
+Radius 2, Position 2, Opacity 2, before and after); `TXT_MAIN`'s font, size,
+justification and tracking are unchanged after the Source Text swap; and the
+**original `sub_pop` is untouched** — still one layer, still `kan9olo`, same
+keyframe counts, same style.
+
+**Importing `library.aep` brings 11 items**, not 6: a `library.aep` folder, the
+six comps, a `Solids` folder and the three solid footage items (`CARD`,
+`solid`, `solid`) the image comps use.
+
+**The card is timed on speech, not display timing** — no plan carries any (see
+above). A stated limitation of this probe, not a decision about the builder.
+
+**The structured-error contract holds.** Three deliberate failures, each run
+for real, each returning `{ok:false, stage, message}` with nothing thrown:
+`find-template` for a missing comp and for a missing layer,
+`import-footage` for a missing reel.
+
+### A solid IMG_MAIN does accept a replaced source
+
+`AVLayer.replaceSource(FootageItem, false)` on `img_float`'s solid `IMG_MAIN`,
+using `img001-c1.cutout.png`. **It works**, and transforms and keyframes
+survive — position [540, 540, 0], scale [100, 100, 100], Blur Radius 2 keys,
+Opacity 2 keys, all identical before and after.
+
+**But the layer takes the new source's size, and that is a builder
+requirement.** `width` x `height` went **1000 x 1000 → 2048 x 2048** and the
+anchor point was rescaled with it, [500, 500, 0] → **[1024, 1024, 0]** — the
+same *relative* point, half the layer. Scale stayed at 100%, so a replaced
+image renders at 2048 px inside a 1200 px comp, **171% of comp width**. The
+builder must set scale explicitly after replacement; the template's 100% is
+only correct for the original solid.
+
+The cache holds **JPEGs**, not PNGs — the API returns `image/jpeg` — so the
+PNG used is the cutout beside the plan.
 
 
 See `docs/BLOCKS.md` for the full block plan and `handoffs/` for prior
