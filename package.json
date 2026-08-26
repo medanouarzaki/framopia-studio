@@ -31,6 +31,7 @@
     "retiming": "npm run build:core && npm run retiming --workspace framopia-service --",
     "diagnose:timing": "npm run build:core && npm run diagnose:timing --workspace framopia-service --",
     "migrate:display-timing": "npm run build:core && npm run migrate:display-timing --workspace framopia-service --",
+    "migrate:regroup": "npm run build:core && npm run migrate:regroup --workspace framopia-service --",
     "repair:candidate-paths": "npm run build:core && npm run repair:candidate-paths --workspace framopia-service --",
     "migrate:templates-sfx": "npm run build:core && npm run migrate:templates-sfx --workspace framopia-service --",
     "build:comp": "npm run build:core && npm run build:comp --workspace framopia-service --",

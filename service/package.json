@@ -28,6 +28,7 @@
     "build:comp": "tsx src/build/build-comp-cli.ts",
     "migrate:templates-sfx": "tsx src/analysis/migrate-templates-sfx-cli.ts",
     "repair:candidate-paths": "tsx src/images/repair-candidate-paths-cli.ts",
+    "migrate:regroup": "tsx src/analysis/migrate-regroup-cli.ts",
     "migrate:display-timing": "tsx src/analysis/migrate-display-timing-cli.ts",
     "diagnose:timing": "tsx src/analysis/timing-defect-cli.ts",
     "retiming": "tsx src/analysis/retiming-cli.ts",
