@@ -2335,5 +2335,106 @@ not edited.
 has never been exercised end to end; and the `_ar` variants must be added to
 `modes/k2-syndicalia.json`'s `allowedTemplates` before they can be assigned.
 
+## Block 6 session 7 — the comps exist, and the validator checks them
+
+**Spent $0.00.** Ledger 108 entries / sha `50ec3f57…` at both ends.
+
+**`templates/library.aep` is committed** — 432,197 bytes, sha256
+`dac234ce443ec581d75ac7a5c497075b7a618e1d603109901a72d3872fa238fa`. Six comps
+the user built by hand, all **29.97 fps**, all 2.002 s long:
+`sub_pop`, `sub_pop_ar`, `kw_slam`, `kw_slam_ar` at 2160x1100 with `TXT_MAIN`;
+`img_slide_left` (cutout) and `img_float` (card) at 1200x1200 with `IMG_MAIN`.
+`img_float` also carries a decorative `CARD` layer with `IMG_MAIN` parented to
+it, which §4 permits.
+
+**The manifest is real: `stub` is `false`.** Every entry is `introS` 0.13,
+`outroS` **0**, `minHoldS` 0.10, `anchor: "center"`, `sfx: []`.
+`assertRenderable` no longer throws, so a rendering stage may run.
+
+**Mode is v6** — `sub_pop_ar` and `kw_slam_ar` added to `allowedTemplates`,
+which session 6 flagged as needed before the assigner could see them.
+**The bump invalidates the image-generation cache and nothing else**:
+`service/src/images/fingerprint.ts` keys on `modeVersion`, while the keyword
+and slot stages key on content hashes of the fields their own call reads
+(unchanged here). **14 cached image entries would regenerate at roughly $1.55
+if `npm run images` is re-run** — nothing was re-run this session.
+
+### Reading the AEP
+
+**Launching After Effects with `-r` does not work on this machine.** A script
+whose entire body is `app.quit()` left AE running for 120 s, so `-r` never
+reaches script execution from a cold start. **AppleScript `DoScript` into an
+already-running instance does work** — AE 26.0x67 — and that is what the audit
+uses. Nothing parses the binary `.aep`.
+
+`tools/validate-templates/` — `audit.jsx` (the §9 ExtendScript run: dumps every
+comp's name, fps, size, duration and layer kinds) and `cli.ts`. Two modes:
+
+- `npm run audit:templates` drives AE and writes `templates/library.audit.json`,
+  stamping it with the `.aep`'s **sha256**. Needs AE open.
+- `npm run validate:templates` checks the manifest against that dump. Fast, no
+  AE, and **this is what `npm run check` runs**.
+
+**A `.aep` edited after its audit fails as stale rather than being validated
+against a stale picture of itself.** The pure comparison lives in
+`core/src/templates.ts` (`validateTemplates`) and is unit tested without AE.
+
+It fails on: a manifest id with no comp; a `sub_`/`kw_`/`img_` comp with no
+manifest entry; a placeholder missing or of the wrong kind; **fps ≠ 29.97**;
+`introS + minHoldS + outroS` exceeding comp duration; **`introS + outroS >
+0.13`**; and an `sfxId` `assets/sfx/sfx.json` does not define.
+
+**Proven against four real broken `.aep` copies**, built by scripting AE to
+open the library, break one thing, and save elsewhere — **the committed library
+was never mutated** and its sha256 is unchanged. Plus three manifest/audit
+fixtures. All seven exit 1 and name the comp and the layer.
+
+**`IMG_MAIN` is a solid, not the still §4 suggests.** A solid replaces exactly
+as well, so the validator accepts `footage` or `solid` for it and rejects text.
+
+### The timing number holds
+
+**7 of 190 subtitle groups unbuildable at the built comps' own budget** —
+unchanged from session 6. The comps land exactly on the grid's loosest cell
+(intro 0.13 + outro 0 + minHold 0.10 = a 0.23 s floor), which session 6 had
+already swept. **The stub's 0.33 s floor is gone**: the user built to the spec
+and the spec's number is confirmed rather than moved.
+
+`npm run validate-plan` reports a different figure — **11 duration failures,
+test-1 6 and vitasilk 5 — and it is not comparable.** It reads *stored*
+`displayStart`/`displayEnd`, which no plan has, so it measures the case with no
+extension into silence and no merge; and it skips any group with no
+`templateId`, which is every group on ground-truth, test-2 and test-3. **Three
+of five reels are not duration-checked by it at all.**
+
+### Three deliberate departures from TEMPLATE_LIBRARY_GUIDE
+
+All ruled by the user, all needing a guide amendment (proposed in
+`reports/block-6-session-7.md`):
+
+1. **§3: comps are 29.97 fps, not 30.** Every source reel is 30000/1001. The
+   validator **requires 29.97 and rejects 30**.
+2. **§3: text comps are 2160x1100, not 2160x600.** §3's example height cannot
+   hold a two-line keyword — session 4 measured the worst-case type block at
+   1017.4 px.
+3. **§5: `outroS` is 0.** A subtitle hard-cuts into the next card, spending the
+   whole 4-frame budget on the entrance. The structure is intro + hold, and
+   `outroS: 0` is a legitimate value rather than a missing one.
+
+### Known limitation: the pipeline is 4K-only
+
+PROJECT_SPEC §4 locks 2160x3840 and nothing reads a frame size from the
+footage. **Not implemented, scoped only.** `FRAME_WIDTH`/`FRAME_HEIGHT` in
+`service/src/placement/constants.ts` and `SOURCE_WIDTH`/`SOURCE_HEIGHT` in
+`service/src/frames/zones.ts` are two hardcoded copies of the same fact.
+`SUBTITLE_ANCHOR_X`, `SUBTITLE_ANCHOR_BASELINE_Y`, `LINE_SPACING` and the four
+font sizes in `core/src/typography.ts` are absolute pixels tied to that frame,
+as is `COMP_SIDE_PX`. **Everything expressed as a fraction of the frame already
+scales on its own** — `BOTTOM_EXCLUSION`, `MIN_ZONE_SHORT_EDGE`,
+`MIN_PLACED_SHORT_EDGE`, `CARD_EDGE_CLEARANCE`, `FILL_FRACTION`,
+`SCALE_JITTER`, `ZONE_MARGIN`, `HEAD_CLEARANCE`, and the whole `SUBTITLE_BAND`
+derivation, which divides by `FRAME_HEIGHT` at the end. The template comps
+themselves are the harder half: they are authored at fixed pixel sizes.
+
 See `docs/BLOCKS.md` for the full block plan and `handoffs/` for prior
 session context.
