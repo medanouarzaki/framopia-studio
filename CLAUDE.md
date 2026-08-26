@@ -39,7 +39,7 @@ AI-generated contextual images, SFX, and a watermark. Full spec in
   person segmentation and zone derivation for frame analysis. Tasks:
   `remove_bg`, `detect_text`, `segment_person`, `segment_overlay`,
   `compute_zones`, `component_stats`, `zone_overlay`, `component_overlay`,
-  `short_edge_overlay`. Downloaded weights live in
+  `short_edge_overlay`, `placement_overlay`. Downloaded weights live in
   `tools/cv/models/` (gitignored) and are pinned by sha256 in
   `tools/cv/models.json`.
   `tools/validate-templates/` — not started
@@ -149,6 +149,11 @@ AI-generated contextual images, SFX, and a watermark. Full spec in
   stored **confidence** masks at that value instead of the binary ones, which
   is how the sensitivity sweep varies one thing. `--write-plan` persists the
   zones onto the reel's Edit Plan, preserving every `manual: true` zone.
+- `npm run place -- (--reel <label> | --all) [--dry-run] [--no-debug]` — free,
+  local, deterministic. The placement solver: assigns each image slot a zone, a
+  position and a uniform scale, writes them onto the plan and renders
+  `benchmarks/results/latest-placement/`. `--dry-run` solves and reports
+  without writing.
 - `npm run components -- [--floor <f>]` — free, local. Connected-component
   analysis over every stored binary mask, plus the twelve frames with the
   largest dropped component rendered to `benchmarks/results/latest-components/`.
@@ -1667,6 +1672,96 @@ pixels, so the constant is judged by eye rather than from a table.
 
 **Not done and not attempted:** the placement solver, jitter, and
 slot-to-zone assignment. Session 4.
+
+## Block 5 session 4 — the placement solver
+
+**Spent $0.00; no API was called.** Ledger 105 entries / $10.555772 /
+sha `a7e85e4b…` at both ends, byte-identical.
+
+**Block 5's DoD is NOT met: `test-1` slot `img004` is unplaceable.** It spans
+19.719-21.940 s; every test-1 zone's validity window ends at **21.5215 s**,
+which is the last sampled frame. The reel is 21.9886 s, so the slot needs the
+zone free for **0.4185 s past the last observation**, inside a **0.4671 s
+unobserved tail**. The solver throws `UnplaceableSlotError` and writes nothing.
+This was not worked around: extending a window to the reel end would invent
+validity for an interval nobody sampled. **It is the user's call** — sample the
+final frame, extend the last window by one sample interval, or shorten the
+slot.
+
+**`SUBTITLE_BAND` is declared once, in `service/src/placement/constants.ts`,
+and is PROVISIONAL.** PROJECT_SPEC §5 fixes the subtitle position as global but
+no document states its coordinates. Full frame width, 600 px tall per
+TEMPLATE_LIBRARY_GUIDE §3's 2160x600 subtitle comps, centred at 0.75 of frame
+height — normalized y **0.671875 to 0.828125**. **CHOSEN, NOT MEASURED.** Block
+6 replaces it when templates are built; changing it is one edit.
+
+**Keywords need no exclusion of their own on current evidence.** Keyword
+templates place at the emphasized word's subtitle position
+(TEMPLATE_LIBRARY_GUIDE §6), so a keyword occupies the subtitle band.
+`KEYWORDS_ARE_INSIDE_SUBTITLE_BAND` records the assumption in code. **A keyword
+template declaring an offset breaks it and Block 6 must know.**
+
+**Card and cutout footprints differ and are not collapsed.** A card is a framed
+image with a visible border, so it is inset from the zone edge
+(`CARD_EDGE_CLEARANCE = 0.02` of frame width, 43 px); a cutout's edge is the
+subject's own silhouette, meant to sit against the background, so
+`CUTOUT_EDGE_CLEARANCE = 0`. Both CHOSEN, NOT MEASURED. Measured on vitasilk:
+the one cutout placed at **508 px** against cards at 390-430 px in the same
+zone. **A slot whose presentation is still null is treated as a card**, the
+more demanding footprint, because the gate sets it only when every candidate
+agrees.
+
+**Jitter cannot leave its region by construction, not by a clamp.** The square's
+side is drawn first, then its position is drawn from the travel the side leaves
+inside the safe region — so there is nothing to clamp. The result is still
+re-validated against every hard constraint. A test drives 200 seeds through a
+zone sized to the minimum and asserts every rect stays inside the zone, the
+frame, the subtitle band and the bottom exclusion.
+
+**Determinism proven, not asserted**: two runs on vitasilk produced
+byte-identical output, sha `e57df93a…` both times. The seed is
+`meta.id:slot.id`, on the Block 3 `assign.ts` sha256-chain precedent.
+
+**The time-overlap constraint never fired.** Neither fixture has two slots
+overlapping in time — ARCHITECTURE §5.3 plans non-overlapping windows — so the
+rule is implemented and unit-tested but **unexercised on real data**.
+
+### vitasilk: five slots, one usable zone
+
+All five land in `z_top_1`, whose rect is **(65, 0, 2030, 547) source px** —
+reported here for the first time. The left zone's only window is
+[7.007, 8.008] s and contains no slot's span.
+
+| slot | zone | presentation | pos x | pos y | scale | placed px |
+|---|---|---|---|---|---|---|
+| img001 | z_top_1 | card | 0.0521 | 0.0169 | 0.3580 | (113, 65) 430 sq |
+| img002 | z_top_1 | cutout | 0.5766 | 0.0097 | 0.4230 | (1245, 37) 508 sq |
+| img003 | z_top_1 | card | 0.6534 | 0.0128 | 0.3502 | (1411, 49) 420 sq |
+| img004 | z_top_1 | card | 0.5541 | 0.0126 | 0.3375 | (1197, 48) 405 sq |
+| img005 | z_top_1 | card | 0.1380 | 0.0119 | 0.3252 | (298, 46) 390 sq |
+
+Horizontal spread is real — 1299 px across the frame. **Vertical spread is
+28 px, effectively none**, because the zone is 547 px tall and the squares
+nearly fill it. Scale spread is 30.1%. **Four of the ten pairs overlap
+spatially**; all four are non-concurrent so it is legal, but the set is five
+images in one horizontal band and whether it reads as designed is the user's
+eye on `benchmarks/results/latest-placement/vitasilk-overview.png`.
+
+**A tension the solver surfaced.** `MIN_ZONE_SHORT_EDGE` 0.15 admits a zone;
+after card clearance and the 0.88 fill, the *placed* square is materially
+smaller than the zone. The same 0.15 is applied here to the placed rect
+(`MIN_PLACED_SHORT_EDGE`), which is what the constant's stated reason describes,
+and on that basis **test-1's 345 px and 365 px side zones cannot hold a card**.
+The zone predicate and the placement footprint disagree about what 0.15 means
+and it needs a ruling.
+
+`service/src/placement/` — `constants.ts`, `geometry.ts`, `solve.ts`,
+`plan-placement.ts`, `place-cli.ts`. `ImageSlot.position` and `ImageSlot.scale`
+are **schema additions, optional with a default**; all five plans reopen.
+Writing placements onto vitasilk changed exactly `meta`, `pipeline`, `images`,
+and within a slot only `zoneId` changed with `position` and `scale` added. A
+test parses `zones.py` and fails if the mirrored `BOTTOM_EXCLUSION` or
+`MIN_ZONE_SHORT_EDGE` drift.
 
 Panel and real job types are not started; templates exist only as a stub.
 
