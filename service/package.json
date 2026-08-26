@@ -24,6 +24,8 @@
     "place": "tsx src/placement/place-cli.ts",
     "probe:image": "tsx src/build/image-probe-cli.ts",
     "build:comp": "tsx src/build/build-comp-cli.ts",
+    "migrate:templates-sfx": "tsx src/analysis/migrate-templates-sfx-cli.ts",
+    "migrate:display-timing": "tsx src/analysis/migrate-display-timing-cli.ts",
     "retiming": "tsx src/analysis/retiming-cli.ts",
     "timing-budget": "tsx src/analysis/timing-budget-cli.ts"
   },

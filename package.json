@@ -29,6 +29,8 @@
     "place": "npm run build:core && npm run place --workspace framopia-service --",
     "timing-budget": "npm run build:core && npm run timing-budget --workspace framopia-service --",
     "retiming": "npm run build:core && npm run retiming --workspace framopia-service --",
+    "migrate:display-timing": "npm run build:core && npm run migrate:display-timing --workspace framopia-service --",
+    "migrate:templates-sfx": "npm run build:core && npm run migrate:templates-sfx --workspace framopia-service --",
     "build:comp": "npm run build:core && npm run build:comp --workspace framopia-service --",
     "probe:image": "npm run build:core && npm run probe:image --workspace framopia-service --",
     "audit:templates": "tsx tools/validate-templates/cli.ts --audit",
