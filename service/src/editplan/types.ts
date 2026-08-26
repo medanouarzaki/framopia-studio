@@ -99,6 +99,28 @@ export interface Transcript {
    * such a plan is stale.
    */
   contentHash?: string;
+  /**
+   * Which contiguous runs of Arabic-script words form one ORTHOGRAPHY_GUIDE §6
+   * domain term. Departure from ARCHITECTURE §3, which has no place for it.
+   *
+   * §6c forbids breaking a term across subtitle cards, and the boundaries are
+   * not derivable from the words: script and lang are uniform across a run,
+   * and test-2 carries an eight-word run that is three adjacent terms with no
+   * Latin word between them. Timing does not separate them either — one true
+   * boundary sits at the run's largest internal gap and the other at 0.060 s,
+   * indistinguishable from gaps inside a term.
+   *
+   * **Optional with a default, per the standing schema rule.** Absent means
+   * the analysis pass has not run, which is NOT the same as "every run is one
+   * term": grouping falls back to its script-agnostic behaviour rather than
+   * guessing boundaries.
+   */
+  terms?: TermSpan[];
+}
+
+/** One §6 domain term, as the word ids it spans, in transcript order. */
+export interface TermSpan {
+  wordIds: string[];
 }
 
 export interface SubtitleGroup {

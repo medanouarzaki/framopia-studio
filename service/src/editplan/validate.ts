@@ -151,6 +151,53 @@ function checkWords(c: Checker, value: unknown): void {
     c.boolean(`${p}.edited`, w.edited);
     if (w.langDisagreement !== undefined) c.boolean(`${p}.langDisagreement`, w.langDisagreement);
   });
+
+  // Optional with a default, per the standing schema rule: absent means the
+  // analysis pass has not run, and every plan written before Block 6 session 5
+  // must still open. Validated only when present.
+  if (transcript.terms !== undefined) {
+    const terms = c.array('transcript.terms', transcript.terms);
+    if (terms === null) return;
+    const known = new Map<string, Rec>();
+    words.forEach((raw) => {
+      const w = raw as Rec;
+      if (typeof w?.id === 'string') known.set(w.id, w);
+    });
+    const claimed = new Map<string, number>();
+    terms.forEach((raw, i) => {
+      const p = `transcript.terms[${i}]`;
+      const term = c.object(p, raw);
+      if (term === null) return;
+      const ids = c.array(`${p}.wordIds`, term.wordIds);
+      if (ids === null) return;
+      if (ids.length === 0) c.fail(`${p}.wordIds`, 'a term must span at least one word');
+      ids.forEach((id, j) => {
+        if (typeof id !== 'string') {
+          c.fail(`${p}.wordIds[${j}]`, 'must be a string');
+          return;
+        }
+        const word = known.get(id);
+        if (word === undefined) {
+          c.fail(`${p}.wordIds[${j}]`, `no transcript word has id ${id}`);
+          return;
+        }
+        // A term is an ORTHOGRAPHY_GUIDE §6 Arabic-script domain term. A Latin
+        // word inside one would make §6c's whole-term rule ungroupable.
+        if (word.script !== 'arabic') {
+          c.fail(`${p}.wordIds[${j}]`, `word ${id} is not Arabic script`);
+        }
+        if (word.removed === true) {
+          c.fail(`${p}.wordIds[${j}]`, `word ${id} is removed`);
+        }
+        const owner = claimed.get(id);
+        if (owner !== undefined) {
+          c.fail(`${p}.wordIds[${j}]`, `word ${id} is already claimed by transcript.terms[${owner}]`);
+        } else {
+          claimed.set(id, i);
+        }
+      });
+    });
+  }
 }
 
 /** PROJECT_SPEC §5's fast-reel style. Absolute, and it predates every rule

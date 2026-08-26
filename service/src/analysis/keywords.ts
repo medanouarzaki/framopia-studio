@@ -7,14 +7,24 @@ import {
   type GeminiUsage,
 } from '@framopia/core';
 import { MAX_KEYWORD_WORDS } from './span.js';
+import type { TermSpan } from '../editplan/types.js';
 import { AnalysisError, type AnalysisWord, type KeywordCandidate } from './types.js';
 
-export type AnalysisPromptVersion = 1 | 2 | 3;
+export type AnalysisPromptVersion = 1 | 2 | 3 | 4;
 
 /**
  * Identity of the keyword prompt, and part of the analysis cache fingerprint
  * per ARCHITECTURE §6 — a change here must invalidate every cached analysis.
  * Switching is this constant and nothing else.
+ *
+ * **Version 4 adds §6 term boundaries** and changes nothing else. A subtitle
+ * card carries one script (user ruling, Block 6), and §6c forbids breaking an
+ * Arabic domain term across cards — but a maximal Arabic run is not reliably
+ * one term, and nothing in the transcript marks where one ends. The call that
+ * already reads the whole transcript is asked to say. It is here rather than
+ * in the transcription pass because that config is frozen
+ * (docs/DECISION-transcription-config.md) and a bump there invalidates the
+ * transcription cache for every reel, where this invalidates keywords only.
  *
  * **Version 3 makes the label and the promise co-primary.** Every keyword
  * selected in Block 3 was a name — a product, a brand, a procedure — because
@@ -28,7 +38,7 @@ export type AnalysisPromptVersion = 1 | 2 | 3;
  * enforced in `narrowSpan` either way, and this asks the model to make
  * narrowing the exception rather than the rule.
  */
-export const ACTIVE_ANALYSIS_PROMPT_VERSION: AnalysisPromptVersion = 3;
+export const ACTIVE_ANALYSIS_PROMPT_VERSION: AnalysisPromptVersion = 4;
 
 /**
  * How many more candidates to ask for than will be kept. The count is imposed
@@ -140,11 +150,34 @@ two labels for one product are not.`
 "score" is your confidence that the word carries its sentence's claim, from
 0 to 1. "reason" is one clause, not a sentence and not a paragraph.
 
+${
+    version >= 4
+      ? `
+ALSO, SEPARATELY FROM THE CANDIDATES: mark the domain terms.
+
+Some words in the transcript are in Arabic script. Where several Arabic-script
+words sit next to each other, they may be ONE domain term, or they may be
+SEVERAL terms one after another. A term is a single named thing: a procedure,
+a treatment, an anatomical region, a substance, or one outcome phrase.
+
+For every run of adjacent Arabic-script words, split the run into the terms it
+actually contains and return one entry per term, giving that term's word_ids
+in order. A run that is one term returns one entry. A single Arabic-script word
+standing alone is one term. Do not include any Latin-script word in a term.
+Every Arabic-script word in the transcript must appear in exactly one term.
+
+This is a question about where terms begin and end, not about importance. It is
+independent of the candidates above and the two must not be conflated.
+`
+      : ''
+  }
 Respond with strict JSON only, no prose, no markdown fences, in this shape:
 ${
-    version >= 3
-      ? '{"candidates":[{"wordIds":["w0000"],"text":"...","kind":"label","score":0.0,"reason":"..."}]}'
-      : '{"candidates":[{"wordIds":["w0000"],"text":"...","score":0.0,"reason":"..."}]}'
+    version >= 4
+      ? '{"candidates":[{"wordIds":["w0000"],"text":"...","kind":"label","score":0.0,"reason":"..."}],"terms":[{"wordIds":["w0000","w0001"]}]}'
+      : version === 3
+        ? '{"candidates":[{"wordIds":["w0000"],"text":"...","kind":"label","score":0.0,"reason":"..."}]}'
+        : '{"candidates":[{"wordIds":["w0000"],"text":"...","score":0.0,"reason":"..."}]}'
   }
 
 TRANSCRIPT:
@@ -153,9 +186,20 @@ ${transcript}`;
 
 interface KeywordRawResponse {
   candidates: KeywordCandidate[];
+  terms?: { wordIds?: unknown }[];
 }
 
-export function parseKeywordResponse(text: string): KeywordCandidate[] {
+export interface KeywordResponse {
+  candidates: KeywordCandidate[];
+  /**
+   * Undefined when the response carried no `terms` key at all, which is every
+   * response under prompt versions 1-3. Distinguished from an empty array,
+   * which is a reel with no Arabic-script word — an answer, not a silence.
+   */
+  terms?: TermSpan[];
+}
+
+export function parseKeywordResponse(text: string): KeywordResponse {
   const stripped = text
     .trim()
     .replace(/^```(?:json)?/i, '')
@@ -178,7 +222,7 @@ export function parseKeywordResponse(text: string): KeywordCandidate[] {
     throw new AnalysisError('keywords', 'response is missing a "candidates" array', true);
   }
 
-  return record.candidates.map((c) => ({
+  const candidates = record.candidates.map((c) => ({
     wordIds: Array.isArray(c?.wordIds) ? c.wordIds.filter((id) => typeof id === 'string') : [],
     text: typeof c?.text === 'string' ? c.text : '',
     score: typeof c?.score === 'number' ? c.score : Number.NaN,
@@ -188,6 +232,18 @@ export function parseKeywordResponse(text: string): KeywordCandidate[] {
     // something nobody claimed.
     ...(c?.kind === 'label' || c?.kind === 'promise' ? { kind: c.kind } : {}),
   }));
+
+  if (!Array.isArray(record.terms)) return { candidates };
+
+  // A term with no usable ids is dropped rather than kept as an empty span:
+  // an empty term would claim nothing and still occupy a slot in the list.
+  const terms = record.terms
+    .map((t) => ({
+      wordIds: Array.isArray(t?.wordIds) ? t.wordIds.filter((id) => typeof id === 'string') : [],
+    }))
+    .filter((t) => t.wordIds.length > 0);
+
+  return { candidates, terms };
 }
 
 const OVERLOAD_MARKERS = ['503', 'UNAVAILABLE', 'high demand', 'overloaded'];
@@ -207,6 +263,8 @@ export interface KeywordAnalysisOptions {
 
 export interface KeywordAnalysisResult {
   candidates: KeywordCandidate[];
+  /** Undefined when the prompt version did not ask for terms. */
+  terms?: TermSpan[];
   /** The response verbatim, so a cache entry replays byte for byte. */
   rawText: string;
   promptVersion: AnalysisPromptVersion;
@@ -274,8 +332,11 @@ export async function runKeywordAnalysis(
   // out must not be able to write a fabricated line to the ledger.
   appendCost({ stage: KEYWORD_LEDGER_STAGE, model: modelConfig.geminiModel, unit: 'run', usd: costUsd });
 
+  const parsed = parseKeywordResponse(rawText);
+
   return {
-    candidates: parseKeywordResponse(rawText),
+    candidates: parsed.candidates,
+    ...(parsed.terms === undefined ? {} : { terms: parsed.terms }),
     rawText,
     promptVersion: version,
     model: modelConfig.geminiModel,

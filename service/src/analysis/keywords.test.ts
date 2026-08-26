@@ -105,16 +105,43 @@ describe('buildKeywordPrompt', () => {
   });
 });
 
+describe('parseKeywordResponse term spans', () => {
+  it('returns undefined terms when the response has no terms key', () => {
+    const r = parseKeywordResponse('{"candidates":[]}');
+    expect(r.terms).toBeUndefined();
+  });
+
+  // An empty array is an answer — a reel with no Arabic word — and must not
+  // read as "the pass did not run".
+  it('distinguishes an empty terms array from an absent one', () => {
+    expect(parseKeywordResponse('{"candidates":[],"terms":[]}').terms).toEqual([]);
+  });
+
+  it('reads the term spans', () => {
+    const r = parseKeywordResponse(
+      '{"candidates":[],"terms":[{"wordIds":["w1","w2"]},{"wordIds":["w3"]}]}',
+    );
+    expect(r.terms).toEqual([{ wordIds: ['w1', 'w2'] }, { wordIds: ['w3'] }]);
+  });
+
+  it('drops a term with no usable ids rather than keeping an empty span', () => {
+    const r = parseKeywordResponse('{"candidates":[],"terms":[{"wordIds":[]},{"wordIds":[7]}]}');
+    expect(r.terms).toEqual([]);
+  });
+});
+
 describe('parseKeywordResponse', () => {
   it('reads the documented shape', () => {
     expect(
-      parseKeywordResponse('{"candidates":[{"wordIds":["w0"],"text":"a","score":0.5,"reason":"r"}]}'),
+      parseKeywordResponse('{"candidates":[{"wordIds":["w0"],"text":"a","score":0.5,"reason":"r"}]}')
+        .candidates,
     ).toEqual([{ wordIds: ['w0'], text: 'a', score: 0.5, reason: 'r' }]);
   });
 
   it('strips a markdown fence the prompt asked it not to send', () => {
     expect(
-      parseKeywordResponse('```json\n{"candidates":[{"wordIds":["w0"],"text":"a","score":1,"reason":"r"}]}\n```'),
+      parseKeywordResponse('```json\n{"candidates":[{"wordIds":["w0"],"text":"a","score":1,"reason":"r"}]}\n```')
+        .candidates,
     ).toHaveLength(1);
   });
 
@@ -132,7 +159,7 @@ describe('parseKeywordResponse', () => {
   });
 
   it('leaves a malformed candidate malformed for selection to reject', () => {
-    const [c] = parseKeywordResponse('{"candidates":[{"wordIds":"w0","score":"high"}]}');
+    const [c] = parseKeywordResponse('{"candidates":[{"wordIds":"w0","score":"high"}]}').candidates;
     expect(c?.wordIds).toEqual([]);
     expect(Number.isNaN(c?.score)).toBe(true);
   });

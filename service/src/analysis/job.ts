@@ -14,7 +14,8 @@ import { assignTemplates, type AssignmentResult } from './assign.js';
 import { applyDisplayTiming, type DisplayTimingResult } from './display-timing.js';
 import { deriveSfxEvents } from './sfx.js';
 import { analyseKeywordsCached, planSlotsCached, type CachedKeywordResult, type CachedSlotResult } from './cached.js';
-import { ACTIVE_ANALYSIS_PROMPT_VERSION } from './keywords.js';
+import { ACTIVE_ANALYSIS_PROMPT_VERSION, parseKeywordResponse } from './keywords.js';
+import { selectTermSpans } from './terms.js';
 import { ACTIVE_SLOT_PROMPT_VERSION } from './slots.js';
 import type { AnalysisWord, KeywordMode } from './types.js';
 
@@ -117,6 +118,24 @@ export async function analyseKeywordsForPlan(
     end: item.end,
     ...(item.kind === undefined ? {} : { kind: item.kind }),
   }));
+
+  // Terms come out of the same response as the candidates, read back from the
+  // raw text so a cache hit and a live call go down one path — a hit replays
+  // the response byte for byte, so there is nothing extra to store.
+  const parsedTerms = parseKeywordResponse(analysis.rawText).terms;
+  if (parsedTerms !== undefined) {
+    const selected = selectTermSpans({ words: plan.transcript.words, terms: parsedTerms });
+    for (const drop of selected.rejected) {
+      log(`analysis: dropped term ${JSON.stringify(drop.wordIds)} (${drop.reason})`);
+    }
+    if (selected.uncoveredWordIds.length > 0) {
+      log(
+        `analysis: ${selected.uncoveredWordIds.length} Arabic-script word(s) in no term: ` +
+          selected.uncoveredWordIds.join(', '),
+      );
+    }
+    plan.transcript.terms = selected.terms;
+  }
 
   // Groups were derived during transcription, before any keyword existed, so
   // a span can straddle two of them. A keyword replaces its group's
