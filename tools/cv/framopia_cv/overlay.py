@@ -24,7 +24,13 @@ LABEL_HEIGHT = 18
 
 # One colour per zone kind, all distinct from the mask tint so an outline is
 # never mistaken for the mask underneath it.
-ZONE_COLOURS = {"top": (255, 220, 0), "left": (0, 220, 255), "right": (255, 140, 0)}
+ZONE_COLOURS = {
+    "top": (255, 220, 0),
+    "left": (0, 220, 255),
+    "right": (255, 140, 0),
+    # Distinct from the white subtitle band it is drawn alongside.
+    "torso": (80, 255, 80),
+}
 
 # Kept and dropped components in the component render. Red is the one a reader
 # has to check: it is what the floor removes from the person footprint.
@@ -407,6 +413,48 @@ def head_contact_sheet(frames: list[dict], out_path: str) -> str:
             fill=(235, 235, 235),
             font=font,
         )
+    Path(out_path).parent.mkdir(parents=True, exist_ok=True)
+    sheet.save(out_path, "PNG")
+    return out_path
+
+
+BOTTOM_EXCLUSION_COLOUR = (150, 150, 150)
+
+
+def torso_render(entry: dict) -> Image.Image:
+    """One frame with the head tinted, the torso zone outlined, and both bounds drawn."""
+    composed = head_tinted(entry["framePath"], entry["binaryMaskPath"], entry["headMaskPath"])
+    draw = ImageDraw.Draw(composed)
+    font = _font()
+
+    _draw_band(draw, entry["subtitleBand"], composed.width, composed.height, font)
+    y = entry["bottomExclusionY"] * composed.height
+    draw.line([0, y, composed.width, y], fill=BOTTOM_EXCLUSION_COLOUR, width=2)
+    draw.text((6, y + 3), "bottom exclusion", fill=BOTTOM_EXCLUSION_COLOUR, font=font)
+
+    for zone in entry.get("zones", []):
+        draw_zones(composed, [zone], width=3)
+    return composed
+
+
+def torso_contact_sheet(frames: list[dict], out_path: str) -> str:
+    if not frames:
+        raise ValueError("cannot build a contact sheet from no frames")
+    first = torso_render(frames[0])
+    scale = CONTACT_CELL_WIDTH / first.width
+    cell_height = round(first.height * scale)
+    columns = min(CONTACT_COLUMNS, len(frames))
+    rows = -(-len(frames) // columns)
+
+    sheet = Image.new("RGB", (columns * CONTACT_CELL_WIDTH, rows * (cell_height + LABEL_HEIGHT)), (16, 16, 16))
+    draw = ImageDraw.Draw(sheet)
+    font = _font()
+    for position, frame in enumerate(frames):
+        cell = torso_render(frame).resize((CONTACT_CELL_WIDTH, cell_height), Image.LANCZOS)
+        x = (position % columns) * CONTACT_CELL_WIDTH
+        y = (position // columns) * (cell_height + LABEL_HEIGHT)
+        sheet.paste(cell, (x, y))
+        draw.text((x + 4, y + cell_height + 2), frame["label"], fill=(235, 235, 235), font=font)
     Path(out_path).parent.mkdir(parents=True, exist_ok=True)
     sheet.save(out_path, "PNG")
     return out_path
