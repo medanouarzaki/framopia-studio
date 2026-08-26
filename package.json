@@ -34,6 +34,7 @@
     "migrate:templates-sfx": "npm run build:core && npm run migrate:templates-sfx --workspace framopia-service --",
     "build:comp": "npm run build:core && npm run build:comp --workspace framopia-service --",
     "build:reel": "npm run build:core && npm run build:reel --workspace framopia-service --",
+    "wrap:survey": "npm run build:core && npm run wrap:survey --workspace framopia-service --",
     "probe:image": "npm run build:core && npm run probe:image --workspace framopia-service --",
     "audit:templates": "tsx tools/validate-templates/cli.ts --audit",
     "validate:templates": "tsx tools/validate-templates/cli.ts",

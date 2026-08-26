@@ -23,6 +23,7 @@
     "components": "tsx src/frames/components-cli.ts",
     "place": "tsx src/placement/place-cli.ts",
     "probe:image": "tsx src/build/image-probe-cli.ts",
+    "wrap:survey": "tsx src/build/wrap-survey-cli.ts",
     "build:reel": "tsx src/build/build-reel-cli.ts",
     "build:comp": "tsx src/build/build-comp-cli.ts",
     "migrate:templates-sfx": "tsx src/analysis/migrate-templates-sfx-cli.ts",
