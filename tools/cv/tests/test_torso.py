@@ -119,29 +119,23 @@ class TestTorsoAcrossFrames:
             )
         return frames
 
-    def test_no_emitted_zone_contains_a_frame_whose_head_intrudes(self, tmp_path):
-        """Ruling 3, asserted as the property rather than as a mechanism.
+    def test_a_reel_that_would_have_yielded_a_torso_zone_yields_none(self, tmp_path):
+        """Automatic torso derivation is retired — Block 6 session 5, user ruling.
 
-        A frame whose head drops lower either shrinks its window's rectangle or
-        fails the IoU match and splits the window in two. Both satisfy the
-        ruling; what must never happen is an emitted rectangle overlapping a
-        head pixel on any frame it claims.
+        These are the exact frames that used to produce a torso zone: a body
+        with room below the head, a band to bound it, and one frame whose head
+        drops lower. The geometry that decided it still lives in `torso_rect`
+        and is tested above; what is pinned here is that `compute_zones` no
+        longer calls it, whatever the footage looks like.
         """
         bodies = [person(100, 900, 150, 400)] * 6
         heads = [head(400), head(400), head(520), head(400), head(400), head(400)]
         frames = self.write(tmp_path, bodies, heads)
         result = compute_zones_generalized(frames, subtitle_band_y=SUBTITLE_BAND_Y)
 
-        torso = [z for z in result["zones"] if z["kind"] == "torso"]
-        assert torso, "expected at least one torso zone"
-        for zone in torso:
-            for (start, end) in zone["valid"]:
-                for frame, values in zip(frames, heads):
-                    if not start - 1e-9 <= frame["timeS"] <= end + 1e-9:
-                        continue
-                    bound = head_bottom_y(values, HEAD_THRESHOLD)
-                    assert bound is not None
-                    assert zone["rect"]["y"] >= bound + HEAD_CLEARANCE / ASPECT - 1e-9
+        assert [z for z in result["zones"] if z["kind"] == "torso"] == []
+        # The rest of the derivation is untouched by the retirement.
+        assert [z for z in result["zones"] if z["kind"] != "torso"]
 
     def test_a_reel_whose_head_always_blocks_the_band_gets_no_torso_zone(self, tmp_path):
         bodies = [person(100, 900, 150, 400)] * 4

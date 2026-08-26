@@ -467,13 +467,14 @@ def compute_zones_generalized(
     CHOSEN, NOT MEASURED.
 
     Torso zones are produced per frame like any other rectangle and go through
-    the same matching and hysteresis. That is what enforces ruling 3: a frame
-    whose head drops lower either shrinks its window's intersected rectangle
-    or fails the IoU match and splits the window in two, and in both cases no
-    emitted rectangle overlaps a head pixel on any frame it claims. Never a
-    median and never a percentile. `subtitle_band_y` is passed in rather than mirrored here:
-    the band is declared once, in service/src/placement/constants.ts, and a
-    second copy would drift. Without it no torso zone is derived.
+    the same matching and hysteresis.
+
+    **No `torso` rectangle is emitted any more** — Block 6 session 5, by user
+    ruling. `subtitle_band_y` and the two head parameters are still accepted so
+    the sidecar contract is unchanged and so re-enabling is one edit, but
+    nothing reads them during derivation now. A manual torso zone is unaffected:
+    it is merged onto the plan by service/src/frames/plan-zones.ts and never
+    passes through here.
     """
     from .rects import MATCH_MIN_IOU, iou
 
@@ -488,21 +489,15 @@ def compute_zones_generalized(
         mask = filter_components(load_mask(frame["maskPath"], threshold), component_floor)
         if shape is None:
             shape = mask.shape
+        # Automatic torso derivation is retired (Block 6 session 5, user
+        # ruling). `torso_rect` below is kept, and kept under test, because the
+        # ruling turns on where the subtitle anchor sits rather than on the
+        # geometry being wrong: the measured band leaves 71-295 px of torso
+        # where MIN_PLACED_SHORT_EDGE needs 324, and session 4 established that
+        # no honest measurement of the fonts recovers it. Move the anchor and
+        # this becomes callable again. `torso` stays a valid zone kind and a
+        # manual torso zone still round-trips.
         found = frame_rectangles(mask, **rect_kwargs)
-        if subtitle_band_y is not None and frame.get("headMaskPath"):
-            head = load_mask_values(frame["headMaskPath"])
-            torso = torso_rect(
-                mask,
-                head,
-                subtitle_band_y,
-                head_threshold,
-                head_clearance,
-                rect_kwargs.get("bottom_exclusion", BOTTOM_EXCLUSION),
-            )
-            aspect = mask.shape[0] / mask.shape[1]
-            floor = rect_kwargs.get("min_zone_short_edge", MIN_ZONE_SHORT_EDGE)
-            if torso is not None and short_edge(torso, aspect) >= floor:
-                found = found + [("torso", torso)]
 
         claimed: set[int] = set()
         for kind, rect in found:

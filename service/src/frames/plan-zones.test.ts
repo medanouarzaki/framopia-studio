@@ -138,6 +138,35 @@ describe('writeZonesToPlan', () => {
     expect(reopened.zones.zones.find((z) => z.id === 'z_top_1')?.rect.w).toBe(0.5);
   });
 
+  // Block 6 session 5 retired automatic torso derivation by user ruling: the
+  // measured subtitle anchor leaves 71-295 px of torso where
+  // MIN_PLACED_SHORT_EDGE needs 324, and session 4 established that no honest
+  // measurement of the fonts recovers it. The kind itself is not retired, and
+  // an editor placing one by hand is the whole reason it survives.
+  it('keeps a manual torso zone even though nothing derives one', async () => {
+    const manual: Zone = {
+      id: 'z_manual_torso',
+      kind: 'torso',
+      rect: { x: 0.3, y: 0.42, w: 0.4, h: 0.08 },
+      valid: [[1, 9]],
+      manual: true,
+    };
+    const file = await tempPlan((p) => {
+      p.zones = { sampleFps: 2, zones: [manual] };
+    });
+
+    // What a recomputation now hands back: background zones and no torso.
+    const recomputed = [auto('z_top_1', 'top'), auto('z_left_1', 'left')];
+    const result = await writeZonesToPlan(file, recomputed, 2, NOW);
+    const reopened = await readEditPlan(file);
+
+    expect(result.manualKept).toBe(1);
+    const survivor = reopened.zones.zones.find((z) => z.id === 'z_manual_torso');
+    expect(JSON.stringify(survivor)).toBe(JSON.stringify(manual));
+    expect(reopened.zones.zones.filter((z) => z.kind === 'torso')).toHaveLength(1);
+    expect(reopened.zones.zones.filter((z) => z.kind === 'torso' && !z.manual)).toHaveLength(0);
+  });
+
   it('marks the zones pipeline stage done at no cost', async () => {
     const file = await tempPlan();
     await writeZonesToPlan(file, [auto('z_top_1', 'top')], 2, NOW);
