@@ -309,7 +309,7 @@ def _draw_band(draw: ImageDraw.ImageDraw, band: dict, width: int, height: int, f
     draw.rectangle([0, y0, width - 1, y1], outline=SUBTITLE_BAND_COLOUR, width=2)
     for x in range(0, width, 28):
         draw.line([x, y0, x + 14, y1], fill=(255, 255, 255), width=1)
-    draw.text((6, y0 + 4), "subtitle band (provisional)", fill=SUBTITLE_BAND_COLOUR, font=font)
+    draw.text((6, y0 + 4), "subtitle band (measured)", fill=SUBTITLE_BAND_COLOUR, font=font)
 
 
 def _fill_rect(draw: ImageDraw.ImageDraw, rect: dict, width: int, height: int, colour, label, font):
