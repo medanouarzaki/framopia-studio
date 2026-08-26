@@ -2381,11 +2381,17 @@ if `npm run images` is re-run** — nothing was re-run this session.
 
 ### Reading the AEP
 
-**Launching After Effects with `-r` does not work on this machine.** A script
-whose entire body is `app.quit()` left AE running for 120 s, so `-r` never
-reaches script execution from a cold start. **AppleScript `DoScript` into an
-already-running instance does work** — AE 26.0x67 — and that is what the audit
-uses. Nothing parses the binary `.aep`.
+**Launching After Effects with `-r` is unusable on this machine.** A script
+whose entire body is `app.quit()` left AE running for 120 s. **Amended in Block
+7 session 2: the 120 s was a timeout, not proof that the script never runs.**
+That same `-r` process stayed resident across sessions and eventually executed
+and exited `rc=0` — quitting After Effects in the middle of a later session
+that depended on it being open. When it executed, and what unblocked it, is
+unknown. The operational conclusion is unchanged (`-r` cannot drive a build)
+but the reason is "unusably slow and unpredictable", not "never executes", and
+**a stray `-r` process must be treated as live, not inert.** **AppleScript
+`DoScript` into an already-running instance does work** — AE 26.0x67 — and that
+is what the audit uses. Nothing parses the binary `.aep`.
 
 `tools/validate-templates/` — `audit.jsx` (the §9 ExtendScript run: dumps every
 comp's name, fps, size, duration and layer kinds) and `cli.ts`. Two modes:
@@ -2692,6 +2698,11 @@ The fix is small and belongs to the audit, which is the thing that verifies:
 `AuditLayer` type and `validateTemplates` widened to match, then
 `npm run audit:templates` re-run. That is a change to a tool, and the ruling the
 conversation owes is only whether to make it.
+
+**After Effects was left closed, not open.** A stray `-r quit.jsx` process from
+Block 6 session 7 was still resident when this session began, and it executed
+after the session's final checks, quitting the application. Nothing was lost —
+no AE work had been done — and it was not relaunched.
 
 **The subtitle group that was chosen and not built:** vitasilk `g027`,
 wordIds `w0045`/`w0046`, text `dernière génération`, start 14.439 s, end

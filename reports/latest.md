@@ -335,10 +335,27 @@ myself and re-running it) is still a workaround, so the stop was honoured.
 - **`.local/build/vitasilk-probe.aep` was not created.** `.gitignore` was
   confirmed to cover it (`git check-ignore` matches on `.local/`), but nothing
   was written there.
-- **After Effects has been left open**, as required, but with **no built
-  project on screen**. It currently holds a leftover fixture project from Block
-  6 session 7, `wrong-layer-kind.aep`, in a temp directory — one of the
-  deliberately-broken validator fixtures, not a user asset.
+- **After Effects is NOT open at the end of this session, and the requirement
+  to leave it open is unmet.** It was running and responsive throughout the
+  work, and was still running at the final verification. It then quit on its
+  own: a background process from a **previous** session — the `-r quit.jsx`
+  experiment, still resident at PID 81857 when this session began — exited
+  `rc=0` after this session's last check. Its script body is `app.quit()`, so
+  that is what closed the application. Nothing of this session's was lost,
+  because no AE work was done. AE was **not relaunched**: stop condition 4
+  forbids launching it.
+
+- **That exit is also a correction to a documented constraint.** The repo
+  records, from Block 6 session 7, that launching with `-r` "does not work on
+  this machine" because a script whose whole body is `app.quit()` "left AE
+  running for 120 s". The 120 s was a **timeout, not proof that the script
+  never runs** — the same invocation did eventually execute and exit cleanly,
+  across a session boundary. What is *not* known is when it executed or what
+  unblocked it, so the operational conclusion is unchanged: `-r` is unusable
+  for driving a build, and `DoScript` into a running instance remains the
+  mechanism. But the reason is "unusably slow / unpredictable", not "never
+  executes", and a future session should not expect an `-r` process to stay
+  inert — this one quit the application out from under a later session.
 
 **Nothing was lost or destroyed.** No cache entry, no file, no ledger line, no
 plan. `templates/library.aep` is byte-identical. The four SFX originals are
@@ -413,9 +430,16 @@ reading looks right, which needs a card on screen to judge.
 
 ## What to look at in After Effects
 
-**Nothing yet — and that is the honest answer.** After Effects is open, as
-asked, but there is no built project on screen. What it is showing is a
-leftover scratch file from a session two weeks ago, not anything from today.
+**Nothing — and After Effects has closed itself, which was not meant to
+happen.** There is no built project to look at, and the application is no
+longer running.
+
+It closed on its own. A leftover background process from an earlier session was
+still sitting there when today started, holding a one-line instruction to quit
+After Effects; it finally ran, after this session had already finished its
+checks. Nothing of today's was lost, because nothing had been built in After
+Effects yet. It was deliberately not restarted, since the session rules say not
+to launch it.
 
 The reason is small and fixable. To put a subtitle card in the right place on a
 4K frame, the system has to know where the words sit inside the template comp.
