@@ -39,7 +39,8 @@ AI-generated contextual images, SFX, and a watermark. Full spec in
   person segmentation and zone derivation for frame analysis. Tasks:
   `remove_bg`, `detect_text`, `segment_person`, `segment_overlay`,
   `compute_zones`, `component_stats`, `zone_overlay`, `component_overlay`,
-  `short_edge_overlay`, `placement_overlay`, `head_overlay`. Downloaded weights live in
+  `short_edge_overlay`, `placement_overlay`, `head_overlay`, `torso_overlay`.
+  Downloaded weights live in
   `tools/cv/models/` (gitignored) and are pinned by sha256 in
   `tools/cv/models.json`.
   `tools/validate-templates/` — not started
@@ -1878,6 +1879,98 @@ Head coverage was checked by eye on
 `benchmarks/results/latest-head/<reel>-contactsheet.png`: hair, face and glasses
 are fully covered on every frame of ground-truth and vitasilk, with no thin or
 partial heads.
+
+## Block 5 is complete — session 6 built torso zones
+
+**Spent $0.00; no API was called.** Ledger 105 entries / $10.555772 /
+sha `a7e85e4b…` at both ends, byte-identical. All 944 frames and masks
+byte-identical; none added, none removed.
+
+**An image may be placed over the speaker's middle-to-lower torso, never over
+the head or face.** A deliberate departure from PROJECT_SPEC §4 and
+ARCHITECTURE §5.5, both of which place images only in negative space. The
+user's reason: mid-to-lower torso is dead visual weight in a talking-head reel
+and an image there reads as deliberate composition.
+
+**`kind` gains a fourth value, `torso`** — a widening of ARCHITECTURE §3's
+`top|left|right`. A widening cannot be optional-with-default the way a new
+field can, so **all five plans were reopened to prove it**: vitasilk 73 words /
+5 slots / 20 zones, test-1 67 / 4 / 18, test-2 69 / 0 / 19, test-3 58 / 0 / 7,
+ground-truth 76 / 0 / 7. The widening also had to reach `assertPlaceable` in
+`plan-zones.ts`, which carried its own hardcoded list and rejected a manual
+torso zone until it was pointed at `ZONE_KINDS`.
+
+**A torso zone is bounded** above by the lowest head pixel plus
+`HEAD_CLEARANCE`, below by whichever of `BOTTOM_EXCLUSION` and `SUBTITLE_BAND`
+sits higher in the frame — the band, at 0.6719 against 0.85 — and **laterally
+by where the body IS**, taking the person's own column extent within its rows.
+The narrow side of that boundary is deliberate: a rectangle inside the body on
+every frame reads as placed on the speaker, one overhanging the background
+reads as a mistake.
+
+**New constants, both CHOSEN NOT MEASURED**: `HEAD_THRESHOLD = 0.25` and
+`HEAD_CLEARANCE = 0.04` of frame width (86 px). The head mask is a confidence
+map and the body mask's 0.5 trims exactly the low-confidence pixels at hair
+edges and jaw boundaries, which is where under-coverage would come from.
+`SUBTITLE_BAND` is **passed into the sidecar**, not mirrored: it is declared
+once in `service/src/placement/constants.ts` and a second copy would drift.
+
+**Ruling 3 holds by property, not by mechanism.** A frame whose head drops
+lower either shrinks its window's intersected rectangle or fails the IoU match
+and splits the window in two; in both cases **no emitted rectangle overlaps a
+head pixel on any frame it claims**. Never a median, never a percentile. A test
+asserts the property rather than the path.
+
+| reel | torso zones | longest window | its rect (px) | largest square | bounded by |
+|---|---|---|---|---|---|
+| ground-truth | 4 | 4.50 s | (744, 1682, 840, 898) | 872 px | frame 17, 8.508 s, head 0.4156 |
+| test-1 | 6 | 4.50 s | (640, 1694, 936, 886) | 894 px | frame 32, 16.016 s, head 0.4188 |
+| test-2 | 10 | 5.00 s | (704, 1906, 900, 674) | 894 px | frame 1, 0.500 s, head 0.4740 |
+| test-3 | 9 | 4.00 s | (548, 2098, 1116, 482) | 514 px | frame 19, 9.509 s, head 0.5240 |
+| **vitasilk** | **0** | — | — | — | — |
+
+**vitasilk gets no torso zone and that is the correct outcome**, ruled in
+advance. Its head mask reaches y **0.9510** at frame 12 (6.006 s) — long hair
+over the shoulders — and **48 of its 53 frames have a head that alone blocks the
+whole band**. Nothing was relaxed to produce one.
+
+**What `HEAD_THRESHOLD = 0.25` costs is contiguity, not size.** Against 0.5 the
+largest square is 3-7% **larger** at 0.25 on every reel, because shorter windows
+intersect fewer frames. What it costs is validity: a single 21-23 s window at
+0.5 becomes 4-10 windows totalling 10-14 s, longest 4-5 s. The constant stays
+at 0.25.
+
+**`TORSO_ZONE_IS_LAST_RESORT = true`** — torso zones are tried only after every
+background zone that fits, because the spec says negative space and this is a
+departure taken only when negative space does not serve. **Whether a cutout or
+a card sits better over a body is undecided**: with torso last-resort a slot
+only reaches one when nothing else fits, and refusing it there on presentation
+grounds would leave the slot unplaced. The user's eye on a built comp in Block 7
+decides it.
+
+**Both fixtures place fully: vitasilk 5 of 5, test-1 4 of 4**, and **every slot
+on both had more than one candidate zone** — so fragmentation costs no choice
+for background zones. It costs every torso placement: test-1 has 6 torso zones
+and **not one is valid long enough to contain a slot's span**.
+
+**vitasilk's spread against session 4**, which is what the rework was for:
+
+| | session 4 | now |
+|---|---|---|
+| x spread | 1299 px | 1289 px |
+| **y spread** | **28 px** | **1230 px** |
+| **scale spread** | **30.1%** | **115.5%** |
+
+All spatial overlaps found are **non-concurrent and therefore legal** — two on
+vitasilk, one on test-1. **Zero concurrent overlaps.**
+
+### Block 5 definition of done — met
+
+| item | verdict | evidence |
+|---|---|---|
+| computed zones visibly avoid the speaker on real footage | **yes** | user reviewed the reworked zone renders and the head contact sheets on all five reels this conversation |
+| the solver places all fixture slots without overlaps | **yes** | 5/5 and 4/4; every overlap non-concurrent |
+| manual override round-trips | **yes** | a `torso`-kind manual zone survived recomputation byte-identical, listed first, with 24 automatic zones refreshed around it |
 
 Panel and real job types are not started; templates exist only as a stub.
 
