@@ -1,6 +1,7 @@
 import { execFile } from 'node:child_process';
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { copyFileSync, existsSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import { mkdir, mkdtemp, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
 import { LOCAL_DIR } from '@framopia/core';
@@ -25,6 +26,12 @@ export interface SampledFrame {
   index: number;
   timeS: number;
   path: string;
+  /**
+   * The reel's last decodable frame, appended outside the 2 fps grid. The
+   * interval before it is shorter than 1/SAMPLE_FPS, so nothing may infer a
+   * timestamp from an index.
+   */
+  final?: true;
 }
 
 export interface FramesManifest {
@@ -47,6 +54,12 @@ export interface FramesManifest {
    * footage is wrong by a few milliseconds and grows through the reel.
    */
   timestamps: 'pts' | 'nominal';
+  /**
+   * Whether the last entry in `frames` is the reel's final decodable frame
+   * rather than a grid sample. False when the final frame landed on the grid
+   * anyway, so it was already sampled.
+   */
+  hasFinalFrame: boolean;
   frames: SampledFrame[];
 }
 
@@ -160,12 +173,20 @@ export async function sampleFrames(
   const timestamps = info.length === written.length ? 'pts' : 'nominal';
   const frames: SampledFrame[] = written.map((file, index) => {
     const line = info[index];
+    // The nominal fallback is only ever correct for grid samples, which is why
+    // the final frame is appended below rather than folded into this map.
     return {
       index,
       timeS: timestamps === 'pts' && line ? line.ptsTime : index / SAMPLE_FPS,
       path: path.join(dir, file),
     };
   });
+
+  const final = await sampleFinalFrame(sourcePath, dir);
+  const lastGrid = frames[frames.length - 1];
+  if (final && (!lastGrid || final.timeS > lastGrid.timeS + FINAL_FRAME_EPSILON_S)) {
+    frames.push({ index: frames.length, timeS: final.timeS, path: final.path, final: true });
+  }
 
   const first = timestamps === 'pts' ? info[0] : undefined;
   const width = first?.width ?? WORKING_WIDTH;
@@ -184,12 +205,84 @@ export async function sampleFrames(
     height,
     scale: width / probe.width,
     timestamps,
+    hasFinalFrame: frames[frames.length - 1]?.final === true,
     frames,
   };
 
   await writeFile(framesManifestPath(sourcePath), `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
   return manifest;
 }
+
+/**
+ * A final frame landing this close to the last grid sample is that sample, not
+ * an extra one. Half a source frame at 30 fps, so a reel whose length happens
+ * to be a multiple of the sample interval does not get a duplicate.
+ */
+export const FINAL_FRAME_EPSILON_S = 1 / 60;
+
+/** How far back to seek when hunting for the last decodable frame. */
+const FINAL_FRAME_TAIL_S = 1;
+
+/**
+ * The reel's last decodable frame, with its own presentation timestamp.
+ *
+ * The 2 fps grid stops at the last sample on the grid, which on test-1 left
+ * 0.4671 s of the reel unobserved and made a slot ending inside that tail
+ * unplaceable. Seeking rather than trusting a container's frame count: the
+ * question is which frame actually decodes, and only decoding answers it.
+ * `-copyts` keeps the timestamps absolute, so the pts is comparable with the
+ * grid's.
+ */
+async function sampleFinalFrame(
+  sourcePath: string,
+  dir: string,
+): Promise<{ timeS: number; path: string } | null> {
+  const scratch = await mkdtemp(path.join(tmpdir(), 'framopia-final-'));
+  try {
+    const { stderr } = await execFileAsync(
+      'ffmpeg',
+      [
+        '-y',
+        '-loglevel',
+        'info',
+        '-sseof',
+        `-${FINAL_FRAME_TAIL_S}`,
+        '-copyts',
+        '-i',
+        sourcePath,
+        '-vf',
+        `scale=${WORKING_WIDTH}:${WORKING_HEIGHT}:force_original_aspect_ratio=decrease,showinfo`,
+        '-fps_mode',
+        'passthrough',
+        '-start_number',
+        '0',
+        path.join(scratch, 'tail-%04d.png'),
+      ],
+      { maxBuffer: 64 * 1024 * 1024 },
+    );
+
+    const info = parseShowinfo(stderr);
+    const files = readdirSync(scratch)
+      .filter((f) => /^tail-\d+\.png$/.test(f))
+      .sort();
+    const last = files[files.length - 1];
+    const line = info[files.length - 1];
+    if (!last || !line) return null;
+
+    const destination = path.join(dir, FINAL_FRAME_NAME);
+    copyFileSync(path.join(scratch, last), destination);
+    return { timeS: line.ptsTime, path: destination };
+  } finally {
+    rmSync(scratch, { recursive: true, force: true });
+  }
+}
+
+/**
+ * Named, not numbered, so it can never be swept into the grid list by the
+ * `frame-NNNN.png` filter: a stale numbered file would silently desynchronise
+ * the showinfo timestamps from the files they describe.
+ */
+export const FINAL_FRAME_NAME = 'frame-final.png';
 
 export function readFramesManifest(sourcePath: string): FramesManifest {
   const manifestPath = framesManifestPath(sourcePath);
