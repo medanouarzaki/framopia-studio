@@ -370,6 +370,26 @@ function checkImages(c: Checker, value: unknown, words: Map<string, Rec>): void 
     if (slot.promptModeVersion !== undefined) {
       c.number(`${p}.promptModeVersion`, slot.promptModeVersion);
     }
+    // Optional with a default under the schema fragility rule: validated only
+    // when present, so a plan written before the solver existed still opens.
+    if (slot.position !== undefined && slot.position !== null) {
+      const position = c.object(`${p}.position`, slot.position);
+      if (position !== null) {
+        for (const axis of ['x', 'y'] as const) {
+          const value = position[axis];
+          if (typeof value !== 'number' || !Number.isFinite(value)) {
+            c.fail(`${p}.position.${axis}`, 'expected a number');
+          } else if (value < 0 || value > 1) {
+            c.fail(`${p}.position.${axis}`, 'expected 0-1');
+          }
+        }
+      }
+    }
+    if (slot.scale !== undefined && slot.scale !== null) {
+      if (typeof slot.scale !== 'number' || !Number.isFinite(slot.scale) || slot.scale <= 0) {
+        c.fail(`${p}.scale`, 'expected a positive number');
+      }
+    }
     if (slot.presentation !== null) {
       c.oneOf(`${p}.presentation`, slot.presentation, PRESENTATIONS);
     }

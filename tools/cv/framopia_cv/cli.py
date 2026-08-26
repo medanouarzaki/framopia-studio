@@ -257,6 +257,20 @@ def _short_edge_overlay(request: dict) -> dict:
     }
 
 
+def _placement_overlay(request: dict) -> dict:
+    """Placement debug renders: one per slot, plus a per-reel overview."""
+    from .overlay import placement_overview, placement_render
+
+    out_dir = request["outDir"]
+    slots = [
+        placement_render(entry, f"{out_dir}/{entry['name']}.png") for entry in request["slots"]
+    ]
+    overview = placement_overview(
+        request["overview"], f"{out_dir}/{request['overview']['name']}.png"
+    )
+    return {"ok": True, "task": "placement_overlay", "slots": slots, "overview": overview}
+
+
 TASKS = {
     "remove_bg": _remove_bg,
     "detect_text": _detect_text,
@@ -266,6 +280,7 @@ TASKS = {
     "component_stats": _component_stats,
     "zone_overlay": _zone_overlay,
     "short_edge_overlay": _short_edge_overlay,
+    "placement_overlay": _placement_overlay,
     "component_overlay": _component_overlay,
 }
 

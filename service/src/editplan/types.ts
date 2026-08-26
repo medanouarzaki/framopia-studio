@@ -317,6 +317,17 @@ export interface ImageSlot {
    */
   presentation: 'cutout' | 'card' | null;
   zoneId: string | null;
+  /**
+   * Where the solver put the image and how big, TEMPLATE_LIBRARY_GUIDE §6:
+   * position and uniform scale, nothing else. Top-left of the placed square,
+   * normalized against the frame; `scale` multiplies the 1200x1200 comp.
+   *
+   * **Schema addition, optional with a default.** Absent on every plan written
+   * before Block 5 session 4, and absent means the solver has not run — which
+   * is not the same as a placement at the origin.
+   */
+  position?: { x: number; y: number } | null;
+  scale?: number | null;
   templateId: string | null;
   status: 'pending' | 'generated' | 'approved';
 }

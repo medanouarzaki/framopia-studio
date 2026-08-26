@@ -282,3 +282,83 @@ def short_edge_render(
     Path(out_path).parent.mkdir(parents=True, exist_ok=True)
     composed.save(out_path, "PNG")
     return out_path
+
+
+# Distinct from ZONE_COLOURS so a placed image never reads as its zone.
+PLACEMENT_COLOURS = [
+    (255, 90, 90),
+    (90, 255, 160),
+    (120, 170, 255),
+    (255, 210, 80),
+    (220, 120, 255),
+    (120, 240, 240),
+]
+SUBTITLE_BAND_COLOUR = (255, 255, 255)
+
+
+def _draw_band(draw: ImageDraw.ImageDraw, band: dict, width: int, height: int, font) -> None:
+    """The subtitle band, hatched rather than filled so the frame stays visible."""
+    y0 = band["y"] * height
+    y1 = (band["y"] + band["h"]) * height
+    draw.rectangle([0, y0, width - 1, y1], outline=SUBTITLE_BAND_COLOUR, width=2)
+    for x in range(0, width, 28):
+        draw.line([x, y0, x + 14, y1], fill=(255, 255, 255), width=1)
+    draw.text((6, y0 + 4), "subtitle band (provisional)", fill=SUBTITLE_BAND_COLOUR, font=font)
+
+
+def _fill_rect(draw: ImageDraw.ImageDraw, rect: dict, width: int, height: int, colour, label, font):
+    x0, y0 = rect["x"] * width, rect["y"] * height
+    x1, y1 = x0 + rect["w"] * width, y0 + rect["h"] * height
+    # A translucent fill would need a second layer; a dense hatch reads the
+    # same way and keeps the frame underneath legible.
+    for offset in range(0, int(x1 - x0) + int(y1 - y0), 12):
+        draw.line([x0 + offset, y0, x0, y0 + offset], fill=colour, width=1)
+    draw.rectangle([x0, y0, x1 - 1, y1 - 1], outline=colour, width=3)
+    draw.text((x0 + 5, y0 + 5), label, fill=colour, font=font)
+
+
+def placement_render(entry: dict, out_path: str) -> str:
+    """One slot: its frame, its zone, the subtitle band and the placed square."""
+    composed = tinted(entry["framePath"], entry["maskPath"])
+    draw = ImageDraw.Draw(composed)
+    font = _font()
+
+    _draw_band(draw, entry["subtitleBand"], composed.width, composed.height, font)
+    draw_zones(composed, [{"kind": entry["zoneKind"], "rect": entry["zoneRect"]}], width=2)
+    _fill_rect(
+        draw,
+        entry["rect"],
+        composed.width,
+        composed.height,
+        PLACEMENT_COLOURS[0],
+        entry["label"],
+        font,
+    )
+    draw.text((6, 6), entry["caption"], fill=(240, 240, 240), font=font)
+    Path(out_path).parent.mkdir(parents=True, exist_ok=True)
+    composed.save(out_path, "PNG")
+    return out_path
+
+
+def placement_overview(entry: dict, out_path: str) -> str:
+    """Every placed rect for a reel on one frame, so clustering is visible."""
+    composed = tinted(entry["framePath"], entry["maskPath"])
+    draw = ImageDraw.Draw(composed)
+    font = _font()
+
+    _draw_band(draw, entry["subtitleBand"], composed.width, composed.height, font)
+    for index, placement in enumerate(entry["placements"]):
+        colour = PLACEMENT_COLOURS[index % len(PLACEMENT_COLOURS)]
+        _fill_rect(
+            draw,
+            placement["rect"],
+            composed.width,
+            composed.height,
+            colour,
+            placement["label"],
+            font,
+        )
+    draw.text((6, 6), entry["caption"], fill=(240, 240, 240), font=font)
+    Path(out_path).parent.mkdir(parents=True, exist_ok=True)
+    composed.save(out_path, "PNG")
+    return out_path

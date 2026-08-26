@@ -25,6 +25,7 @@
     "frames": "npm run build:core && npm run frames --workspace framopia-service --",
     "segment": "npm run build:core && npm run segment --workspace framopia-service --",
     "zones": "npm run build:core && npm run zones --workspace framopia-service --",
-    "components": "npm run build:core && npm run components --workspace framopia-service --"
+    "components": "npm run build:core && npm run components --workspace framopia-service --",
+    "place": "npm run build:core && npm run place --workspace framopia-service --"
   }
 }
