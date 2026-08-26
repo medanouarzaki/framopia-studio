@@ -21,7 +21,8 @@
     "segment": "tsx src/frames/segment-cli.ts",
     "zones": "tsx src/frames/zones-cli.ts",
     "components": "tsx src/frames/components-cli.ts",
-    "place": "tsx src/placement/place-cli.ts"
+    "place": "tsx src/placement/place-cli.ts",
+    "timing-budget": "tsx src/analysis/timing-budget-cli.ts"
   },
   "dependencies": {
     "@framopia/core": "*",
