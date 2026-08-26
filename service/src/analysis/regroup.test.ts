@@ -156,3 +156,109 @@ describe('regroupForKeywords', () => {
     expect(JSON.stringify(again)).toBe(JSON.stringify(once));
   });
 });
+
+describe('script-aware grouping', () => {
+  const scripted = (
+    specs: [id: string, text: string, script: 'latin' | 'arabic'][],
+  ): PlanWord[] =>
+    specs.map(([id, text, script], i) => ({
+      ...word(id, text, i * 0.4),
+      script,
+      lang: script === 'arabic' ? 'msa' : 'darija',
+    }));
+
+  const regroup = (ws: PlanWord[], keywords: { id: string; wordIds: string[] }[] = []) =>
+    regroupForKeywords({ groups: groupWordsIntoSubtitles(ws), words: ws, keywords });
+
+  it('splits a Latin word away from an Arabic-script word', () => {
+    const ws = scripted([
+      ['w0', 'jawdat', 'latin'],
+      ['w1', 'البشرة', 'arabic'],
+    ]);
+    expect(shape(regroup(ws).groups)).toEqual(['w0', 'w1']);
+  });
+
+  // Session 1 found three mixed groups whose Arabic word comes first, so the
+  // cut must not depend on which side the Latin word sits.
+  it('splits when the Arabic-script word comes first', () => {
+    const ws = scripted([
+      ['w0', 'البشرة', 'arabic'],
+      ['w1', 'dialek', 'latin'],
+    ]);
+    expect(shape(regroup(ws).groups)).toEqual(['w0', 'w1']);
+  });
+
+  it('leaves an all-Latin pair alone', () => {
+    const ws = scripted([
+      ['w0', 'wa7d', 'latin'],
+      ['w1', 'cocktail', 'latin'],
+    ]);
+    expect(shape(regroup(ws).groups)).toEqual(['w0+w1']);
+  });
+
+  it('leaves an all-Arabic pair alone', () => {
+    const ws = scripted([
+      ['w0', 'محفزات', 'arabic'],
+      ['w1', 'الكولاجين', 'arabic'],
+    ]);
+    expect(shape(regroup(ws).groups)).toEqual(['w0+w1']);
+  });
+
+  it('cuts every boundary in an alternating sequence', () => {
+    const ws = scripted([
+      ['w0', 'a', 'latin'],
+      ['w1', 'البشرة', 'arabic'],
+      ['w2', 'b', 'latin'],
+      ['w3', 'الوجه', 'arabic'],
+    ]);
+    expect(shape(regroup(ws).groups)).toEqual(['w0', 'w1', 'w2', 'w3']);
+  });
+
+  it('keeps a same-script keyword span aligned to exactly one group', () => {
+    const ws = scripted([
+      ['w0', 'a', 'latin'],
+      ['w1', 'b', 'latin'],
+      ['w2', 'محفزات', 'arabic'],
+      ['w3', 'الكولاجين', 'arabic'],
+    ]);
+    const result = regroup(ws, [{ id: 'k001', wordIds: ['w2', 'w3'] }]);
+    expect(result.keptKeywordIds).toEqual(['k001']);
+    expect(shape(result.groups)).toEqual(['w0+w1', 'w2+w3>k001']);
+  });
+
+  it('preserves supersededBy across a split elsewhere in the reel', () => {
+    const ws = scripted([
+      ['w0', 'a', 'latin'],
+      ['w1', 'البشرة', 'arabic'],
+      ['w2', 'c', 'latin'],
+      ['w3', 'd', 'latin'],
+    ]);
+    const result = regroup(ws, [{ id: 'k001', wordIds: ['w2', 'w3'] }]);
+    expect(shape(result.groups)).toEqual(['w0', 'w1', 'w2+w3>k001']);
+    expect(result.groups.find((g) => g.supersededBy === 'k001')?.wordIds).toEqual(['w2', 'w3']);
+  });
+
+  // test-1's k003 "jawdat البشرة" is exactly this and is the one real conflict
+  // between the script rule and keyword alignment in the corpus.
+  it('drops a keyword whose span straddles a script boundary', () => {
+    const ws = scripted([
+      ['w0', 'jawdat', 'latin'],
+      ['w1', 'البشرة', 'arabic'],
+    ]);
+    const result = regroup(ws, [{ id: 'k003', wordIds: ['w0', 'w1'] }]);
+    expect(result.keptKeywordIds).toEqual([]);
+    expect(result.dropped).toEqual([{ keywordId: 'k003', reason: 'span-is-mixed-script' }]);
+    expect(shape(result.groups)).toEqual(['w0', 'w1']);
+  });
+
+  it('never enlarges a group', () => {
+    const ws = scripted([
+      ['w0', 'a', 'latin'],
+      ['w1', 'البشرة', 'arabic'],
+      ['w2', 'الوجه', 'arabic'],
+    ]);
+    for (const group of regroup(ws).groups) {
+      expect(group.wordIds.length).toBeLessThanOrEqual(2);
+    }
+  });
+});
