@@ -2032,5 +2032,105 @@ stand.** Image slots: vitasilk 1 cutout / 4 card, test-1 4 null.
 
 Panel and real job types are not started; templates exist only as a stub.
 
+## Block 6 session 2 — script-aware grouping, blocked
+
+**Spent $0.00.** Ledger 105 entries / sha `a7e85e4b…` at both ends. Nothing was
+changed: no source file, no plan, no constant.
+
+The user ruled that **a subtitle group never mixes scripts**, and grouping was
+to become script-aware. The session stopped at that goal because the second
+half of the rule — an Arabic-script run that is one §6 term groups whole even
+past two words — **cannot be decided from plan data**.
+
+`PlanWord` carries `script` and `lang` and nothing that marks a term.
+§6's term-level rule makes a maximal Arabic run look like exactly one term,
+because the function words around a term stay Arabizi. **test-2 refutes it**:
+`w0030..w0037` is an eight-word Arabic run, uniformly `arabic`/`msa`, and it is
+three terms — ORTHOGRAPHY_GUIDE line 87 lists `ترطيب عميق للبشرة` among its own
+examples. Timing does not recover the boundaries either: one true boundary sits
+at the run's largest internal gap (0.140 s) and the other at 0.060 s, which is
+indistinguishable from the 0.061 and 0.060 gaps *inside* terms.
+
+Run length does not discriminate — test-1's 3-runs **are** single terms. The
+missing input is a term id per word, best emitted by the Gemini correction pass,
+which applies §6 already and discards the structure. That is a prompt bump, so
+it invalidates the transcription cache and costs money.
+
+Session 1's findings stand unaddressed: 10 mixed-script groups, one mixed
+keyword span, and test-1 `g031`/`g032` splitting `محفزات الكولاجين` across two
+cards against §6c.
+
+**Unrelated, observed and not chased:** in that same test-2 run `sourceText` is
+offset by one against `text` (`w0030` is `text: ترطيب` / `sourceText: عميق`).
+A Block 2 alignment provenance artifact; it touches nothing downstream.
+
+## Block 6 session 3 — the real subtitle band
+
+**Spent $0.00.** Ledger 105 entries / sha `a7e85e4b…` at both ends.
+
+**`SUBTITLE_BAND` is derived now, not chosen.** Block 5's provisional guess —
+full width, 600 px tall, centred at 0.75 of frame height, y 0.671875 to
+0.828125 — is gone. The new band is **y 0.5147231771, h 0.2689751953**, or
+**1976.54 to 3009.40 px**, and it is computed from the user's measured anchor
+plus ink extents read out of the font files.
+
+**Global subtitle typography lives in `core/src/typography.ts`**, on
+PROJECT_SPEC §5's authority: "Global (not per-mode): subtitle position,
+subtitle base style, SFX set." §5 named Inter Semi-Bold and left the Arabic
+face as `TBD_ARABIC_FONT` "collected at the start of Block 6 and recorded here
+by amendment" — this session collected it and amended §5. **Nothing was added
+to the mode and no mode version was bumped, so no cache was invalidated.**
+`modes/k2-syndicalia.json` stays at v5 with `fonts: { status: "tbd" }`,
+because §5 line 75 reserves K2's own font identity for Block 9.
+
+Anchor **(1080, 2480.4)**, `y` the **text baseline**; subtitle size 343,
+keyword size 425, line spacing 323; Almarai Bold at **1.07x** the Latin size;
+both tracks may wrap to two lines.
+
+**The metrics are read, never estimated** — fontTools against
+`~/Library/Fonts/Inter-VariableFont_opsz,wght.ttf` and
+`~/Library/Fonts/Almarai-Bold.ttf`, using OS/2 usWinAscent/usWinDescent, the
+font's own statement of maximum ink reach. Inter ships variable and Semi-Bold
+is an instance; its MVAR varies only `xhgt, stro, strs, undo, unds` — no
+vertical metric — and instantiating at wght=600 across both ends of the opsz
+axis reproduces 2269/-660 exactly.
+
+| face | upem | ascent | descent |
+|---|---|---|---|
+| Inter Semi-Bold | 2048 | 2269 | 660 |
+| Almarai Bold | 1000 | 1108 | 453 |
+
+**Almarai is the taller face in both directions** at the keyword size — 503.86
+against 470.86 above the baseline, 206.00 against 136.96 below — so the band is
+built on it. top = 2480.4 − 503.8630; bottom = 2480.4 + 323 + 206.0018.
+
+**The one assumption**, stated in code at `EXTRA_LINES_RENDER_BELOW`: a second
+line renders **below** the first, which is what an AE point-text layer anchored
+at 0,0 does. If the templates grow upward instead, the band moves up by exactly
+`LINE_SPACING` and nothing else changes.
+
+**No placement moved.** Both fixtures re-solved byte-for-byte onto Block 5
+session 6's recorded positions and scales — vitasilk 5 of 5, test-1 4 of 4 —
+because every placement already sat far above either band. **No placed rect
+intersects the old band or the new one**, so the "inside one but not the other"
+question is empty on this corpus.
+
+**The band eliminates every torso zone in the corpus, and that is the real
+cost.** Torso zones are bounded below by `SUBTITLE_BAND.y`, which rose 603 px.
+Re-bounded against the new top: ground-truth 898 → 295 px tall, test-1 886 →
+283, test-2 674 → 71, and **test-3's starts below the new band top and ceases
+to exist**. None survives `MIN_PLACED_SHORT_EDGE` after card clearance and the
+0.88 fill. Block 5 session 6's four reels' worth of torso zones are dead on the
+measured geometry. It costs no placement today — torso was last-resort and zero
+of the nine placements used one — but the kind is now reachable only through a
+manual zone.
+
+**The zones stored on the plans are stale**, computed with the old band.
+`npm run zones --write-plan` would refresh them; it was not run, because goal 2
+scoped the writing to `npm run place`.
+
+`npm run place` wrote only `meta` and `pipeline` on both fixtures; the other
+three plans were untouched.
+
 See `docs/BLOCKS.md` for the full block plan and `handoffs/` for prior
 session context.
