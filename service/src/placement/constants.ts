@@ -1,3 +1,10 @@
+import {
+  LINE_SPACING,
+  MAX_SUBTITLE_LINES,
+  SUBTITLE_ANCHOR_BASELINE_Y,
+  worstCaseExtent,
+} from '@framopia/core';
+
 /**
  * Placement constants, ARCHITECTURE §5.5 and TEMPLATE_LIBRARY_GUIDE §6.
  *
@@ -13,18 +20,38 @@ export const FRAME_HEIGHT = 3840;
 export const FRAME_ASPECT = FRAME_HEIGHT / FRAME_WIDTH;
 
 /**
- * Where the subtitle track sits. **PROVISIONAL and the only declaration of
- * it.** PROJECT_SPEC §5 fixes the subtitle position as global but no document
- * states its coordinates, so this is full frame width, 600 px tall per
- * TEMPLATE_LIBRARY_GUIDE §3's 2160x600 subtitle comps, centred at 0.75 of the
- * frame height. CHOSEN, NOT MEASURED. Block 6 replaces it with the real value
- * once the templates exist, and changing it must remain this one edit.
+ * Where the subtitle track sits: a placement exclusion, so no image may enter
+ * it and it has to cover the worst case rather than the typical one.
+ *
+ * **Derived, not chosen** — Block 6 session 3. It falls out of the user's
+ * measured anchor and the ink extents read from the installed font files (see
+ * FONT_METRICS in @framopia/core, which names the files and the raw values).
+ * The worst case is two lines at the keyword size in whichever face reaches
+ * further from the baseline, which is Almarai Bold in both directions:
+ *
+ *   top    = 2480.4 - 503.8630                = 1976.5370 px
+ *   bottom = 2480.4 + 323 (line 2) + 206.0018 = 3009.4017 px
+ *
+ * **Supersedes the provisional value**, which was full width, 600 px tall,
+ * centred at 0.75 of frame height — normalized y 0.671875 to 0.828125, or
+ * 2580 to 3180 px. That guess sat 600 px too low and was 1.7x too short: it
+ * left the whole of the first line's ascent unprotected and excluded 170 px
+ * below the type that nothing ever draws in.
+ *
+ * Full frame width is kept. The anchor is centred and a wrapped keyword can
+ * run wide, and nothing measures the horizontal extent of a string yet.
  */
-export const SUBTITLE_BAND_HEIGHT_PX = 600;
-export const SUBTITLE_BAND_CENTRE = 0.75;
+export const SUBTITLE_BAND_TOP_PX =
+  SUBTITLE_ANCHOR_BASELINE_Y - worstCaseExtent().ascentPx;
+export const SUBTITLE_BAND_BOTTOM_PX =
+  SUBTITLE_ANCHOR_BASELINE_Y +
+  (MAX_SUBTITLE_LINES - 1) * LINE_SPACING +
+  worstCaseExtent().descentPx;
+export const SUBTITLE_BAND_HEIGHT_PX =
+  SUBTITLE_BAND_BOTTOM_PX - SUBTITLE_BAND_TOP_PX;
 export const SUBTITLE_BAND = {
   x: 0,
-  y: SUBTITLE_BAND_CENTRE - SUBTITLE_BAND_HEIGHT_PX / FRAME_HEIGHT / 2,
+  y: SUBTITLE_BAND_TOP_PX / FRAME_HEIGHT,
   w: 1,
   h: SUBTITLE_BAND_HEIGHT_PX / FRAME_HEIGHT,
 } as const;

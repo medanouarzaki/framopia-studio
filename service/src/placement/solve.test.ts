@@ -210,10 +210,24 @@ describe('card and cutout footprints differ', () => {
 });
 
 describe('torso zones', () => {
+  // A torso zone runs from below the head down to the subtitle band, so its
+  // bottom is taken from the constant rather than written as a literal. It was
+  // a literal 0.67 until Block 6 session 3, which is where the old provisional
+  // band happened to start; when the band moved the fixture quietly stopped
+  // being a torso zone and four tests failed for the wrong reason.
+  //
+  // The top is deliberately higher than any real head in the corpus. Under the
+  // measured band no reel's torso zone is tall enough to hold the minimum
+  // square any more — the four that existed lose 600 px of height and fail
+  // MIN_PLACED_SHORT_EDGE, and test-3's starts below the band top entirely.
+  // These tests cover the solver's handling of the kind, which is still
+  // reachable through a manual zone; they are no longer a claim that the
+  // derivation produces one.
+  const TORSO_TOP = 0.36;
   const TORSO: Zone = {
     id: 'z_torso_1',
     kind: 'torso',
-    rect: { x: 0.28, y: 0.44, w: 0.44, h: 0.23 },
+    rect: { x: 0.28, y: TORSO_TOP, w: 0.44, h: SUBTITLE_BAND.y - TORSO_TOP },
     valid: [[0, 25]],
     manual: false,
   };

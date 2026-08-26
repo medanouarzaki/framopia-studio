@@ -89,3 +89,18 @@ export {
   type GeminiUsage,
   type GeminiUsageDetail,
 } from './pricing.js';
+export {
+  ARABIC_FONT,
+  ARABIC_SIZE_RATIO,
+  EXTRA_LINES_RENDER_BELOW,
+  FONT_METRICS,
+  inkExtent,
+  KEYWORD_FONT_SIZE,
+  LATIN_FONT,
+  LINE_SPACING,
+  MAX_SUBTITLE_LINES,
+  SUBTITLE_ANCHOR_BASELINE_Y,
+  SUBTITLE_ANCHOR_X,
+  SUBTITLE_FONT_SIZE,
+  worstCaseExtent,
+} from './typography.js';
