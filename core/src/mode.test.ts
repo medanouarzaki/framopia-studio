@@ -206,8 +206,16 @@ describe('the k2 stub on disk', () => {
     expect(mode.vocabulary).toEqual([]);
   });
 
-  it('is at version 5', () => {
-    expect(mode.version).toBe(5);
+  // v6, Block 6 session 7: the two Arabic template variants were added to
+  // allowedTemplates once the comps existed. The bump invalidates the
+  // image-generation cache, which keys on modeVersion, and nothing else.
+  it('is at version 6', () => {
+    expect(mode.version).toBe(6);
+  });
+
+  it('allows both script variants of the text templates', () => {
+    expect(mode.allowedTemplates.subtitle).toEqual(['sub_pop', 'sub_pop_ar']);
+    expect(mode.allowedTemplates.keyword).toEqual(['kw_slam', 'kw_slam_ar']);
   });
 
   // §5.4's candidate default dropped from 3 to 2 at Block 4 session 5:
