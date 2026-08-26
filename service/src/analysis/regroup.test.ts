@@ -262,3 +262,45 @@ describe('script-aware grouping', () => {
     }
   });
 });
+
+/*
+ * Before Block 7 session 4 the rebuild constructed fresh group objects with no
+ * display timing, so every grouping pass silently cleared the field on every
+ * group — which is half of why no plan in the corpus carried it.
+ */
+describe('display timing across a regroup', () => {
+  const timed = (): SubtitleGroup[] =>
+    baseGroups().map((g, i) => ({ ...g, displayStart: g.start, displayEnd: g.end + 0.05 * (i + 1) }));
+
+  it('carries the window through a group that came out untouched', () => {
+    const before = timed();
+    const result = regroupForKeywords({ groups: before, words, keywords: [] });
+    expect(result.groups.map((g) => [g.displayStart, g.displayEnd])).toEqual(
+      before.map((g) => [g.displayStart, g.displayEnd]),
+    );
+  });
+
+  /*
+   * A split group's inherited window was computed against a different word set
+   * and could run past the cut, holding its card over the next one's words. It
+   * is dropped so the caller re-derives it rather than trusting it.
+   */
+  it('drops the window from a group the pass had to split', () => {
+    const result = regroupForKeywords({
+      groups: timed(),
+      words,
+      keywords: [{ id: 'k001', wordIds: ['w3'] }],
+    });
+    const split = result.groups.filter((g) => g.wordIds.length === 1);
+    expect(split.length).toBeGreaterThan(0);
+    for (const g of split) {
+      expect(g.displayStart).toBeUndefined();
+      expect(g.displayEnd).toBeUndefined();
+    }
+  });
+
+  it('leaves a plan with no display timing without inventing any', () => {
+    const result = regroupForKeywords({ groups: baseGroups(), words, keywords: [] });
+    for (const g of result.groups) expect(g.displayStart).toBeUndefined();
+  });
+});

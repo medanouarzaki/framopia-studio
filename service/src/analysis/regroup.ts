@@ -175,6 +175,18 @@ export function regroupForKeywords(options: {
       templateId: unchanged ? previous.templateId : null,
       supersededBy: owner ?? null,
       ...(unchanged && previous.edited === true ? { edited: true } : {}),
+      // Display timing follows the same rule as the template, and for a
+      // stronger reason: a window was computed against a specific word set and
+      // the silence after it. A split group's inherited window could run past
+      // the cut and hold a card over the next one's words, so it is dropped
+      // and re-derived rather than carried. Before Block 7 session 4 it was
+      // dropped unconditionally, which quietly cleared the field on every
+      // group each time grouping ran.
+      ...(unchanged &&
+      previous.displayStart !== undefined &&
+      previous.displayEnd !== undefined
+        ? { displayStart: previous.displayStart, displayEnd: previous.displayEnd }
+        : {}),
     });
   }
 
