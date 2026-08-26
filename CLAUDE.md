@@ -2265,5 +2265,75 @@ Cost note: the keyword call now bills **$0.1136–$0.1835** against a $0.0539
 estimate, roughly double to triple. The added term question costs real thinking
 tokens and `estimateGeminiTextCallCost` has not been re-tuned for it.
 
+## Block 6 session 6 — script-aware grouping, and the build spec
+
+**Spent $0.00.** Ledger 108 entries / sha `50ec3f57…` at both ends.
+
+**A subtitle group never mixes scripts.** Implemented in
+`service/src/analysis/regroup.ts` by cutting at every script change — the pass
+still only ever splits, so the 1–2 word rule cannot be broken by it. A
+post-condition throws if any rebuilt group mixes scripts. **Mixed-script groups
+across the corpus: 10 → 0**, matching session 1's count exactly. Groups
+184 → 194, 20 changed; vitasilk is untouched, being all Latin.
+
+**Whole-term grouping is deliberately NOT implemented, and this is not an
+oversight.** A multi-word §6 term can still land across two or three cards —
+**eleven of them do**, itemized in
+`benchmarks/RESULTS-block6-script-grouping.md` §5. Accepted by user ruling on
+session 5's evidence: three identical analysis calls returned three different
+term sets, two of which split a term the guide names verbatim, so grouping on
+them would trade a visible constant violation for an invisible varying one.
+**`Transcript.terms`, `service/src/analysis/terms.ts`, the validator rules and
+`ACTIVE_ANALYSIS_PROMPT_VERSION` 4 all stay in place and are not read by
+grouping.** They are the groundwork for the Block 7 revisit, not dead code.
+
+**One keyword was lost, and it is the expected conflict.** test-1 `k003`
+"jawdat البشرة" is dropped with the new reason `span-is-mixed-script` — the
+only keyword in the corpus whose span straddles a script boundary. Dropped
+rather than narrowed: which half carries the emphasis is not the pass's call.
+Every surviving keyword still maps to exactly one group, and **`supersededBy`
+survives a split**, verified by test rather than assumed.
+
+**Buildability is unchanged in substance: 7 of 190 groups unbuildable at
+intro+outro 0.13 s / minHold 0.10 s, against session 1's 6 of 182.** Of that
+difference **one group is the cost of this change and one is not**: splitting
+makes test-1 `hia` (0.099 s, formerly half of `الكولاجين hia`) unbuildable and
+rescues test-1 `mn`, netting zero; test-2 `le` is a lone group that arrived
+when session 5 added test-2's first keywords. **No cell in the 25-cell grid
+moves more than 2 points.**
+
+**The merge rescue woke up**: merges across the grid went 20 → 245, and 0 → 4
+at the loosest budget. Splitting mixed pairs creates the adjacent single-word
+groups the rescue needs. **A consequence worth remembering: two cards the plan
+lists separately can be shown as one, so the group count on a plan is not the
+card count on screen.**
+
+**All five plans rewritten**, each backed up first to
+`<name>.editplan.json.pre-script-grouping.bak` and reopened through
+`readEditPlan` after writing. vitasilk came back byte-identical.
+**`.gitignore` had `*.editplan.json` but not the suffixed backups**, so plan
+backups were committable until this session; `*.editplan.json.*` now covers
+them.
+
+**`npm run timing-budget` gained `--footage <dir>`**, read-only, so a grouping
+change can be swept on copies before the corpus is written.
+
+**`docs/TEMPLATE_BUILD_SPEC.md`** is what the user builds the six comps
+against: `sub_pop`, `sub_pop_ar`, `kw_slam`, `kw_slam_ar`, `img_slide_left`
+(cutout), `img_float` (card). It records the type constants from
+`core/src/typography.ts`, the **intro+outro ≤ 0.13 s with minHold 0.10 s**
+budget and what two extra frames cost (**7 unbuildable at 0.13 s, 16 at
+0.20 s**), the intro/hold/outro contract, that keyword templates declare no
+offset and `KEYWORDS_ARE_INSIDE_SUBTITLE_BAND` depends on it, why the `_ar`
+variants exist, and that every manifest entry carries `sfx: []` until audio
+exists. **The manifest's stub `sub_pop` still declares 0.26 s of intro+outro,
+twice the budget**; the spec says to replace it and the stub was deliberately
+not edited.
+
+**Two things the spec flags that nothing has tested:** comps are authored at
+30 fps against 29.97 fps footage, which drifts about one frame every 33 s and
+has never been exercised end to end; and the `_ar` variants must be added to
+`modes/k2-syndicalia.json`'s `allowedTemplates` before they can be assigned.
+
 See `docs/BLOCKS.md` for the full block plan and `handoffs/` for prior
 session context.
