@@ -113,17 +113,35 @@ describe('generateImages', () => {
     expect(b.candidates.map((c) => c.path)).toEqual(a.candidates.map((c) => c.path));
   });
 
-  it('regenerates when the mode version bumps', async () => {
+  // A mode bump that leaves both prompt strings alone bills nothing. Block 6
+  // session 7's v5 -> v6 added two template ids no image call reads and cost
+  // $2.064064 of cached images under the old modeVersion key.
+  it('serves the cache across a mode version bump the prompts do not see', async () => {
     const config = parseImageConfig({ candidatesPerSlot: 2 });
     await generateImages({
       slots: SLOTS, mode, config, client: new FakeClient(), videoSha256: VIDEO, cacheRoot,
     });
     const bumped = new FakeClient();
-    await generateImages({
+    const run = await generateImages({
       slots: SLOTS, mode: { ...mode, version: mode.version + 1 }, config,
       client: bumped, videoSha256: VIDEO, cacheRoot,
     });
-    expect(bumped.requests).toHaveLength(4);
+    expect(bumped.requests).toHaveLength(0);
+    expect(run.cachedImages).toBe(4);
+    expect(run.totalUsd).toBe(0);
+  });
+
+  it('regenerates when a mode edit reaches the composed prompt', async () => {
+    const config = parseImageConfig({ candidatesPerSlot: 2 });
+    await generateImages({
+      slots: SLOTS, mode, config, client: new FakeClient(), videoSha256: VIDEO, cacheRoot,
+    });
+    const recomposed = new FakeClient();
+    await generateImages({
+      slots: SLOTS.map((s) => ({ ...s, prompt: `${s.prompt}, seen from above` })),
+      mode, config, client: recomposed, videoSha256: VIDEO, cacheRoot,
+    });
+    expect(recomposed.requests).toHaveLength(4);
   });
 
   it('reports an entry whose image file went missing and regenerates it', async () => {

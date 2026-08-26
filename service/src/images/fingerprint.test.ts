@@ -35,7 +35,6 @@ describe('imageFingerprintOf', () => {
       { ...base, aspectRatio: '9:16' },
       { ...base, candidateIndex: 1 },
       { ...base, mode: { ...mode, id: 'other-client' } as ClientMode },
-      { ...base, mode: { ...mode, version: mode.version + 1 } as ClientMode },
     ];
     for (const v of variants) {
       expect(imageFingerprintOf(imageFingerprintInputs(v))).not.toBe(original);
@@ -45,19 +44,37 @@ describe('imageFingerprintOf', () => {
     );
   });
 
-  // A mode bump has to invalidate even when this slot's prompt is unchanged:
-  // it may have changed what a later slot draws from the variation axes.
-  it('invalidates on a mode version bump', () => {
-    const bumped = { ...mode, version: mode.version + 1 } as ClientMode;
-    expect(imageFingerprintOf(imageFingerprintInputs({ ...base, mode: bumped }))).not.toBe(
+  // The whole point of the Block 7 change. Block 6 session 7 bumped the mode
+  // v5 -> v6 to add two template ids no image call reads and stranded 14
+  // generated images ($2.064064) that were still the right answer to an
+  // unchanged request.
+  it('survives a mode version bump that changes nothing the call reads', () => {
+    const bumped = {
+      ...mode,
+      version: mode.version + 1,
+      allowedTemplates: {
+        ...mode.allowedTemplates,
+        subtitle: [...mode.allowedTemplates.subtitle, 'sub_pop_extra'],
+      },
+    } as ClientMode;
+    expect(imageFingerprintOf(imageFingerprintInputs({ ...base, mode: bumped }))).toBe(
       imageFingerprintOf(imageFingerprintInputs(base)),
     );
+  });
+
+  // The fields that used to key through `mode.version` reach the request only
+  // as prompt text, so they still invalidate — via the string, not the number.
+  it('invalidates when a mode edit reaches the composed prompt', () => {
+    const original = imageFingerprintOf(imageFingerprintInputs(base));
+    const recomposed = { ...base, prompt: `${base.prompt}, seen from above` };
+    expect(imageFingerprintOf(imageFingerprintInputs(recomposed))).not.toBe(original);
+    const negatives = { ...base, negativePrompt: `${base.negativePrompt}, no hands` };
+    expect(imageFingerprintOf(imageFingerprintInputs(negatives))).not.toBe(original);
   });
 
   it('does not depend on the order the fields were written in', () => {
     const forwards = imageFingerprintInputs(base);
     const backwards = {
-      modeVersion: forwards.modeVersion,
       modeId: forwards.modeId,
       candidateIndex: forwards.candidateIndex,
       aspectRatio: forwards.aspectRatio,

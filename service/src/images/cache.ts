@@ -17,6 +17,7 @@ export interface ImageCachePayload {
   resolution: string;
   candidateIndex: number;
   modeId: string;
+  /** Provenance only — not a fingerprint input. See fingerprint.ts. */
   modeVersion: number;
   mimeType: string;
   file: string;
