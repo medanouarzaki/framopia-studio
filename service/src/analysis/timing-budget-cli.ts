@@ -20,12 +20,17 @@ import {
  * The timing budget sweep, written to benchmarks/. Free, local and read-only:
  * no plan is modified and no API is called.
  */
-const FOOTAGE_DIR = path.join(REPO_ROOT, 'my files', 'test videos');
+const DEFAULT_FOOTAGE_DIR = path.join(REPO_ROOT, 'my files', 'test videos');
 const OUT_PATH = path.join(REPO_ROOT, 'benchmarks', 'RESULTS-block6-timing-budget.md');
 
 const argv = process.argv.slice(2);
 const outIndex = argv.indexOf('--out');
 const outPath = outIndex === -1 ? OUT_PATH : (argv[outIndex + 1] as string);
+// Sweeping a directory of plan copies is how a grouping change is measured
+// before it is written to the corpus. Read-only either way.
+const footageIndex = argv.indexOf('--footage');
+const FOOTAGE_DIR =
+  footageIndex === -1 ? DEFAULT_FOOTAGE_DIR : (argv[footageIndex + 1] as string);
 
 interface Loaded {
   reel: string;
