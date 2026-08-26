@@ -11,6 +11,7 @@ import {
   MIN_PLACED_SHORT_EDGE,
   SCALE_JITTER,
   SUBTITLE_BAND,
+  TORSO_ZONE_IS_LAST_RESORT,
 } from './constants.js';
 import {
   intersects,
@@ -187,7 +188,12 @@ export function solvePlacements(plan: EditPlan): SolveResult {
     // PROJECT_SPEC §1 rules out, and where an alternative exists it is taken.
     const ordered = seededOrder(eligible, seed);
     const spread = ordered.filter((zone) => zone.id !== previousZoneId);
-    const attempts = [...spread, ...ordered.filter((zone) => zone.id === previousZoneId)];
+    const ranked = [...spread, ...ordered.filter((zone) => zone.id === previousZoneId)];
+    // Torso zones sit on the speaker rather than beside them, so they are a
+    // departure from the spec taken only when nothing else fits.
+    const attempts = TORSO_ZONE_IS_LAST_RESORT
+      ? [...ranked.filter((zone) => zone.kind !== 'torso'), ...ranked.filter((zone) => zone.kind === 'torso')]
+      : ranked;
 
     let chosen: Placement | null = null;
     let lastReason = 'no zone left a usable region';

@@ -81,3 +81,23 @@ export const SCALE_JITTER = 0.08;
 
 /** TEMPLATE_LIBRARY_GUIDE §3: image comps are authored at 1200x1200. */
 export const COMP_SIDE_PX = 1200;
+
+
+/**
+ * Torso zones are tried only after every background zone that fits.
+ *
+ * PROJECT_SPEC §4 and ARCHITECTURE §5.5 both place images in negative space;
+ * placing one over the speaker is a deliberate departure the user ruled in,
+ * and taking it only when negative space does not serve keeps the default
+ * behaviour closest to the spec. CHOSEN, NOT MEASURED.
+ */
+export const TORSO_ZONE_IS_LAST_RESORT = true;
+
+/**
+ * Whether a cutout or a card sits better over a body is **undecided**: with
+ * torso zones last-resort a slot only reaches one when nothing else fits, and
+ * refusing it there on presentation grounds would leave the slot unplaced.
+ * What would decide it is the user's eye on a built comp in Block 7, with a
+ * cutout and a card over the same torso.
+ */
+export const TORSO_PRESENTATION_IS_UNDECIDED = true;

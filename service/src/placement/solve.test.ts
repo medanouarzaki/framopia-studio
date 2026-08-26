@@ -8,6 +8,7 @@ import {
   FRAME_ASPECT,
   MIN_PLACED_SHORT_EDGE,
   SUBTITLE_BAND,
+  TORSO_ZONE_IS_LAST_RESORT,
 } from './constants.js';
 import { intersects, largestSquare } from './geometry.js';
 import {
@@ -205,5 +206,51 @@ describe('card and cutout footprints differ', () => {
     const asCard = solvePlacements(planWith([TOP], [slot('img001', 1, 3, 'card')], 'p'));
     expect(undecided.placements[0]!.presentation).toBe('card');
     expect(undecided.placements[0]!.scale).toBe(asCard.placements[0]!.scale);
+  });
+});
+
+describe('torso zones', () => {
+  const TORSO: Zone = {
+    id: 'z_torso_1',
+    kind: 'torso',
+    rect: { x: 0.28, y: 0.44, w: 0.44, h: 0.23 },
+    valid: [[0, 25]],
+    manual: false,
+  };
+
+  it('is a candidate like any other zone', () => {
+    const { placements } = solvePlacements(planWith([TORSO], [slot('img001', 1, 3, 'card')]));
+    expect(placements[0]?.zoneId).toBe('z_torso_1');
+  });
+
+  // PROJECT_SPEC §4 and ARCHITECTURE §5.5 both place images in negative space;
+  // placing one over the speaker is a departure taken only when needed.
+  it('is tried only after a background zone that also fits', () => {
+    const { placements } = solvePlacements(
+      planWith([TORSO, TOP], [slot('img001', 1, 3, 'card')]),
+    );
+    expect(TORSO_ZONE_IS_LAST_RESORT).toBe(true);
+    expect(placements[0]?.zoneId).toBe('z_top_1');
+  });
+
+  it('is used when the background zone does not contain the span', () => {
+    const brief = { ...TOP, valid: [[0, 2]] as [number, number][] };
+    const { placements } = solvePlacements(
+      planWith([brief, TORSO], [slot('img001', 1, 3, 'card')]),
+    );
+    expect(placements[0]?.zoneId).toBe('z_torso_1');
+  });
+
+  it('honours every hard constraint a background zone does', () => {
+    const { placements } = solvePlacements(planWith([TORSO], [slot('img001', 1, 3, 'card')]));
+    const placement = placements[0]!;
+    expect(satisfiesHardConstraints(placement)).toBe(true);
+    expect(intersects(placement.rect, SUBTITLE_BAND)).toBe(false);
+  });
+
+  it('a manual torso zone is a candidate', () => {
+    const manual: Zone = { ...TORSO, id: 'z_manual_torso', manual: true };
+    const { placements } = solvePlacements(planWith([manual], [slot('img001', 1, 3, 'card')]));
+    expect(placements[0]?.zoneId).toBe('z_manual_torso');
   });
 });
