@@ -146,10 +146,46 @@ describe('the files on disk', () => {
     }
   });
 
-  // No template binds a sound yet: which template fires which is a user ruling
-  // that has not been made. The index existing does not change that.
-  it('declare no sfx on any template, pending that ruling', () => {
-    for (const t of loaded.templates) expect(t.sfx).toEqual([]);
+  // The Block 7 session 3 ruling: keywords punctuate with a hit, images lead
+  // with a whoosh, subtitles stay silent because they fire ~190 times a reel
+  // and any sound there becomes noise.
+  it('bind sfx by element type, and leave subtitles silent', () => {
+    const byType: Record<string, string[]> = {};
+    for (const t of loaded.templates) {
+      byType[t.type] = (byType[t.type] ?? []).concat(t.sfx.map((b) => b.sfxId));
+    }
+    expect(byType.subtitle).toEqual([]);
+    expect(byType.keyword).toEqual(['hit_01', 'hit_01']);
+    expect(byType.image).toEqual(['whoosh_01', 'whoosh_01']);
+  });
+
+  /*
+   * gainDb now lives in two files: the binding in templates/manifest.json and
+   * the default in assets/sfx/sfx.json. Two copies of one number drift, and a
+   * drift here is inaudible until someone plays a built comp — so it is pinned
+   * rather than trusted.
+   *
+   * The rule is deliberately equality, not "the binding may override". A
+   * binding that genuinely wants a different level is a real possibility and
+   * this test is what will force that decision to be made explicitly.
+   */
+  it('keep every binding gain equal to its sfx index default', () => {
+    const defaults = new Map(loadSfxIndex().sfx.map((s) => [s.id, s.defaultGainDb]));
+    for (const t of loaded.templates) {
+      for (const b of t.sfx) {
+        expect(defaults.get(b.sfxId)).toBe(b.gainDb);
+      }
+    }
+  });
+
+  // The hit lands where the animation lands, on frame 4; a whoosh leads the
+  // motion rather than punctuating it, so it starts with the element.
+  it('offset the hit to the animation and start the whoosh at zero', () => {
+    for (const t of loaded.templates) {
+      for (const b of t.sfx) {
+        expect(b.offsetS).toBe(t.type === 'keyword' ? t.introS : 0);
+      }
+    }
   });
 
   it('carry both script variants of each text template', () => {
