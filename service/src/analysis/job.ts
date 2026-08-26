@@ -154,6 +154,24 @@ export async function analyseKeywordsForPlan(
   const timestamp = now();
   plan.subtitles.groups = regrouped.groups;
   plan.keywords = { mode: keywordMode, items };
+
+  /*
+   * Assignment used to live only in the slot stage, so this stage wrote every
+   * keyword with `templateId: null` and any keyword run after a slot run left
+   * them that way — which is why no keyword on any plan carried an id, and why
+   * SFX derivation had nothing to attach a hit to. A stage that creates
+   * elements assigns their templates before it writes them.
+   *
+   * It is deterministic and free (Block 3 decision 10's seeded shuffle over the
+   * mode's allowed variants), so running it in both stages costs nothing and
+   * the two agree by construction. Re-grouping just above can split a group,
+   * so subtitles need re-assigning here anyway.
+   */
+  const templates = templatesById(loadTemplateManifest());
+  const assignment = assignTemplates(plan, mode, templates);
+  for (const issue of assignment.issues) log(`templates: ${issue.path}: ${issue.message}`);
+  plan.sfx = { events: deriveSfxEvents(plan, templates, loadSfxIndex()) };
+
   plan.pipeline.analysis = {
     status: 'done',
     config: analysisConfigLabel(ACTIVE_ANALYSIS_PROMPT_VERSION, mode),

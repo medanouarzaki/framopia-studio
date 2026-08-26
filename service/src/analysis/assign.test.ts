@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ClientMode, TemplateEntry } from '@framopia/core';
+import { loadSfxIndex, loadTemplateManifest, templatesById } from '@framopia/core';
 import {
   assignTemplates,
   longestRun,
@@ -269,6 +270,28 @@ describe('assignTemplates on a multi-variant mode', () => {
 });
 
 describe('deriveSfxEvents', () => {
+  /*
+   * The chain Block 7 session 3 found broken end to end. `assignTemplates`
+   * always handled keywords correctly, so its own tests passed — but the
+   * keyword stage never called it, wrote every keyword with a null templateId,
+   * and derivation silently produced nothing to attach a hit to. The unit that
+   * was wrong was the composition, so that is what this pins.
+   */
+  it('produces no keyword event while templateIds are null, and one each once assigned', () => {
+    const p = plan();
+    const index = {
+      schemaVersion: 1,
+      stub: false,
+      sfx: [{ id: 'hit_01', file: 'a.wav', defaultGainDb: -6 }],
+    };
+    expect(p.keywords.items.every((k) => k.templateId === null)).toBe(true);
+    expect(deriveSfxEvents(p, templates(), index)).toEqual([]);
+
+    assignTemplates(p, mode(), templates());
+    expect(p.keywords.items.every((k) => k.templateId !== null)).toBe(true);
+    expect(deriveSfxEvents(p, templates(), index)).toHaveLength(p.keywords.items.length);
+  });
+
   it('derives one event per binding, in time order, and nothing for subtitles', () => {
     const p = plan();
     assignTemplates(p, mode(), templates());
@@ -389,5 +412,84 @@ describe('checkBuildability', () => {
     expect(checkBuildability(p, templates()).issues.some((i) => i.message === 'no templateId assigned')).toBe(
       true,
     );
+  });
+});
+
+/*
+ * Block 7 session 4. The draw used to ignore script and would have put
+ * `sub_pop_ar` under 20 of vitasilk's 41 Latin cards — a comp rendered in the
+ * wrong face, which nothing downstream would have flagged.
+ */
+describe('assignTemplates respects script', () => {
+  // The fixture makes one single-word group per word, so flipping a word's
+  // script flips its group's.
+  const scripted = (): ReturnType<typeof plan> => {
+    const p = plan(8, 2, 0);
+    p.transcript.words.forEach((w, i) => {
+      w.script = i >= 4 ? 'arabic' : 'latin';
+    });
+    p.keywords.items[0]!.wordIds = ['w0'];
+    p.keywords.items[1]!.wordIds = ['w6'];
+    return p;
+  };
+
+  const bothScripts = () => ({
+    ...mode(),
+    allowedTemplates: {
+      subtitle: ['sub_pop', 'sub_pop_ar'],
+      keyword: ['kw_slam', 'kw_slam_ar'],
+      image: ['img_float'],
+    },
+  });
+
+  it('gives a Latin element a Latin variant and an Arabic element the _ar one', () => {
+    const p = scripted();
+    assignTemplates(p, bothScripts(), templates());
+    const wordScript = new Map(p.transcript.words.map((w) => [w.id, w.script]));
+    for (const g of p.subtitles.groups) {
+      const isArabic = wordScript.get(g.wordIds[0]!) === 'arabic';
+      expect(g.templateId?.endsWith('_ar')).toBe(isArabic);
+    }
+    for (const k of p.keywords.items) {
+      const isArabic = wordScript.get(k.wordIds[0]!) === 'arabic';
+      expect(k.templateId?.endsWith('_ar')).toBe(isArabic);
+    }
+  });
+
+  it('is still deterministic across runs', () => {
+    const a = scripted();
+    const b = scripted();
+    assignTemplates(a, bothScripts(), templates());
+    assignTemplates(b, bothScripts(), templates());
+    expect(a.subtitles.groups.map((g) => g.templateId)).toEqual(
+      b.subtitles.groups.map((g) => g.templateId),
+    );
+  });
+
+  it('reports a mixed-script span rather than silently picking a face', () => {
+    const p = scripted();
+    p.keywords.items[0]!.wordIds = ['w0', 'w6'];
+    const result = assignTemplates(p, bothScripts(), templates());
+    expect(result.issues.some((i) => /more than one script/.test(i.message))).toBe(true);
+  });
+});
+
+/*
+ * Block 7 session 3 found stored events carrying gains of −12, −9 and −6 dB,
+ * from a stub manifest that stopped existing in Block 6. Derivation takes its
+ * gain from the binding, and every binding's gain is pinned equal to its index
+ * default by a test in core — so a value absent from the index can only reach
+ * a plan by being carried over from an older run, never by being derived.
+ */
+describe('derived gains come from the real index', () => {
+  it('cannot produce a gain the sfx index does not declare', () => {
+    const index = loadSfxIndex();
+    const declared = new Set(index.sfx.map((s) => s.defaultGainDb));
+    const p = plan();
+    assignTemplates(p, mode(), templatesById(loadTemplateManifest()));
+    const events = deriveSfxEvents(p, templatesById(loadTemplateManifest()), index);
+    expect(events.length).toBeGreaterThan(0);
+    for (const e of events) expect(declared.has(e.gainDb)).toBe(true);
+    for (const stubEra of [-12, -9, -6]) expect(declared.has(stubEra)).toBe(false);
   });
 });

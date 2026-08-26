@@ -2,6 +2,9 @@ import { createHash } from 'node:crypto';
 import type { ClientMode, TemplateEntry, TemplateKind } from '@framopia/core';
 import type { EditPlan } from '../editplan/types.js';
 
+/** TEMPLATE_LIBRARY_GUIDE §3's suffix for the Arabic-script variant of a text template. */
+export const SCRIPT_VARIANT_SUFFIX = '_ar';
+
 export class NoTemplateVariantError extends Error {
   constructor(
     readonly modeId: string,
@@ -129,16 +132,67 @@ export function assignTemplates(
     return ids;
   };
 
-  const subtitle = variantsFor('subtitle');
+  const scriptOfWord = new Map(plan.transcript.words.map((w) => [w.id, w.script]));
+
+  /**
+   * A text element's script decides which face renders it, so it decides the
+   * variant. Re-grouping cuts at every script change, so a group is uniformly
+   * one script; a mixed one would be a defect upstream and is reported rather
+   * than silently rendered in whichever face came first.
+   */
+  const scriptOf = (wordIds: string[]): 'arabic' | 'latin' | 'mixed' => {
+    const seen = new Set(wordIds.map((id) => scriptOfWord.get(id)));
+    if (seen.size > 1) return 'mixed';
+    return seen.has('arabic') ? 'arabic' : 'latin';
+  };
+
+  /**
+   * The `_ar` suffix is the naming convention TEMPLATE_LIBRARY_GUIDE §3 fixes
+   * and `validateTemplateManifest` enforces; there is no script field on a
+   * template entry to read instead. Partitioning on it here rather than
+   * inspecting the text at build time keeps the choice on the plan, where it
+   * can be reviewed.
+   *
+   * Before Block 7 session 4 the draw ignored script entirely and would have
+   * put `sub_pop_ar` under 20 of vitasilk's 41 Latin cards.
+   */
+  const forScript = (ids: string[], script: 'arabic' | 'latin'): string[] =>
+    ids.filter((id) => id.endsWith(SCRIPT_VARIANT_SUFFIX) === (script === 'arabic'));
+
+  // The shuffle draws per script, so each face's variants still spread across
+  // the reel instead of being indexed by a position most of which is the other
+  // face's.
+  const drawnPerScript = new Map<string, number>();
+  const nextIndex = (kind: TemplateKind, script: string): number => {
+    const k = `${kind}:${script}`;
+    const n = drawnPerScript.get(k) ?? 0;
+    drawnPerScript.set(k, n + 1);
+    return n;
+  };
+
+  const pickTextVariant = (
+    kind: 'subtitle' | 'keyword',
+    wordIds: string[],
+    path: string,
+  ): string => {
+    const raw = scriptOf(wordIds);
+    if (raw === 'mixed') {
+      issues.push({ path, message: 'spans more than one script; rendered with the Latin variant' });
+    }
+    const script = raw === 'arabic' ? 'arabic' : 'latin';
+    const candidates = forScript(variantsFor(kind), script);
+    if (candidates.length === 0) throw new NoTemplateVariantError(mode.id, kind);
+    return pickVariant(candidates, plan.meta.id, `${kind}:${script}`, nextIndex(kind, script));
+  };
+
   plan.subtitles.groups.forEach((group, i) => {
-    const id = pickVariant(subtitle, plan.meta.id, 'subtitle', i);
+    const id = pickTextVariant('subtitle', group.wordIds, `subtitles.groups[${i}].templateId`);
     group.templateId = id;
     assigned.subtitle.push(id);
   });
 
-  const keyword = variantsFor('keyword');
   plan.keywords.items.forEach((item, i) => {
-    const id = pickVariant(keyword, plan.meta.id, 'keyword', i);
+    const id = pickTextVariant('keyword', item.wordIds, `keywords.items[${i}].templateId`);
     item.templateId = id;
     assigned.keyword.push(id);
   });
