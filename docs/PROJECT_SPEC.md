@@ -33,7 +33,7 @@ The output is **not a rendered video**. It is a fully built After Effects compos
 
 ## 4. Input / output (locked)
 
-**Input:** one vertical 9:16 MP4, 4K (2160×3840), 30 fps, 30–90 s, one speaker, one angle, no cuts, audio embedded, already edited and graded.
+**Input:** one vertical 9:16 MP4, 4K (2160×3840), **29.97 fps (30000/1001)**, 30–90 s, one speaker, one angle, no cuts, audio embedded, already edited and graded. The "30 fps" this section carried until Block 7 predates anyone reading a file header: every reel the project has handled is 30000/1001, and Block 5's frame sampling reads real presentation timestamps that diverge from a nominal 30 fps grid from the second frame onward.
 
 **Framing:** speaker usually centered; usable negative space above the head and left/right. Negative space is auto-detected, with a manual zone-adjust fallback in the panel.
 
