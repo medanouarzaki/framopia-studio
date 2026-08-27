@@ -101,22 +101,28 @@ export function scoreAlignment(
   const byId = indexRows(rows, reference);
   const byVerdict = emptyTallies();
 
-  for (const entry of reference.entries) {
+  /*
+   * Schema 3 writes every displayed row, marked or not. An unmarked row is not
+   * a judgement and must not become a denominator — it is the reviewer's
+   * progress, not the aligner's accuracy.
+   */
+  const judged = reference.entries.filter((e) => e.verdict !== null);
+
+  for (const entry of judged) {
     const row = byId.get(entry.wordId) as AlignmentRow;
-    const tally = byVerdict[entry.verdict];
+    const tally = byVerdict[entry.verdict as AlignVerdict];
     tally.total += 1;
     if (row.crossScript) tally.cross += 1;
     else tally.same += 1;
   }
 
-  const judged = reference.entries.length;
   const confirmed = ALIGNMENT_CORRECT_VERDICTS.reduce((n, v) => n + byVerdict[v].total, 0);
   return {
     reel: reference.reel,
     rowsTotal: rows.length,
-    rowsJudged: judged,
+    rowsJudged: judged.length,
     byVerdict,
-    confirmedShare: judged === 0 ? 0 : confirmed / judged,
+    confirmedShare: judged.length === 0 ? 0 : confirmed / judged.length,
     mishearCount: byVerdict.misheard.total,
   };
 }
@@ -173,20 +179,22 @@ export function compareAgainstReference(
   const byId = indexRows(rows, reference);
   const score = scoreAlignment(rows, reference);
 
-  const all: MovedRow[] = reference.entries.map((entry) => {
+  const all: MovedRow[] = reference.entries
+    .filter((e) => e.verdict !== null)
+    .map((entry) => {
     const row = byId.get(entry.wordId) as AlignmentRow;
     return {
       wordId: entry.wordId,
       wordText: entry.wordText,
-      verdict: entry.verdict,
+      verdict: entry.verdict as AlignVerdict,
       previousDraftText: entry.draftTokenText,
       currentDraftText: row.draftText,
       currentDraftStart: row.draftStart,
       currentDraftEnd: row.draftEnd,
       crossScript: row.crossScript,
       moved: row.draftText !== entry.draftTokenText,
-    };
-  });
+      };
+    });
 
   const of = (verdicts: readonly AlignVerdict[], moved: boolean | null): MovedRow[] =>
     all.filter((r) => verdicts.includes(r.verdict) && (moved === null || r.moved === moved));

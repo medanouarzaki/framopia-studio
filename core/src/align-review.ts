@@ -122,8 +122,18 @@ export function buildAlignmentRows(
  * without migration — they simply contain no `misheard` rows, which is the
  * truth about them: nobody was offered the button.
  */
-export const ALIGN_REFERENCE_SCHEMA_VERSION = 2;
-export const ALIGN_REFERENCE_READABLE_VERSIONS = [1, 2] as const;
+/**
+ * 3 changes the download contract: the file carries **one entry per displayed
+ * row**, in display order, an unmarked row written with `verdict: null` rather
+ * than omitted, plus `rowCount` and `markedCount` in the header.
+ *
+ * It exists because omission was indistinguishable from absence. A sheet of 17
+ * rows, all marked on screen, downloaded 3 — and nothing in the file said the
+ * other 14 had ever been displayed. Versions 1 and 2 stay readable: their
+ * entries are all judged, which is what "no null verdicts" means.
+ */
+export const ALIGN_REFERENCE_SCHEMA_VERSION = 3;
+export const ALIGN_REFERENCE_READABLE_VERSIONS = [1, 2, 3] as const;
 
 /**
  * The four judgements a reviewer can make. `two-tokens` and `no-token` exist
@@ -160,7 +170,11 @@ export interface AlignReferenceEntry {
   wordText: string;
   /** The token the aligner proposed, kept so a reference records what was judged. */
   draftTokenText: string | null;
-  verdict: AlignVerdict;
+  /**
+   * Null from schema 3 on: the row was displayed and left unmarked. Omitting
+   * it instead is what let seventeen judgements become three.
+   */
+  verdict: AlignVerdict | null;
   note?: string;
 }
 
@@ -181,6 +195,13 @@ export interface AlignReference {
    * migration.
    */
   alignerHash?: string;
+  /**
+   * Rows displayed and rows marked, from schema 3. **Written by the same walk
+   * that produced the entries**, so they cannot describe a different file.
+   * Optional with a default so versions 1 and 2 still read.
+   */
+  rowCount?: number;
+  markedCount?: number;
   entries: AlignReferenceEntry[];
 }
 
@@ -224,7 +245,12 @@ export function parseAlignReference(input: unknown): AlignReference {
     }
     const e = item as Record<string, unknown>;
     const verdict = e['verdict'];
-    if (typeof verdict !== 'string' || !ALIGN_VERDICTS.includes(verdict as AlignVerdict)) {
+    if (verdict === null && version < 3) {
+      throw new AlignReferenceError(
+        `entries[${i}].verdict is null, which schemaVersion ${version} does not define`,
+      );
+    }
+    if (verdict !== null && (typeof verdict !== 'string' || !ALIGN_VERDICTS.includes(verdict as AlignVerdict))) {
       throw new AlignReferenceError(`entries[${i}].verdict is not one of ${ALIGN_VERDICTS.join(', ')}`);
     }
     if (verdict === 'misheard' && version < 2) {
@@ -240,7 +266,7 @@ export function parseAlignReference(input: unknown): AlignReference {
       wordId: requireString(e['wordId'], `entries[${i}].wordId`),
       wordText: requireString(e['wordText'], `entries[${i}].wordText`),
       draftTokenText,
-      verdict: verdict as AlignVerdict,
+      verdict: verdict as AlignVerdict | null,
     };
     if (typeof e['note'] === 'string' && e['note'].length > 0) entry.note = e['note'];
     return entry;
@@ -264,6 +290,29 @@ export function parseAlignReference(input: unknown): AlignReference {
   };
   if (typeof alignerHash === 'string' && alignerHash.length > 0) {
     reference.alignerHash = alignerHash;
+  }
+
+  /*
+   * The header must describe the file it arrived in. A count that disagrees
+   * with the entries is the failure this version exists to prevent, so it is
+   * rejected rather than corrected.
+   */
+  if (raw['rowCount'] !== undefined) {
+    if (raw['rowCount'] !== entries.length) {
+      throw new AlignReferenceError(
+        `rowCount says ${String(raw['rowCount'])} but the file carries ${entries.length} entries`,
+      );
+    }
+    reference.rowCount = entries.length;
+  }
+  if (raw['markedCount'] !== undefined) {
+    const marked = entries.filter((e) => e.verdict !== null).length;
+    if (raw['markedCount'] !== marked) {
+      throw new AlignReferenceError(
+        `markedCount says ${String(raw['markedCount'])} but ${marked} entries carry a verdict`,
+      );
+    }
+    reference.markedCount = marked;
   }
   return reference;
 }

@@ -39,6 +39,11 @@ export interface SheetInputs {
   /** Stamped into the downloaded reference; the browser cannot compute it. */
   schemaVersion: number;
   alignerHash: string;
+  /**
+   * Verdicts to pre-fill, by word id. Shown as restored and fully editable —
+   * they are somebody's earlier judgement, not a new one.
+   */
+  restored?: Record<string, string>;
 }
 
 interface Fact {
@@ -99,7 +104,7 @@ export function renderSheet(input: SheetInputs): string {
   const rows = input.rows
     .map((r) => {
       const cls = r.crossScript ? 'cross' : 'same';
-      return `<tr class="row ${cls}" data-i="${r.index}" data-cross="${r.crossScript ? '1' : '0'}">
+      return `<tr class="row ${cls}" data-word-id="${esc(r.wordId)}" data-i="${r.index}" data-cross="${r.crossScript ? '1' : '0'}">
 <td class="idx">${r.index}<span class="wid">${esc(r.wordId)}</span></td>
 <td class="word">${token(r.wordText, r.wordScript)}</td>
 ${rereview ? `<td class="draft was">${token(r.previousDraftText ?? '', (r.previousDraftText ?? null) === null ? null : tokenScript(r.previousDraftText as string))}</td>` : ''}
@@ -124,6 +129,14 @@ ${rereview ? `<td class="draft was">${token(r.previousDraftText ?? '', (r.previo
     wordText: r.wordText,
     draftTokenText: r.draftText,
   }));
+
+  /*
+   * A fingerprint of the row set, so saved marks are restored only onto the
+   * rows they were made against. The reel and the sha are not enough: a
+   * re-review sheet holds only the rows a change moved, and a different change
+   * moves a different set.
+   */
+  const rowSetFingerprint = payload.map((w) => w.wordId).join(',');
 
   return `<!doctype html>
 <html lang="en">
@@ -182,6 +195,12 @@ button.on { border-color: var(--accent); background: rgba(237,28,36,.14); }
 .counts { display: flex; gap: 18px; font-size: 13px; color: var(--muted); }
 .counts b { color: var(--text); font-variant-numeric: tabular-nums; font-weight: 600; }
 .counts .left b { color: var(--accent); }
+.progress {
+  color: var(--muted); font-size: 12.5px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.restored-note { margin-top: 8px; color: var(--warn); font-size: 12.5px; }
+tbody tr.restored td.verdicts button.sel { background: var(--warn); border-color: var(--warn); }
 main { padding: 24px 32px 96px; }
 table { width: 100%; border-collapse: collapse; }
 thead th {
@@ -229,6 +248,7 @@ footer { padding: 0 32px 40px; color: var(--faint); font-size: 12.5px; max-width
 ${facts.map((f) => `<div class="fact"><span class="k">${esc(f.label)}</span><span class="v">${esc(f.value)}</span></div>`).join('\n')}
 </div>
 <div class="meta">${cross} cross-script &nbsp;·&nbsp; ${unanchored} with no draft token &nbsp;·&nbsp; generated ${esc(input.generatedAt)}</div>
+<div class="restored-note" id="restored-note" hidden></div>
 <div class="bar">
 <button class="f on" data-f="all">all rows</button>
 <button class="f" data-f="cross">cross-script only</button>
@@ -242,6 +262,7 @@ ${facts.map((f) => `<div class="fact"><span class="k">${esc(f.label)}</span><spa
 <span>no token <b id="c-no-token">0</b></span>
 <span class="left">unset <b id="c-unset">0</b></span>
 </div>
+<span id="progress" class="progress">marked 0 of ${input.rows.length}</span>
 <button id="download">Download reference</button>
 </div>
 </header>
@@ -271,14 +292,75 @@ ${
   var VARIANT = ${JSON.stringify(input.variant ?? 'review')};
   var SCHEMA_VERSION = ${JSON.stringify(input.schemaVersion)};
   var ALIGNER_HASH = ${JSON.stringify(input.alignerHash)};
-  var KEY = 'framopia.align-review.' + VARIANT + '.' + REEL + '.' + HEAD;
+  var ROW_SET = ${JSON.stringify(rowSetFingerprint)};
+  var RESTORED = ${JSON.stringify(input.restored ?? {})};
 
+  /*
+   * Keyed by the row set as well as the reel and the sha. A re-review sheet
+   * holds only the rows a change moved; restoring one change's marks onto
+   * another change's rows would be worse than losing them.
+   */
+  function fingerprint(text) {
+    var h = 5381;
+    for (var i = 0; i < text.length; i += 1) h = ((h << 5) + h + text.charCodeAt(i)) >>> 0;
+    return h.toString(16);
+  }
+  var KEY = 'framopia.align-review.' + VARIANT + '.' + REEL + '.' + HEAD + '.' + fingerprint(ROW_SET);
+
+  /*
+   * The key before the row-set fingerprint was added, and before marks were
+   * keyed by word id rather than by the corrected-word index. Read once, and
+   * only when the current key holds nothing: a reviewer whose marks were on
+   * screen when the download lost them still has them in this browser, and
+   * they are worth more than the tidiness of dropping the old shape.
+   */
+  var LEGACY_KEY = 'framopia.align-review.' + VARIANT + '.' + REEL + '.' + HEAD;
+  var INDEX_TO_ID = ${JSON.stringify(Object.fromEntries(input.rows.map((r) => [String(r.index), r.wordId])))};
+
+  /*
+   * Keyed by word id, never by position or by the corrected-word index.
+   *
+   * The two used to be mixed: rows carried data-i, the corrected-word index,
+   * and the download walked positions 0..n-1. On the main sheet every corrected
+   * word is a row so the two coincide; on a re-review sheet only the moved rows
+   * are present, the indices are sparse, and the download found a mark only
+   * where a row's index happened to equal its own position. Seventeen marks on
+   * screen, three in the file.
+   */
   var state = {};
+  var restoredCount = 0;
+  var fromLegacy = 0;
   try {
     var saved = window.localStorage.getItem(KEY);
-    if (saved) state = JSON.parse(saved);
+    if (saved) state = JSON.parse(saved) || {};
   } catch (e) {
     state = {};
+  }
+
+  if (Object.keys(state).length === 0) {
+    try {
+      var legacy = window.localStorage.getItem(LEGACY_KEY);
+      var old = legacy ? JSON.parse(legacy) || {} : {};
+      for (var k in old) {
+        if (!Object.prototype.hasOwnProperty.call(old, k)) continue;
+        var id = INDEX_TO_ID[k];
+        if (!id || !old[k] || !old[k].verdict) continue;
+        state[id] = { verdict: old[k].verdict, note: old[k].note, restored: true };
+        fromLegacy += 1;
+      }
+    } catch (e) {
+      /* an unreadable legacy store is simply no legacy store */
+    }
+  }
+  for (var rid in RESTORED) {
+    if (Object.prototype.hasOwnProperty.call(RESTORED, rid) && !state[rid]) {
+      state[rid] = { verdict: RESTORED[rid], restored: true };
+    }
+  }
+  for (var sk in state) {
+    if (Object.prototype.hasOwnProperty.call(state, sk) && state[sk] && state[sk].verdict) {
+      restoredCount += 1;
+    }
   }
 
   var rows = Array.prototype.slice.call(document.querySelectorAll('tr.row'));
@@ -292,20 +374,24 @@ ${
     }
   }
 
-  function entryFor(i) {
-    return state[String(i)] || {};
+  function entryFor(id) {
+    return state[String(id)] || {};
+  }
+
+  function rowId(tr) {
+    return tr.getAttribute('data-word-id');
   }
 
   function paint() {
     var counts = { correct: 0, wrong: 0, misheard: 0, 'two-tokens': 0, 'no-token': 0 };
     var unset = 0;
     rows.forEach(function (tr) {
-      var i = tr.getAttribute('data-i');
-      var e = entryFor(i);
+      var e = entryFor(rowId(tr));
       var verdict = e.verdict || null;
       if (verdict) counts[verdict] += 1;
       else unset += 1;
       tr.classList.toggle('marked', !!verdict);
+      tr.classList.toggle('restored', !!verdict && e.restored === true);
       Array.prototype.forEach.call(tr.querySelectorAll('button.v'), function (b) {
         b.classList.toggle('sel', b.getAttribute('data-v') === verdict);
       });
@@ -319,28 +405,31 @@ ${
       document.getElementById('c-' + k).textContent = String(counts[k]);
     });
     document.getElementById('c-unset').textContent = String(unset);
+    var progress = document.getElementById('progress');
+    if (progress) progress.textContent = 'marked ' + (rows.length - unset) + ' of ' + rows.length;
     return unset;
   }
 
   rows.forEach(function (tr) {
-    var i = tr.getAttribute('data-i');
+    var id = rowId(tr);
     var input = tr.querySelector('.note input');
-    var e = entryFor(i);
+    var e = entryFor(id);
     if (e.note) input.value = e.note;
     Array.prototype.forEach.call(tr.querySelectorAll('button.v'), function (b) {
       b.addEventListener('click', function () {
-        var cur = entryFor(i);
+        var cur = entryFor(id);
         var v = b.getAttribute('data-v');
         cur.verdict = cur.verdict === v ? null : v;
-        state[String(i)] = cur;
+        cur.restored = false;
+        state[String(id)] = cur;
         save();
         paint();
       });
     });
     input.addEventListener('input', function () {
-      var cur = entryFor(i);
+      var cur = entryFor(id);
       cur.note = input.value;
-      state[String(i)] = cur;
+      state[String(id)] = cur;
       save();
     });
   });
@@ -356,31 +445,66 @@ ${
   });
 
   document.getElementById('download').addEventListener('click', function () {
+    /*
+     * One entry per displayed row, in display order, always. An unmarked row
+     * is written with a null verdict rather than omitted: the file is a record
+     * of what was reviewed, and a row missing from it used to be
+     * indistinguishable from a row nobody looked at.
+     */
     var entries = [];
-    for (var i = 0; i < WORDS.length; i += 1) {
-      var e = entryFor(i);
-      if (!e.verdict) continue;
+    var marked = 0;
+    for (var r = 0; r < rows.length; r += 1) {
+      var tr = rows[r];
+      var id = rowId(tr);
+      var e = entryFor(id);
+      var word = null;
+      for (var w = 0; w < WORDS.length; w += 1) {
+        if (WORDS[w].wordId === id) { word = WORDS[w]; break; }
+      }
+      if (word === null) {
+        window.alert(
+          'Download refused: row ' + id + ' is on screen but not in the sheet data. ' +
+          'Nothing was written. Please report this — your marks are still here.'
+        );
+        return;
+      }
       var out = {
-        wordId: WORDS[i].wordId,
-        wordText: WORDS[i].wordText,
-        draftTokenText: WORDS[i].draftTokenText,
-        verdict: e.verdict
+        wordId: word.wordId,
+        wordText: word.wordText,
+        draftTokenText: word.draftTokenText,
+        verdict: e.verdict || null
       };
       if (e.note) out.note = e.note;
+      if (e.verdict) marked += 1;
       entries.push(out);
     }
+
+    /*
+     * The counts come off the same walk that produced the entries, so they
+     * cannot describe a different file from the one being written.
+     */
+    if (entries.length !== rows.length) {
+      window.alert(
+        'Download refused: ' + entries.length + ' entries for ' + rows.length +
+        ' rows on screen. Nothing was written, and your marks are still here.'
+      );
+      return;
+    }
+
     var doc = {
       schemaVersion: SCHEMA_VERSION,
       reel: REEL,
       generatedAt: GENERATED,
       headSha: HEAD,
       alignerHash: ALIGNER_HASH,
+      rowCount: entries.length,
+      markedCount: marked,
       entries: entries
     };
     var blob = new Blob([JSON.stringify(doc, null, 2) + '\\n'], { type: 'application/json' });
     var a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = REEL + '.align-reference.json';
+    a.download = REEL + (VARIANT === 'rereview' ? '.rereview' : '') + '.align-reference.json';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -393,6 +517,16 @@ ${
     ev.returnValue = '';
     return '';
   });
+
+  var note = document.getElementById('restored-note');
+  if (note && restoredCount > 0) {
+    note.hidden = false;
+    note.textContent =
+      restoredCount + ' of ' + rows.length +
+      ' marks were restored' +
+      (fromLegacy > 0 ? ' from this browser, saved before the download bug was fixed,' : '') +
+      '. They are highlighted, and you can change any of them.';
+  }
 
   paint();
 })();
