@@ -10,6 +10,7 @@ import {
 } from './assign.js';
 import { deriveSfxEvents, UnknownSfxError } from './sfx.js';
 import { checkBuildability } from './buildability.js';
+import { cardMinimumDurationS } from '../build/short-card.js';
 import { createEditPlan } from '../editplan/io.js';
 import type { EditPlan, PlanWord } from '../editplan/types.js';
 
@@ -364,7 +365,10 @@ describe('checkBuildability', () => {
     const before = p.subtitles.groups.map((g) => g.end - g.start);
     const report = checkBuildability(p, templates([short, ...MULTI_VARIANT_TEMPLATES.slice(3)]));
     expect(report.issues.length).toBe(2);
-    expect(report.issues[0]?.shortByS).toBeCloseTo(2.5, 10);
+    // Against `cardMinimumDurationS`, not the nominal intro+hold: the entrance
+    // compresses, so the floor a card has to clear is lower than the sum.
+    const floor = cardMinimumDurationS(short.introS, short.minHoldS) + short.outroS;
+    expect(report.issues[0]?.shortByS).toBeCloseTo(floor - 0.5, 10);
     expect(p.subtitles.groups.map((g) => g.end - g.start)).toEqual(before);
   });
 

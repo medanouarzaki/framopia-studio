@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { EditPlan, SubtitleGroup, TranscriptWord } from '../editplan/types.js';
+import { cardMinimumDurationS } from '../build/short-card.js';
 import {
   evaluateBudget,
   groupSilenceGaps,
@@ -42,18 +43,27 @@ function planWith(words: TranscriptWord[], groups: SubtitleGroup[], durationS = 
 }
 
 describe('sweepTemplates', () => {
-  it('splits the budget evenly and only the sum is ever compared', () => {
+  /*
+   * The split used to be halved, with a comment saying only the sum was ever
+   * read. That stopped being true when the short-card rule began compressing
+   * the **entrance** alone: halved, the sweep measured a floor twice the
+   * builder's and reported 120 failures where 28 exist. The whole budget is the
+   * entrance now, matching the built templates, which all declare `outroS: 0`.
+   */
+  it('puts the whole budget in the entrance, as the built templates do', () => {
     const t = sweepTemplates(0.2, 0.1).get('sweep_subtitle');
-    expect(t?.introS).toBeCloseTo(0.1);
-    expect(t?.outroS).toBeCloseTo(0.1);
+    expect(t?.introS).toBeCloseTo(0.2);
+    expect(t?.outroS).toBe(0);
     expect(t?.minHoldS).toBeCloseTo(0.1);
-    expect((t?.introS ?? 0) + (t?.minHoldS ?? 0) + (t?.outroS ?? 0)).toBeCloseTo(0.3);
   });
 });
 
 describe('evaluateBudget', () => {
-  // Floor for these is intro+outro 0.20 plus minHold 0.10 = 0.30 s.
   const BUDGET = { introOutroS: 0.2, minHoldS: 0.1 };
+  // What a card has to clear once the entrance may compress to two frames —
+  // read from the rule rather than restated, which is the whole point of it
+  // having one home.
+  const FLOOR = cardMinimumDurationS(BUDGET.introOutroS, BUDGET.minHoldS);
 
   it('passes a group whose speech exactly fills the budget', () => {
     const plan = planWith(
@@ -67,17 +77,18 @@ describe('evaluateBudget', () => {
   // One frame at 29.97 is 0.0334 s; this group is that much short and there is
   // no silence to take, because the next group starts immediately.
   it('fails a group that misses by one frame with no silence available', () => {
-    // Two-word groups so the merge rescue is refused: it merges only when the
-    // pair totals two words or fewer, which is why it barely fires on the real
-    // reels.
+    // One frame at 29.97 is 0.0334 s. The group is that much short of the
+    // floor and the next group starts immediately, so there is nothing to
+    // extend into. Two-word groups so the merge rescue is refused.
+    const short = FLOOR - 0.0334;
     const plan = planWith(
       [
-        word('w1', 'alpha', 1.0, 1.13),
-        word('w2', 'beta', 1.13, 1.2666),
-        word('w3', 'gamma', 1.2666, 1.6),
+        word('w1', 'alpha', 1.0, 1.0 + short / 2),
+        word('w2', 'beta', 1.0 + short / 2, 1.0 + short),
+        word('w3', 'gamma', 1.0 + short, 1.6),
         word('w4', 'delta', 1.6, 2.0),
       ],
-      [group('g001', ['w1', 'w2'], 1.0, 1.2666), group('g002', ['w3', 'w4'], 1.2666, 2.0)],
+      [group('g001', ['w1', 'w2'], 1.0, 1.0 + short), group('g002', ['w3', 'w4'], 1.0 + short, 2.0)],
     );
     const cell = evaluateBudget(plan, BUDGET.introOutroS, BUDGET.minHoldS);
     const failed = cell.failures.filter((f) => f.groupId === 'g001');
@@ -104,20 +115,23 @@ describe('evaluateBudget', () => {
   });
 
   it('extends only as far as the next group, never over it', () => {
+    // The next group starts one frame before the floor would be reached, so
+    // the extension stops there and the group is still short by that frame.
+    const reach = FLOOR - 0.0334;
     const plan = planWith(
       [
-        word('w1', 'alpha', 1.0, 1.05),
-        word('w2', 'beta', 1.05, 1.1),
-        word('w3', 'gamma', 1.25, 1.6),
+        word('w1', 'alpha', 1.0, 1.02),
+        word('w2', 'beta', 1.02, 1.04),
+        word('w3', 'gamma', 1.0 + reach, 1.6),
         word('w4', 'delta', 1.6, 2.0),
       ],
-      [group('g001', ['w1', 'w2'], 1.0, 1.1), group('g002', ['w3', 'w4'], 1.25, 2.0)],
+      [group('g001', ['w1', 'w2'], 1.0, 1.04), group('g002', ['w3', 'w4'], 1.0 + reach, 2.0)],
     );
     const cell = evaluateBudget(plan, BUDGET.introOutroS, BUDGET.minHoldS);
     const failed = cell.failures.find((f) => f.groupId === 'g001');
-    // It reaches 1.25 and no further: 0.25 s against a 0.30 s floor.
-    expect(failed?.haveS).toBeCloseTo(0.25, 6);
-    expect(failed?.shortByS).toBeCloseTo(0.05, 6);
+    // It reaches the next group's start and no further.
+    expect(failed?.haveS).toBeCloseTo(reach, 6);
+    expect(failed?.shortByS).toBeCloseTo(0.0334, 3);
   });
 
   // The stored displayStart/displayEnd were derived against the stub floor, so

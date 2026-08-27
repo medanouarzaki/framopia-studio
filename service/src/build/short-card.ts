@@ -49,3 +49,40 @@ export function shortCardTiming(options: {
     onFloor: factor <= floor + 1e-12 && wanted < floor,
   };
 }
+
+/**
+ * The shortest a card can be and still carry its whole entrance *and* hold.
+ *
+ * With the entrance stretched all the way down to `MIN_INTRO_S`, the instance
+ * still needs its hold in the same proportion — so the floor is not `introS +
+ * minHoldS` any more, it is that sum scaled by how far the entrance was allowed
+ * to compress. At the built templates' 0.13 + 0.10 that is 0.118 s rather than
+ * 0.230 s.
+ *
+ * **This is the single declaration of the rule.** `buildability.ts` and
+ * `timing-budget.ts` both read it rather than restating the arithmetic, because
+ * a third copy is how the reporting tools came to disagree with the builder in
+ * the first place.
+ */
+export function cardMinimumDurationS(introS: number, minHoldS: number): number {
+  if (introS <= 0) return minHoldS;
+  const floorFactor = Math.min(1, MIN_INTRO_S / introS);
+  return (introS + minHoldS) * floorFactor;
+}
+
+/**
+ * Whether a card is long enough for its entrance and hold once the entrance has
+ * compressed as far as it may.
+ *
+ * A card that fails this is **still built** — the entrance sits on the floor and
+ * the hold is clipped by the out point. Nothing is dropped, which is why
+ * "unbuildable" is the wrong word for it and is not used: the reporting tools
+ * said 120 cards were unbuildable while the builder was placing all 343.
+ */
+export function cardHoldFits(
+  cardDurationS: number,
+  introS: number,
+  minHoldS: number,
+): boolean {
+  return cardDurationS >= cardMinimumDurationS(introS, minHoldS) - 1e-9;
+}

@@ -1,5 +1,6 @@
 import type { TemplateEntry } from '@framopia/core';
 import type { EditPlan } from '../editplan/types.js';
+import { cardMinimumDurationS } from '../build/short-card.js';
 import {
   displayWindow,
   DURATION_EPSILON_S,
@@ -56,7 +57,13 @@ export function checkBuildability(
       issues.push({ path, message: `templateId ${templateId} is not in the manifest` });
       return;
     }
-    const needed = template.introS + template.minHoldS + template.outroS;
+    /*
+     * The floor a card has to clear once the entrance may compress. Read from
+     * `short-card.ts`, which is the rule's single declaration — restating the
+     * arithmetic here is how this tool came to report 120 cards unbuildable
+     * while the builder was placing all 343.
+     */
+    const needed = cardMinimumDurationS(template.introS, template.minHoldS) + template.outroS;
     const have = end - start;
     if (have < needed - DURATION_EPSILON_S) {
       issues.push({

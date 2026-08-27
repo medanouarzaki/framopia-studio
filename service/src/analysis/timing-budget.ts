@@ -2,6 +2,7 @@ import type { TemplateEntry, TemplateKind } from '@framopia/core';
 import type { EditPlan, SubtitleGroup } from '../editplan/types.js';
 import { checkBuildability } from './buildability.js';
 import { applyDisplayTiming } from './display-timing.js';
+import { cardMinimumDurationS } from '../build/short-card.js';
 
 /**
  * How short a template's intro and outro have to be for the content that
@@ -34,9 +35,19 @@ function sweepTemplate(kind: TemplateKind, introOutroS: number, minHoldS: number
     file: '',
     type: kind,
     placeholders: [],
-    // Only the sum is ever read, so the split is arbitrary and even.
-    introS: introOutroS / 2,
-    outroS: introOutroS / 2,
+    /*
+     * The whole budget is the entrance, matching the built templates, which
+     * all declare `outroS: 0` (Block 6 session 7's ruling — a card hard-cuts
+     * into the next one).
+     *
+     * **The split is no longer arbitrary.** It used to be halved with a comment
+     * saying only the sum was read; that stopped being true when the
+     * short-card rule began compressing the *entrance* alone. Halved, the
+     * sweep reported a 0.23 s floor where the builder uses 0.118 s, and said
+     * 120 cards failed where 28 do.
+     */
+    introS: introOutroS,
+    outroS: 0,
     minHoldS,
     anchor: '',
     imagePresentation: null,
@@ -140,7 +151,9 @@ export function evaluateBudget(
   const failedIn = (prefix: string): number =>
     durationIssues.filter((i) => i.path.startsWith(prefix)).length;
 
-  const floorS = introOutroS + minHoldS;
+  // What a card actually has to clear, with the entrance compressed as far as
+  // it may — not the nominal budget.
+  const floorS = cardMinimumDurationS(introOutroS, minHoldS);
   return {
     introOutroS,
     minHoldS,
