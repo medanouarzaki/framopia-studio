@@ -55,6 +55,7 @@ function envFor(host: PanelHost, over: Partial<AvailableEnv> = {}): AvailableEnv
   return {
     available: true,
     repo: '/repo',
+    rootSource: 'window.location',
     host,
     logoSrc: null,
     ...over,
@@ -63,13 +64,13 @@ function envFor(host: PanelHost, over: Partial<AvailableEnv> = {}): AvailableEnv
 
 async function render(host: PanelHost, over: Partial<AvailableEnv> = {}): Promise<void> {
   await act(async () => {
-    root.render(<App env={envFor(host, over)} />);
+    root.render(<App detect={() => envFor(host, over)} />);
   });
 }
 
 async function renderEnv(env: HostEnvironment): Promise<void> {
   await act(async () => {
-    root.render(<App env={env} />);
+    root.render(<App detect={() => env} />);
   });
 }
 
@@ -317,6 +318,34 @@ describe('host detection', () => {
     delete cepGlobal.CSInterface;
   });
 
+  const fakePath = {
+    resolve: (...p: string[]) => p.slice(0, -1).join('/') || '/repo',
+    join: (...p: string[]) => p.join('/'),
+  };
+  const fakeSpawn = { spawn: () => ({ unref: () => undefined, on: () => undefined, stderr: null }) };
+  const fakeOs = { homedir: () => '/home' };
+
+  /*
+   * A filesystem that really contains the repository: the resolver verifies a
+   * candidate against package.json's name and the marker directories, so a
+   * stub that answers false to everything cannot produce a root.
+   */
+  function repoFs(root = '/repo'): Record<string, unknown> {
+    const present = new Set([
+      `${root}/package.json`,
+      `${root}/service`,
+      `${root}/modes`,
+      `${root}/core`,
+    ]);
+    return {
+      existsSync: (p: string) => present.has(p),
+      readFileSync: (p: string) =>
+        p === `${root}/package.json` ? JSON.stringify({ name: 'framopia-studio' }) : '{}',
+      readdirSync: () => [],
+      realpathSync: (p: string) => p,
+    };
+  }
+
   function fakeCepNode(modules: Record<string, unknown>): void {
     cepGlobal.cep_node = {
       require: (id: string) => {
@@ -361,29 +390,16 @@ describe('host detection', () => {
     const env = detectHost();
 
     expect(env.available).toBe(false);
-    expect(env.available === false && env.missing).toBe('host bridge');
+    expect(env.available === false && env.missing).toBe('the repository');
     expect(env.available === false && env.cause).toContain('Node is available');
 
     await renderEnv(env);
-    expect(text()).toContain('host bridge');
+    expect(text()).toContain('the repository');
     expect(text()).not.toContain('--enable-nodejs');
   });
 
   it('resolves a working host into a mountable environment', async () => {
-    fakeCepNode({
-      path: {
-        resolve: (...p: string[]) => p.slice(0, -1).join('/') || '/repo',
-        join: (...p: string[]) => p.join('/'),
-      },
-      fs: {
-        existsSync: () => false,
-        readFileSync: () => '{}',
-        readdirSync: () => [],
-        realpathSync: (p: string) => p,
-      },
-      child_process: { spawn: () => ({ unref: () => undefined, on: () => undefined, stderr: null }) },
-      os: { homedir: () => '/home' },
-    });
+    fakeCepNode({ path: fakePath, fs: repoFs(), child_process: fakeSpawn, os: fakeOs });
     cepGlobal.CSInterface = class {
       getSystemPath(): string {
         return '/repo/panel';
@@ -555,5 +571,100 @@ describe('the dry run', () => {
     expect(text()).toContain('to run, about $1.55');
     expect(text()).toContain('about $1.55');
     expect(text()).toContain('estimated for the stages not yet run');
+  });
+});
+
+/**
+ * Retry looked dead. It was wired and it did re-run the health check — but the
+ * host, and with it the repository root, had been resolved once at module load,
+ * so every press produced byte-identical text and nothing on screen moved. The
+ * user had just built the service and could not tell whether the button worked.
+ */
+describe('retry', () => {
+  it('re-runs detection, so a root resolved wrongly at load can be corrected', async () => {
+    let broken = true;
+    const detect = vi.fn((): HostEnvironment =>
+      broken
+        ? { available: false, missing: 'the repository', cause: 'not found', prevents: 'nothing works' }
+        : envFor(hostThatAnswers()),
+    );
+
+    vi.stubGlobal('fetch', serviceFetch());
+    await act(async () => {
+      root.render(<App detect={detect} />);
+    });
+    expect(text()).toContain('the repository');
+
+    broken = false;
+    await act(async () => {
+      (container.querySelector('button.retry') as HTMLElement).click();
+    });
+
+    expect(detect).toHaveBeenCalledTimes(2);
+    expect(text()).toContain('Ready');
+  });
+
+  /*
+   * Two identical failures must still look different, or a working button is
+   * indistinguishable from a dead one.
+   */
+  it('renders a distinguishable state for two consecutive identical failures', async () => {
+    const env: HostEnvironment = {
+      available: false,
+      missing: 'the repository',
+      cause: 'identical every time',
+      prevents: 'nothing works',
+    };
+    await act(async () => {
+      root.render(<App detect={() => env} />);
+    });
+
+    const first = text();
+    const firstAttempt = container.querySelector('.attempt')?.getAttribute('data-attempt');
+
+    await act(async () => {
+      (container.querySelector('button.retry') as HTMLElement).click();
+    });
+    const second = text();
+    const secondAttempt = container.querySelector('.attempt')?.getAttribute('data-attempt');
+
+    expect(second).not.toBe(first);
+    expect(firstAttempt).toBe('0');
+    expect(secondAttempt).toBe('1');
+    expect(second).toContain('attempt 2');
+
+    await act(async () => {
+      (container.querySelector('button.retry') as HTMLElement).click();
+    });
+    expect(text()).toContain('attempt 3');
+    expect(text()).not.toBe(second);
+  });
+
+  it('marks the first check as such rather than as attempt 1', async () => {
+    vi.stubGlobal('fetch', serviceFetch());
+    await render(hostThatAnswers());
+    expect(text()).toContain('first check');
+  });
+
+  it('re-runs the whole chain, not just health', async () => {
+    const spawnService = vi.fn(() =>
+      Promise.resolve({ ok: false as const, cause: 'still not built', nodePath: '/n/node' }),
+    );
+    const host = hostThatAnswers({ readHandshake: () => null, processAlive: () => false, spawnService });
+    vi.stubGlobal('fetch', serviceFetch());
+
+    let t = 0;
+    setClockForTests({ now: () => t, sleep: (ms: number) => ((t += ms), Promise.resolve()) });
+    try {
+      await render(host);
+      expect(spawnService).toHaveBeenCalledTimes(1);
+
+      await act(async () => {
+        (container.querySelector('button.retry') as HTMLElement).click();
+      });
+      expect(spawnService).toHaveBeenCalledTimes(2);
+    } finally {
+      setClockForTests({ now: () => Date.now(), sleep: (ms) => new Promise((r) => setTimeout(r, ms)) });
+    }
   });
 });

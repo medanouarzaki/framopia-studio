@@ -15,18 +15,44 @@ import type { ClientMode, DryRunPlan, HostEnvironment, Reel, ServiceState } from
  */
 export interface AppProps {
   /**
-   * Resolved once at startup. When it is unavailable the app still mounts and
-   * says so, which is the whole reason it is a value rather than a throw.
+   * Re-run on every Retry, not resolved once at startup.
+   *
+   * It used to be a value computed at module load, so the host — and with it
+   * the repository root — was captured before the user could do anything about
+   * it being wrong. Retry re-ran the health check against the same broken host
+   * and produced byte-identical text, which is why the button looked dead.
    */
-  env: HostEnvironment;
+  detect: () => HostEnvironment;
 }
 
-export function App({ env }: AppProps): JSX.Element {
-  if (!env.available) return <HostUnavailable env={env} />;
-  return <Panel env={env} />;
+export function App({ detect }: AppProps): JSX.Element {
+  const [attempt, setAttempt] = useState(0);
+  const [env, setEnv] = useState<HostEnvironment>(() => detect());
+  const [attemptedAt, setAttemptedAt] = useState<string>(() => new Date().toLocaleTimeString());
+
+  const redetect = useCallback(() => {
+    setEnv(detect());
+    setAttemptedAt(new Date().toLocaleTimeString());
+    setAttempt((n) => n + 1);
+  }, [detect]);
+
+  if (!env.available) {
+    return <HostUnavailable env={env} attempt={attempt} attemptedAt={attemptedAt} onRetry={redetect} />;
+  }
+  return <Panel key={attempt} env={env} attempt={attempt} attemptedAt={attemptedAt} onRedetect={redetect} />;
 }
 
-function Panel({ env }: { env: Extract<HostEnvironment, { available: true }> }): JSX.Element {
+function Panel({
+  env,
+  attempt,
+  attemptedAt,
+  onRedetect,
+}: {
+  env: Extract<HostEnvironment, { available: true }>;
+  attempt: number;
+  attemptedAt: string;
+  onRedetect: () => void;
+}): JSX.Element {
   const { host, logoSrc } = env;
   const [service, setService] = useState<ServiceState>({ kind: 'starting' });
   const [reels, setReels] = useState<Reel[]>([]);
@@ -110,7 +136,12 @@ function Panel({ env }: { env: Extract<HostEnvironment, { available: true }> }):
       </header>
 
       <main>
-        <ServiceCard state={service} onRetry={() => void check()} />
+        <ServiceCard
+          state={service}
+          attempt={attempt}
+          attemptedAt={attemptedAt}
+          onRetry={onRedetect}
+        />
 
         <section>
           <h2>Video</h2>
@@ -193,8 +224,14 @@ function Panel({ env }: { env: Extract<HostEnvironment, { available: true }> }):
  */
 function HostUnavailable({
   env,
+  attempt,
+  attemptedAt,
+  onRetry,
 }: {
   env: Extract<HostEnvironment, { available: false }>;
+  attempt: number;
+  attemptedAt: string;
+  onRetry: () => void;
 }): JSX.Element {
   return (
     <div className="app">
@@ -208,6 +245,7 @@ function HostUnavailable({
         <section>
           <h2>Host</h2>
           <div className="card">
+            <Attempt attempt={attempt} attemptedAt={attemptedAt} />
             <div className="status">
               <div className="dot unreachable" />
               <div>
@@ -225,6 +263,9 @@ function HostUnavailable({
                 <span className="v">{env.prevents}</span>
               </li>
             </ul>
+            <button className="retry" type="button" onClick={onRetry}>
+              Retry
+            </button>
           </div>
         </section>
       </main>
@@ -289,11 +330,22 @@ function Spend({ reel }: { reel: Reel }): JSX.Element {
   );
 }
 
-function ServiceCard({ state, onRetry }: { state: ServiceState; onRetry: () => void }): JSX.Element {
+function ServiceCard({
+  state,
+  attempt,
+  attemptedAt,
+  onRetry,
+}: {
+  state: ServiceState;
+  attempt: number;
+  attemptedAt: string;
+  onRetry: () => void;
+}): JSX.Element {
   return (
     <section>
       <h2>Service</h2>
       <div className="card">
+        <Attempt attempt={attempt} attemptedAt={attemptedAt} />
         {state.kind === 'starting' ? (
           <div className="status">
             <div className="dot starting" />
@@ -379,6 +431,21 @@ function ServiceCard({ state, onRetry }: { state: ServiceState; onRetry: () => v
         ) : null}
       </div>
     </section>
+  );
+}
+
+/**
+ * Every attempt renders differently, even when it fails identically.
+ *
+ * Two consecutive failures used to produce byte-identical text, so a working
+ * Retry was indistinguishable from a dead one. The user pressed it after
+ * building the service and could not tell whether anything had happened.
+ */
+function Attempt({ attempt, attemptedAt }: { attempt: number; attemptedAt: string }): JSX.Element {
+  return (
+    <div className="attempt" data-attempt={attempt}>
+      {attempt === 0 ? 'first check' : `attempt ${attempt + 1}`} at {attemptedAt}
+    </div>
   );
 }
 
