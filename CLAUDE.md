@@ -534,6 +534,49 @@ them to 230, which is the guard. One regression is recorded rather than netted
 away: `vitasilk` `w0036` (`26`) lost its anchor, its true source being two
 tokens the aligner cannot express.
 
+### The transcription cache is stale against the guide, and a re-run bills
+
+**`ORTHOGRAPHY_GUIDE.md` is v1.0.8; every transcription cache entry on disk was
+written at v1.0.7 or earlier.** The transcription fingerprint reads the guide
+version out of the file, by design, so a guide bump invalidates on its own — and
+one happened in Block 4 session 3, four blocks ago. Nothing noticed because **no
+reel has been re-transcribed since.**
+
+Attributed exactly, each entry reproducing its own directory name from
+(promptVersion, guideVersion) and nothing else matching:
+
+| entry | promptVersion | guide | on disk for |
+|---|---:|---|---|
+| `transcription-0cb5401192dbfbc7` | 1 | 1.0.5 | vitasilk |
+| `transcription-92adf5b1bf24601a` | 3 | 1.0.6 | all five |
+| `transcription-758a3924d090d1b5` | 4 | **1.0.7** | all five — the pinned entry |
+| `ceba491c1af5b52f` | 4 | **1.0.8** | **nothing** — what production would compute today |
+
+`selectTranscriptionEntry` picks by **prompt version**, so every diagnostic and
+review tool reads `758a…` and is right to; `transcribeHybridCached` computes the
+**fingerprint** and would miss. The two are not in conflict — they answer
+different questions — but only the second one spends money.
+
+**The analysis cache is stale the same way**, for a different reason:
+`ACTIVE_ANALYSIS_PROMPT_VERSION` is 4 and `test-1`'s and `vitasilk`'s keyword
+entries were written at 3. `test-2`'s is at 4. The **slot** entries hit, and so
+do all ten `vitasilk` image entries, against the transcripts as they stand.
+
+**Nothing in any cache key depends on alignment.** Adopting the transliteration
+cost costs $0.00 to put on the plans, because alignment is recomputed locally
+from the cached Scribe response on a cache hit. What costs money is
+re-transcribing, and the guide bump is why that would happen.
+
+### A re-run clears keywords, images and sfx, and nothing would refuse
+
+`transcriptContentHash` covers each word's **start and end**, so any change to
+alignment changes it and `mergeIntoExistingPlan` clears `keywords`, `images` and
+`sfx` and resets their stages to pending. `PlanMergeBlockedError` guards
+human-flagged items — but **no plan carries one**: `chosenCandidateId` is null on
+all nine slots and no keyword is `edited`. So the clear happens silently, without
+`--force`, and `vitasilk` loses the plan-side record of ten generated images.
+The files and the cache entries survive; the plan's pointers do not.
+
 ### The correction prompt version is frozen for the rest of Block 8
 
 `ACTIVE_PROMPT_VERSION` is **4** and must not move until Block 8 closes.
@@ -4808,6 +4851,50 @@ against 21.3% of the corpus. Most are Darija proclitic morphology — `فهو` �
 `JSON.stringify`. The new syntax test found that a `</script>` in any word
 closed the element and that U+2028/U+2029 terminate a JavaScript line while
 being legal in JSON.
+
+## Block 8 part 2, session 13 — the money question stopped the session
+
+**Spent $0.00; no API was called.** Ledger 108 entries / sha `50ec3f57…` at both
+ends. After Effects was not driven. **No plan was regenerated and no plan was
+written.**
+
+**The session stopped before the panel work by its own hard-stop rule**:
+Goal 1 was to establish, read-only, what regenerating the five plans onto the
+adopted aligner would cost, and the answer is **not zero**. The two conventions
+above are the finding. Goals 4 and 5 — the staged panel flow — were not started.
+
+| | all five plans | `vitasilk` alone |
+|---|---:|---:|
+| transcription (**miss**, guide 1.0.7 → 1.0.8) | $0.837770 | $0.170658 |
+| keywords (**miss**, analysis prompt 3 → 4, and again if the text changes) | ~$0.90 | ~$0.18 |
+| image slots (hit today; **miss** once the transcript moves) | ~$0.28 | ~$0.056 |
+| image generation (hit today; **miss** once slot ideas move) | $1.550444 | $1.550444 |
+| **total** | **~$3.57** | **~$1.96** |
+
+Transcription figures are the actuals recorded in each pinned entry's own
+manifest. Keywords is the one v4 actual ($0.183518 on `test-2`) applied across;
+slots is Block 3's $0.224164 over four calls; images is `vitasilk`'s recorded
+$1.550444.
+
+**The cascade is what makes it expensive.** The Gemini correction call is not
+reproducible, so a re-transcription returns different corrected texts, which
+changes `hashTranscript`, which misses keywords **and** slots, which changes the
+slot ideas, which changes the composed image prompts, which strands all ten
+generated images. One stale key at the top costs the whole reel.
+
+**There is a free path and it is not a regeneration.** Alignment is pure and
+local, and the Scribe response and corrected texts are both in the pinned entry.
+Re-aligning from that entry and rewriting only the timings costs **$0.00** and
+needs no API — the same shape as `migrate:display-timing` and
+`repair:source-text`. It is not written; it is the suggested next step.
+
+**The corpus guard cannot fail for a substitution-cost change** — measured, in
+`docs/DEFECT-alignment-script-mismatch.md` §A.0.2. A cost model that inverts the
+transliteration distance reshuffles **332 of 343 pairings** and **passes the
+guard with a better anchored count than the adopted model** (332 against 330).
+The hand-made reference catches it instantly: 54 regressions against the adopted
+model's 0. **Session 12's safety check was worth much less than it read**, and
+the reference is what made the adoption safe.
 
 See `docs/BLOCKS.md` for the full block plan and `handoffs/` for prior
 session context.
