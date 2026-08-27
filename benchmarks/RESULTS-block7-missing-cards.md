@@ -62,15 +62,47 @@ different defect. The same thing happens wherever speech runs fast.
 
 ## 5. Is anything offset that a missing card does not explain?
 
-Re-checked against the raw Scribe response after one-word grouping re-derived every window:
-**7 of 11 words in the span still sit on an interval Scribe reports.**
-Not matched: w0028 "mn" 8.899–8.899; w0032 "nourrit" 9.779–9.800; w0033 "il" 9.819–11.079; w0034 "hydrate" 11.159–11.279.
+**Yes. There is a real alignment shift in this span, and it is not the gap effect.**
 
-**No card in the span starts anywhere but its own word**: 11 of 11 have a
-display window opening exactly on the word's start. Session 6's finding holds after
-re-grouping.
+Over 8.267–12.401 s, Scribe reports **10** word tokens and the plan carries
+**11** words. The correction pass changed the count, and Levenshtein
+anchoring then mapped several corrected words onto the wrong draft token.
 
-So there is **no offset beyond the one the eye infers from a gap**. When three words in a
-row leave nothing readable, the next card that does read looks late against the speech —
-but it is where it belongs.
+| plan word | plan interval | anchored | Scribe token at that interval | Scribe token in the same position |
+|---|---|---|---|---|
+| w0027 `Silk` | 8.619–8.860 | yes | `Silk` | `Silk` 8.619–8.860 |
+| w0028 `mn` | 8.899–8.899 | **interpolated** | **none** | `من` 8.939–9.000 |
+| w0029 `ghir` | 8.939–9.000 | yes | `من` | `غير` 9.079–9.199 |
+| w0030 `anno` | 9.079–9.199 | yes | `غير` | `أنه` 9.279–9.759 |
+| w0031 `il` | 9.279–9.759 | yes | `أنه` | `ينغّي،` 9.819–10.519 |
+| w0032 `nourrit` | 9.779–9.800 | yes | **none** | `ييدرات.` 10.559–11.059 |
+| w0033 `il` | 9.819–11.079 | yes | **none** | `فيه` 11.139–11.279 |
+| w0034 `hydrate` | 11.159–11.279 | yes | **none** | `ستة` 11.479–11.579 |
+| w0035 `fih` | 11.479–11.579 | yes | `ستة` | `وعشرين` 11.619–12.039 |
+| w0036 `26` | 11.619–12.039 | yes | `وعشرين` | `vitamin` 12.079–12.739 |
+| w0037 `vitamines` | 12.079–12.739 | yes | `vitamin` | — |
+
+Reading the two right-hand columns together: from the second word on, a plan word sits
+on the interval of the **previous** Scribe token. `ghir` is `غير`, spoken at 9.079, but
+its card opens at 8.939 — the interval of `من`. `anno` is `أنه` at 9.279 and opens at
+9.079. `il` opens at 9.279 while its token is at 9.819, **0.540 s early**.
+
+The cause is visible in the same table: the correction pass **inserted** a word (`mn`,
+which carries an interpolated zero-length timing) and **merged two into one** — Scribe's
+`ستة` and `وعشرين`, six-and-twenty, became the single token `26`. Either alone changes the
+token count, and the aligner carries the mismatch forward until the next confident
+anchor re-syncs it.
+
+**This is upstream of Block 7.** It is the hybrid aligner in
+`service/src/transcription/align.ts`, and it is a Block 2 question. Nothing about
+grouping, display timing or the builder moved these numbers — one-word grouping simply
+made each word its own card, so a shift that used to be blurred across a two-word card
+is now visible word by word.
+
+**It also corrects a claim made earlier in this session and in session 6.** Checking only
+"does this interval exist somewhere in the Scribe response" passes 7 of 11 here and
+passed 21 of 21 over 1.5–8.0 s, which reads as confirmation and is not one: an interval
+can be real and still belong to a different word. Session 6's span happened to have no
+insertion in it, so its conclusion held there — but the check was too weak to have
+established it, and this span is where that shows.
 

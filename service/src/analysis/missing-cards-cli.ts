@@ -151,37 +151,57 @@ L.push('different defect. The same thing happens wherever speech runs fast.');
 L.push('');
 L.push('## 5. Is anything offset that a missing card does not explain?');
 L.push('');
+L.push('**Yes. There is a real alignment shift in this span, and it is not the gap effect.**');
+L.push('');
 const scribe = scribeWordsFor(focus.plan.source.sha256);
-if (scribe === null) L.push('The transcription cache entry is gone, so the timings cannot be re-checked independently.');
-else {
-  let exact = 0;
-  let checked = 0;
-  const misses: string[] = [];
-  for (const w of focus.plan.transcript.words) {
-    if (w.start < fromS - 0.5 || w.start > toS + 0.5) continue;
-    checked += 1;
-    const hit = scribe.find((s) => Math.abs(s.start - w.start) < 1e-6 && Math.abs(s.end - w.end) < 1e-6);
-    if (hit) exact += 1;
-    else misses.push(`${w.id} "${w.text}" ${f3(w.start)}–${f3(w.end)}`);
-  }
-  L.push(`Re-checked against the raw Scribe response after one-word grouping re-derived every window:`);
-  L.push(`**${exact} of ${checked} words in the span still sit on an interval Scribe reports.**`);
-  if (misses.length > 0) L.push(`Not matched: ${misses.join('; ')}.`);
+if (scribe === null) {
+  L.push('The transcription cache entry is gone, so the timings cannot be re-checked');
+  L.push('independently. **That is itself the finding** — nothing else records what was said when.');
+} else {
+  const lo = fromS - 0.5;
+  const hi = toS + 0.5;
+  const spanScribe = scribe.filter((w) => w.start >= lo && w.start <= hi);
+  const spanWords = focus.plan.transcript.words.filter((w) => w.start >= lo && w.start <= hi);
+  L.push(`Over ${f3(lo)}–${f3(hi)} s, Scribe reports **${spanScribe.length}** word tokens and the plan carries`);
+  L.push(`**${spanWords.length}** words. The correction pass changed the count, and Levenshtein`);
+  L.push('anchoring then mapped several corrected words onto the wrong draft token.');
   L.push('');
-  let mismatched = 0;
-  for (const g of spanCards) {
-    const first = g.wordIds[0];
-    const w = focus.plan.transcript.words.find((x) => x.id === first);
-    if (w === undefined) continue;
-    if (Math.abs((g.displayStart ?? g.start) - w.start) > 1e-9) mismatched += 1;
-  }
-  L.push(`**No card in the span starts anywhere but its own word**: ${spanCards.length - mismatched} of ${spanCards.length} have a`);
-  L.push('display window opening exactly on the word\'s start. Session 6\'s finding holds after');
-  L.push('re-grouping.');
+  L.push('| plan word | plan interval | anchored | Scribe token at that interval | Scribe token in the same position |');
+  L.push('|---|---|---|---|---|');
+  spanWords.forEach((w, i) => {
+    const hit = scribe.find((x) => Math.abs(x.start - w.start) < 1e-6 && Math.abs(x.end - w.end) < 1e-6);
+    const positional = spanScribe[i];
+    L.push(
+      `| ${w.id} \`${w.text}\` | ${f3(w.start)}–${f3(w.end)} | ` +
+        `${w.confidence === null || w.confidence === undefined ? '**interpolated**' : 'yes'} | ` +
+        `${hit === undefined ? '**none**' : `\`${hit.text}\``} | ` +
+        `${positional === undefined ? '—' : `\`${positional.text}\` ${f3(positional.start)}–${f3(positional.end)}`} |`,
+    );
+  });
   L.push('');
-  L.push('So there is **no offset beyond the one the eye infers from a gap**. When three words in a');
-  L.push('row leave nothing readable, the next card that does read looks late against the speech —');
-  L.push('but it is where it belongs.');
+  L.push('Reading the two right-hand columns together: from the second word on, a plan word sits');
+  L.push('on the interval of the **previous** Scribe token. `ghir` is `غير`, spoken at 9.079, but');
+  L.push('its card opens at 8.939 — the interval of `من`. `anno` is `أنه` at 9.279 and opens at');
+  L.push('9.079. `il` opens at 9.279 while its token is at 9.819, **0.540 s early**.');
+  L.push('');
+  L.push('The cause is visible in the same table: the correction pass **inserted** a word (`mn`,');
+  L.push('which carries an interpolated zero-length timing) and **merged two into one** — Scribe\'s');
+  L.push('`ستة` and `وعشرين`, six-and-twenty, became the single token `26`. Either alone changes the');
+  L.push('token count, and the aligner carries the mismatch forward until the next confident');
+  L.push('anchor re-syncs it.');
+  L.push('');
+  L.push('**This is upstream of Block 7.** It is the hybrid aligner in');
+  L.push('`service/src/transcription/align.ts`, and it is a Block 2 question. Nothing about');
+  L.push('grouping, display timing or the builder moved these numbers — one-word grouping simply');
+  L.push('made each word its own card, so a shift that used to be blurred across a two-word card');
+  L.push('is now visible word by word.');
+  L.push('');
+  L.push('**It also corrects a claim made earlier in this session and in session 6.** Checking only');
+  L.push('"does this interval exist somewhere in the Scribe response" passes 7 of 11 here and');
+  L.push('passed 21 of 21 over 1.5–8.0 s, which reads as confirmation and is not one: an interval');
+  L.push('can be real and still belong to a different word. Session 6\'s span happened to have no');
+  L.push('insertion in it, so its conclusion held there — but the check was too weak to have');
+  L.push('established it, and this span is where that shows.');
 }
 L.push('');
 writeFileSync(OUT_PATH, `${L.join('\n')}\n`, 'utf8');
