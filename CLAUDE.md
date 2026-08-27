@@ -187,6 +187,10 @@ AI-generated contextual images, SFX, and a watermark. Full spec in
 - `npm run migrate:regroup [-- --apply]` — free, local. Re-groups every plan to
   one word per card and re-derives supersession, display timing, templates and
   SFX. Dry-run by default.
+- `npm run image-ceiling` — free, local, **read-only**. Computes the largest
+  placeable square per slot under each constraint relaxed one at a time, ranks
+  what each is worth, and writes `benchmarks/RESULTS-block7-image-ceiling.md`
+  plus `.local/build/image-ceilings.json` for the builder's variants.
 - `npm run image-fill` — free, local, **read-only**. Measures how much of its own
   canvas each generated image fills and how large the subject is on screen;
   writes `benchmarks/RESULTS-block7-image-fill.md`. Regenerates nothing.
@@ -3323,6 +3327,121 @@ timings from another. Repaired again by matching each word's **stored interval**
 against the cached Scribe response, which is exact and self-consistent; all 343
 words are now correct, and the alignment shift above is visible in the field
 rather than hidden by it.
+
+
+## Block 7 session 8 — the zone rectangle is the strict rule
+
+**Spent $0.00; no API was called.** Ledger 108 entries / sha `50ec3f57…` at
+both ends. `templates/library.aep` byte-identical at `dac234ce…`. One After
+Effects instance (PID 44015) throughout.
+
+### Nothing may be placed outside the frame, and now nothing is
+
+The user saw an image cropped at the left edge. **`img001` at the variant (c)
+size crossed the left frame edge by 130 px — and `img005` crossed the top by
+22 px in (c) and 2 px in (b), which nobody had reported.**
+
+The cause: `satisfiesHardConstraints` checks `insideFrame`, but **only the
+solver calls it**. Session 7's size variants reused the solved centre with a
+larger side and were bounded by nothing. `fitInsideFrame` in
+`placement/geometry.ts` is now the last step of every variant path: it moves the
+square in rather than shrinking it, and shrinks only when the square cannot fit
+the frame at all.
+
+**Block 5 decision 10's property still holds.** Content-aware scaling changes
+`IMG_MAIN`'s scale *inside* the comp, not the comp layer's footprint in the
+master, so the placed rect is unchanged and jitter still cannot leave its region
+by construction. What content-aware scaling *can* do is push the file's canvas
+past `IMG_MAIN`'s 1000 box; it stays inside the 1200 comp for every file in the
+corpus, and the transparent margin is what overflows on the one cutout.
+
+Seven tests, including both real escapes and a sweep of every stored placement
+on all five reels at every side a variant can ask for.
+
+### What each constraint is worth
+
+`npm run image-ceiling`, one relaxation at a time, everything else held:
+
+| relaxation | mean gain |
+|---|---:|
+| all of the above | **1.96x** |
+| drop the zone, `HEAD_CLEARANCE` 0 | **1.78x** |
+| drop the zone, hair is not head | 1.59x |
+| `FILL_FRACTION` 1.00 | 1.12x |
+| `CARD_EDGE_CLEARANCE` 0 | 1.12x |
+| `CARD_EDGE_CLEARANCE` 0.01 | 1.05x |
+| `SCALE_JITTER` 0 | 0.99x |
+
+**The answer to "which rule is too strict" is the zone rectangle**, worth ~1.8x
+against 1.05–1.12x for every constant inside it. `SCALE_JITTER` does not move
+the ceiling at all — it varies the realised side around `FILL_FRACTION`.
+
+**The zone is derived from the person mask, not the head mask**, so
+hair-versus-face changes nothing while the zone is in force. It only matters
+once the zone is dropped.
+
+### A face-only mask, as a parameter
+
+`selfie_multiclass_256x256` is a softmax over 0 background, 1 hair, 2 body skin,
+3 face skin, 4 clothes, 5 accessories. `HEAD_CATEGORIES` is (1, 3);
+**`FACE_CATEGORIES` is (3,)**. Accessories are deliberately excluded — the same
+category carries a held bottle as carries glasses.
+
+| reel | head reaches y | face reaches y | freed |
+|---|---:|---:|---:|
+| ground-truth | 0.6740 | 0.4052 | 0.269 |
+| test-1 | 0.5917 | 0.4062 | 0.185 |
+| test-2 | 0.5885 | 0.4208 | 0.168 |
+| test-3 | 0.7292 | 0.4719 | 0.257 |
+| **vitasilk** | **0.9521** | **0.5281** | **0.424** |
+
+**The honest risk, with numbers:** the face mask's *top* sits 44–128 px below
+the head's top (median; 216 px worst on vitasilk), so a band of hair above the
+face becomes placeable. `HEAD_CLEARANCE` is 86 px, which covers that band on
+three reels and not on vitasilk. **Nobody has looked at whether category 3
+covers a bespectacled face closely enough** — no face contact sheet was
+rendered, and that is a gap.
+
+**Both masks are written and both stay selectable.** `HEAD_THRESHOLD` stays
+0.25 for both.
+
+**A caveat on how the mask was obtained**, because the goal forbade new
+inference: face-only is **not derivable from what was stored** — only person
+(sum 1..5) and head (sum 1,3) were persisted, and neither hair nor face is
+separable from those. It was obtained by re-running the **same sha256-pinned
+model** over the same frames, free and local, 39 s for all five reels, with
+`_write_or_verify` confirming all existing masks byte-identical. That is a
+reading of "no new model, no new inference" as "no new segmentation and no
+cost"; under the stricter reading this goal should have stopped.
+
+### The variants, and a second defect they exposed
+
+`master_img_strict` / `_loose` / `_face`, image handling the only difference.
+
+**Building them on the solved centre put an image across the speaker's face on
+two slots.** A square that fits *somewhere* is not a placement — the centre the
+solver chose belongs to the smaller square. The variants now carry the position
+the ceiling measurement actually found. **Verified after the fix: 0 face
+overlaps, 0 frame escapes in all three comps.**
+
+| slot | strict subject | loose | face |
+|---|---:|---:|---:|
+| img001 | 265 px | 733 | 629 |
+| img002 | 421 px | 452 | 512 |
+| img003 | 287 px | 770 | 718 |
+| img004 | 534 px | 787 | 741 |
+| img005 | 435 px | 769 | 728 |
+
+`loose` exceeds `face` on several slots because each relaxes one thing: `loose`
+drops `HEAD_CLEARANCE` while `face` keeps it.
+
+**`master_img_max` was not built.** Goal 4 conditioned it on the face-only mask
+leaving real margin at the face; at `HEAD_CLEARANCE` 0 there is no margin by
+construction, and nothing has verified the mask does not under-cover a real
+face. The condition was not demonstrated, so the comp was not made.
+
+**Every image in `loose` and `face` overlaps the speaker's body or clothing**;
+one overlaps hair. That is the judgement the user is being asked for.
 
 
 See `docs/BLOCKS.md` for the full block plan and `handoffs/` for prior
