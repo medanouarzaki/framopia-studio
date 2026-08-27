@@ -119,7 +119,7 @@ export async function transcribeVideo(
     }
   }
 
-  const { transcript } = await runTranscription({
+  const { transcript, entry } = await runTranscription({
     elevenLabsApiKey: config.elevenLabsApiKey,
     googleApiKey: config.googleApiKey,
     audioPath,
@@ -165,6 +165,8 @@ export async function transcribeVideo(
     cached: transcript.cached,
     completedAt: timestamp,
     error: null,
+    cacheEntryId: entry.id,
+    cacheProvenance: entry.provenance,
   };
   // A cache hit costs nothing, but the stage still ran: recording it as 0
   // rather than dropping the key keeps `byStage` diffable across runs, where

@@ -8,7 +8,14 @@ import { isWide, observeWidth } from './panel-width.js';
 const HEARTBEAT_MS = 5000;
 import { runGate } from './run-gate.js';
 import { formatUsd, SPEND_SOFT_ALARM_USD, spendLevel } from './spend.js';
-import type { ClientMode, DryRunPlan, HostEnvironment, Reel, ServiceState } from './types.js';
+import type {
+  ClientMode,
+  DryRunPlan,
+  DryRunStage,
+  HostEnvironment,
+  Reel,
+  ServiceState,
+} from './types.js';
 
 /**
  * The whole panel, for now: service state, a video, a client mode, and a Run
@@ -346,9 +353,29 @@ function FontsNote({ mode }: { mode: ClientMode }): JSX.Element | null {
 }
 
 /**
+ * What a stage would do, in the user's words rather than the resolver's.
+ *
+ * It reads `provenance`, never `status`: `status` is what the plan remembers
+ * and `provenance` is what the cache answers now. The panel said "cached" from
+ * `status` for four blocks while a run would have re-transcribed and billed.
+ */
+function stageWord(stage: DryRunStage): string {
+  if (stage.provenance === 'exact') return 'cached';
+  if (stage.provenance === 'compatible') return 'cached, older guide';
+  if (stage.provenance === null) return stage.status === 'done' ? 'done' : 'to run';
+  return stage.estimateUsd === null ? 'to run' : `to run, about $${stage.estimateUsd.toFixed(2)}`;
+}
+
+function stageTone(stage: DryRunStage): string {
+  if (stage.provenance === 'exact') return 'good';
+  if (stage.provenance === 'compatible') return 'warn';
+  return '';
+}
+
+/**
  * The dry run: what a run would do, read before anything is spent. Every
- * figure comes from the service, which reads them off the plan — the panel
- * computes none of them.
+ * figure comes from the service, which resolves each stage against the cache
+ * on disk — the panel computes none of them.
  */
 function DryRun({ plan }: { plan: DryRunPlan }): JSX.Element {
   return (
@@ -357,12 +384,8 @@ function DryRun({ plan }: { plan: DryRunPlan }): JSX.Element {
         {plan.stages.map((stage) => (
           <li key={stage.id}>
             <span className="k">{stage.label}</span>
-            <span className={`v ${stage.status === 'done' ? 'good' : ''}`} title={stage.note}>
-              {stage.status === 'done'
-                ? 'cached'
-                : stage.estimateUsd === null
-                  ? 'to run'
-                  : `to run, about $${stage.estimateUsd.toFixed(2)}`}
+            <span className={`v ${stageTone(stage)}`} title={stage.note}>
+              {stageWord(stage)}
             </span>
           </li>
         ))}
@@ -375,10 +398,16 @@ function DryRun({ plan }: { plan: DryRunPlan }): JSX.Element {
           <div className="cap">
             {plan.estimateUsd === 0
               ? 'every stage is cached; a run would read from disk'
-              : 'estimated for the stages not yet run'}
+              : 'estimated for the stages that would call the API'}
           </div>
         </div>
       </div>
+      {plan.reusesOlderGuide ? (
+        <p className="note">
+          Reusing a transcription made against an older orthography guide. It will not
+          re-transcribe and will not bill.
+        </p>
+      ) : null}
     </div>
   );
 }

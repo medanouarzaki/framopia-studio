@@ -110,6 +110,8 @@ section > h2 {
 }
 .facts .v.bad { color: var(--accent); }
 .facts .v.good { color: var(--ok); }
+.facts .v.warn { color: var(--warn); }
+.card > .note { margin: 10px 0 0; color: var(--warn); font-size: 12px; line-height: 1.5; }
 
 .card.note .detail { color: var(--muted); overflow-wrap: anywhere; }
 .issues { margin: 10px 0 0; padding-left: 18px; color: var(--accent); }

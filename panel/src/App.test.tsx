@@ -552,10 +552,36 @@ describe('the dry run', () => {
                   planPath: '/v/vitasilk.editplan.json',
                   spentUsd: 1.550444,
                   stages: [
-                    { id: 'transcription', label: 'Transcribe and correct', status: 'done', estimateUsd: null, note: 'cached' },
-                    { id: 'images', label: 'Generate images', status: 'pending', estimateUsd: 1.55, note: 'not run yet' },
+                    {
+                      id: 'transcription',
+                      label: 'Transcribe and correct',
+                      status: 'done',
+                      provenance: 'compatible',
+                      entryId: 'transcription-758a3924d090d1b5',
+                      estimateUsd: null,
+                      note: 'reusing an older guide; will not bill',
+                    },
+                    {
+                      id: 'analysis',
+                      label: 'Keywords and image slots',
+                      status: 'done',
+                      provenance: 'none',
+                      entryId: null,
+                      estimateUsd: 0.18,
+                      note: 'a run would call the model and bill',
+                    },
+                    {
+                      id: 'images',
+                      label: 'Generate images',
+                      status: 'pending',
+                      provenance: 'none',
+                      entryId: null,
+                      estimateUsd: 1.55,
+                      note: 'not run yet',
+                    },
                   ],
-                  estimateUsd: 1.55,
+                  estimateUsd: 1.73,
+                  reusesOlderGuide: true,
                 };
         return Promise.resolve({ ok: true, json: () => Promise.resolve(body) });
       }),
@@ -572,10 +598,63 @@ describe('the dry run', () => {
     });
 
     expect(text()).toContain('Transcribe and correct');
-    expect(text()).toContain('cached');
+    // Read off `provenance`, never off `status`: a stage the plan calls done
+    // can still bill, which is the defect this replaced.
+    expect(text()).toContain('cached, older guide');
     expect(text()).toContain('to run, about $1.55');
-    expect(text()).toContain('about $1.55');
-    expect(text()).toContain('estimated for the stages not yet run');
+    expect(text()).toContain('to run, about $0.18');
+    expect(text()).toContain('about $1.73');
+    expect(text()).toContain('estimated for the stages that would call the API');
+    expect(text()).toContain('will not bill');
+  });
+
+  it('never calls a stage cached because the plan remembers it as done', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation((url: string) => {
+        const body = url.includes('/health')
+          ? healthy
+          : url.includes('/reels')
+            ? { reels }
+            : url.includes('/modes')
+              ? { modes }
+              : {
+                  reel: 'vitasilk',
+                  videoPath: '/v/vitasilk.mov',
+                  modeId: 'k2-syndicalia',
+                  modeName: 'K2 Syndicalia',
+                  modeVersion: 6,
+                  planPath: '/v/vitasilk.editplan.json',
+                  spentUsd: 0,
+                  stages: [
+                    {
+                      id: 'analysis',
+                      label: 'Keywords and image slots',
+                      status: 'done',
+                      provenance: 'none',
+                      entryId: null,
+                      estimateUsd: 0.18,
+                      note: 'a run would call the model and bill',
+                    },
+                  ],
+                  estimateUsd: 0.18,
+                  reusesOlderGuide: false,
+                };
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(body) });
+      }),
+    );
+    await render(hostThatAnswers());
+    await act(async () => {
+      select('Reel').value = 'vitasilk';
+      select('Reel').dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    await act(async () => {
+      select('Client mode').value = 'k2-syndicalia';
+      select('Client mode').dispatchEvent(new Event('change', { bubbles: true }));
+    });
+
+    expect(text()).toContain('to run, about $0.18');
+    expect(text()).not.toContain('nothing to pay');
   });
 });
 

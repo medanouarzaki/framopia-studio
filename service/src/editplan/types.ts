@@ -9,6 +9,19 @@ export interface PipelineStage {
   cached: boolean | null;
   completedAt: string | null;
   error: string | null;
+  /**
+   * Which cache entry produced this stage, and how it was found. Schema
+   * addition, **optional with a default**: a plan written before Block 8
+   * session 14 carries neither and opens unchanged.
+   *
+   * `cached: true` says money was not spent; it does not say *what was
+   * reused*. A `compatible` reuse is a transcription made against an older
+   * orthography guide, and a plan that does not record which entry it came
+   * from cannot be told apart from one made against the current rules.
+   * Guidelines §3: a tool names the inputs it selected, in its artifact.
+   */
+  cacheEntryId?: string | null;
+  cacheProvenance?: 'exact' | 'compatible' | 'none' | null;
 }
 
 /** The five stages ARCHITECTURE §3 names, in the order it names them. */

@@ -105,6 +105,8 @@ class Checker {
   }
 }
 
+const CACHE_PROVENANCES = new Set(['exact', 'compatible', 'none']);
+
 function checkPipeline(c: Checker, value: unknown): void {
   const pipeline = c.object('pipeline', value);
   if (pipeline === null) return;
@@ -118,6 +120,14 @@ function checkPipeline(c: Checker, value: unknown): void {
     c.nullableBoolean(`${p}.cached`, stage.cached);
     c.nullableString(`${p}.completedAt`, stage.completedAt);
     c.nullableString(`${p}.error`, stage.error);
+    // Optional with a default: absent means the plan predates the resolver,
+    // which is not the same as a stage that recorded nothing.
+    if (stage.cacheEntryId !== undefined) {
+      c.nullableString(`${p}.cacheEntryId`, stage.cacheEntryId);
+    }
+    if (stage.cacheProvenance !== undefined && stage.cacheProvenance !== null) {
+      c.oneOf(`${p}.cacheProvenance`, stage.cacheProvenance, CACHE_PROVENANCES);
+    }
   }
 }
 

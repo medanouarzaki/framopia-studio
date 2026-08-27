@@ -126,7 +126,7 @@ export function createApp(token: string): http.Server {
           return;
         }
         try {
-          sendJson(res, 200, dryRun(reel, mode));
+          sendJson(res, 200, await dryRun(reel, mode));
         } catch (error) {
           if (!(error instanceof DryRunError)) throw error;
           sendJson(res, 400, serviceError('dry-run', error.message, false));

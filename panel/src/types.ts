@@ -26,10 +26,20 @@ export interface HealthPayload {
   node?: { path: string | null; source: string | null; version?: string; help?: string };
 }
 
+/** How the cache answers for a stage right now. See core's entry-resolve. */
+export type EntryProvenance = 'exact' | 'compatible' | 'none';
+
 export interface DryRunStage {
   id: string;
   label: string;
   status: 'done' | 'pending';
+  /**
+   * What a run would actually do. `status` is what the plan remembers, which
+   * is not the same question: a stage the plan calls `done` can still resolve
+   * `none` and bill.
+   */
+  provenance: EntryProvenance | null;
+  entryId: string | null;
   estimateUsd: number | null;
   note: string;
 }
@@ -44,6 +54,8 @@ export interface DryRunPlan {
   spentUsd: number | null;
   stages: DryRunStage[];
   estimateUsd: number;
+  /** True when a stage reuses a transcription made against an older guide. */
+  reusesOlderGuide: boolean;
 }
 
 /** ARCHITECTURE §8. Shown verbatim; the panel never paraphrases a cause. */

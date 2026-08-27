@@ -1,6 +1,12 @@
 import { existsSync, readFileSync } from 'node:fs';
-import { loadMode } from '@framopia/core';
+import { loadMode, type EntryProvenance } from '@framopia/core';
 import { listReels } from './catalogue.js';
+import { resolveKeywordEntry, resolveSlotEntry } from './analysis/resolve-entry.js';
+import { resolveTranscriptionEntry } from './transcription/resolve-entry.js';
+import { IMAGE_CACHE_STAGE } from './images/cache.js';
+import { imageFingerprintInputs, imageFingerprintOf } from './images/fingerprint.js';
+import { cacheEntryDir, CACHE_ROOT } from './transcription/cache.js';
+import { DEFAULT_IMAGE_CONFIG } from './images/config.js';
 
 /**
  * What a run *would* do, before any of it is paid for.
@@ -20,6 +26,13 @@ export interface DryRunStage {
   label: string;
   /** `done` when the plan records it complete, `pending` otherwise. */
   status: 'done' | 'pending';
+  /**
+   * How the cache answers for this stage **right now**, not what the plan
+   * remembers. `none` means a run bills, whatever the plan says.
+   */
+  provenance: EntryProvenance | null;
+  /** The entry that would be reused, when there is one. */
+  entryId: string | null;
   /** Null when the stage costs nothing or nothing can be estimated for it. */
   estimateUsd: number | null;
   note: string;
@@ -35,14 +48,37 @@ export interface DryRunPlan {
   /** Cumulative spend already on this reel. */
   spentUsd: number | null;
   stages: DryRunStage[];
-  /** Sum of the pending stages' estimates. */
+  /** Sum of the stages that would actually bill. */
   estimateUsd: number;
+  /** True when any stage resolves `compatible`; the panel says so plainly. */
+  reusesOlderGuide: boolean;
 }
 
 export class DryRunError extends Error {}
 
 interface PipelineRecord {
   status?: string;
+}
+
+interface PlanLikeWord {
+  id: string;
+  text: string;
+  removed: boolean;
+  start: number;
+  end: number;
+}
+
+interface PlanLikeSlot {
+  prompt: string;
+  negativePrompt: string;
+}
+
+interface PlanLike {
+  pipeline?: Record<string, PipelineRecord>;
+  costs?: { spentUsd?: number };
+  source?: { sha256?: string; durationS?: number };
+  transcript?: { words?: PlanLikeWord[] };
+  images?: { slots?: PlanLikeSlot[] };
 }
 
 /**
@@ -72,7 +108,7 @@ const STAGE_LABELS: Record<string, string> = {
   zones: 'Frame analysis (local, free)',
 };
 
-export function dryRun(reelLabel: string, modeId: string): DryRunPlan {
+export async function dryRun(reelLabel: string, modeId: string): Promise<DryRunPlan> {
   const reel = listReels().find((r) => r.label === reelLabel);
   if (reel === undefined) {
     throw new DryRunError(`no reel labelled "${reelLabel}" in benchmarks/footage.json`);
@@ -90,29 +126,101 @@ export function dryRun(reelLabel: string, modeId: string): DryRunPlan {
 
   let pipeline: Record<string, PipelineRecord> = {};
   let spentUsd: number | null = null;
+  let sha = '';
+  let durationS = 0;
+  let words: PlanLikeWord[] = [];
+  let slots: PlanLikeSlot[] = [];
   if (reel.planPath !== null && existsSync(reel.planPath)) {
     try {
-      const plan = JSON.parse(readFileSync(reel.planPath, 'utf8')) as {
-        pipeline?: Record<string, PipelineRecord>;
-        costs?: { spentUsd?: number };
-      };
+      const plan = JSON.parse(readFileSync(reel.planPath, 'utf8')) as PlanLike;
       pipeline = plan.pipeline ?? {};
       spentUsd = typeof plan.costs?.spentUsd === 'number' ? plan.costs.spentUsd : null;
+      sha = plan.source?.sha256 ?? '';
+      durationS = plan.source?.durationS ?? 0;
+      words = plan.transcript?.words ?? [];
+      slots = plan.images?.slots ?? [];
     } catch (error) {
       throw new DryRunError(`${reel.planPath} did not parse: ${(error as Error).message}`);
     }
   }
+  if (sha === '') {
+    throw new DryRunError(
+      `${reelLabel} has no edit plan yet, so nothing can be looked up in the cache by video hash. ` +
+        'A first run transcribes and bills.',
+    );
+  }
 
-  const stages: DryRunStage[] = Object.keys(STAGE_LABELS).map((id) => {
+  const stages: DryRunStage[] = [];
+  const add = (
+    id: string,
+    provenance: EntryProvenance | null,
+    entryId: string | null,
+    note: string,
+  ): void => {
     const done = pipeline[id]?.status === 'done';
-    return {
+    const bills = provenance === 'none';
+    stages.push({
       id,
       label: STAGE_LABELS[id] as string,
       status: done ? 'done' : 'pending',
-      estimateUsd: done ? null : (STAGE_ESTIMATES[id] ?? null),
-      note: done ? 'already on the plan; a re-run reads the cache and bills nothing' : 'not run yet',
-    };
-  });
+      provenance,
+      entryId,
+      estimateUsd: bills ? (STAGE_ESTIMATES[id] ?? null) : null,
+      note,
+    });
+  };
+
+  const transcription = await resolveTranscriptionEntry({ videoSha256: sha });
+  add('transcription', transcription.provenance, transcription.id, transcription.note);
+
+  if (words.length === 0) {
+    const why = 'no transcript on the plan yet, so the analysis cache cannot be addressed';
+    add('analysis', 'none', null, `${why}; a run would transcribe first, then bill for analysis`);
+  } else {
+    const keyword = resolveKeywordEntry({ videoSha256: sha, mode, words, durationS });
+    const slot = resolveSlotEntry({ videoSha256: sha, mode, words, durationS });
+    const provenance: EntryProvenance =
+      keyword.provenance === 'exact' && slot.provenance === 'exact' ? 'exact' : 'none';
+    add(
+      'analysis',
+      provenance,
+      [keyword.id, slot.id].filter((x): x is string => x !== null).join(' + ') || null,
+      `keywords: ${keyword.note}. Image slots: ${slot.note}`,
+    );
+  }
+
+  if (slots.length === 0) {
+    add('images', null, null, 'no image slots planned yet; nothing to look up');
+  } else {
+    let hit = 0;
+    let total = 0;
+    for (const slot of slots) {
+      for (let index = 0; index < DEFAULT_IMAGE_CONFIG.candidatesPerSlot; index += 1) {
+        total += 1;
+        const fingerprint = imageFingerprintOf(
+          imageFingerprintInputs({
+            prompt: slot.prompt,
+            negativePrompt: slot.negativePrompt,
+            modelId: DEFAULT_IMAGE_CONFIG.modelId,
+            resolution: DEFAULT_IMAGE_CONFIG.resolution,
+            aspectRatio: DEFAULT_IMAGE_CONFIG.aspectRatio,
+            candidateIndex: index,
+            mode,
+          }),
+        );
+        if (existsSync(cacheEntryDir(sha, IMAGE_CACHE_STAGE, fingerprint, CACHE_ROOT))) hit += 1;
+      }
+    }
+    add(
+      'images',
+      hit === total ? 'exact' : 'none',
+      null,
+      `${hit} of ${total} candidate images are cached` +
+        (hit === total ? '; a run would bill nothing' : `; a run would generate ${total - hit}`),
+    );
+  }
+
+  add('zones', null, null, 'local computer vision; free whether or not it re-runs');
 
   return {
     reel: reel.label,
@@ -124,5 +232,6 @@ export function dryRun(reelLabel: string, modeId: string): DryRunPlan {
     spentUsd,
     stages,
     estimateUsd: stages.reduce((sum, s) => sum + (s.estimateUsd ?? 0), 0),
+    reusesOlderGuide: stages.some((s) => s.provenance === 'compatible'),
   };
 }

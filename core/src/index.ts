@@ -156,6 +156,14 @@ export {
   type SelectOptions,
 } from './cache-select.js';
 export {
+  resolveCacheEntry,
+  recoverGuideVersion,
+  compareGuideVersions,
+  GUIDE_VERSION_HISTORY,
+  type EntryProvenance,
+  type ResolvedEntry,
+} from './entry-resolve.js';
+export {
   AlignScoreError,
   compareAgainstReference,
   movedRows,
