@@ -113,6 +113,15 @@ export async function connect(host: PanelHost): Promise<
   }
 
   if (!spawned.ok) {
+    /*
+     * Two panels opening together both find no handshake and both spawn. The
+     * second service refuses the first one's lock and exits, so the spawn
+     * "fails" while a perfectly good service is now listening. Reporting that
+     * as a failure would leave the second panel broken beside a working one.
+     */
+    const reused = await reachExisting(host);
+    if (reused !== null) return reused;
+
     return {
       ok: false,
       error: serviceErrorOf(
@@ -152,6 +161,28 @@ export async function connect(host: PanelHost): Promise<
       true,
     ),
   };
+}
+
+/**
+ * A service someone else is running, if it answers. Used both before spawning
+ * and after a spawn that lost a race.
+ */
+async function reachExisting(
+  host: PanelHost,
+): Promise<{ ok: true; health: HealthPayload; port: number; token: string } | null> {
+  let handshake: ReturnType<PanelHost['readHandshake']>;
+  try {
+    handshake = host.readHandshake();
+  } catch {
+    return null;
+  }
+  if (handshake === null || !host.processAlive(handshake.pid)) return null;
+  try {
+    const health = await withTimeout((signal) => getHealth(handshake.port, signal));
+    return { ok: true, health, port: handshake.port, token: handshake.token };
+  } catch {
+    return null;
+  }
 }
 
 /** Injected in tests so a timeout can be exercised without waiting for one. */
