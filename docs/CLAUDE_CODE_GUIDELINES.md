@@ -60,6 +60,39 @@ checker enforces a rule, confirm the checker actually implements it — §2 of
 the orthography guide said the scorer flagged a standalone `w` for a full
 version before that was true.
 
+### Never leave a test asserting retired behaviour
+
+A test is a statement that something is true. When a rule changes, a test that
+still asserts the old one is a false statement the build reports as passing, and
+it is worse than no test: the next person reads it as the current contract and
+reasons from it.
+
+Rewrite or delete it in the same change that retires the rule. A test kept for
+the record needs its name and its comment to say that is what it is.
+
+Block 7 session 11 found four of them at once, after the entrance-compression
+rule stopped splitting its budget evenly between intro and outro. One was named
+"only the sum is ever compared" — a rule that had been true, was no longer, and
+was still green.
+
+### A rule shared by more than one tool is pinned by a test
+
+The repo already does this for a constant mirrored between TypeScript and the
+Python sidecar: a test reads both and fails when they drift. **The same applies
+to a rule with more than one implementation**, which is easier to miss, because
+the second copy is arithmetic rather than a named value.
+
+Session 11 reconciled the reporting tools with the builder by pointing them at
+`cardMinimumDurationS`, ran the figures, and found them still disagreeing:
+`sweepTemplate` in `timing-budget.ts` held its own copy of how the budget splits
+between intro and outro, which had been harmless while the split did not matter
+and became a second source of truth the moment it did. Six possible homes of the
+arithmetic were searched before the right one was found, and only because the
+numbers still disagreed after the first fix.
+
+If a rule cannot be reduced to one declaration, the test that pins the copies
+together is the next best thing. A comment saying "keep this in sync" is not.
+
 ### A tool that can write to the plan is not a diagnostic
 
 A diagnostic reads and reports; if it is wrong, a document is wrong and
