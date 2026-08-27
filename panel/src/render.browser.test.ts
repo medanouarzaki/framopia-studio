@@ -51,15 +51,9 @@ function stubHost(files: Record<string, string>, repo = REPO): string {
   window.cep_node = {
     global: {},
     require: (id) => {
-      if (id === 'path') {
-        return {
-          // Faithful enough for the one call the panel makes:
-          // resolve('<extension>', '..') is the repo root.
-          resolve: (base, rel) =>
-            rel === '..' ? base.split('/').slice(0, -1).join('/') : base,
-          join: (...p) => p.join('/'),
-        };
-      }
+      // The panel calls path.join and nothing else; a stub offering more would
+      // suggest it models more than it does.
+      if (id === 'path') return { join: (...p) => p.join('/') };
       if (id === 'fs') {
         const has = (p) =>
           Object.prototype.hasOwnProperty.call(window.__files, p) ||
@@ -79,7 +73,8 @@ function stubHost(files: Record<string, string>, repo = REPO): string {
       }
       if (id === 'os') return { homedir: () => '/home' };
       if (id === 'child_process') {
-        return { spawn: () => ({ unref: () => {}, on: () => {}, stderr: null }) };
+        // stdio pipes stderr, so the real child has a stream here, not null.
+        return { spawn: () => ({ unref: () => {}, on: () => {}, stderr: { on: () => {} } }) };
       }
       throw new Error('unexpected module ' + id);
     },
@@ -103,8 +98,8 @@ const HEALTHY_PAYLOAD = {
   ffprobe: { present: true, detail: 'ffprobe version 8.0.1' },
   sidecar: { venv: { present: true, detail: 'Python 3.11.14' }, pythonPath: '/p' },
   templates: { valid: true, issues: [], count: 6 },
-  repoRoot: '/repo',
-  node: { path: '/n/node', source: 'nvm' },
+  repoRoot: REPO,
+  node: { path: '/home/.nvm/versions/node/v24.14.1/bin/node', source: 'nvm', version: 'v24.14.1' },
 };
 
 /** Replaces fetch before the bundle runs, so the first health call is the stub. */
@@ -149,10 +144,14 @@ async function load(
     files?: Record<string, string>;
     fetch?: 'healthy' | 'hang' | null;
     repo?: string;
+    width?: number;
+    height?: number;
   } = {},
 ): Promise<Loaded | null> {
   if (browser === undefined) return null;
-  const page = await browser.newPage({ viewport: { width: 420, height: 760 } });
+  const page = await browser.newPage({
+    viewport: { width: options.width ?? 420, height: options.height ?? 900 },
+  });
   const uncaught: string[] = [];
   page.on('pageerror', (error: Error) => uncaught.push(error.message));
   page.on('console', (msg: ConsoleMessage) => {
@@ -414,6 +413,106 @@ describe.skipIf(!built)('the spawn path in a real browser', () => {
 
       expect(second).not.toBe(first);
       expect(second).toContain('attempt 2');
+    } finally {
+      await page.close();
+    }
+  }, 30_000);
+});
+
+/**
+ * The layout at the two widths that matter: docked into an After Effects
+ * workspace at the manifest's 420px, and floating wide.
+ *
+ * The breakpoint is a container query on the panel, not a media query: a
+ * docked CEP panel's window is the size of the screen while its panel is the
+ * width of a column, so a viewport query would lay out for the wrong thing.
+ */
+describe.skipIf(!built)('the responsive layout', () => {
+  const columnCount = async (page: Page): Promise<number> =>
+    page.evaluate(
+      () =>
+        new Set(
+          [...document.querySelectorAll('main > section')].map((s) =>
+            Math.round(s.getBoundingClientRect().left),
+          ),
+        ).size,
+    );
+
+  const overflowing = async (page: Page): Promise<string[]> =>
+    page.evaluate(() =>
+      [...document.querySelectorAll('*')]
+        .filter((el) => el.scrollWidth > el.clientWidth + 1)
+        .map((el) => `${el.tagName}.${el.className}`),
+    );
+
+  it('is one column when docked at 420px, and nothing overflows', async () => {
+    const loaded = await load({ files: { ...HANDSHAKE, ...SERVICE_BUILT }, fetch: 'healthy', width: 420 });
+    if (loaded === null) return;
+    const { page } = loaded;
+    try {
+      await page.waitForSelector('.dot.healthy', { timeout: 15_000 });
+      expect(await columnCount(page)).toBe(1);
+      expect(await overflowing(page)).toEqual([]);
+    } finally {
+      await page.close();
+    }
+  }, 30_000);
+
+  it('is two columns when floating wide, and nothing overflows', async () => {
+    const loaded = await load({ files: { ...HANDSHAKE, ...SERVICE_BUILT }, fetch: 'healthy', width: 1200 });
+    if (loaded === null) return;
+    const { page } = loaded;
+    try {
+      await page.waitForSelector('.dot.healthy', { timeout: 15_000 });
+      expect(await columnCount(page)).toBe(2);
+      expect(await overflowing(page)).toEqual([]);
+
+      // Service beside Video and Client mode; Build spanning both beneath.
+      const boxes = await page.evaluate(() =>
+        Object.fromEntries(
+          ['service', 'video', 'mode', 'build'].map((c) => {
+            const el = document.querySelector(`main > section.${c}`) as HTMLElement;
+            const r = el.getBoundingClientRect();
+            return [c, { left: Math.round(r.left), top: Math.round(r.top), width: Math.round(r.width) }];
+          }),
+        ),
+      );
+      expect(boxes.service?.left).toBeLessThan(boxes.video?.left as number);
+      expect(boxes.video?.left).toBe(boxes.mode?.left);
+      expect(boxes.video?.top).toBeLessThan(boxes.mode?.top as number);
+      expect(boxes.build?.left).toBe(boxes.service?.left);
+      expect(boxes.build?.width).toBeGreaterThan((boxes.service?.width as number) * 1.8);
+      expect(boxes.build?.top).toBeGreaterThan(boxes.mode?.top as number);
+    } finally {
+      await page.close();
+    }
+  }, 30_000);
+
+  /*
+   * The breakpoint itself. Below it a second column would be narrower than the
+   * single column already is when docked, which would make the panel worse
+   * rather than wider.
+   */
+  it('stays single-column one pixel below the breakpoint', async () => {
+    const loaded = await load({ files: { ...HANDSHAKE, ...SERVICE_BUILT }, fetch: 'healthy', width: 829 });
+    if (loaded === null) return;
+    const { page } = loaded;
+    try {
+      await page.waitForSelector('.dot.healthy', { timeout: 15_000 });
+      expect(await columnCount(page)).toBe(1);
+    } finally {
+      await page.close();
+    }
+  }, 30_000);
+
+  it('splits at the breakpoint', async () => {
+    const loaded = await load({ files: { ...HANDSHAKE, ...SERVICE_BUILT }, fetch: 'healthy', width: 830 });
+    if (loaded === null) return;
+    const { page } = loaded;
+    try {
+      await page.waitForSelector('.dot.healthy', { timeout: 15_000 });
+      expect(await columnCount(page)).toBe(2);
+      expect(await overflowing(page)).toEqual([]);
     } finally {
       await page.close();
     }

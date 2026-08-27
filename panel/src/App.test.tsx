@@ -264,9 +264,13 @@ describe('runGate', () => {
     expect(gate.reason).toBe('This machine is missing ffmpeg and a valid template manifest.');
   });
 
-  it('refuses a mode whose fonts are still tbd', () => {
+  /*
+   * Retired: fonts moved from Run to Build in Block 8 session 9. A mode with
+   * `tbd` fonts reaches Run; the Build section says which fonts will be used.
+   */
+  it('lets a mode whose fonts are still tbd through to Run', () => {
     const gate = runGate({ ...base, service: { kind: 'healthy', health: healthy } });
-    expect(gate.reason).toContain('has no fonts yet');
+    expect(gate.reason).not.toContain('fonts');
   });
 
   /*
@@ -318,11 +322,12 @@ describe('host detection', () => {
     delete cepGlobal.CSInterface;
   });
 
-  const fakePath = {
-    resolve: (...p: string[]) => p.slice(0, -1).join('/') || '/repo',
-    join: (...p: string[]) => p.join('/'),
+  // The panel calls path.join and nothing else.
+  const fakePath = { join: (...p: string[]) => p.join('/') };
+  // stdio pipes stderr, so the real child has a stream here, not null.
+  const fakeSpawn = {
+    spawn: () => ({ unref: () => undefined, on: () => undefined, stderr: { on: () => undefined } }),
   };
-  const fakeSpawn = { spawn: () => ({ unref: () => undefined, on: () => undefined, stderr: null }) };
   const fakeOs = { homedir: () => '/home' };
 
   /*
@@ -665,6 +670,155 @@ describe('retry', () => {
       expect(spawnService).toHaveBeenCalledTimes(2);
     } finally {
       setClockForTests({ now: () => Date.now(), sleep: (ms) => new Promise((r) => setTimeout(r, ms)) });
+    }
+  });
+});
+
+/**
+ * Fonts decide how the comp is drawn, not whether speech can be transcribed.
+ * PROJECT_SPEC §5 reserves a client's fonts for Block 9, which comes after
+ * this block, so gating Run on them made Block 8's definition of done
+ * unreachable.
+ */
+describe('the fonts gate', () => {
+  const tbd: ClientMode = { id: 'k2-syndicalia', name: 'K2 Syndicalia', version: 6, fontsResolved: false };
+
+  it('does not stop Run', () => {
+    const gate = runGate({
+      service: { kind: 'healthy', health: healthy },
+      reel: reels[0] as Reel,
+      mode: tbd,
+    });
+    expect(gate.reason).not.toContain('fonts');
+    expect(gate.reason).toBe('The pipeline runner is not built yet.');
+  });
+
+  it('surfaces at Build, naming the fonts the build will use instead', async () => {
+    vi.stubGlobal('fetch', serviceFetch());
+    await render(hostThatAnswers());
+    await act(async () => {
+      select('Client mode').value = 'k2-syndicalia';
+      select('Client mode').dispatchEvent(new Event('change', { bubbles: true }));
+    });
+
+    expect(text()).toContain('has no fonts of its own yet');
+    expect(text()).toContain('Inter Semi-Bold');
+    expect(text()).toContain('Almarai Bold');
+  });
+
+  it('says nothing once a mode brings its own', async () => {
+    vi.stubGlobal(
+      'fetch',
+      serviceFetch({
+        modes: [{ ...tbd, fontsResolved: true, fonts: { latin: 'Fake Sans', arabic: 'Fake Arabic' } }],
+      }),
+    );
+    await render(hostThatAnswers());
+    await act(async () => {
+      select('Client mode').value = 'k2-syndicalia';
+      select('Client mode').dispatchEvent(new Event('change', { bubbles: true }));
+    });
+
+    expect(text()).not.toContain('has no fonts of its own yet');
+  });
+});
+
+/**
+ * The panel resolves a binary to spawn; the service reports the one it is
+ * running under. They are the same only when the panel started it — and the
+ * service is usually one the user started at a terminal, where PATH is his
+ * shell's rather than After Effects'.
+ */
+describe('the node match', () => {
+  it('warns, naming both, when they differ', async () => {
+    const other = { ...healthy, node: { path: '/opt/homebrew/bin/node', source: 'homebrew', version: 'v22.1.0' } };
+    vi.stubGlobal('fetch', serviceFetch({ health: other }));
+    await render(hostThatAnswers());
+
+    expect(text()).toContain('/opt/homebrew/bin/node');
+    expect(text()).toContain('v22.1.0');
+    expect(text()).toContain('/n/node');
+    expect(text()).toContain('different interpreters');
+  });
+
+  it('says nothing when they agree', async () => {
+    const same = { ...healthy, node: { path: '/n/node', source: 'nvm', version: 'v24.14.1' } };
+    vi.stubGlobal('fetch', serviceFetch({ health: same }));
+    await render(hostThatAnswers());
+
+    expect(text()).not.toContain('different interpreters');
+  });
+
+  /* A mismatch is a warning, not a gate: it is still a working service. */
+  it('does not disable Run', async () => {
+    const other = { ...healthy, node: { path: '/other/node', source: 'homebrew', version: 'v22.1.0' } };
+    vi.stubGlobal('fetch', serviceFetch({ health: other }));
+    await render(hostThatAnswers());
+    expect(text()).toContain('Pick a video.');
+  });
+});
+
+describe('a service that is already running, or goes away', () => {
+  /* Two panels open together: both spawn, the second loses and must not break. */
+  it('reuses a service that appeared while its own spawn was failing', async () => {
+    let handshake: { port: number; token: string; pid: number } | null = null;
+    vi.stubGlobal('fetch', serviceFetch());
+    let t = 0;
+    setClockForTests({ now: () => t, sleep: (ms: number) => ((t += ms), Promise.resolve()) });
+    try {
+      await render(
+        hostThatAnswers({
+          readHandshake: () => handshake,
+          processAlive: () => handshake !== null,
+          spawnService: () => {
+            // The other panel won the race and wrote the handshake.
+            handshake = { port: 51234, token: 'tok', pid: 9 };
+            return Promise.resolve({
+              ok: false as const,
+              cause: 'a service is already running as pid 9',
+              nodePath: '/n/node',
+            });
+          },
+        }),
+      );
+      expect(text()).toContain('Ready');
+      expect(text()).not.toContain('could not be started');
+    } finally {
+      setClockForTests({ now: () => Date.now(), sleep: (ms) => new Promise((r) => setTimeout(r, ms)) });
+    }
+  });
+
+  it('does not spawn at all when one is already answering', async () => {
+    const spawnService = vi.fn(() => Promise.resolve({ ok: true as const, nodePath: '/n/node', source: 'nvm' }));
+    vi.stubGlobal('fetch', serviceFetch());
+    await render(hostThatAnswers({ spawnService }));
+
+    expect(text()).toContain('Ready');
+    expect(spawnService).not.toHaveBeenCalled();
+  });
+
+  it('notices a service that stops answering rather than leaving Ready on screen', async () => {
+    vi.useFakeTimers();
+    try {
+      const fetchMock = vi.fn().mockImplementation((url: string) =>
+        url.includes('/health')
+          ? Promise.resolve({ ok: true, json: () => Promise.resolve(healthy) })
+          : Promise.resolve({ ok: true, json: () => Promise.resolve({ reels, modes }) }),
+      );
+      vi.stubGlobal('fetch', fetchMock);
+      await render(hostThatAnswers());
+      expect(text()).toContain('Ready');
+
+      fetchMock.mockRejectedValue(new Error('connect ECONNREFUSED'));
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(6000);
+      });
+
+      expect(text()).toContain('service-lost');
+      expect(text()).toContain('stopped answering');
+      expect(text()).not.toContain('Ready');
+    } finally {
+      vi.useRealTimers();
     }
   });
 });
