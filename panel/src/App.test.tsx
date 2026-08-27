@@ -11,7 +11,7 @@ import { App } from './App.js';
 import { cepNodeAvailable, detectHost } from './host.js';
 import { runGate } from './run-gate.js';
 import { formatUsd, SPEND_SOFT_ALARM_USD, spendLevel } from './spend.js';
-import type { PanelHost } from './service.js';
+import { setClockForTests, type PanelHost } from './service.js';
 import type { ClientMode, HealthPayload, HostEnvironment, Reel } from './types.js';
 
 const good = (detail: string) => ({ present: true, detail });
@@ -25,6 +25,8 @@ const healthy: HealthPayload = {
   ffprobe: good('ffprobe version 8.0.1'),
   sidecar: { venv: good('Python 3.11.14'), pythonPath: '/repo/tools/cv/.venv/bin/python' },
   templates: { valid: true, issues: [], count: 6 },
+  repoRoot: '/repo',
+  node: { path: '/n/node', source: 'nvm' },
 };
 
 const reels: Reel[] = [
@@ -37,11 +39,13 @@ const modes: ClientMode[] = [{ id: 'k2-syndicalia', name: 'K2 Syndicalia', versi
 let container: HTMLDivElement;
 let root: Root;
 
-function hostThatAnswers(): PanelHost {
+function hostThatAnswers(over: Partial<PanelHost> = {}): PanelHost {
   return {
     readHandshake: () => ({ port: 51234, token: 'tok', pid: 1 }),
     processAlive: () => true,
-    spawnService: () => undefined,
+    spawnService: () => Promise.resolve({ ok: true, nodePath: '/n/node', source: 'nvm' }),
+    resolveNode: () => ({ path: '/n/node', source: 'nvm' }),
+    ...over,
   };
 }
 
@@ -52,8 +56,6 @@ function envFor(host: PanelHost, over: Partial<AvailableEnv> = {}): AvailableEnv
     available: true,
     repo: '/repo',
     host,
-    loadReels: () => Promise.resolve(reels),
-    loadModes: () => Promise.resolve(modes),
     logoSrc: null,
     ...over,
   };
@@ -68,6 +70,27 @@ async function render(host: PanelHost, over: Partial<AvailableEnv> = {}): Promis
 async function renderEnv(env: HostEnvironment): Promise<void> {
   await act(async () => {
     root.render(<App env={env} />);
+  });
+}
+
+/**
+ * The service, as the panel sees it: health, the two catalogues and the dry
+ * run, routed by URL. The pickers come over HTTP now, so a fetch that answers
+ * only /health would leave them empty and every picker test would pass for the
+ * wrong reason.
+ */
+function serviceFetch(
+  over: { health?: HealthPayload; reels?: Reel[]; modes?: ClientMode[] } = {},
+): ReturnType<typeof vi.fn> {
+  return vi.fn().mockImplementation((url: string) => {
+    const body = url.includes('/health')
+      ? (over.health ?? healthy)
+      : url.includes('/reels')
+        ? { reels: over.reels ?? reels }
+        : url.includes('/modes')
+          ? { modes: over.modes ?? modes }
+          : { reel: 'vitasilk', stages: [], estimateUsd: 0 };
+    return Promise.resolve({ ok: true, json: () => Promise.resolve(body) });
   });
 }
 
@@ -91,7 +114,7 @@ afterEach(() => {
 
 describe('service state', () => {
   it('shows healthy with the payload read as words, not raw JSON', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => healthy }));
+    vi.stubGlobal('fetch', serviceFetch());
     await render(hostThatAnswers());
 
     expect(text()).toContain('Ready');
@@ -139,7 +162,7 @@ describe('service state', () => {
 
 describe('the pickers', () => {
   it('populates reels and modes from the fixtures', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => healthy }));
+    vi.stubGlobal('fetch', serviceFetch());
     await render(hostThatAnswers());
 
     expect([...select('Reel').options].map((o) => o.textContent)).toEqual([
@@ -154,11 +177,9 @@ describe('the pickers', () => {
   });
 
   it('says so rather than showing an empty dropdown when nothing is found', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => healthy }));
-    await render(hostThatAnswers(), {
-      loadReels: () => Promise.resolve([]),
-      loadModes: () => Promise.resolve([]),
-    });
+    vi.stubGlobal('fetch', serviceFetch());
+    vi.stubGlobal('fetch', serviceFetch({ reels: [], modes: [] }));
+    await render(hostThatAnswers());
 
     expect(text()).toContain('No reels found on this machine');
     expect(text()).toContain('No modes in modes/');
@@ -166,7 +187,7 @@ describe('the pickers', () => {
   });
 
   it('shows the reel’s cumulative spend once one is picked', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => healthy }));
+    vi.stubGlobal('fetch', serviceFetch());
     await render(hostThatAnswers());
 
     expect(text()).not.toContain('spent on this reel');
@@ -181,7 +202,7 @@ describe('the pickers', () => {
   });
 
   it('says a reel has no plan rather than showing $0', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => healthy }));
+    vi.stubGlobal('fetch', serviceFetch());
     await render(hostThatAnswers());
     await act(async () => {
       select('Reel').value = 'test-1';
@@ -203,7 +224,7 @@ describe('the Run control', () => {
   });
 
   it('asks for a video before anything else once the service is up', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => healthy }));
+    vi.stubGlobal('fetch', serviceFetch());
     await render(hostThatAnswers());
 
     expect(runButton().disabled).toBe(true);
@@ -211,7 +232,7 @@ describe('the Run control', () => {
   });
 
   it('asks for a mode once a video is picked', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => healthy }));
+    vi.stubGlobal('fetch', serviceFetch());
     await render(hostThatAnswers());
     await act(async () => {
       select('Reel').value = 'vitasilk';
@@ -358,8 +379,10 @@ describe('host detection', () => {
         existsSync: () => false,
         readFileSync: () => '{}',
         readdirSync: () => [],
+        realpathSync: (p: string) => p,
       },
-      child_process: { spawn: () => ({ unref: () => undefined }) },
+      child_process: { spawn: () => ({ unref: () => undefined, on: () => undefined, stderr: null }) },
+      os: { homedir: () => '/home' },
     });
     cepGlobal.CSInterface = class {
       getSystemPath(): string {
@@ -370,7 +393,7 @@ describe('host detection', () => {
     const env = detectHost();
     expect(env.available).toBe(true);
 
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => healthy }));
+    vi.stubGlobal('fetch', serviceFetch());
     await renderEnv(env);
 
     // It mounted the real screen, not the unavailable one.
@@ -384,5 +407,153 @@ describe('host detection', () => {
       cepGlobal.cep_node = value;
       expect(() => detectHost()).not.toThrow();
     }
+  });
+});
+
+/**
+ * The spawn, which reported success it had never checked: it said "one has
+ * been started. Retry in a moment." while `spawn npm` had already failed with
+ * ENOENT. Nothing may assert a state it has not verified.
+ */
+describe('starting the service', () => {
+  const noService: PanelHost = {
+    readHandshake: () => null,
+    processAlive: () => false,
+    spawnService: () => Promise.resolve({ ok: true, nodePath: '/n/node', source: 'nvm' }),
+    resolveNode: () => ({ path: '/n/node', source: 'nvm' }),
+  };
+
+  beforeEach(() => {
+    // A clock the test drives, so a twelve-second timeout costs no time.
+    let t = 0;
+    setClockForTests({
+      now: () => t,
+      sleep: (ms: number) => {
+        t += ms;
+        return Promise.resolve();
+      },
+    });
+  });
+
+  afterEach(() => {
+    setClockForTests({
+      now: () => Date.now(),
+      sleep: (ms: number) => new Promise((r) => setTimeout(r, ms)),
+    });
+  });
+
+  it('surfaces the real spawn error rather than claiming a start', async () => {
+    vi.stubGlobal('fetch', serviceFetch());
+    await render({
+      ...noService,
+      spawnService: () =>
+        Promise.resolve({ ok: false, cause: 'spawn /n/node ENOENT', nodePath: '/n/node' }),
+    });
+
+    expect(text()).toContain('spawn /n/node ENOENT');
+    expect(text()).toContain('/n/node');
+    expect(text()).toContain('service-spawn');
+    expect(text()).not.toContain('Retry in a moment');
+  });
+
+  it('reports a service that exits immediately, with its stderr', async () => {
+    vi.stubGlobal('fetch', serviceFetch());
+    await render({
+      ...noService,
+      spawnService: () =>
+        Promise.resolve({
+          ok: false,
+          cause: 'the service exited immediately with code 1: Cannot find module',
+          nodePath: '/n/node',
+        }),
+    });
+
+    expect(text()).toContain('exited immediately with code 1');
+    expect(text()).toContain('Cannot find module');
+  });
+
+  /*
+   * A spawn that succeeds is not a service that answers. This is the case the
+   * old code called success.
+   */
+  it('reports a timeout as a timeout, not as started', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('connect ECONNREFUSED')));
+    await render(noService);
+
+    expect(text()).toContain('service-start-timeout');
+    expect(text()).toContain('did not answer');
+    expect(text()).toContain('/n/node');
+    expect(text()).not.toContain('Ready');
+  });
+
+  it('reports healthy once the service answers after starting', async () => {
+    let handshake: { port: number; token: string; pid: number } | null = null;
+    vi.stubGlobal('fetch', serviceFetch());
+    await render({
+      ...noService,
+      readHandshake: () => handshake,
+      spawnService: () => {
+        handshake = { port: 51234, token: 'tok', pid: 7 };
+        return Promise.resolve({ ok: true, nodePath: '/n/node', source: 'nvm' });
+      },
+    });
+
+    expect(text()).toContain('Ready');
+  });
+
+  it('names what is missing when no node resolves at all', async () => {
+    vi.stubGlobal('fetch', serviceFetch());
+    await render({ ...noService, resolveNode: () => null });
+
+    expect(text()).toContain('node-missing');
+    expect(text()).toContain('.local/config.json');
+    expect(text()).toContain('does not inherit your shell PATH');
+  });
+});
+
+describe('the dry run', () => {
+  it('shows what a run would do once a reel and a mode are picked', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation((url: string) => {
+        const body = url.includes('/health')
+          ? healthy
+          : url.includes('/reels')
+            ? { reels }
+            : url.includes('/modes')
+              ? { modes }
+              : {
+                  reel: 'vitasilk',
+                  videoPath: '/v/vitasilk.mov',
+                  modeId: 'k2-syndicalia',
+                  modeName: 'K2 Syndicalia',
+                  modeVersion: 6,
+                  planPath: '/v/vitasilk.editplan.json',
+                  spentUsd: 1.550444,
+                  stages: [
+                    { id: 'transcription', label: 'Transcribe and correct', status: 'done', estimateUsd: null, note: 'cached' },
+                    { id: 'images', label: 'Generate images', status: 'pending', estimateUsd: 1.55, note: 'not run yet' },
+                  ],
+                  estimateUsd: 1.55,
+                };
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(body) });
+      }),
+    );
+    await render(hostThatAnswers());
+
+    await act(async () => {
+      select('Reel').value = 'vitasilk';
+      select('Reel').dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    await act(async () => {
+      select('Client mode').value = 'k2-syndicalia';
+      select('Client mode').dispatchEvent(new Event('change', { bubbles: true }));
+    });
+
+    expect(text()).toContain('Transcribe and correct');
+    expect(text()).toContain('cached');
+    expect(text()).toContain('to run, about $1.55');
+    expect(text()).toContain('about $1.55');
+    expect(text()).toContain('estimated for the stages not yet run');
   });
 });

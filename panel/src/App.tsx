@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
-import { connect } from './service.js';
+import { connect, fetchDryRun, fetchModes, fetchReels, type Connection } from './service.js';
 import { runGate } from './run-gate.js';
 import { formatUsd, SPEND_SOFT_ALARM_USD, spendLevel } from './spend.js';
-import type { ClientMode, HostEnvironment, Reel, ServiceState } from './types.js';
+import type { ClientMode, DryRunPlan, HostEnvironment, Reel, ServiceState } from './types.js';
 
 /**
  * The whole panel, for now: service state, a video, a client mode, and a Run
@@ -27,33 +27,75 @@ export function App({ env }: AppProps): JSX.Element {
 }
 
 function Panel({ env }: { env: Extract<HostEnvironment, { available: true }> }): JSX.Element {
-  const { host, loadReels, loadModes, logoSrc } = env;
+  const { host, logoSrc } = env;
   const [service, setService] = useState<ServiceState>({ kind: 'starting' });
   const [reels, setReels] = useState<Reel[]>([]);
   const [modes, setModes] = useState<ClientMode[]>([]);
   const [reelLabel, setReelLabel] = useState<string>('');
   const [modeId, setModeId] = useState<string>('');
+  const [connection, setConnection] = useState<Connection | null>(null);
+  const [dry, setDry] = useState<DryRunPlan | null>(null);
+  const [dryError, setDryError] = useState<string | null>(null);
 
   const check = useCallback(async () => {
     setService({ kind: 'starting' });
     const result = await connect(host);
-    setService(result.ok ? { kind: 'healthy', health: result.health } : { kind: 'unreachable', error: result.error });
+    if (!result.ok) {
+      setService({ kind: 'unreachable', error: result.error });
+      setConnection(null);
+      return;
+    }
+    setService({ kind: 'healthy', health: result.health });
+    setConnection({ port: result.port, token: result.token });
   }, [host]);
 
   useEffect(() => {
     void check();
-    /*
-     * A reel or mode list that cannot be read leaves an empty picker, which
-     * the screen already words for itself. An unhandled rejection here would
-     * take the panel down for a missing footage.json.
-     */
-    void loadReels().then(setReels, () => setReels([]));
-    void loadModes().then(setModes, () => setModes([]));
-  }, [check, loadReels, loadModes]);
+  }, [check]);
+
+  /*
+   * Both lists come from the service. A list that cannot be read leaves an
+   * empty picker, which the screen already words for itself; an unhandled
+   * rejection here would take the panel down.
+   */
+  useEffect(() => {
+    if (connection === null) {
+      setReels([]);
+      setModes([]);
+      return;
+    }
+    void fetchReels(connection).then(setReels, () => setReels([]));
+    void fetchModes(connection).then(setModes, () => setModes([]));
+  }, [connection]);
 
   const reel = reels.find((r) => r.label === reelLabel) ?? null;
   const mode = modes.find((m) => m.id === modeId) ?? null;
   const gate = runGate({ service, reel, mode });
+
+  /* What a run would do, before anything is paid for. It spends nothing. */
+  useEffect(() => {
+    if (connection === null || reel === null || mode === null) {
+      setDry(null);
+      setDryError(null);
+      return;
+    }
+    let current = true;
+    void fetchDryRun(connection, reel.label, mode.id).then(
+      (plan) => {
+        if (!current) return;
+        setDry(plan);
+        setDryError(null);
+      },
+      (error: Error) => {
+        if (!current) return;
+        setDry(null);
+        setDryError(error.message);
+      },
+    );
+    return () => {
+      current = false;
+    };
+  }, [connection, reel, mode]);
 
   return (
     <div className="app">
@@ -122,6 +164,12 @@ function Panel({ env }: { env: Extract<HostEnvironment, { available: true }> }):
 
         <section>
           <h2>Build</h2>
+          {dry === null ? null : <DryRun plan={dry} />}
+          {dryError === null ? null : (
+            <p className="reason" role="status">
+              {dryError}
+            </p>
+          )}
           <button className="run" type="button" disabled={!gate.enabled}>
             Run pipeline
           </button>
@@ -180,6 +228,44 @@ function HostUnavailable({
           </div>
         </section>
       </main>
+    </div>
+  );
+}
+
+/**
+ * The dry run: what a run would do, read before anything is spent. Every
+ * figure comes from the service, which reads them off the plan — the panel
+ * computes none of them.
+ */
+function DryRun({ plan }: { plan: DryRunPlan }): JSX.Element {
+  return (
+    <div className="card" style={{ marginBottom: 12 }}>
+      <ul className="facts">
+        {plan.stages.map((stage) => (
+          <li key={stage.id}>
+            <span className="k">{stage.label}</span>
+            <span className={`v ${stage.status === 'done' ? 'good' : ''}`} title={stage.note}>
+              {stage.status === 'done'
+                ? 'cached'
+                : stage.estimateUsd === null
+                  ? 'to run'
+                  : `to run, about $${stage.estimateUsd.toFixed(2)}`}
+            </span>
+          </li>
+        ))}
+      </ul>
+      <div className="spend" style={{ marginTop: 12 }}>
+        <div>
+          <div className={`amount ${plan.estimateUsd >= SPEND_SOFT_ALARM_USD ? 'alarm' : ''}`}>
+            {plan.estimateUsd === 0 ? 'nothing to pay' : `about $${plan.estimateUsd.toFixed(2)}`}
+          </div>
+          <div className="cap">
+            {plan.estimateUsd === 0
+              ? 'every stage is cached; a run would read from disk'
+              : 'estimated for the stages not yet run'}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -261,6 +347,15 @@ function ServiceCard({ state, onRetry }: { state: ServiceState; onRetry: () => v
               <Fact label="ffmpeg" tool={state.health.ffmpeg} />
               <Fact label="ffprobe" tool={state.health.ffprobe} />
               <Fact label="CV sidecar" tool={state.health.sidecar.venv} />
+              <li>
+                <span className="k">node</span>
+                {/* Optional so an older service cannot blank the panel. */}
+                <span className={`v ${state.health.node?.path == null ? 'bad' : ''}`}>
+                  {state.health.node?.path == null
+                    ? 'not reported'
+                    : `${state.health.node.path} (${state.health.node.source})`}
+                </span>
+              </li>
               <li>
                 <span className="k">templates</span>
                 <span className={`v ${state.health.templates.valid ? 'good' : 'bad'}`}>

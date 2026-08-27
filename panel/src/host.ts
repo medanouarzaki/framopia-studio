@@ -1,6 +1,7 @@
 import { processAlive } from '@framopia/core/process-alive';
-import type { PanelHost } from './service.js';
-import type { ClientMode, HostEnvironment, Reel } from './types.js';
+import { NODE_NOT_FOUND_HELP, resolveNodePath } from '@framopia/core/node-path';
+import type { PanelHost, SpawnResult } from './service.js';
+import type { HostEnvironment } from './types.js';
 
 /**
  * The CEP side. Everything that needs Node — reading the handshake, spawning
@@ -53,9 +54,15 @@ type FsModule = {
   existsSync: (p: string) => boolean;
   readFileSync: (p: string, enc: string) => string;
   readdirSync: (p: string) => string[];
+  realpathSync: (p: string) => string;
 };
+interface SpawnedProcess {
+  unref: () => void;
+  on: (event: string, listener: (...args: unknown[]) => void) => void;
+  stderr: { on: (event: string, listener: (chunk: unknown) => void) => void } | null;
+}
 type ChildProcessModule = {
-  spawn: (cmd: string, args: string[], options: Record<string, unknown>) => { unref: () => void };
+  spawn: (cmd: string, args: string[], options: Record<string, unknown>) => SpawnedProcess;
 };
 
 /**
@@ -66,13 +73,27 @@ type ChildProcessModule = {
  */
 export function repoRoot(extensionPath: string): string {
   const path = requireCepNode().require('path') as { resolve: (...p: string[]) => string };
-  return path.resolve(extensionPath, '..');
+  const fs = requireCepNode().require('fs') as FsModule;
+  /*
+   * `getSystemPath('extension')` returns the path CEP was given, which is the
+   * symlink in ~/Library/.../CEP/extensions — not its target. Resolving `..`
+   * from it lands in the extensions folder, where there is no footage.json, no
+   * modes/ and no brand assets, which is why all three pickers were empty and
+   * the logo fell back to a coloured square. The symlink has to be followed.
+   */
+  const real = fs.realpathSync(extensionPath);
+  return path.resolve(real, '..');
 }
+
+/** Long enough for an ENOENT or an immediate exit to arrive. Chosen, not measured. */
+const SPAWN_SETTLE_MS = 400;
 
 export function createHost(repo: string): PanelHost {
   const fs = requireCepNode().require('fs') as FsModule;
   const path = requireCepNode().require('path') as { join: (...p: string[]) => string };
-  const child = requireCepNode().require('child_process') as ChildProcessModule;
+  const childProcess = requireCepNode().require('child_process') as ChildProcessModule;
+  const os = requireCepNode().require('os') as { homedir: () => string };
+  const homeDir = (): string => os.homedir();
   const handshakePath = path.join(repo, '.local', 'service.json');
 
   return {
@@ -91,93 +112,85 @@ export function createHost(repo: string): PanelHost {
       }
     },
     processAlive,
-    spawnService() {
-      const proc = child.spawn('npm', ['run', 'start', '--prefix', 'service'], {
-        cwd: repo,
-        detached: true,
-        stdio: 'ignore',
+    resolveNode() {
+      return resolveNodePath({ fs, repo, execPath: undefined, home: homeDir() });
+    },
+    async spawnService() {
+      const node = resolveNodePath({ fs, repo, execPath: undefined, home: homeDir() });
+      if (node === null) return { ok: false as const, cause: NODE_NOT_FOUND_HELP };
+
+      const entry = path.join(repo, 'service', 'dist', 'service.js');
+      if (!fs.existsSync(entry)) {
+        return {
+          ok: false as const,
+          cause:
+            `the service is not built: ${entry} does not exist. Run ` +
+            '`npm run service:build` in the repository, then reopen the panel.',
+          nodePath: node.path,
+        };
+      }
+
+      /*
+       * The Node binary directly, never `npm` and never through a shell. After
+       * Effects launches from the Finder and inherits no shell profile, so its
+       * PATH is roughly /usr/bin:/bin — `spawn npm` fails ENOENT, which is
+       * exactly what the panel reported while telling the user a service had
+       * started.
+       */
+      let child: SpawnedProcess;
+      try {
+        child = childProcess.spawn(node.path, [entry], {
+          cwd: repo,
+          detached: true,
+          stdio: ['ignore', 'ignore', 'pipe'],
+        });
+      } catch (error) {
+        return { ok: false as const, cause: (error as Error).message, nodePath: node.path };
+      }
+
+      /*
+       * ENOENT arrives on the 'error' event, after spawn() has returned, and a
+       * service that starts and dies exits within milliseconds. Neither is
+       * visible synchronously, so this waits long enough to catch both rather
+       * than reporting success the instant spawn() returns.
+       */
+      return await new Promise<SpawnResult>((resolve) => {
+        let stderr = '';
+        let settled = false;
+        const finish = (result: SpawnResult): void => {
+          if (settled) return;
+          settled = true;
+          resolve(result);
+        };
+
+        child.stderr?.on('data', (chunk) => {
+          stderr += String(chunk);
+        });
+        child.on('error', (error) => {
+          finish({ ok: false, cause: `${(error as Error).message}`, nodePath: node.path });
+        });
+        child.on('exit', (code) => {
+          finish({
+            ok: false,
+            cause:
+              `the service exited immediately with code ${String(code)}` +
+              (stderr.trim() === '' ? '' : `: ${stderr.trim().split('\n').slice(-3).join(' ')}`),
+            nodePath: node.path,
+          });
+        });
+        setTimeout(() => {
+          child.unref();
+          finish({ ok: true, nodePath: node.path, source: node.source });
+        }, SPAWN_SETTLE_MS);
       });
-      proc.unref();
     },
   };
 }
 
-/** The reels this machine has, from `benchmarks/footage.json` plus each plan's spend. */
-export function loadReels(repo: string): Reel[] {
-  const fs = requireCepNode().require('fs') as FsModule;
-  const path = requireCepNode().require('path') as { join: (...p: string[]) => string; basename: (p: string, e?: string) => string };
-  const footagePath = path.join(repo, 'benchmarks', 'footage.json');
-  if (!fs.existsSync(footagePath)) return [];
-
-  const footage = JSON.parse(fs.readFileSync(footagePath, 'utf8')) as {
-    reels: { label: string; path: string; durationS?: number }[];
-  };
-
-  return footage.reels
-    .filter((r) => fs.existsSync(r.path))
-    .map((r) => {
-      const planPath = r.path.replace(/\.[^.]+$/, '.editplan.json');
-      let spentUsd: number | null = null;
-      let hasPlan = false;
-      if (fs.existsSync(planPath)) {
-        hasPlan = true;
-        try {
-          const plan = JSON.parse(fs.readFileSync(planPath, 'utf8')) as {
-            costs?: { spentUsd?: number };
-          };
-          spentUsd = typeof plan.costs?.spentUsd === 'number' ? plan.costs.spentUsd : null;
-        } catch {
-          spentUsd = null;
-        }
-      }
-      return {
-        label: r.label,
-        videoPath: r.path,
-        planPath: hasPlan ? planPath : null,
-        durationS: r.durationS ?? null,
-        spentUsd,
-      };
-    });
-}
-
-/** The client modes in `modes/`, read the same way `validate:modes` reads them. */
-export function loadModes(repo: string): ClientMode[] {
-  const fs = requireCepNode().require('fs') as FsModule;
-  const path = requireCepNode().require('path') as { join: (...p: string[]) => string };
-  const dir = path.join(repo, 'modes');
-  if (!fs.existsSync(dir)) return [];
-
-  return fs
-    .readdirSync(dir)
-    .filter((f) => f.endsWith('.json'))
-    .sort()
-    .flatMap((file) => {
-      try {
-        const mode = JSON.parse(fs.readFileSync(path.join(dir, file), 'utf8')) as {
-          id?: string;
-          name?: string;
-          version?: number;
-          fonts?: { status?: string };
-        };
-        if (typeof mode.id !== 'string') return [];
-        return [
-          {
-            id: mode.id,
-            name: typeof mode.name === 'string' ? mode.name : mode.id,
-            version: typeof mode.version === 'number' ? mode.version : 0,
-            fontsResolved: mode.fonts?.status === 'resolved',
-          },
-        ];
-      } catch {
-        return [];
-      }
-    });
-}
-
 /**
- * PROJECT_SPEC §6 puts the logo at `assets/brand/Framopia_LOGO.png`. It is not
- * in the repo yet, so this returns null rather than a path that renders as a
- * broken image, and the panel falls back to the wordmark.
+ * PROJECT_SPEC §6 puts the logo at `assets/brand/Framopia_LOGO.png`. Returns
+ * null when it is not on disk so the header falls back to the wordmark rather
+ * than rendering a broken image.
  */
 export function logoPath(repo: string): string | null {
   const fs = requireCepNode().require('fs') as FsModule;
@@ -224,8 +237,6 @@ export function detectHost(): HostEnvironment {
       available: true,
       repo,
       host: createHost(repo),
-      loadReels: () => Promise.resolve(loadReels(repo)),
-      loadModes: () => Promise.resolve(loadModes(repo)),
       logoSrc: logoPath(repo),
     };
   } catch (error) {

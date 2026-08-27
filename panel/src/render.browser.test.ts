@@ -20,6 +20,8 @@ import { chromium, type Browser, type ConsoleMessage, type Page } from 'playwrig
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const DIST = path.resolve(HERE, '..', 'dist');
 const INDEX = path.join(DIST, 'index.html');
+const REPO = path.resolve(HERE, '..', '..');
+const LOGO = path.join(REPO, 'assets', 'brand', 'Framopia_LOGO.png');
 
 const built = existsSync(path.join(DIST, 'panel.js')) && existsSync(INDEX);
 
@@ -28,8 +30,9 @@ const built = existsSync(path.join(DIST, 'panel.js')) && existsSync(INDEX);
  * modules the panel asks for at startup; `fs` reports nothing on disk, so the
  * pickers render their empty wording and no fixture is needed.
  */
-function stubHost(files: Record<string, string>): string {
+function stubHost(files: Record<string, string>, repo = '/repo'): string {
   return `
+  window.__repo = ${JSON.stringify(repo)};
   window.__files = ${JSON.stringify(files)};
   // CEP's mixed context puts Node's process global on the page; host.ts reads
   // it for processAlive, so a stub without it is not a faithful stub.
@@ -51,14 +54,18 @@ function stubHost(files: Record<string, string>): string {
           existsSync: (p) => Object.prototype.hasOwnProperty.call(window.__files, p),
           readFileSync: (p) => window.__files[p],
           readdirSync: () => [],
+          realpathSync: (p) => p,
         };
       }
-      if (id === 'child_process') return { spawn: () => ({ unref: () => {} }) };
+      if (id === 'os') return { homedir: () => '/home' };
+      if (id === 'child_process') {
+        return { spawn: () => ({ unref: () => {}, on: () => {}, stderr: null }) };
+      }
       throw new Error('unexpected module ' + id);
     },
   };
   window.CSInterface = function () {};
-  window.CSInterface.prototype.getSystemPath = function () { return '/repo/panel'; };
+  window.CSInterface.prototype.getSystemPath = function () { return window.__repo + '/panel'; };
 `;
 }
 
@@ -73,6 +80,8 @@ const HEALTHY_PAYLOAD = {
   ffprobe: { present: true, detail: 'ffprobe version 8.0.1' },
   sidecar: { venv: { present: true, detail: 'Python 3.11.14' }, pythonPath: '/p' },
   templates: { valid: true, issues: [], count: 6 },
+  repoRoot: '/repo',
+  node: { path: '/n/node', source: 'nvm' },
 };
 
 /** Replaces fetch before the bundle runs, so the first health call is the stub. */
@@ -103,20 +112,37 @@ afterAll(async () => {
 
 interface Loaded {
   page: Page;
+  /** Uncaught exceptions only. A handled fetch failure is not one. */
   uncaught: string[];
 }
 
+/*
+ * Every page gets a handshake by default, so `connect` takes the fast path —
+ * a registered service that does not answer — rather than the spawn path,
+ * which polls for twelve seconds by design.
+ */
 async function load(
-  options: { files?: Record<string, string>; fetch?: 'healthy' | 'hang' | null } = {},
+  options: {
+    files?: Record<string, string>;
+    fetch?: 'healthy' | 'hang' | null;
+    repo?: string;
+  } = {},
 ): Promise<Loaded | null> {
   if (browser === undefined) return null;
   const page = await browser.newPage({ viewport: { width: 420, height: 760 } });
   const uncaught: string[] = [];
   page.on('pageerror', (error: Error) => uncaught.push(error.message));
   page.on('console', (msg: ConsoleMessage) => {
-    if (msg.type() === 'error') uncaught.push(msg.text());
+    /*
+     * Chromium logs a console error for a refused fetch. The stub points at a
+     * port nothing listens on, and the panel handles that by design — counting
+     * it would make "no uncaught errors" untestable.
+     */
+    if (msg.type() !== 'error') return;
+    if (msg.text().includes('Failed to load resource')) return;
+    uncaught.push(msg.text());
   });
-  await page.addInitScript(stubHost(options.files ?? {}));
+  await page.addInitScript(stubHost(options.files ?? HANDSHAKE, options.repo));
   if (options.fetch != null) await page.addInitScript(stubFetch(options.fetch));
   await page.goto(`file://${INDEX}`);
   await page.waitForSelector('header.brand', { timeout: 10_000 });
@@ -195,7 +221,7 @@ describe.skipIf(!built)('the built panel in a real browser', () => {
   }, 20_000);
 
   it('renders unreachable with the stage and retryability on screen', async () => {
-    const loaded = await load();
+    const loaded = await load({ files: HANDSHAKE });
     if (loaded === null) return;
     const { page } = loaded;
     try {
@@ -225,20 +251,38 @@ describe.skipIf(!built)('the built panel in a real browser', () => {
     }
   }, 20_000);
 
-  it('uses the logo image once the file is on disk', async () => {
-    const loaded = await load({ files: { '/repo/assets/brand/Framopia_LOGO.png': '' } });
+  /*
+   * The real PNG, decoded by the browser. Asserting an <img> element exists
+   * proved nothing: the header rendered a red square for a whole session
+   * because the path was wrong and a broken image is still an element.
+   */
+  it('loads the real logo, not merely an <img> element', async () => {
+    const loaded = await load({
+      files: { ...HANDSHAKE, [LOGO]: '' },
+      repo: REPO,
+    });
     if (loaded === null) return;
     const { page } = loaded;
     try {
-      expect(await page.locator('header.brand img').count()).toBe(1);
+      const img = page.locator('header.brand img');
+      expect(await img.count()).toBe(1);
       expect(await page.locator('header.brand .mark').count()).toBe(0);
-      expect(await page.locator('header.brand img').getAttribute('src')).toContain(
-        'assets/brand/Framopia_LOGO.png',
-      );
+      expect(await img.getAttribute('src')).toBe(`file://${LOGO}`);
+
+      const decoded = await img.evaluate((el) => ({
+        complete: (el as HTMLImageElement).complete,
+        w: (el as HTMLImageElement).naturalWidth,
+        h: (el as HTMLImageElement).naturalHeight,
+      }));
+      expect(decoded.complete).toBe(true);
+      expect(decoded.w).toBe(962);
+      expect(decoded.h).toBe(1077);
+
+      expect((await img.boundingBox())?.width).toBeGreaterThan(0);
     } finally {
       await page.close();
     }
-  });
+  }, 20_000);
 
   it('keeps the Run control disabled with its reason on screen', async () => {
     const loaded = await load();

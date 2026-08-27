@@ -1,4 +1,4 @@
-import type { HealthPayload, ServiceError } from './types.js';
+import type { ClientMode, DryRunPlan, HealthPayload, Reel, ServiceError } from './types.js';
 
 /**
  * The panel's half of the ARCHITECTURE §1.3 handshake: the service binds
@@ -11,13 +11,27 @@ import type { HealthPayload, ServiceError } from './types.js';
  * React module — makes the whole screen untestable outside CEP and hides how
  * much of the panel is really host-dependent.
  */
+export type SpawnResult =
+  | { ok: true; nodePath: string; source: string }
+  | { ok: false; cause: string; nodePath?: string };
+
 export interface PanelHost {
   readHandshake(): { port: number; token: string; pid: number } | null;
-  spawnService(): void;
+  /**
+   * Starts the service and reports what happened. It resolves only once the
+   * process has either failed, exited, or survived long enough to be believed
+   * — a spawn that returns is not a service that runs.
+   */
+  spawnService(): Promise<SpawnResult>;
   processAlive(pid: number): boolean;
+  resolveNode(): { path: string; source: string } | null;
 }
 
 export const HEALTH_TIMEOUT_MS = 4000;
+
+/** How long to wait for a freshly spawned service to answer. Chosen, not measured. */
+export const SERVICE_START_TIMEOUT_MS = 12_000;
+const POLL_INTERVAL_MS = 250;
 
 export function serviceErrorOf(stage: string, cause: string, retryable: boolean): ServiceError {
   return { error: cause, stage, cause, retryable };
@@ -80,29 +94,131 @@ export async function connect(host: PanelHost): Promise<
     }
   }
 
-  try {
-    host.spawnService();
-  } catch (error) {
+  const node = host.resolveNode();
+  if (node === null) {
     return {
       ok: false,
-      error: serviceErrorOf('service-spawn', (error as Error).message, true),
+      error: serviceErrorOf(
+        'node-missing',
+        'No Node interpreter could be found. After Effects starts from the Finder and does ' +
+          'not inherit your shell PATH, so a Node installed through nvm is invisible to it. ' +
+          'Add {"nodePath": "/absolute/path/to/node"} to .local/config.json — `which node` in ' +
+          'a terminal prints the path — then reopen the panel.',
+        false,
+      ),
     };
+  }
+
+  let spawned: SpawnResult;
+  try {
+    spawned = await host.spawnService();
+  } catch (error) {
+    return { ok: false, error: serviceErrorOf('service-spawn', (error as Error).message, true) };
+  }
+
+  if (!spawned.ok) {
+    return {
+      ok: false,
+      error: serviceErrorOf(
+        'service-spawn',
+        `the service could not be started using ${spawned.nodePath ?? node.path}: ${spawned.cause}`,
+        true,
+      ),
+    };
+  }
+
+  /*
+   * ARCHITECTURE §8: nothing may assert a state it has not checked. The panel
+   * used to say "one has been started. Retry in a moment." the instant spawn()
+   * returned — while the spawn had already failed with ENOENT. A started
+   * service is one that answers.
+   */
+  const deadline = now() + SERVICE_START_TIMEOUT_MS;
+  let lastError = 'it did not answer';
+  while (now() < deadline) {
+    await sleep(POLL_INTERVAL_MS);
+    const fresh = host.readHandshake();
+    if (fresh === null) continue;
+    try {
+      const health = await withTimeout((signal) => getHealth(fresh.port, signal));
+      return { ok: true, health, port: fresh.port, token: fresh.token };
+    } catch (error) {
+      lastError = (error as Error).message;
+    }
   }
 
   return {
     ok: false,
     error: serviceErrorOf(
-      'service-spawn',
-      handshake === null
-        ? 'no service was running; one has been started. Retry in a moment.'
-        : `the registered service (pid ${handshake.pid}) is gone; a new one has been started. Retry in a moment.`,
+      'service-start-timeout',
+      `the service was started with ${spawned.nodePath} (${spawned.source}) but did not answer ` +
+        `within ${SERVICE_START_TIMEOUT_MS / 1000}s: ${lastError}`,
       true,
     ),
   };
+}
+
+/** Injected in tests so a timeout can be exercised without waiting for one. */
+let now = (): number => Date.now();
+let sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
+
+export function setClockForTests(clock: { now: () => number; sleep: (ms: number) => Promise<void> }): void {
+  now = clock.now;
+  sleep = clock.sleep;
 }
 
 function withTimeout<T>(run: (signal: AbortSignal) => Promise<T>): Promise<T> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), HEALTH_TIMEOUT_MS);
   return run(controller.signal).finally(() => clearTimeout(timer));
+}
+
+/**
+ * The catalogue and the dry run come from the service, never from the panel
+ * reading disk. The rule for where footage lives is `frames/footage.ts` and
+ * the rule for what a mode is is `core/src/mode.ts`; a second copy inside a
+ * React bundle is a second place for them to drift.
+ */
+export interface Connection {
+  port: number;
+  token: string;
+}
+
+async function getJson<T>(connection: Connection, route: string): Promise<T> {
+  const res = await fetch(`http://127.0.0.1:${connection.port}${route}`, {
+    headers: { 'x-service-token': connection.token },
+  });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as Partial<ServiceError>;
+    throw new Error(body.cause ?? `HTTP ${res.status} from ${route}`);
+  }
+  return (await res.json()) as T;
+}
+
+/*
+ * A payload without the array is a broken service, not an empty catalogue.
+ * Passing `undefined` through would crash the render one line later, which is
+ * how it first showed up.
+ */
+export async function fetchReels(connection: Connection): Promise<Reel[]> {
+  const body = await getJson<{ reels?: Reel[] }>(connection, '/reels');
+  if (!Array.isArray(body.reels)) throw new Error('/reels did not return a list');
+  return body.reels;
+}
+
+export async function fetchModes(connection: Connection): Promise<ClientMode[]> {
+  const body = await getJson<{ modes?: ClientMode[] }>(connection, '/modes');
+  if (!Array.isArray(body.modes)) throw new Error('/modes did not return a list');
+  return body.modes;
+}
+
+export async function fetchDryRun(
+  connection: Connection,
+  reel: string,
+  mode: string,
+): Promise<DryRunPlan> {
+  return await getJson<DryRunPlan>(
+    connection,
+    `/dry-run?reel=${encodeURIComponent(reel)}&mode=${encodeURIComponent(mode)}`,
+  );
 }

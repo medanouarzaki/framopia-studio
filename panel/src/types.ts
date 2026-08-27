@@ -17,6 +17,33 @@ export interface HealthPayload {
   ffprobe: ToolState;
   sidecar: { venv: ToolState; pythonPath: string };
   templates: { valid: boolean; issues: string[]; count: number };
+  /** Where the repo really is, so the panel need not derive it twice. */
+  repoRoot: string;
+  /**
+   * Which Node is running the pipeline, and which source it resolved from.
+   * Optional: a service older than this field must not blank the panel.
+   */
+  node?: { path: string | null; source: string | null; help?: string };
+}
+
+export interface DryRunStage {
+  id: string;
+  label: string;
+  status: 'done' | 'pending';
+  estimateUsd: number | null;
+  note: string;
+}
+
+export interface DryRunPlan {
+  reel: string;
+  videoPath: string;
+  modeId: string;
+  modeName: string;
+  modeVersion: number;
+  planPath: string | null;
+  spentUsd: number | null;
+  stages: DryRunStage[];
+  estimateUsd: number;
 }
 
 /** ARCHITECTURE §8. Shown verbatim; the panel never paraphrases a cause. */
@@ -34,6 +61,8 @@ export interface Reel {
   durationS: number | null;
   /** Cumulative spend from the plan's `costs.spentUsd`, or null when no plan exists yet. */
   spentUsd: number | null;
+  /** False when the catalogue lists it but the file is not on this machine. */
+  present?: boolean;
 }
 
 export interface ClientMode {
@@ -58,8 +87,6 @@ export type HostEnvironment =
       available: true;
       repo: string;
       host: import('./service.js').PanelHost;
-      loadReels: () => Promise<Reel[]>;
-      loadModes: () => Promise<ClientMode[]>;
       logoSrc: string | null;
     }
   | {
