@@ -187,6 +187,11 @@ AI-generated contextual images, SFX, and a watermark. Full spec in
 - `npm run migrate:regroup [-- --apply]` — free, local. Re-groups every plan to
   one word per card and re-derives supersession, display timing, templates and
   SFX. Dry-run by default.
+- `npm run face-sheets` — free, local. Contact sheets of the face-only mask for
+  all five reels into `benchmarks/results/latest-face/`, reusing the sidecar's
+  `head_overlay` task rather than adding a renderer.
+- `npm run top-left` — free, local. Computes each image slot's top-left
+  placement from its face-mask span and writes `.local/build/topleft-<reel>.json`.
 - `npm run image-ceiling` — free, local, **read-only**. Computes the largest
   placeable square per slot under each constraint relaxed one at a time, ranks
   what each is worth, and writes `benchmarks/RESULTS-block7-image-ceiling.md`
@@ -3442,6 +3447,114 @@ face. The condition was not demonstrated, so the comp was not made.
 
 **Every image in `loose` and `face` overlaps the speaker's body or clothing**;
 one overlaps hair. That is the judgement the user is being asked for.
+
+
+## Block 7 session 9 — top-left images, framed, and a fix that was measured and rejected
+
+**Spent $0.00; no API was called.** Ledger 108 entries / sha `50ec3f57…` at
+both ends. `templates/library.aep` byte-identical at `dac234ce…`. One After
+Effects instance (PID 44015) throughout.
+
+### Images are top-left, on every reel
+
+**A user ruling and a deliberate departure from PROJECT_SPEC §4 and
+ARCHITECTURE §5.5**, both of which place images in automatically-found negative
+space. His reason: in this format the top-left corner is reliably empty and the
+only real constraint is the speaker's face.
+
+**Verified before implementing.** The corner clears the face mask by **834 to
+995 px** on all five reels (0.386–0.461 of frame width) — so the ruling holds
+beyond the one reel it was made on. Against the head mask it is 523–951 px.
+
+**It costs a little size.** Against session 8's `master_img_face`: img001 equal,
+the other four **3.2% to 7.5% smaller**. Worth knowing; the user ruled on the
+corner, not on the last 7%.
+
+**Zero concurrent image pairs** across all five reels, so nothing stacks in the
+corner and that sub-question does not arise.
+
+`TOP_LEFT_MARGIN` 0.03 and `TOP_LEFT_JITTER` 0.06, both **chosen, not
+measured**. **Jitter is one-sided** — it can only shrink the square, so it can
+never grow onto the face or past the frame, holding by construction rather than
+by a clamp. Measured across all nine slots: **0 outside the frame, 0 overlapping
+the face.**
+
+**The zone machinery is retired for automatic image placement, not removed.**
+Manual zones still round-trip, the derivation stays, and the plans keep their
+solved placements — the same treatment Block 6 gave torso geometry.
+
+### Every image is framed, and the frame now fits
+
+`img_float` is forced for every slot. On vitasilk that changes **img002 and
+img004** (previously cutout and a card carrying the cutout template).
+`img_slide_left` stays in the library and the manifest and still validates.
+
+**Consequences, stated rather than acted on:** `presentation` and the cutout
+gate now decide nothing about how an image renders — the gate, the metrics and
+the sidecar are untouched, and Block 8's panel is where presentation may become
+a per-slot choice again. Background removal still runs and still costs local
+CPU producing an artifact nothing displays; **whether to keep generating cutouts
+is a ruling for the conversation.**
+
+**The frame misalignment, diagnosed from the audit rather than guessed.**
+`audit.jsx` now records each layer's **parent**, which decides whether a
+position is in comp space or the parent's. `IMG_MAIN` is parented to `CARD`;
+`CARD` is 1080 px in a 1200 comp and does not scale with the picture.
+
+Session 7's content-aware scaling sizes the **content** to the solid's 1000 px.
+That is right for a cutout, whose margin is transparent, and wrong for a card,
+whose margin is picture: the canvas then renders at `1000 x canvas/content` and
+spills past the frame whenever content fills less than **1000/1080 = 0.926** of
+its canvas. Verified against real slots — img001 at 0.905 overflows by 25 px,
+img002 at 0.681 by 388 px, and the three above 0.926 fit. **Two of five, which
+is exactly the "some slots" reported.**
+
+**Fixed in the builder, not the template**: a card is sized by its canvas
+(`canvasScalePercent`), so every picture renders at 1000 px inside the 1080 px
+frame whatever its content fraction. Confirmed on the build: all five slots now
+render 1000 px.
+
+### The face mask has been rendered for review
+
+Five contact sheets in `benchmarks/results/latest-face/`, made by reusing the
+sidecar's `head_overlay` task — it tints whichever mask it is handed. **Nothing
+is frozen on my reading of them; the user rules.**
+
+### The aligner fix was implemented, measured, and reverted
+
+**The defect is precisely located.** On vitasilk the aligner emits `delete` on
+draft token 27 (`من`) and then substitutes shifted by one: `mn` takes `غير`'s
+interval, `ghir` takes `أنه`'s. **The cause is that the draft is Arabic script
+and the corrected text is Arabizi**, so every pair in the run is a tied-cost
+substitution and Levenshtein has no signal at all — the path it picks among the
+ties is arbitrary.
+
+**The fix I wrote made it worse and was reverted.** Requiring an anchor to be a
+match or a same-script substitution removed nearly every anchor, and the
+remaining Latin tokens paired across long distances: `fih` anchored to
+`vitamin`, `26` to `et` — a three-token shift against the old one-token one —
+seven words became zero-duration points, and two duplicate intervals appeared.
+Measured before applying; **no plan was written.**
+
+**`align.ts` is unchanged. The defect stands.** It needs transliteration-aware
+matching — knowing that `ghir` is `غير` — which is real Block 2 design work, not
+a tie-break tweak.
+
+**The correspondence check exists and passes**, which is itself the finding: the
+aligner never gives a word an interval belonging to a token other than the one
+it records anchoring to. The defect is that it picks the wrong *pairing*, and no
+check on the aligner's own output can see that without knowing what the words
+mean.
+
+### A short card gets a faster entrance
+
+`shortCardTiming` in `service/src/build/short-card.ts`: where a card cannot fit
+`introS + minHoldS`, the **instance is time-stretched** — never re-keyframed,
+per TEMPLATE_LIBRARY_GUIDE §5. `MIN_INTRO_S` is two frames, **chosen, not
+measured**.
+
+**120 of 343 cards get a shortened entrance, 28 land on the two-frame floor, and
+0 cards remain unbuildable.** On vitasilk: 22 shortened, 5 on the floor.
 
 
 See `docs/BLOCKS.md` for the full block plan and `handoffs/` for prior
