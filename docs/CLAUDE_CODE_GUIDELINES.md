@@ -97,6 +97,32 @@ numbers still disagreed after the first fix.
 If a rule cannot be reduced to one declaration, the test that pins the copies
 together is the next best thing. A comment saying "keep this in sync" is not.
 
+### A stub asserts a claim about the real environment, and that claim needs evidence
+
+A stub is not neutral scaffolding. Writing `window.CSInterface = …` in a test
+asserts that the host provides `CSInterface`, and every assertion downstream
+inherits that claim. **A stub shaped by what the code expects, rather than by
+what the host actually provides, makes the test prove only that the code agrees
+with itself.**
+
+So: for each stub, know what real thing it stands in for and what establishes
+the match — the host's own documentation, a working extension on the same
+machine, or an observation from inside the host. Where nothing establishes it,
+say so in the report rather than letting a green suite imply it.
+
+Block 8 session 7 reported the reel picker, the mode picker and the logo as
+fixed. The headless check defined `globalThis.CSInterface` itself, and CEP
+never provides it — no library is loaded — so `getSystemPath` was never called,
+the extension path was the empty string, and the panel was broken in After
+Effects while every test passed. Session 8 found it and the claim was
+retracted.
+
+Two habits follow. Prefer a stub of something the *platform* guarantees over
+something the *host* might inject — the panel now resolves its own location
+from `window.location`, which the browser guarantees, rather than from a CEP
+API that may be absent. And do not stub methods the code never calls: a stub
+offering more than it is asked for suggests it models more than it does.
+
 ### A tool that can write to the plan is not a diagnostic
 
 A diagnostic reads and reports; if it is wrong, a document is wrong and
