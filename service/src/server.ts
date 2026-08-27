@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import http, { type IncomingMessage, type ServerResponse } from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -7,9 +7,8 @@ import { createJob, getJob, UnknownJobTypeError } from './jobs.js';
 import { readEditPlan, writeEditPlan } from './editplan/io.js';
 import { clearManualZone, ManualZoneError, setManualZone } from './frames/plan-zones.js';
 import type { Zone } from './editplan/types.js';
-import { LOCAL_DIR } from '@framopia/core';
-
-const SERVICE_JSON_PATH = path.join(LOCAL_DIR, 'service.json');
+import { health } from './health.js';
+import { clearHandshake, inspectLock, SERVICE_JSON_PATH, writeHandshake } from './lock.js';
 
 const packageJsonPath = path.join(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -17,6 +16,23 @@ const packageJsonPath = path.join(
   'package.json',
 );
 const { version } = JSON.parse(readFileSync(packageJsonPath, 'utf8')) as { version: string };
+
+/**
+ * ARCHITECTURE §8: every failure carries stage, cause and whether retrying
+ * could help, and the panel shows it verbatim rather than paraphrasing. The
+ * legacy `error` string stays alongside it so nothing that reads the old shape
+ * breaks while the panel is being built.
+ */
+export interface ServiceError {
+  error: string;
+  stage: string;
+  cause: string;
+  retryable: boolean;
+}
+
+export function serviceError(stage: string, cause: string, retryable: boolean): ServiceError {
+  return { error: cause, stage, cause, retryable };
+}
 
 function sendJson(res: ServerResponse, status: number, body: unknown): void {
   const payload = JSON.stringify(body);
@@ -68,13 +84,21 @@ export function createApp(token: string): http.Server {
     void (async () => {
       const url = new URL(req.url ?? '/', 'http://127.0.0.1');
 
+      /*
+       * Health is the one route outside the token wall. The panel calls it
+       * before it has read the handshake file — that is how it finds out
+       * whether the service it is about to talk to is the one whose token it
+       * holds — and it discloses nothing an attacker on this machine could not
+       * read from .local/service.json anyway. Everything else is behind the
+       * token.
+       */
       if (req.method === 'GET' && url.pathname === '/health') {
-        sendJson(res, 200, { ok: true, version });
+        sendJson(res, 200, health(version));
         return;
       }
 
       if (req.headers['x-service-token'] !== token) {
-        sendJson(res, 401, { error: 'unauthorized' });
+        sendJson(res, 401, serviceError('auth', 'missing or wrong service token', false));
         return;
       }
 
@@ -166,7 +190,31 @@ export interface RunningService {
   token: string;
 }
 
-export function startServer(): Promise<RunningService> {
+export class ServiceAlreadyRunningError extends Error {
+  constructor(readonly pid: number, readonly port: number) {
+    super(`a service is already running as pid ${pid} on port ${port}`);
+  }
+}
+
+/**
+ * Binds 127.0.0.1 on a free port and publishes the handshake.
+ *
+ * `force` exists for tests and for a deliberate restart; by default a live
+ * lock is refused rather than overwritten, because two services would each
+ * write the file and the panel would talk to whichever wrote last while the
+ * other went on holding a port.
+ */
+export function startServer(
+  options: { force?: boolean; lockFile?: string } = {},
+): Promise<RunningService> {
+  const lockFile = options.lockFile ?? SERVICE_JSON_PATH;
+  const lock = inspectLock(lockFile);
+  if (lock.state === 'held' && options.force !== true) {
+    return Promise.reject(
+      new ServiceAlreadyRunningError(lock.handshake.pid, lock.handshake.port),
+    );
+  }
+
   const token = crypto.randomBytes(24).toString('hex');
   const server = createApp(token);
 
@@ -178,8 +226,10 @@ export function startServer(): Promise<RunningService> {
       }
       const port = address.port;
 
-      mkdirSync(LOCAL_DIR, { recursive: true });
-      writeFileSync(SERVICE_JSON_PATH, JSON.stringify({ port, token }, null, 2), 'utf8');
+      writeHandshake(
+        { port, token, pid: process.pid, startedAt: new Date().toISOString() },
+        lockFile,
+      );
 
       resolve({ server, port, token });
     });
@@ -188,11 +238,28 @@ export function startServer(): Promise<RunningService> {
 
 const isMain = process.argv[1] === fileURLToPath(import.meta.url);
 if (isMain) {
-  startServer()
+  const lock = inspectLock();
+  if (lock.state === 'free' && lock.reason === 'lock names a dead process') {
+    console.log('reclaiming a stale lock: the pid it names is not running');
+  }
+
+  startServer({ force: process.argv.includes('--force') })
     .then(({ port }) => {
       console.log(`framopia-service listening on 127.0.0.1:${port}`);
+      // The handshake describes a live process; leaving it behind on a clean
+      // exit would make the next start reclaim a lock rather than find none.
+      const stop = (): void => {
+        clearHandshake();
+        process.exit(0);
+      };
+      process.on('SIGINT', stop);
+      process.on('SIGTERM', stop);
     })
     .catch((err: unknown) => {
+      if (err instanceof ServiceAlreadyRunningError) {
+        console.error(`${err.message}; pass --force to take it over`);
+        process.exit(1);
+      }
       console.error(err);
       process.exit(1);
     });
