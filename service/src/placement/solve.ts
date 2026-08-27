@@ -62,7 +62,7 @@ export interface Placement {
  * a sha256 chain read four bytes at a time, so the same seed always yields the
  * same sequence and nothing depends on call order elsewhere.
  */
-function unitStream(seed: string): () => number {
+export function unitStream(seed: string): () => number {
   let digest = createHash('sha256').update(seed).digest();
   let cursor = 0;
   return () => {

@@ -153,9 +153,20 @@ function framopiaAudit(aepPath, outPath) {
                     }
                 }
 
+                var parentName = null;
+                try {
+                    if (layer.parent) parentName = layer.parent.name;
+                } catch (eP) {
+                    parentName = null;
+                }
+
                 var entry = {
                     name: layer.name,
                     kind: kind,
+                    // Decides whether a layer's position is in the comp's
+                    // coordinate space or its parent's; two layers with the
+                    // same numbers land in different places depending on it.
+                    parent: parentName,
                     position: readProperty(layer, 'Position', sampleTime),
                     anchorPoint: readProperty(layer, 'Anchor Point', sampleTime),
                     scale: readProperty(layer, 'Scale', sampleTime),

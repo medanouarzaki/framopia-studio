@@ -12,6 +12,7 @@
         {
           "name": "IMG_MAIN",
           "kind": "solid",
+          "parent": "CARD",
           "position": {
             "value": [
               540,
@@ -84,6 +85,7 @@
         {
           "name": "CARD",
           "kind": "solid",
+          "parent": null,
           "position": {
             "value": [
               600,
@@ -169,6 +171,7 @@
         {
           "name": "IMG_MAIN",
           "kind": "solid",
+          "parent": null,
           "position": {
             "value": [
               600,
@@ -254,6 +257,7 @@
         {
           "name": "TXT_MAIN",
           "kind": "text",
+          "parent": null,
           "position": {
             "value": [
               1080,
@@ -345,6 +349,7 @@
         {
           "name": "TXT_MAIN",
           "kind": "text",
+          "parent": null,
           "position": {
             "value": [
               1080,
@@ -436,6 +441,7 @@
         {
           "name": "TXT_MAIN",
           "kind": "text",
+          "parent": null,
           "position": {
             "value": [
               1080,
@@ -527,6 +533,7 @@
         {
           "name": "TXT_MAIN",
           "kind": "text",
+          "parent": null,
           "position": {
             "value": [
               1080,

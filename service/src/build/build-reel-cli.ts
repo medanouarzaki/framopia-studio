@@ -10,7 +10,7 @@ import {
 import { readEditPlan } from '../editplan/io.js';
 import { runBuildReel } from './drive.js';
 import { imageSize } from './image-size.js';
-import { contentAnchorPoint, contentAwareScalePercent, contentBoxes } from './content-box.js';
+import { canvasScalePercent, contentBoxes } from './content-box.js';
 import { assertPathsPresent, type PathRef } from './preflight.js';
 import { COMP_SIDE_PX } from '../placement/constants.js';
 import {
@@ -82,44 +82,22 @@ assertPathsPresent(refs);
 console.log(`pre-flight: ${refs.length} referenced files all present`);
 
 /*
- * Image sizes to compare, from `npm run image-ceiling`. **No constant is
- * changed**: the variants are parameters, and which becomes the default is the
- * user's ruling after he has looked.
- *
- *   strict — today's rules, the reference point
- *   loose  — the zone rectangle dropped, every clearance and fill at its most
- *            permissive, hair still counting as head
- *   face   — the face-only mask, with the same loosened constants
- *
- * Image handling is the only thing that differs between them: the subtitle,
- * keyword and audio placements are the same list in every comp.
+ * Every image is framed and every image is top-left (Block 7 session 9's
+ * rulings). `img_float` is the card template; `img_slide_left` stays in the
+ * library and the manifest but is no longer chosen automatically.
  */
-const ceilingsPath = path.join(REPO_ROOT, '.local', 'build', 'image-ceilings.json');
-interface Ceilings {
-  sizes: Record<string, Record<string, number>>;
-  rects: Record<string, Record<string, { x: number; y: number; w: number; h: number }>>;
-}
-const ceilings: Ceilings = existsSync(ceilingsPath)
-  ? (JSON.parse(readFileSync(ceilingsPath, 'utf8')) as Ceilings)
-  : { sizes: {}, rects: {} };
-const variantSizes = ceilings.sizes;
-const IMAGE_VARIANTS = ['strict', 'loose', 'face'] as const;
-const sizeFor = (variant: string) => (slotId: string): number => {
-  const px = variantSizes[variant]?.[slotId];
-  const slot = plan.images.slots.find((s) => s.id === slotId);
-  return px ?? (slot?.scale ?? 0) * COMP_SIDE_PX;
-};
+const CARD_TEMPLATE = 'img_float';
+
+const faceBoxesPath = path.join(REPO_ROOT, '.local', 'build', `topleft-${reel}.json`);
+const topLeft: Record<string, { x: number; y: number; w: number; h: number }> = existsSync(faceBoxesPath)
+  ? (JSON.parse(readFileSync(faceBoxesPath, 'utf8')) as Record<string, { x: number; y: number; w: number; h: number }>)
+  : {};
 
 const built = buildReel({
   plan,
   audit,
-  imageVariants: Object.keys(variantSizes).length === 0
-    ? []
-    : IMAGE_VARIANTS.map((name) => ({
-        name,
-        scaleFor: sizeFor(name),
-        rectFor: (slotId: string) => ceilings.rects[name]?.[slotId],
-      })),
+  topLeftFor: (slotId: string) => topLeft[slotId],
+  cardTemplateId: CARD_TEMPLATE,
   introFor: (id) => entries.get(id)?.introS ?? 0,
   sfxFileFor: (id) => {
     const f = sfxFiles.get(id);
@@ -154,24 +132,28 @@ for (const e of built.elements) {
   const solid = auditedSolid(c, 'IMG_MAIN');
   const src = imageSize(e.imagePath);
   const content = boxes.get(e.imagePath);
-  const canvasOnly = placeholderScalePercent({
+
+  /*
+   * Every image is a card now, so the whole canvas is opaque picture and the
+   * canvas is what the CARD layer has to contain. Sizing by content — right
+   * for a cutout, whose margin is transparent — renders the canvas at
+   * 1000 x canvas/content and spills it past the 1080 px frame on any file
+   * whose content fills less than 0.926 of its canvas. Two of vitasilk's five
+   * do, which is the misalignment that was reported.
+   */
+  e.placeholderScalePercent = canvasScalePercent({
     auditedSolidWidth: solid.width,
     auditedScalePercent: solid.scalePercent,
     sourceWidth: src.width,
   });
-  e.placeholderScalePercent = contentAwareScalePercent({
-    auditedSolidWidth: solid.width,
-    auditedScalePercent: solid.scalePercent,
-    sourceWidth: src.width,
-    content,
-  });
-  e.contentAnchor = content === undefined ? undefined : contentAnchorPoint(content);
+  // The canvas is the picture, so its own centre is the right anchor.
+  e.contentAnchor = undefined;
   const longEdge = content === undefined ? src.width : Math.max(content.w, content.h);
+  const rendered = src.width * (e.placeholderScalePercent / 100);
   console.log(
-    `${e.id}: solid ${solid.width}px at ${solid.scalePercent}% / canvas ${src.width}px ` +
-      `/ content ${longEdge}px -> scale ${canvasOnly.toFixed(4)}% (canvas) ` +
-      `-> ${e.placeholderScalePercent.toFixed(4)}% (content), ` +
-      `anchor ${e.contentAnchor === undefined ? 'canvas centre' : `${e.contentAnchor.x.toFixed(0)}, ${e.contentAnchor.y.toFixed(0)}`}`,
+    `${e.id}: canvas ${src.width}px, content ${longEdge}px -> scale ` +
+      `${e.placeholderScalePercent.toFixed(4)}% -> renders ${rendered.toFixed(0)}px ` +
+      `inside a ${solid.width}px solid and an 1080px frame`,
   );
 }
 
@@ -193,16 +175,17 @@ const result = runBuildReel({
   safeWidth: SUBTITLE_SAFE_WIDTH,
   elements: built.elements,
   masters: [
-    { name: `master_${reel}_A`, placements: built.placementsA, audio: built.audio },
-    { name: `master_${reel}_C`, placements: built.placementsC, audio: built.audio },
-    ...[...built.variantPlacements].map(([name, images]) => ({
-      // Retiming held at C so the only difference between the three is size.
-      name: `master_img_${name}`,
-      placements: [...built.placementsC.filter((p) => p.kind !== 'image'), ...images],
-      audio: built.audio,
-    })),
+    { name: 'master_final', placements: built.placementsC, audio: built.audio },
+    {
+      // The same elements with the images and their audio left out, so the
+      // subtitles can be judged with nothing else on screen. One difference.
+      name: 'master_subs_only',
+      placements: built.placementsC.filter((p) => p.kind !== 'image'),
+      // An image's whoosh belongs to the image, so it goes with it.
+      audio: built.audio.filter((a) => !a.sourceElementId.startsWith('img')),
+    },
   ],
-  activeComp: flag('active') ?? `master_${reel}_C`,
+  activeComp: flag('active') ?? 'master_final',
   // Reported so the frame bound can be checked per comp rather than trusted.
   reportPlacements: true,
   parkAtS: Number(flag('park') ?? plan.source.durationS / 2),

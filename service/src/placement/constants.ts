@@ -92,6 +92,23 @@ export const BOTTOM_EXCLUSION = 0.15;
 export const HEAD_CLEARANCE = 0.04;
 
 /**
+ * Gap between an image and the top and left edges of the frame, as a fraction
+ * of frame width. **CHOSEN, NOT MEASURED** — 0.03 is 65 px on a 2160 frame,
+ * enough that the image reads as placed rather than as bleeding off. What
+ * would change it is the user's eye on a built reel.
+ */
+export const TOP_LEFT_MARGIN = 0.03;
+
+/**
+ * How far a top-left image may shrink from the largest square that fits, so a
+ * run of images is not pixel-identical. Block 5's rule that a set must not read
+ * as robotically uniform still applies; the draw is one-sided so jitter can
+ * only ever move the image away from the face, never onto it.
+ * **CHOSEN, NOT MEASURED.**
+ */
+export const TOP_LEFT_JITTER = 0.06;
+
+/**
  * Mirrors MIN_ZONE_SHORT_EDGE in the same file, and is applied here to the
  * **placed square** rather than to the zone. The constant's stated reason is
  * about the image a viewer sees, and after clearance and fill a placed square

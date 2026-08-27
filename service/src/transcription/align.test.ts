@@ -274,3 +274,61 @@ describe('sourceText follows the anchor, not the index', () => {
     expect(out.map((w) => w.sourceText)).toEqual(['alpha', 'betta']);
   });
 });
+
+/*
+ * The check session 6 needed and did not have.
+ *
+ * Session 6 verified "does this interval exist somewhere in the Scribe
+ * response" and it passed 21 of 21 while the alignment was wrong: an interval
+ * can be real and belong to a different word. This checks correspondence — the
+ * interval a word carries must be the interval of the draft token it is
+ * recorded as having anchored to.
+ *
+ * It is deliberately a property of the aligner's own output rather than a
+ * corpus check: it holds for any input, and it is what a future fix has to keep
+ * holding.
+ */
+describe('a word carries the interval of the token it anchored to', () => {
+  const draft = (text: string, start: number): TranscriptWord => ({
+    text,
+    start,
+    end: start + 0.2,
+    confidence: 0.9,
+  });
+
+  const check = (drafts: TranscriptWord[], corrected: string[]): string[] => {
+    const out = alignCorrectedOntoDraft(drafts, corrected);
+    const byText = new Map(drafts.map((d) => [d.text, d]));
+    const problems: string[] = [];
+    out.forEach((w, i) => {
+      if (w.sourceText === undefined) return;
+      const token = byText.get(w.sourceText);
+      if (token === undefined) {
+        problems.push(`${i} names an unknown token ${w.sourceText}`);
+        return;
+      }
+      if (w.start !== token.start || w.end !== token.end) {
+        problems.push(`${i} carries ${String(w.start)}-${String(w.end)} but ${w.sourceText} is ${token.start}-${token.end}`);
+      }
+    });
+    return problems;
+  };
+
+  it('holds on a clean one-to-one sequence', () => {
+    expect(check([draft('a', 0), draft('b', 1), draft('c', 2)], ['a', 'b', 'c'])).toEqual([]);
+  });
+
+  it('holds across an insertion', () => {
+    expect(check([draft('a', 0), draft('b', 1)], ['a', 'inserted', 'b'])).toEqual([]);
+  });
+
+  it('holds across a deletion', () => {
+    expect(check([draft('a', 0), draft('b', 1), draft('c', 2)], ['a', 'c'])).toEqual([]);
+  });
+
+  it('leaves an unanchored word with no interval claim to check', () => {
+    const out = alignCorrectedOntoDraft([draft('a', 0), draft('b', 1)], ['a', 'x', 'b']);
+    expect(out[1]?.sourceText).toBeUndefined();
+    expect(out[1]?.confidence).toBeNull();
+  });
+});

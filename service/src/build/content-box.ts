@@ -71,6 +71,27 @@ export function contentBoxes(
  * content already fills its canvas this returns exactly the previous value, so
  * a card that was correct stays correct.
  */
+/**
+ * Scale for a **card**: the whole canvas is opaque picture, so the canvas is
+ * what the frame has to contain.
+ *
+ * Block 7 session 9's frame misalignment was exactly this. Content-aware
+ * scaling sizes the *content* to the solid's 1000 px, which is right for a
+ * cutout — its margin is transparent and invisible — and wrong for a card,
+ * where the margin is picture. The canvas then renders at 1000 x canvas/content
+ * and spills past the 1080 px CARD layer whenever the content fills less than
+ * 1000/1080 = 0.926 of its canvas. Two of vitasilk's five slots do.
+ */
+export function canvasScalePercent(options: {
+  auditedSolidWidth: number;
+  auditedScalePercent: number;
+  sourceWidth: number;
+}): number {
+  const { auditedSolidWidth, auditedScalePercent, sourceWidth } = options;
+  if (sourceWidth <= 0) throw new Error('source width must be positive');
+  return (auditedSolidWidth / sourceWidth) * auditedScalePercent;
+}
+
 export function contentAwareScalePercent(options: {
   auditedSolidWidth: number;
   auditedScalePercent: number;

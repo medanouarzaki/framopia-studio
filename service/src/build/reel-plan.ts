@@ -132,9 +132,8 @@ export interface ReelBuild {
   elements: ReelElement[];
   placementsA: ReelPlacement[];
   placementsC: ReelPlacement[];
-  audio: { id: string; filePath: string; timeS: number; gainDb: number }[];
+  audio: { id: string; sfxId: string; sourceElementId: string; filePath: string; timeS: number; gainDb: number }[];
   skipped: Skipped[];
-  variantPlacements: Map<ImageSizeVariant, ReelPlacement[]>;
 }
 
 /**
@@ -149,6 +148,10 @@ export function buildReel(options: {
   introFor: (templateId: string) => number;
   sfxFileFor: (sfxId: string) => string;
   candidateFileFor: (slotId: string) => { path: string; id: string } | null;
+  /** Where the top-left rule put this slot, in frame fractions. */
+  topLeftFor?: (slotId: string) => { x: number; y: number; w: number; h: number } | undefined;
+  /** Forced template for every image slot; the user ruled every image framed. */
+  cardTemplateId?: string;
   /** Extra placements, each a copy of the image set at a different size. */
   imageVariants?: {
     name: ImageSizeVariant;
@@ -157,10 +160,8 @@ export function buildReel(options: {
     rectFor?: (slotId: string) => { x: number; y: number; w: number; h: number } | undefined;
   }[];
 }): ReelBuild {
-  const { plan, audit, introFor, sfxFileFor, candidateFileFor, imageVariants = [] } = options;
-  const variantPlacements = new Map<ImageSizeVariant, ReelPlacement[]>(
-    imageVariants.map((v) => [v.name, []]),
-  );
+  const { plan, audit, introFor, sfxFileFor, candidateFileFor, topLeftFor, cardTemplateId } = options;
+
   const elements: ReelElement[] = [];
   const placementsA: ReelPlacement[] = [];
   const placementsC: ReelPlacement[] = [];
@@ -257,7 +258,7 @@ export function buildReel(options: {
       skipped.push({ id: slot.id, kind: 'image', reason: 'no candidate file on disk' });
       continue;
     }
-    const c = comp(audit, slot.templateId);
+    const c = comp(audit, cardTemplateId ?? slot.templateId);
     // Fails here rather than halfway through a build: the caller derives the
     // placeholder scale from this and a stale audit would leave the image at
     // the template's 100%, rendering it at the source's own size.
@@ -265,69 +266,45 @@ export function buildReel(options: {
     elements.push({
       id: slot.id,
       kind: 'image',
-      templateId: slot.templateId,
+      templateId: cardTemplateId ?? slot.templateId,
       placeholder: 'IMG_MAIN',
       imagePath: chosen.path,
     });
 
-    // The plan's scale is a fraction of the template comp's side; its position
-    // is the placed rect's top-left as a fraction of the frame. A comp layer is
-    // anchored at its centre, so half the placed size is added back.
-    const scalePercent = slot.scale * 100;
-    const placedPx = c.width * slot.scale;
-    const positionX = slot.position.x * plan.source.width + placedPx / 2;
-    const positionY = slot.position.y * plan.source.height + placedPx / 2;
+    /*
+     * Top-left, on every reel (Block 7 session 9's ruling). The rect arrives
+     * computed from the slot's own face-mask span; without one the solved zone
+     * placement is used, so a reel with no masks still builds.
+     */
+    const placed = topLeftFor?.(slot.id);
+    const scalePercent = placed === undefined
+      ? slot.scale * 100
+      : (placed.w * FRAME_WIDTH) / c.width * 100;
+    const positionX = placed === undefined
+      ? slot.position.x * plan.source.width + (c.width * slot.scale) / 2
+      : (placed.x + placed.w / 2) * plan.source.width;
+    const positionY = placed === undefined
+      ? slot.position.y * plan.source.height + (c.width * slot.scale) / 2
+      : (placed.y + placed.h / 2) * plan.source.height;
+
     const placement: ReelPlacement = {
       elementId: slot.id, kind: 'image', inPointS: slot.start, outPointS: slot.end,
       positionX, positionY, scalePercent,
     };
     placementsA.push(placement);
     placementsC.push({ ...placement });
-
-    /*
-     * The same slot at other sizes, on the same centre, so size is the only
-     * thing that differs between the variants. `scaleFor` gives the placed side
-     * in source pixels; the comp layer's scale is that against the comp's own
-     * side.
-     */
-    for (const v of imageVariants) {
-      const sidePx = v.scaleFor(slot.id);
-      /*
-       * Centred where the ceiling found room, not on the solved centre. A
-       * square that fits *somewhere* is not a placement: growing the solved
-       * centre put an image across the speaker's face on two slots, because
-       * that centre belongs to the smaller square.
-       */
-      const found = v.rectFor?.(slot.id);
-      const centreX = found === undefined
-        ? positionX / plan.source.width
-        : found.x + found.w / 2;
-      const centreY = found === undefined
-        ? positionY / plan.source.height
-        : found.y + found.h / 2;
-      // Bounded to the frame regardless of where the centre came from.
-      const fitted = fitInsideFrame(centreX, centreY, sidePx / FRAME_WIDTH);
-      const fittedSidePx = fitted.w * FRAME_WIDTH;
-      variantPlacements.get(v.name)?.push({
-        elementId: slot.id,
-        kind: 'image',
-        inPointS: slot.start,
-        outPointS: slot.end,
-        positionX: (fitted.x + fitted.w / 2) * plan.source.width,
-        positionY: (fitted.y + fitted.h / 2) * plan.source.height,
-        scalePercent: (fittedSidePx / c.width) * 100,
-      });
-    }
   }
 
   const audio = plan.sfx.events.map((e) => ({
     id: e.id,
+    sfxId: e.sfxId,
+    sourceElementId: e.sourceElementId,
     filePath: sfxFileFor(e.sfxId),
     timeS: e.timeS,
     gainDb: e.gainDb,
   }));
 
-  return { elements, placementsA, placementsC, audio, skipped, variantPlacements };
+  return { elements, placementsA, placementsC, audio, skipped };
 }
 
 export function resolveSfxDir(repoRoot: string): string {
