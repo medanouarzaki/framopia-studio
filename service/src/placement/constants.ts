@@ -119,11 +119,19 @@ export const TOP_LEFT_JITTER = 0.06;
 export const WATERMARK_WIDTH_FRACTION = 0.1;
 
 /**
- * How long the watermark stays after its last beep. **A user ruling**, not a
- * measurement: it leaves the screen one second after the sound finishes. The
- * beep time itself is measured per file, so a different watermark recomputes.
+ * How long the watermark is on screen, from t=0.
+ *
+ * **The user's ruling, not a measurement.** It replaced "one second after the
+ * last beep" in Block 7 session 11, once he had seen the watermark built: the
+ * duration is a flat second and does not follow the audio. What would change it
+ * is his eye on a built comp.
+ *
+ * The beeps are still measured — `tools/measure-watermark/` is what established
+ * the audio's shape — and `assertBeepsFitWatermark` checks they finish before
+ * the mark leaves, so a future file whose beeps run long fails loudly instead of
+ * being cut off silently.
  */
-export const WATERMARK_HOLD_AFTER_LAST_BEEP_S = 1;
+export const WATERMARK_DURATION_S = 1;
 
 /** Audio level for the watermark layer. The user's own setting. */
 export const WATERMARK_GAIN_DB = -20;

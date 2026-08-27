@@ -1,17 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import { placeWatermark } from './watermark.js';
+import { assertBeepsFitWatermark, placeWatermark, WatermarkBeepsRunLongError } from './watermark.js';
 import { insideFrame, type Rect } from './geometry.js';
 import {
   FRAME_ASPECT,
   FRAME_WIDTH,
   SUBTITLE_BAND,
+  WATERMARK_DURATION_S,
   WATERMARK_MARGIN,
   WATERMARK_WIDTH_FRACTION,
 } from './constants.js';
 
 // The real file: 1924 x 2154, last beep ending at 0.400 s.
 const ART = { sourceWidth: 1924, sourceHeight: 2154 };
-const TIMING = { lastBeepEndS: 0.4, holdAfterLastBeepS: 1 };
+const TIMING = { lastBeepEndS: 0.4 };
 const base = { ...ART, ...TIMING, occupied: [] as Rect[], faceBox: null as Rect | null };
 
 const overlaps = (a: Rect, b: Rect): boolean =>
@@ -21,12 +22,44 @@ const band: Rect = { x: 0, y: SUBTITLE_BAND.y, w: 1, h: SUBTITLE_BAND.h };
 const vitasilkFace: Rect = { x: 0.2385, y: 0.2073, w: 0.60, h: 0.32 };
 
 describe('placeWatermark', () => {
-  it('derives its out point from the measured beep rather than a constant', () => {
-    expect(placeWatermark({ ...base, seed: 'r' }).outPointS).toBeCloseTo(1.4, 10);
-    // A different file recomputes rather than inheriting 1.4.
-    expect(
-      placeWatermark({ ...base, lastBeepEndS: 0.9, seed: 'r' }).outPointS,
-    ).toBeCloseTo(1.9, 10);
+  /*
+   * Block 7 session 11 replaced the derived duration with a flat second. The
+   * test that pinned the derived behaviour is gone rather than left green
+   * against a rule that no longer applies.
+   */
+  it('is on screen for a flat second, whatever the beeps do', () => {
+    expect(placeWatermark({ ...base, seed: 'r' }).outPointS).toBe(WATERMARK_DURATION_S);
+    expect(placeWatermark({ ...base, lastBeepEndS: 0.9, seed: 'r' }).outPointS).toBe(
+      WATERMARK_DURATION_S,
+    );
+    expect(placeWatermark({ ...base, lastBeepEndS: null, seed: 'r' }).outPointS).toBe(
+      WATERMARK_DURATION_S,
+    );
+  });
+});
+
+/*
+ * The duration stopped following the beeps, so nothing would notice a file whose
+ * beeps ran past it — the sound would be cut mid-beep and read as a taste
+ * decision. This is what keeps the measurement useful now that it no longer
+ * sets the number.
+ */
+describe('assertBeepsFitWatermark', () => {
+  it('accepts the real file, whose last beep ends at 0.400 s', () => {
+    expect(() => assertBeepsFitWatermark(0.4)).not.toThrow();
+  });
+
+  it('accepts a beep ending exactly on the out point', () => {
+    expect(() => assertBeepsFitWatermark(WATERMARK_DURATION_S)).not.toThrow();
+  });
+
+  it('refuses a file whose beeps run past the out point, naming both times', () => {
+    expect(() => assertBeepsFitWatermark(1.3)).toThrow(WatermarkBeepsRunLongError);
+    expect(() => assertBeepsFitWatermark(1.3)).toThrow(/1\.300s but the mark leaves at 1\.000s/);
+  });
+
+  it('says nothing when a file has no measured beeps', () => {
+    expect(() => assertBeepsFitWatermark(null)).not.toThrow();
   });
 
   it('is a tenth of the frame wide and keeps the artwork aspect', () => {

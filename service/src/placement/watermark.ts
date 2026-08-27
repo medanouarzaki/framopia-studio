@@ -1,6 +1,7 @@
 import {
   FRAME_ASPECT,
   SUBTITLE_BAND,
+  WATERMARK_DURATION_S,
   WATERMARK_MARGIN,
   WATERMARK_WIDTH_FRACTION,
 } from './constants.js';
@@ -36,8 +37,9 @@ export interface WatermarkInput {
   /** Aspect of the artwork itself; the width is fitted and the height follows. */
   sourceWidth: number;
   sourceHeight: number;
-  lastBeepEndS: number;
-  holdAfterLastBeepS: number;
+  /** Measured, and only checked against the duration — it no longer sets it. */
+  lastBeepEndS: number | null;
+  durationS?: number;
   seed: string;
 }
 
@@ -50,6 +52,36 @@ function clampToFrame(r: Rect): Rect {
     w,
     h,
   };
+}
+
+export class WatermarkBeepsRunLongError extends Error {
+  constructor(
+    readonly lastBeepEndS: number,
+    readonly durationS: number,
+  ) {
+    super(
+      `the watermark's last beep ends at ${lastBeepEndS.toFixed(3)}s but the mark leaves at ` +
+        `${durationS.toFixed(3)}s, so its sound would be cut off. Either the duration is wrong ` +
+        'for this file or the file is wrong for this duration.',
+    );
+    this.name = 'WatermarkBeepsRunLongError';
+  }
+}
+
+/**
+ * The duration no longer follows the beeps, so nothing would notice a file
+ * whose beeps run past it — the sound would simply be cut mid-beep and look
+ * like a taste decision. This is the check that keeps the measurement useful
+ * after it stopped setting the number.
+ */
+export function assertBeepsFitWatermark(
+  lastBeepEndS: number | null,
+  durationS: number = WATERMARK_DURATION_S,
+): void {
+  if (lastBeepEndS === null) return;
+  if (lastBeepEndS > durationS + 1e-9) {
+    throw new WatermarkBeepsRunLongError(lastBeepEndS, durationS);
+  }
 }
 
 const overlaps = (a: Rect, b: Rect): boolean =>
@@ -113,6 +145,6 @@ export function placeWatermark(input: WatermarkInput): WatermarkPlacement {
     rect: clampToFrame(chosen.rect),
     corner: chosen.corner,
     rejected,
-    outPointS: input.lastBeepEndS + input.holdAfterLastBeepS,
+    outPointS: input.durationS ?? WATERMARK_DURATION_S,
   };
 }

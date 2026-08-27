@@ -16,9 +16,9 @@ import { assertAllPlaced, assertPathsPresent, type PathRef } from './preflight.j
 import {
   COMP_SIDE_PX,
   WATERMARK_GAIN_DB,
-  WATERMARK_HOLD_AFTER_LAST_BEEP_S,
+  WATERMARK_DURATION_S,
 } from '../placement/constants.js';
-import { placeWatermark } from '../placement/watermark.js';
+import { assertBeepsFitWatermark, placeWatermark } from '../placement/watermark.js';
 import {
   buildReel,
   auditedSolid,
@@ -233,8 +233,11 @@ function faceSpan(startS: number, endS: number): { x: number; y: number; w: numb
  * screen then, so it never lands on the speaker or under an image.
  */
 let watermark: Record<string, unknown> | undefined;
-if (watermarkFacts !== null && watermarkFacts.lastBeepEndS !== null && existsSync(WATERMARK_PATH)) {
-  const outPointS = watermarkFacts.lastBeepEndS + WATERMARK_HOLD_AFTER_LAST_BEEP_S;
+if (watermarkFacts !== null && existsSync(WATERMARK_PATH)) {
+  // The duration is flat now, so the measured beeps have to be checked against
+  // it rather than setting it.
+  assertBeepsFitWatermark(watermarkFacts.lastBeepEndS);
+  const outPointS = WATERMARK_DURATION_S;
   const occupied = built.placementsC
     .filter((p) => p.kind === 'image' && p.inPointS < outPointS && 0 < p.outPointS)
     .map((p) => {
@@ -253,7 +256,6 @@ if (watermarkFacts !== null && watermarkFacts.lastBeepEndS !== null && existsSyn
     sourceWidth: watermarkFacts.width,
     sourceHeight: watermarkFacts.height,
     lastBeepEndS: watermarkFacts.lastBeepEndS,
-    holdAfterLastBeepS: WATERMARK_HOLD_AFTER_LAST_BEEP_S,
     seed: plan.meta.id,
   });
   // Width is what is fitted; the artwork is 1924 x 2154 so the height follows
@@ -272,7 +274,9 @@ if (watermarkFacts !== null && watermarkFacts.lastBeepEndS !== null && existsSyn
     `watermark: ${placed.corner}, ${(placed.rect.w * plan.source.width).toFixed(0)} x ` +
       `${(placed.rect.h * plan.source.height).toFixed(0)} px from ${watermarkFacts.width}x${watermarkFacts.height} ` +
       `-> scale ${scalePercent.toFixed(4)}%; out at ${placed.outPointS.toFixed(3)}s = ` +
-      `frame ${(placed.outPointS * (30000 / 1001)).toFixed(2)} of ${watermarkFacts.frames}`,
+      `frame ${(placed.outPointS * (30000 / 1001)).toFixed(2)} of ${watermarkFacts.frames}; ` +
+      `last beep ends ${(watermarkFacts.lastBeepEndS ?? 0).toFixed(3)}s, ` +
+      `${((placed.outPointS) - (watermarkFacts.lastBeepEndS ?? 0)).toFixed(3)}s of margin`,
   );
   for (const r of placed.rejected) console.log(`  rejected ${r.corner}: ${r.reason}`);
 } else {

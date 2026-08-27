@@ -195,6 +195,12 @@ function framopiaBuildReel(optionsPath, outPath) {
                     height: wm.height,
                     // Read back rather than assumed: setting it is not proof.
                     alphaMode: String(wmItem.mainSource.alphaMode),
+                    // An AV layer's audio is bounded by its in and out points,
+                    // so the beeps stop with the picture. Reported so the claim
+                    // rests on what AE says rather than on the setter.
+                    hasAudio: wmItem.hasAudio,
+                    audioActive: wm.audioActive,
+                    audioEndsWithLayer: wm.outPoint,
                     premultipliedConstant: String(AlphaMode.PREMULTIPLIED),
                     layersAbove: wm.index - 1
                 };
