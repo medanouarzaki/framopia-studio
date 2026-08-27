@@ -12,7 +12,7 @@ import { readEditPlan } from '../editplan/io.js';
 import { runBuildReel } from './drive.js';
 import { imageSize } from './image-size.js';
 import { canvasScalePercent, contentBoxes } from './content-box.js';
-import { assertPathsPresent, type PathRef } from './preflight.js';
+import { assertAllPlaced, assertPathsPresent, type PathRef } from './preflight.js';
 import {
   COMP_SIDE_PX,
   WATERMARK_GAIN_DB,
@@ -187,6 +187,7 @@ console.log(
     `C ${built.placementsC.length}, audio ${built.audio.length}, skipped ${built.skipped.length}`,
 );
 for (const s of built.skipped) console.log(`  SKIPPED ${s.kind} ${s.id}: ${s.reason}`);
+assertAllPlaced(built.skipped);
 const onFloor = built.shortened.filter((s) => s.onFloor).length;
 console.log(
   `short-card entrances: ${built.shortened.length} shortened, ${onFloor} on the two-frame floor`,

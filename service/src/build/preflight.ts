@@ -37,3 +37,26 @@ export function assertPathsPresent(refs: PathRef[]): void {
   const missing = findMissingPaths(refs);
   if (missing.length > 0) throw new MissingBuildInputsError(missing);
 }
+
+export class UnplaceableElementsError extends Error {
+  constructor(readonly elements: { id: string; reason: string }[]) {
+    super(
+      `${elements.length} element(s) have no placement; refusing to build a comp with gaps:\n` +
+        elements.map((e) => `  ${e.id}: ${e.reason}`).join('\n'),
+    );
+    this.name = 'UnplaceableElementsError';
+  }
+}
+
+/**
+ * An element the planner could not place is a hole in the comp exactly as a
+ * missing file is. It used to be reported on stdout and built around, which is
+ * the same silent-gap failure the path check exists to stop — a client sees a
+ * missing image, not a log line.
+ */
+export function assertAllPlaced(skipped: { id: string; kind: string; reason: string }[]): void {
+  if (skipped.length === 0) return;
+  throw new UnplaceableElementsError(
+    skipped.map((s) => ({ id: `${s.kind} ${s.id}`, reason: s.reason })),
+  );
+}
