@@ -21,10 +21,13 @@ AI-generated contextual images, SFX, and a watermark. Full spec in
 - `docs/` — locked spec, architecture, orthography, template library guide
 - `handoffs/` — session handoff documents
 - `reports/` — per-session work reports
-- `panel/` — After Effects CEP panel. The UI is not started; `panel/jsx/`
-  holds the ExtendScript the service drives: `build.jsx` (places one template
-  instance), `image-probe.jsx` (source replacement), `json2.jsx` (a guarded
-  `JSON.stringify` for hosts without one). ES3 only.
+- `panel/` — After Effects CEP panel. `panel/src/` is React + TypeScript
+  (strict), bundled by esbuild to `panel/dist`; `CSXS/manifest.xml` declares it
+  against host **AEFT 26.0** at manifest schema **6.0**, and `.debug` opens
+  remote debugging on **port 8099**. `panel/jsx/` holds the ExtendScript the
+  service drives: `build.jsx` (places one template instance), `image-probe.jsx`
+  (source replacement), `json2.jsx` (a guarded `JSON.stringify` for hosts
+  without one). ES3 only.
 - `core/` — `@framopia/core`, the shared workspace package: config loading,
   the cost ledger, pricing constants and the Gemini model pins — text and
   **image** — (`core/src/model-config.json`), the token normalizer, the Levenshtein
@@ -244,6 +247,17 @@ AI-generated contextual images, SFX, and a watermark. Full spec in
   image cache entries onto the Block 7 fingerprint. Dry-run by default; it
   refuses to move an entry whose **old** key does not reproduce from its own
   manifest, so a rename is never made on a guess.
+- `npm run panel:build` / `npm run panel:dev` — build the CEP panel to
+  `panel/dist` (gitignored) with esbuild, once or in watch. `panel/dist` is what
+  the manifest's `MainPath` points at, so the panel shows nothing until this has
+  been run.
+- `npm run panel:install` — free, local, **idempotent**. Sets `PlayerDebugMode`
+  on `com.adobe.CSXS.10`–`13` and symlinks `panel/` into
+  `~/Library/Application Support/Adobe/CEP/extensions/com.framopia.studio`,
+  printing what it actually did. It refuses to delete a real directory it did
+  not create. **After Effects reads the extensions folder at launch, so restart
+  AE once after the first install**; after that a rebuild only needs the panel
+  closed and reopened (Window → Extensions → Framopia Studio).
 - `npm run align:score -- --reel <label> [--compare <path>] [--allow-sha-drift]
   [--entry <id>]` — free, local, **read-only**. Scores the current aligner
   against the hand-made reference at `benchmarks/references/align/<reel>.json`.
@@ -327,6 +341,21 @@ session. `docs/DEFECT-alignment-script-mismatch.md` carried figures from three
 different cache entries for a whole block because no artifact said which
 produced which, and one of them is still unattributable. The sibling of §3's
 rule that a verified property must be emitted by the thing that verifies it.
+
+### Never leave a test asserting retired behaviour
+
+Rewrite or delete it in the same change that retires the rule; a test kept for
+the record says so in its name. Block 7 session 11 found four at once, one
+named "only the sum is ever compared", green and false. Full statement in
+`docs/CLAUDE_CODE_GUIDELINES.md` §3.
+
+### A rule shared by more than one tool is pinned by a test
+
+As a mirrored constant already is. Session 11's first reconciliation of the
+reporting tools with the builder was insufficient because `sweepTemplate` held
+a second copy of how the entrance budget splits — arithmetic rather than a
+named value, which is why it was missed. A comment saying "keep in sync" is
+not a pin.
 
 ### The correction prompt version is frozen for the rest of Block 8
 
@@ -4040,6 +4069,108 @@ handoff.
 in the whole corpus reach" `MAX_SUBTITLE_HOLD_S` — 3 is right (test-2 1,
 test-3 1, vitasilk 1); a first pass that compared for exact equality missed
 vitasilk's 1.26 s card, whose own speech exceeds the cap.
+
+## Block 8 session 4 — the panel exists
+
+**Spent $0.00; no API was called.** Ledger 108 entries / sha `50ec3f57…` at both
+ends, byte-identical. After Effects was not driven.
+
+**The user's first hand-made reference arrived**, untracked, during this
+session: `benchmarks/references/align/vitasilk.json`, **73 of 73 rows judged** —
+54 `correct`, 18 `wrong`, 1 `two-tokens`, 0 `no-token`. Scored read-only
+without writing anything: **74.0% of judged pairings are human-confirmed**, and
+**15 of the 18 wrong are cross-script**, which is the defect this block exists
+for. It was **not committed** — it is the user's file and his to place — and
+`npm run align:score` was **not run**, because it writes into
+`benchmarks/results/latest-align-review/` and his review pass is open in a
+browser.
+
+**The reversed-Arabic question is settled: it is a display artifact, and
+nothing in the repo is reversed.** Every one of the nine repaired `sourceText`
+values stores its characters in **logical order** — `دقيقة` is DAL, QAF, YEH,
+QAF, TEH MARBUTA, and DAL is the first letter read right-to-left. The report
+files on disk hold the same order; a viewer that does not apply the Unicode
+bidi algorithm renders logical-order RTL text left-to-right and therefore
+backwards. **Nothing was repaired because nothing is broken.** Checked
+corpus-wide as well: all **253** Arabic `sourceText` values across the five
+plans are byte-identical to a draft token in the pinned cache entry, so the
+pipeline introduces no reordering anywhere. The aligner fix can walk these
+tokens against ORTHOGRAPHY_GUIDE §2's table as they stand.
+
+### The panel
+
+`panel/src/` is React 18 + TypeScript strict, bundled by **esbuild** to
+`panel/dist`. **esbuild rather than Vite**: CEP loads the panel from a `file://`
+URL inside its own Chromium, so there is no dev server to attach to and no
+module graph the host resolves — what is needed is one IIFE bundle and a
+stylesheet on disk, which is esbuild's default and Vite's special case.
+
+**Read off the machine, not assumed:** host id **`AEFT`** and manifest schema
+**`Version="6.0"` / `RequiredRuntime CSXS 6.0`**, taken from the three
+extensions already loading in this AE (`flow-v1.5.2`, `Motion Tools Pro`,
+`Subtitle Pro`), all of which declare exactly that. The **CEP runtime is 12** —
+the running `CEPHtmlEngine` reports `AdobeCEP/12.0.1` — which is why debug mode
+is written to `com.adobe.CSXS.12`. **Those are two different numbers** and
+conflating them is the usual way a panel silently fails to load.
+
+**`npm run panel:install` was run and is idempotent**: `PlayerDebugMode` was
+already 1 on domains 10–13, and the symlink was created and then reported as
+already correct on a second run.
+
+**The panel is a view and never a place a decision lives.** Everything
+host-dependent — reading the handshake, spawning the service, listing reels and
+modes — sits behind an injected `PanelHost` in `panel/src/host.ts`, so `App`
+renders in a test with no CEP at all. `cep_node` is looked up at call time, never
+imported, so a bundler cannot quietly shim `node:fs` and hide that this only
+works inside AE.
+
+**One screen, and nothing else**: service state (starting / healthy /
+unreachable) with the health payload read as words rather than JSON and a retry
+control; a reel picker; a client-mode picker; a disabled Run control that
+**states its reason in words**; and the reel's cumulative `costs.spentUsd` with
+ARCHITECTURE §6's **$2.00 soft alarm wired and not triggerable** (the highest
+reel on this machine is `vitasilk` at $1.550444). No placeholder panels, no dead
+navigation. The transcript editor is deliberately absent until the aligner is
+fixed.
+
+**`assets/brand/Framopia_LOGO.png` does not exist.** PROJECT_SPEC §6 names it
+and `assets/brand/` holds only a `.gitkeep`, so `logoPath` returns null and the
+header falls back to an accent mark beside the wordmark. **A user asset to
+supply**; nothing was invented.
+
+**The Run control is off for an honest reason.** With a healthy service, a reel
+and a mode selected it still reads *"The pipeline runner is not built yet."* —
+the runner is the next session. A button that looked ready and did nothing would
+be worse, and hiding it would leave no place for the reason.
+
+### The service handshake
+
+`GET /health` **probes rather than assumes**: `ffmpeg -version`,
+`ffprobe -version`, the sidecar venv interpreter, and a real
+`validateTemplateManifest` pass. Live on this machine: ffmpeg 8.0.1, ffprobe
+8.0.1, Python 3.11.14, 6 valid templates, `ok: true`. It stays **outside the
+token wall** because the panel calls it before it has read the handshake —
+that is how it learns whether the service it is about to talk to is the one
+whose token it holds — and it discloses nothing an attacker on this machine
+could not read from `.local/service.json`.
+
+**`.local/service.json` now carries `pid` and `startedAt` beside `port` and
+`token`**, and doubles as the lock. The pid is what makes it safe to reclaim: a
+service killed with the machine leaves the file behind, and **a lock naming a
+process that no longer exists is a leftover, not a claim**. `startServer`
+refuses a live lock (`ServiceAlreadyRunningError`, `--force` to take over) and
+starts over a dead one. `processAlive` reads **EPERM as alive** — the process
+exists and belongs to someone else — because reading it as dead would let a
+second service take over a live one's lock.
+
+**Every rejection is an ARCHITECTURE §8 structured error** — `{ error, stage,
+cause, retryable }` — and the panel shows `cause` verbatim rather than
+paraphrasing.
+
+**`panel` is an npm workspace**, so `npm run check`'s `--workspaces` sweep picks
+up its typecheck, lint and tests with no change to `scripts/check.sh`.
+
+**Not built this session, deliberately:** the job API. Health and spawn only.
 
 See `docs/BLOCKS.md` for the full block plan and `handoffs/` for prior
 session context.
