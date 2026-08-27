@@ -124,7 +124,6 @@ for (const reel of ['vitasilk', 'test 1']) {
     // move the ceiling, it removes the downside of the draw.
     push('SCALE_JITTER 0', zoneCeiling(clearanceNow, FILL_FRACTION), `the zone rectangle (was ±${f3(SCALE_JITTER)})`);
 
-    const headNow = spanBox(heads, slot, HEAD_CLEARANCE);
     const headZero = spanBox(heads, slot, 0);
     const faceNow = spanBox(faces, slot, HEAD_CLEARANCE);
 
