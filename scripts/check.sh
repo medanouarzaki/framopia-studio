@@ -21,6 +21,12 @@ npm run validate:modes --workspace @framopia/core
 # Validates the committed audit, and refuses it if the .aep has changed since.
 npx tsx tools/validate-templates/cli.ts
 
+# The CEP manifest must parse. A malformed one passes every test in this repo
+# and fails silently at launch: After Effects drops the extension and says so
+# only in a CEP log. Block 8 session 6 lost the panel to a `--` inside a
+# comment.
+npx tsx tools/validate-panel/cli.ts
+
 # Every reference file's declared version against a clean scorer pass. The
 # `ground-truth` reference asserted v1.0.7 conformance for an entire block
 # while violating v1.0.7, and `test-3` carried two standalone conjunctions

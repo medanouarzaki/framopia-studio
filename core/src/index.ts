@@ -166,3 +166,10 @@ export {
 } from './align-score.js';
 export { ALIGNER_SOURCE_FILES, alignerHash } from './aligner-hash.js';
 export { processAlive, type Killer } from './process-alive.js';
+export {
+  checkManifest,
+  findDoubleHyphenComments,
+  PANEL_MANIFEST_PATH,
+  type ManifestCheckIssue,
+  type ManifestCheckResult,
+} from './manifest-check.js';

@@ -16,6 +16,10 @@ The repository must read as the work of a competent human developer. Concretely:
 - No decorative section banners, no emoji in code or docs, no TODO litter (a TODO must carry a reason and land in the session report too).
 - Naming and structure follow the surrounding code; consistency over personal style.
 
+**A comment must not break the file it documents**
+- Before writing a comment, know what the file's syntax forbids inside one. In **XML, `--` is illegal anywhere inside a comment** — name flags without their leading hyphens (`enable-nodejs`), or put the explanation outside the comment entirely.
+- This is not pedantry. A comment above `<CEFCommandLine>` explaining `--enable-nodejs` and `--mixed-context` made `panel/CSXS/manifest.xml` unparseable; After Effects dropped the extension, it vanished from the Extensions menu, and the only evidence was `XPATH Double hyphen within comment` in a CEP log. Every test in the repo passed. `npm run validate:panel` now parses the manifest so it cannot happen twice.
+
 **Docs**
 - README.md: short, plain, factual. Setup, commands, structure. No marketing tone, no badges wall, no emoji headers.
 - All repo docs in the same sober voice as `docs/`.
