@@ -187,6 +187,15 @@ AI-generated contextual images, SFX, and a watermark. Full spec in
 - `npm run migrate:regroup [-- --apply]` — free, local. Re-groups every plan to
   one word per card and re-derives supersession, display timing, templates and
   SFX. Dry-run by default.
+- `npm run image-fill` — free, local, **read-only**. Measures how much of its own
+  canvas each generated image fills and how large the subject is on screen;
+  writes `benchmarks/RESULTS-block7-image-fill.md`. Regenerates nothing.
+- `npm run diagnose:missing` — free, local, **read-only**. Explains which words
+  have nothing readable on screen and why; writes
+  `benchmarks/RESULTS-block7-missing-cards.md`.
+- `npm run repair:source-text [-- --apply]` — free, local. Repairs `sourceText`
+  on existing plans by matching each word's stored interval against the cached
+  raw Scribe response. Re-transcribes nothing.
 - `npm run image-size` — free, local. Measures how large each image could be
   under three rules and writes `benchmarks/RESULTS-block7-image-size.md` plus
   `.local/build/image-sizes.json` for the builder's three variants.
@@ -3218,6 +3227,102 @@ against (b)'s 800. The report says so rather than presenting (c) as the ceiling.
 
 `HEAD_CLEARANCE` is now mirrored into `service/src/placement/constants.ts` and
 **pinned equal to `zones.py` by a test**, as the repo rule requires.
+
+
+## Block 7 session 7 — the image fill, the missing words, and the hold
+
+**Spent $0.00; no API was called.** Ledger 108 entries / sha `50ec3f57…` at
+both ends. `templates/library.aep` byte-identical at `dac234ce…`. One After
+Effects instance (PID 44015) throughout.
+
+### Images are small for two reasons, and neither is the file's canvas
+
+The user's hypothesis was that a generated file does not fill its own canvas.
+**Measured over all 20 files: it mostly does.** Originals reach a median 1.000
+of the long edge. Only one slot renders from a cutout at all, so the cutout
+column is two numbers and no median should be read from it.
+
+**What is small is the subject inside the picture**, measured from each file's
+own matte: a median **0.701** of the long edge, as little as **0.548**. And
+**both image templates put `IMG_MAIN` at 1000 inside a 1200 comp**, losing a
+further 16.7% before a pixel is drawn. Multiplied out, the worst slot shows its
+subject at **0.567** of the square it was given. **Every effective image size
+published before this session was overstated by roughly that factor.**
+
+Effective subject size on screen today, never reported before: img001 **266 px**,
+img002 421, img003 287, img004 534, img005 435 — on a 2160-wide frame.
+
+**Scaling is now by content, not canvas** (`service/src/build/content-box.ts`).
+A file whose content already fills its canvas gets exactly the previous number,
+so nothing that was right changes; img002 goes 48.83% → **71.74%**, img001
+48.83% → 53.94%.
+
+**The content is centred by the anchor point, not the position.**
+`img_slide_left` keyframes `IMG_MAIN`'s Position and After Effects refuses
+`setValue` on a keyframed property — found by the build failing. Setting the
+anchor to the content's centre moves the picture inside the layer while the
+template's own motion plays over it untouched.
+
+**A mismatch found on the way:** vitasilk `img004` is presentation `card` on
+`img_slide_left`, the **cutout** template. Template assignment is a seeded
+shuffle that does not read `presentation` — the quality gate sets that later.
+Nothing fails; the card simply has no frame. Reported, not fixed.
+
+### The words with nothing on screen
+
+`0:00:08:23`–`0:00:11:27` at 30000/1001 is **8.767–11.901 s**.
+
+**Nothing is skipped.** `buildReel` drops a card only for a missing template,
+missing display timing or a missing file — never for being short. The cards are
+all placed. What makes them unreadable is that **a card's whole life can be
+shorter than its entrance**: `sub_pop` animates opacity and blur over
+`introS` 0.13 s, which is 3.9 frames, and a card on screen for 0.040 s is 1.2
+frames. It never reaches full opacity.
+
+**And there is a real alignment shift in that span, which is the second half of
+the answer.** Scribe reports 10 word tokens there; the plan carries 11. The
+correction pass inserted `mn` and merged Scribe's `ستة` + `وعشرين` into `26`,
+and Levenshtein anchoring carried the mismatch forward: `ghir` opens at 8.939,
+the interval of `من`, while `غير` is spoken at 9.079; `il` opens **0.540 s**
+before its token. **This is `align.ts`, a Block 2 question**, and one-word cards
+did not cause it — they made it visible word by word instead of blurred across
+a two-word card.
+
+**It also corrects a claim from session 6.** Checking "does this interval exist
+somewhere in the Scribe response" passes 7 of 11 here and passed 21 of 21 over
+1.5–8.0 s. An interval can be real and belong to a different word; the check
+was too weak to have established what it was taken to establish.
+
+### A card holds until the next word
+
+`MAX_SUBTITLE_HOLD_S = 1.2` in `display-timing.ts` — **CHOSEN, NOT MEASURED**.
+Only 3 cards in the corpus reach it.
+
+**Blank screen across the corpus: 17.25 s → 0.66 s.** Median card duration
+0.24 → 0.30 s.
+
+**It does not reduce the unbuildable count at all: 120 before, 120 after**, and
+that is arithmetic rather than a disappointment. The old rule already extended
+to the next card's start whenever the floor could not be reached, so the cards
+that were short stay exactly as short. What the hold changes is the cards that
+*could* already reach their floor — they now hold instead of stopping.
+
+`0 unbuildable` on a dry run is the null-floor defect, not success; it was
+checked for explicitly and the run reported 120.
+
+### `sourceText` is fixed
+
+`plan-builder.ts` took `draftWords[i]`, a positional index into a different
+array. The aligner knows which draft token each corrected word matched, so
+`TranscriptWord.sourceText` carries it and `buildTranscript` reads it.
+
+**The repair was got wrong once and the wrong version was written.** Re-running
+the aligner from the cache produced a *different* alignment from the one whose
+timings are on the plan, so `sourceText` briefly described one alignment beside
+timings from another. Repaired again by matching each word's **stored interval**
+against the cached Scribe response, which is exact and self-consistent; all 343
+words are now correct, and the alignment shift above is visible in the field
+rather than hidden by it.
 
 
 See `docs/BLOCKS.md` for the full block plan and `handoffs/` for prior
