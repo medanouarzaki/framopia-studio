@@ -46,7 +46,10 @@ AI-generated contextual images, SFX, and a watermark. Full spec in
   Downloaded weights live in
   `tools/cv/models/` (gitignored) and are pinned by sha256 in
   `tools/cv/models.json`.
-  `tools/validate-templates/` — not started
+  `tools/validate-templates/` — the §9 template audit and validator.
+  `tools/align-review/` — the alignment review sheet (`npm run align:review`),
+  a read-only instrument that cannot import the cost ledger or reach the
+  network; the allowlist is pinned by a test in `core/src/align-review.test.ts`.
 - `templates/` — AE templates (not started)
 - `modes/` — per-client config. `k2-syndicalia.json` is a validated stub at
   version 2; the schema, loader and validation live in `core/src/mode.ts`
@@ -241,6 +244,15 @@ AI-generated contextual images, SFX, and a watermark. Full spec in
   image cache entries onto the Block 7 fingerprint. Dry-run by default; it
   refuses to move an entry whose **old** key does not reproduce from its own
   manifest, so a rename is never made on a guess.
+- `npm run align:review -- --reel <label>` — free, local, **read-only**. Runs the
+  current aligner over a reel's cached Scribe draft and corrected words and
+  writes `<reel>.pairs.json` and a self-contained `<reel>.html` review sheet to
+  `benchmarks/results/latest-align-review/`. One row per corrected word with the
+  draft token it was paired with, the aligner's own operation, and four verdict
+  buttons. It stamps the **cache entry and prompt version it read** into both
+  outputs, because a reel can hold several configurations and every figure
+  depends on which one was used. Judgements download to
+  `benchmarks/references/align/` — see the README there.
 
 **`.local/cv/` is not a cache.** Nothing fingerprints it, no stage looks
 entries up in it, and it is deliberately outside `.local/cache/` so that it is
@@ -3708,6 +3720,73 @@ here: a resident `-r` process was observed executing its body a session later
 and quitting the application. The builder cannot run without a person having
 opened AE. That is Block 10's golden-run problem.
 
+
+## Block 8 session 1 — housekeeping and the alignment review sheet
+
+**Spent $0.00; no API was called.** Ledger 108 entries / sha `50ec3f57…` at
+both ends, byte-identical. **No panel code was written**, deliberately: this
+session did housekeeping, reproduced the aligner defect record, and built one
+read-only instrument. No pipeline behaviour changed and no plan was touched.
+
+**The defect record does not fully reproduce, and the cause is which cache
+entry it was read from.** `docs/DEFECT-alignment-script-mismatch.md` is
+**unchanged** — nothing was reconciled and nothing was decided. What is now
+known:
+
+- Its per-reel rows for `ground-truth` (51 at risk), `test-1` (43), `test-2`
+  (46) and `test-3` (29) reproduce **exactly** under the active `promptVersion`
+  4 entries.
+- Its `vitasilk` row (73 words, **40** at risk) reproduces exactly only under
+  `transcription-0cb5401192dbfbc7`, **prompt version 1**. Under the active v4
+  entry the figure is **39**, so the corpus total is **208 of 343 (61%), 49
+  runs**, against the doc's 209.
+- Its §2 trace — `delete` on draft token 27 `من`, draft 72 against corrected 73,
+  the tokens `ينغّي،` and `ييدرات.` — is the **prompt v1** entry throughout.
+  **Under v4 there is no delete of `من` at all**: the only delete on the reel is
+  `ما` at draft index 67, and the one-token shift arises from an **insert** of
+  `mn` at corrected index 28 instead.
+- The `il` **0.540 s** figure reproduces only under the **prompt v3** entry.
+  Under v4 the same word, `il` at corrected index 31, anchors to `أنه`
+  9.279–9.759 while the next draft token opens at 9.779 — **0.500 s**. Prompt
+  v1 has no `il` token in its corrected text at all.
+
+**The symptom survives all three configurations; the quoted mechanism does
+not.** `il` still opens half a second before the token it belongs to under the
+configuration the pipeline actually runs. Which trace to treat as the record is
+a ruling this session did not make.
+
+**A reel can hold several transcription cache entries and nothing named which
+one a figure came from.** `vitasilk` holds three (prompt versions 1, 3 and 4);
+the other four reels hold two each (3 and 4). `repair-source-text-cli.ts`'s
+`cachedFor` still takes the **first** `transcription-*` directory `readdir`
+returns, which is not necessarily the active configuration. Reported, not
+changed.
+
+`npm run align:review` is the instrument built for it. Pure logic is in
+`core/src/align-review.ts` — `buildAlignmentRows`, the `AlignReference` schema
+and its parser — on the `validateTemplates` precedent, so it is tested inside
+`npm run check` while `tools/align-review/` stays a thin CLI plus the HTML
+renderer. The sheet is dark-first Framopia brand per PROJECT_SPEC §6, self
+contained, no CDN and no build step, `dir="rtl"` set **per token** and never on
+a row or a container.
+
+**The tool is pinned read-only by a test, not by a comment.** It may import
+only `@framopia/core/align-review` (a new subpath export whose graph is `align`
+and `normalizeToken`) plus `node:fs`, `node:path` and `node:url` — **not the
+`@framopia/core` barrel, which re-exports `appendCost`**, and not
+`node:child_process`, which is why the HEAD sha is read out of `.git` rather
+than by shelling out to `git`. The test strips comments first: the rule is
+about what the code does.
+
+**Verdicts are never generated.** `benchmarks/references/align/README.md`
+records that a reference file is a hand-made human judgment, the only
+non-circular measure of aligner correctness in the project, and names the
+limitation — a `wrong` verdict identifies a bad pairing without identifying the
+right one, so adopting a fix needs a second human pass over only the rows that
+fix changed.
+
+Sheets generated for all five reels. Cross-script pairings under prompt v4:
+ground-truth 51/76, test-1 43/67, test-2 46/69, test-3 29/58, vitasilk 39/73.
 
 See `docs/BLOCKS.md` for the full block plan and `handoffs/` for prior
 session context.
