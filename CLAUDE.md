@@ -389,6 +389,27 @@ After Effects dropped the extension with nothing on screen to say why.
 `npm run validate:panel` parses it now. Full statement in
 `docs/CLAUDE_CODE_GUIDELINES.md` §1.
 
+### Fonts gate the Build, never the Run
+
+PROJECT_SPEC §5 reserves a client's own fonts for Block 9, which comes **after**
+Block 8, so gating the pipeline on them made this block's DoD unreachable.
+Fonts decide how the comp is drawn, not whether speech can be transcribed,
+analysed or imaged. `buildFonts` in `core/src/build-fonts.ts` states which faces
+a build will use: a mode with `fonts.status: "tbd"` falls back to the **global**
+subtitle pair — Inter Semi-Bold and Almarai Bold at 1.07x — and the panel says
+so at Build. That fallback was already happening and nobody had decided it:
+`requireFonts` throws on a `tbd` mode and **nothing outside `core` has ever
+called it**, so every Block 7 build took the global pair without asking.
+
+### A stub is a claim about the host, and needs evidence
+
+Writing `window.CSInterface = …` in a test asserts the host provides it. CEP
+does not — no library is loaded — and session 7's pickers-and-logo fix passed
+its tests while the panel was broken in After Effects. Prefer stubbing what the
+**platform** guarantees (`window.location`) over what the **host** might inject,
+and never stub a method the code does not call. Full statement in
+`docs/CLAUDE_CODE_GUIDELINES.md` §3.
+
 ### The repository root has one resolver, and it is verified
 
 `resolveRepoRoot` in `core/src/repo-root.ts` is the only implementation, used
@@ -412,6 +433,16 @@ library and nothing used the native API, so the old code — which tested for
 `realpathSync('')` returns the process cwd, which for a Finder-launched After
 Effects is `/`, so the root became `/` and the panel reported a missing file at
 `/service/dist/service.js`.
+
+### The panel is laid out by a container query, not a media query
+
+A docked CEP panel's **window** is the size of the screen while its **panel** is
+a column wide, so a media query lays out for the wrong thing. `.app` is a
+container; the split is at **830 px of the panel's own width**, measured: a
+column must never be narrower than the single column already is when docked at
+the manifest's 420 px, where the value side of a fact row is 242 px. Two columns
+reach 241 px at 820 and 246 px at 830. Service sits beside Video and Client
+mode, Build spans both beneath.
 
 ### The service must be built before the panel can start it
 
@@ -4541,6 +4572,52 @@ verified at the moment it is shown, except two that are honest hedges rather
 than claims. `core/src/messages.test.ts` now pins that **every `npm run …` a
 user-facing message tells someone to type is a real script**, and that the
 node-missing help is written once rather than retyped in the panel.
+
+## Block 8 session 9 — the last blocker, and the stubs audited
+
+**Spent $0.00; no API was called.** Ledger 108 entries / sha `50ec3f57…` at both
+ends. After Effects was not driven, and the service the user started by hand was
+left running.
+
+### Fonts no longer stop the pipeline
+
+Moved from Run to Build, for the reason above. **What Build did before: nothing
+asked.** `requireFonts` is the only thing that rejects a `tbd` mode and it is
+**never called outside `core`** — Block 7 built `vitasilk` end to end on
+`k2-syndicalia` at `fonts.status: "tbd"` and rendered in Inter Semi-Bold and
+Almarai Bold because that is what the hand-built template comps carry. The
+fallback was real and incidental; `buildFonts` makes it a stated rule and the
+panel names both faces at Build.
+
+### Two columns at 830 px
+
+Container query on the panel's own width. The breakpoint is measured, not
+chosen — figures in `reports/block-8-session-9.md`. Four widths are asserted in
+the headless check, and **nothing overflows at any width**: the Node-mismatch
+warning and the ffmpeg banners now wrap. **The user reviews this docked and
+floating before it is kept.**
+
+### The spawn, cold
+
+**Handshake at 52 ms, healthy at 157 ms** on a lock nothing had ever written —
+timed rather than estimated, and fast enough that the user does not wait. Four
+cases now covered by tests against **real processes**: a live lock is refused
+(the second service exits saying so), a lock naming a dead pid is reclaimed, a
+stopped service stops answering, and a cold start comes up.
+
+Two real gaps were found and closed. **Two panels opening together** both find
+no handshake and both spawn; the loser's service exits and the panel reported a
+spawn failure beside a perfectly good service — it now re-checks and reuses.
+And **a service that dies while the panel is open** left `Ready` on screen
+forever; a 5 s heartbeat notices and reports `service-lost`.
+
+### Which Node is running the pipeline
+
+`/health` reports `process.execPath` **and** `process.version`, and the panel
+compares them against the binary it resolved. A mismatch is a **visible warning
+naming both**, not a gate — a service on another Node is still a working
+service. This matters today: the running service was started from a terminal,
+where `PATH` is the user's shell rather than After Effects'.
 
 See `docs/BLOCKS.md` for the full block plan and `handoffs/` for prior
 session context.
