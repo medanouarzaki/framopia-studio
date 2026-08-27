@@ -1,0 +1,114 @@
+{
+  "schemaVersion": 3,
+  "reel": "vitasilk",
+  "generatedAt": "2026-08-27T21:44:14.822Z",
+  "headSha": "37a05d845884c5188e857bed29c9a84c58ebd7e2",
+  "alignerHash": "98d8b4efdb371a4d99f103edbb4a48251935e1db5eb27a0837ebd66688452d91",
+  "rowCount": 17,
+  "markedCount": 16,
+  "entries": [
+    {
+      "wordId": "w0000",
+      "wordText": "5",
+      "draftTokenText": "خمس",
+      "verdict": "correct",
+      "note": "hhh"
+    },
+    {
+      "wordId": "w0001",
+      "wordText": "d9ay9",
+      "draftTokenText": "دقائق.",
+      "verdict": "correct"
+    },
+    {
+      "wordId": "w0002",
+      "wordText": "eyyh",
+      "draftTokenText": null,
+      "verdict": "wrong"
+    },
+    {
+      "wordId": "w0028",
+      "wordText": "mn",
+      "draftTokenText": "من",
+      "verdict": "correct"
+    },
+    {
+      "wordId": "w0029",
+      "wordText": "ghir",
+      "draftTokenText": "غير",
+      "verdict": "correct"
+    },
+    {
+      "wordId": "w0030",
+      "wordText": "anno",
+      "draftTokenText": "أنه",
+      "verdict": "correct"
+    },
+    {
+      "wordId": "w0031",
+      "wordText": "il",
+      "draftTokenText": "ينغى,",
+      "verdict": "wrong"
+    },
+    {
+      "wordId": "w0032",
+      "wordText": "nourrit",
+      "draftTokenText": "يهدئ.",
+      "verdict": "wrong"
+    },
+    {
+      "wordId": "w0033",
+      "wordText": "il",
+      "draftTokenText": "فيه",
+      "verdict": "wrong"
+    },
+    {
+      "wordId": "w0034",
+      "wordText": "hydrate",
+      "draftTokenText": "ستة",
+      "verdict": "wrong"
+    },
+    {
+      "wordId": "w0035",
+      "wordText": "fih",
+      "draftTokenText": "وعشرين",
+      "verdict": "wrong"
+    },
+    {
+      "wordId": "w0036",
+      "wordText": "26",
+      "draftTokenText": null,
+      "verdict": null
+    },
+    {
+      "wordId": "w0050",
+      "wordText": "chno",
+      "draftTokenText": "شنو",
+      "verdict": "correct"
+    },
+    {
+      "wordId": "w0051",
+      "wordText": "katsnay",
+      "draftTokenText": "كتسني",
+      "verdict": "misheard"
+    },
+    {
+      "wordId": "w0052",
+      "wordText": "bach",
+      "draftTokenText": "باش",
+      "verdict": "correct"
+    },
+    {
+      "wordId": "w0053",
+      "wordText": "thllay",
+      "draftTokenText": "تهلي",
+      "verdict": "misheard"
+    },
+    {
+      "wordId": "w0054",
+      "wordText": "f",
+      "draftTokenText": null,
+      "verdict": "wrong"
+    }
+  ]
+}
