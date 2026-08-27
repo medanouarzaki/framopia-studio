@@ -516,6 +516,24 @@ the newest `~/.nvm/versions/node/*/bin/node` compared **numerically**, then
 `/opt/homebrew/bin/node` and `/usr/local/bin/node`. Nothing resolving is a
 panel state, never a throw. `GET /health` reports which one won.
 
+### Alignment uses a transliteration-aware substitution cost
+
+Adopted 2026-08-28. `ACTIVE_ALIGN_COST_MODEL` in
+`service/src/transcription/align.ts` is `transliteration`; the flat model stays
+selectable as `legacy`, the way prompt version 2 stays selectable in
+`correction.ts`, because every figure recorded before that date was measured
+with it. Nothing in the pipeline passes it.
+
+Under a flat cost every cross-script pair scores exactly 1, so the comparison
+carries no information and the backtrace's preference order decides the reel.
+The evidence is two hand-made references: the change moved 16 of the 18
+pairings the user marked wrong and none of the 54 he marked correct, and his
+second pass returned 7 correct, 2 misheard, 7 wrong, 1 unjudged. **Anchored
+words across the corpus are unchanged at 330** — Block 7's discarded fix took
+them to 230, which is the guard. One regression is recorded rather than netted
+away: `vitasilk` `w0036` (`26`) lost its anchor, its true source being two
+tokens the aligner cannot express.
+
 ### The correction prompt version is frozen for the rest of Block 8
 
 `ACTIVE_PROMPT_VERSION` is **4** and must not move until Block 8 closes.
@@ -4748,6 +4766,48 @@ file, but they were in `localStorage` in the user's browser under the pre-fix
 key. The sheet migrates that store once, mapping the old index keys onto word
 ids, and says so on screen. **Whether it fires depends on the user opening the
 regenerated sheet in the same browser profile.**
+
+## Block 8 part 2, session 12 — the aligner fix is adopted
+
+**Spent $0.00; no API was called.** Ledger 108 entries / sha `50ec3f57…` at both
+ends. After Effects was not driven.
+
+**The user's re-review is committed** at
+`benchmarks/references/align/vitasilk.rereview.json` — 17 rows, 7 correct, 2
+misheard, 7 wrong, **1 deliberately unjudged** (`w0036`, `26`). Verified before
+committing: schema 3, `rowCount` 17, `markedCount` 16 equal to the non-null
+count, and every `(wordId, wordText, draftTokenText)` triple identical to the
+generated sheet.
+
+**Adopted**, with the corpus guard passing at 330 → 330. See the convention
+above and `docs/DEFECT-alignment-script-mismatch.md` §A.0.
+
+**Three claims from session 11 were checked before anything else:**
+
+- **Test arithmetic reconciles.** 327 → 337 is 9 new Playwright tests in
+  `align-sheet.browser.test.ts` plus **1** new test in `align-sheet.test.ts`
+  that session 11's report never mentioned; 4 tests were renamed and rewritten
+  and 3 rewritten in place, all net-zero.
+- **The scorer change did not move what it measures.** Part 1's figures
+  reproduce exactly under both models: 54/18/1, 74.0%, 16 moved, 0 regressions.
+- **The migration claim was half right and its conclusion was wrong.** The
+  generator at `37a05d8` did write marks to `localStorage`. But the key embeds
+  the **git HEAD at generation time**: the sheet the user marked carried
+  `d7c46ad` and the regenerated sheet carried `37a05d8`, so the migration
+  searched a key that never existed. It could not have worked, and the claim
+  that it would was made without checking. **His marks are probably still there
+  under the `d7c46ad` key**; he has since redone the work.
+
+**Splits outnumber merges, and part 1's floor was low.** 10 split runs and 6
+merge runs across the corpus, against part 1's "one merge". **Splits do not
+correlate with code-switching**: French is 16.9% of words inside split runs
+against 21.3% of the corpus. Most are Darija proclitic morphology — `فهو` →
+`fa houa` — not French collapse. Full working in §A.5.
+
+**The sheet generator escapes for the script block now**, not merely
+`JSON.stringify`. The new syntax test found that a `</script>` in any word
+closed the element and that U+2028/U+2029 terminate a JavaScript line while
+being legal in JSON.
 
 See `docs/BLOCKS.md` for the full block plan and `handoffs/` for prior
 session context.
