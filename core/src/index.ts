@@ -203,3 +203,12 @@ export {
   type RepoRootResolution,
 } from './repo-root.js';
 export { buildFonts, type BuildFonts, type ModeFontsLike } from './build-fonts.js';
+export {
+  CEP_CHROMIUM_MAJOR,
+  CEP_CHROMIUM_VERSION,
+  CEP_UNSUPPORTED,
+  findUnsupported,
+  stripComments,
+  type CapabilityFinding,
+  type UnsupportedFeature,
+} from './cep-capabilities.js';
