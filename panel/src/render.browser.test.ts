@@ -172,6 +172,8 @@ describe.skipIf(!built)('the built panel in a real browser', () => {
       const logo = page.locator('header.brand img, header.brand .mark');
       expect(await logo.count()).toBe(1);
       expect((await logo.boundingBox())?.width).toBeGreaterThan(0);
+      // No logo on disk in this stub, so the fallback mark is what renders.
+      expect(await page.locator('header.brand .mark').count()).toBe(1);
 
       const headings = await page.locator('section > h2').allTextContents();
       expect(headings).toEqual(['Service', 'Video', 'Client mode', 'Build']);
@@ -222,6 +224,21 @@ describe.skipIf(!built)('the built panel in a real browser', () => {
       await page.close();
     }
   }, 20_000);
+
+  it('uses the logo image once the file is on disk', async () => {
+    const loaded = await load({ files: { '/repo/assets/brand/Framopia_LOGO.png': '' } });
+    if (loaded === null) return;
+    const { page } = loaded;
+    try {
+      expect(await page.locator('header.brand img').count()).toBe(1);
+      expect(await page.locator('header.brand .mark').count()).toBe(0);
+      expect(await page.locator('header.brand img').getAttribute('src')).toContain(
+        'assets/brand/Framopia_LOGO.png',
+      );
+    } finally {
+      await page.close();
+    }
+  });
 
   it('keeps the Run control disabled with its reason on screen', async () => {
     const loaded = await load();

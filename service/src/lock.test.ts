@@ -2,13 +2,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import {
-  clearHandshake,
-  inspectLock,
-  processAlive,
-  readHandshake,
-  writeHandshake,
-} from './lock.js';
+import { clearHandshake, inspectLock, readHandshake, writeHandshake } from './lock.js';
 
 const dirs: string[] = [];
 function tempFile(): string {
@@ -61,39 +55,6 @@ describe('the handshake file', () => {
     const raw = readFileSync(file, 'utf8');
     expect(raw.endsWith('\n')).toBe(true);
     expect(JSON.parse(raw)).toEqual(handshake);
-  });
-});
-
-describe('processAlive', () => {
-  it('is true for this process', () => {
-    expect(processAlive(process.pid)).toBe(true);
-  });
-
-  it('is false for a pid nothing owns', () => {
-    const kill = ((): never => {
-      const err = new Error('no such process') as NodeJS.ErrnoException;
-      err.code = 'ESRCH';
-      throw err;
-    }) as unknown as NodeJS.Process['kill'];
-    expect(processAlive(999999, kill)).toBe(false);
-  });
-
-  /*
-   * EPERM means the process exists and belongs to someone else. Reading that
-   * as dead would let a second service take over a live one's lock.
-   */
-  it('is true for a pid owned by another user', () => {
-    const kill = ((): never => {
-      const err = new Error('operation not permitted') as NodeJS.ErrnoException;
-      err.code = 'EPERM';
-      throw err;
-    }) as unknown as NodeJS.Process['kill'];
-    expect(processAlive(1, kill)).toBe(true);
-  });
-
-  it('rejects a nonsense pid without signalling anything', () => {
-    expect(processAlive(0)).toBe(false);
-    expect(processAlive(-1)).toBe(false);
   });
 });
 

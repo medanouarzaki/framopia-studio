@@ -1,3 +1,4 @@
+import { processAlive } from '@framopia/core/process-alive';
 import type { PanelHost } from './service.js';
 import type { ClientMode, HostEnvironment, Reel } from './types.js';
 
@@ -89,15 +90,7 @@ export function createHost(repo: string): PanelHost {
         return null;
       }
     },
-    processAlive(pid: number) {
-      if (!Number.isInteger(pid) || pid <= 0) return false;
-      try {
-        process.kill(pid, 0);
-        return true;
-      } catch (error) {
-        return (error as NodeJS.ErrnoException).code === 'EPERM';
-      }
-    },
+    processAlive,
     spawnService() {
       const proc = child.spawn('npm', ['run', 'start', '--prefix', 'service'], {
         cwd: repo,

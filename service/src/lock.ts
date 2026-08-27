@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { LOCAL_DIR } from '@framopia/core';
+import { LOCAL_DIR, processAlive } from '@framopia/core';
 
 /**
  * The handshake file the panel reads: ARCHITECTURE §1.3's "random free port
@@ -49,20 +49,7 @@ export function readHandshake(file = SERVICE_JSON_PATH): ServiceHandshake | null
   }
 }
 
-/**
- * `kill(pid, 0)` sends no signal and only asks whether the process exists and
- * is signallable. EPERM means it exists and belongs to someone else, which
- * still counts as running.
- */
-export function processAlive(pid: number, kill: NodeJS.Process['kill'] = process.kill): boolean {
-  if (!Number.isInteger(pid) || pid <= 0) return false;
-  try {
-    kill(pid, 0);
-    return true;
-  } catch (error) {
-    return (error as NodeJS.ErrnoException).code === 'EPERM';
-  }
-}
+export { processAlive };
 
 export type LockState =
   | { state: 'free'; reason: 'no lock file' | 'lock names a dead process' }
