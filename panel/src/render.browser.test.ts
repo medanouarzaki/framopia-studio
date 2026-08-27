@@ -493,6 +493,64 @@ describe.skipIf(!built)('the responsive layout', () => {
    * single column already is when docked, which would make the panel worse
    * rather than wider.
    */
+  /*
+   * The mechanism, not just the outcome: the class has to be on the element,
+   * because a container query left it empty and the layout never switched.
+   */
+  it('carries the wide class only above the breakpoint', async () => {
+    const loaded = await load({ files: { ...HANDSHAKE, ...SERVICE_BUILT }, fetch: 'healthy', width: 1200 });
+    if (loaded === null) return;
+    const { page } = loaded;
+    try {
+      await page.waitForSelector('.dot.healthy', { timeout: 15_000 });
+      expect(await page.locator('div.app').getAttribute('class')).toBe('app wide');
+    } finally {
+      await page.close();
+    }
+  }, 30_000);
+
+  it('has no class at the docked width', async () => {
+    const loaded = await load({ files: { ...HANDSHAKE, ...SERVICE_BUILT }, fetch: 'healthy', width: 420 });
+    if (loaded === null) return;
+    const { page } = loaded;
+    try {
+      await page.waitForSelector('.dot.healthy', { timeout: 15_000 });
+      expect(await page.locator('div.app').getAttribute('class')).toBe('app');
+    } finally {
+      await page.close();
+    }
+  }, 30_000);
+
+  /*
+   * Re-evaluated on resize, not once at mount. A width read during the first
+   * render is taken before layout and is the other common way a breakpoint
+   * never fires.
+   */
+  it('switches when the panel is resized, without a reload', async () => {
+    const loaded = await load({ files: { ...HANDSHAKE, ...SERVICE_BUILT }, fetch: 'healthy', width: 420 });
+    if (loaded === null) return;
+    const { page } = loaded;
+    try {
+      await page.waitForSelector('.dot.healthy', { timeout: 15_000 });
+      expect(await columnCount(page)).toBe(1);
+
+      await page.setViewportSize({ width: 1200, height: 900 });
+      await page.waitForFunction(() => document.querySelector('div.app')?.classList.contains('wide'), null, {
+        timeout: 10_000,
+      });
+      expect(await columnCount(page)).toBe(2);
+
+      await page.setViewportSize({ width: 420, height: 900 });
+      await page.waitForFunction(() => !document.querySelector('div.app')?.classList.contains('wide'), null, {
+        timeout: 10_000,
+      });
+      expect(await columnCount(page)).toBe(1);
+      expect(await overflowing(page)).toEqual([]);
+    } finally {
+      await page.close();
+    }
+  }, 40_000);
+
   it('stays single-column one pixel below the breakpoint', async () => {
     const loaded = await load({ files: { ...HANDSHAKE, ...SERVICE_BUILT }, fetch: 'healthy', width: 829 });
     if (loaded === null) return;
