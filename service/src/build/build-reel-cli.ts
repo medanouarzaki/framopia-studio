@@ -10,6 +10,7 @@ import {
 import { readEditPlan } from '../editplan/io.js';
 import { runBuildReel } from './drive.js';
 import { imageSize } from './image-size.js';
+import { contentAwareScalePercent, contentBoxes, contentCentreOffset } from './content-box.js';
 import { assertPathsPresent, type PathRef } from './preflight.js';
 import {
   buildReel,
@@ -115,22 +116,51 @@ const built = buildReel({
   candidateFileFor,
 });
 
-// The image scale factor is derived per element from the audited solid and the
-// real source, never hardcoded. Printed so the arithmetic is on the record.
+/*
+ * The image scale is derived per element from the audited solid and the file,
+ * never hardcoded — and from the file's **content** rather than its canvas
+ * since Block 7 session 7, which measured the subject at a median 0.701 of a
+ * file's long edge. A file whose content already fills its canvas gets exactly
+ * the previous number, so nothing that was right changes.
+ */
+const contentFiles = built.elements
+  .filter((e) => e.kind === 'image' && e.imagePath !== undefined)
+  .map((e) => {
+    const slot = plan.images.slots.find((s) => s.id === e.id);
+    return {
+      path: e.imagePath as string,
+      kind: (slot?.presentation === 'cutout' ? 'cutout' : 'original') as 'cutout' | 'original',
+    };
+  });
+const boxes = contentBoxes(contentFiles);
+
 for (const e of built.elements) {
   if (e.kind !== 'image' || e.imagePath === undefined) continue;
   const c = audit.find((x) => x.name === e.templateId);
   if (c === undefined) throw new Error(`audit has no comp ${e.templateId}`);
   const solid = auditedSolid(c, 'IMG_MAIN');
   const src = imageSize(e.imagePath);
-  e.placeholderScalePercent = placeholderScalePercent({
+  const content = boxes.get(e.imagePath);
+  const canvasOnly = placeholderScalePercent({
     auditedSolidWidth: solid.width,
     auditedScalePercent: solid.scalePercent,
     sourceWidth: src.width,
   });
+  e.placeholderScalePercent = contentAwareScalePercent({
+    auditedSolidWidth: solid.width,
+    auditedScalePercent: solid.scalePercent,
+    sourceWidth: src.width,
+    content,
+  });
+  e.contentOffset = content === undefined
+    ? undefined
+    : contentCentreOffset(content, e.placeholderScalePercent);
+  const longEdge = content === undefined ? src.width : Math.max(content.w, content.h);
   console.log(
-    `${e.id}: solid ${solid.width}px at ${solid.scalePercent}% / source ${src.width}px ` +
-      `-> placeholder scale ${e.placeholderScalePercent.toFixed(4)}%`,
+    `${e.id}: solid ${solid.width}px at ${solid.scalePercent}% / canvas ${src.width}px ` +
+      `/ content ${longEdge}px -> scale ${canvasOnly.toFixed(4)}% (canvas) ` +
+      `-> ${e.placeholderScalePercent.toFixed(4)}% (content), ` +
+      `offset ${e.contentOffset === undefined ? 'none' : `${e.contentOffset.dx.toFixed(1)}, ${e.contentOffset.dy.toFixed(1)}`}`,
   );
 }
 

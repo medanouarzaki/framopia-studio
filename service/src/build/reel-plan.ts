@@ -30,6 +30,8 @@ export interface ReelElement {
   candidate?: BreakCandidate;
   imagePath?: string;
   placeholderScalePercent?: number;
+  /** Comp-unit shift so the content's centre lands where the canvas's would. */
+  contentOffset?: { dx: number; dy: number };
 }
 
 export interface ReelPlacement {

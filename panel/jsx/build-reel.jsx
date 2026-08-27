@@ -100,6 +100,15 @@ function framopiaBuildReel(optionsPath, outPath) {
                 // the caller from the audited solid size and the real source
                 // size; without it a 2048px image fills 171% of a 1200px comp.
                 ph.property('Scale').setValue([e.placeholderScalePercent, e.placeholderScalePercent]);
+                // The file's content is not always centred in its canvas, so
+                // centring the canvas puts the subject off-centre in the zone.
+                if (e.contentOffset) {
+                    var basePos = ph.property('Position').value;
+                    ph.property('Position').setValue([
+                        basePos[0] + e.contentOffset.dx,
+                        basePos[1] + e.contentOffset.dy
+                    ]);
+                }
                 e.measured = {
                     sourceWidth: img.width,
                     sourceHeight: img.height,
