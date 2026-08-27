@@ -3557,5 +3557,79 @@ measured**.
 0 cards remain unbuildable.** On vitasilk: 22 shortened, 5 on the floor.
 
 
+## Block 7 session 10 — the watermark, and the block closed
+
+**Spent $0.00; no API was called.** Ledger 108 entries / sha `50ec3f57…` at
+both ends. `templates/library.aep` byte-identical at `dac234ce…`. One After
+Effects instance (PID 44015) throughout.
+
+### The watermark is built
+
+`service/src/placement/watermark.ts`. Every figure below was read back from
+After Effects, not assumed.
+
+| | |
+|---|---|
+| alpha interpretation | `mainSource.alphaMode = AlphaMode.PREMULTIPLIED`, `premulColor [0,0,0]`; **AE reports 5414, which is `AlphaMode.PREMULTIPLIED`** |
+| size | **216 x 242 px** from 1924 x 2154 — scale **11.2266%** |
+| duration | 0 to **1.39998 s**, frame **41.96 of 61** — inside the file |
+| audio | **−20 dB**, both channels |
+| layer index | **1**, with **0 layers above it** |
+| corner on vitasilk | **top-right**; top-left rejected because the image is there |
+
+**The width is what is fitted**, not the height: the artwork is 1924 x 2154, so
+squaring it off would distort it. `WATERMARK_WIDTH_FRACTION` 0.1,
+`WATERMARK_MARGIN` 0.03 — both **chosen, not measured**.
+
+**The duration is derived, not hardcoded.** `npm run watermark:measure` now also
+writes `.local/build/watermark.json` with the measured beeps, and the builder
+takes `lastBeepEndS + WATERMARK_HOLD_AFTER_LAST_BEEP_S`. A different watermark
+file recomputes; a test pins that a beep at 0.9 s gives 1.9 s.
+
+**The corner is a seeded shuffle** over the corners that are actually free, on
+the Block 3 decision 10 precedent — never on the face, never in the subtitle
+band, never over an image on screen at the time, never outside the frame. Eight
+tests, including the real vitasilk face box across forty seeds.
+
+### The alignment defect is written up
+
+`docs/DEFECT-alignment-script-mismatch.md` — the symptom, the mechanism with the
+`delete` on `من` quoted from a live run, the discarded same-script fix and its
+measured regression, why the correspondence check cannot see it, and what a real
+fix needs (transliteration-aware cost from ORTHOGRAPHY_GUIDE §2's table).
+
+**The scale nobody had: 209 of 343 words — 61% — sit in a cross-script
+substitution run**, across 49 such runs. Most land correctly by accident of the
+DP; a run whose token counts disagree throws the whole run out.
+
+### An unplaced element is now fatal
+
+The seventh error path did not return one: an image slot with no placement was
+logged and built around. By session 5's own principle — a comp with gaps is
+worse than no comp — `assertAllPlaced` now refuses, naming the count, the
+element and the reason. **All seven error paths are proven.**
+
+### The checkers are stale against the builder
+
+`timing-budget` and `validate-plan` agree with each other — 120 subtitle cards
+plus 1 keyword below the 0.23 s floor — and **both now disagree with the
+builder**, which gives those 120 a shortened entrance so all 343 build. Neither
+tool knows about short-card intros. Nothing was changed; it is recorded because
+quoting either figure as "unbuildable" is now wrong.
+
+### Only vitasilk builds end to end
+
+| reel | cards | short intro | keywords | image slots | sfx |
+|---|---:|---:|---:|---|---:|
+| ground-truth | 76 | 33 | 0 | 0 | 0 |
+| test-1 | 67 | 21 | 2 | 4, **no candidate files** | 6 |
+| test-2 | 69 | 26 | 3 | 0 | 3 |
+| test-3 | 58 | 18 | 0 | 0 | 0 |
+| vitasilk | 73 | 22 | 3 | 5 with files | 8 |
+
+Everything the other four are missing is behind a **billable** stage — keyword
+analysis, slot planning, image generation. Nothing is broken.
+
+
 See `docs/BLOCKS.md` for the full block plan and `handoffs/` for prior
 session context.
