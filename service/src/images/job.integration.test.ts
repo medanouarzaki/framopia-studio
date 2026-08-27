@@ -113,5 +113,13 @@ describe.runIf(runnable)('the image job against the real sidecar', () => {
 
     // The real ledger must not move for a test.
     expect(existsSync(COSTS_PATH) ? readFileSync(COSTS_PATH, 'utf8') : '').toBe(ledgerBefore);
-  }, 120_000);
+  /*
+   * Two real BiRefNet cutouts plus OCR. It ran in 35 s on an idle machine in
+   * Block 4, and one cutout alone measured 72 s in Block 7 session 10 while
+   * After Effects was caching a built comp at ~490% CPU — which is the state
+   * this repo's own build sessions leave the machine in. The cap has to clear
+   * the loaded case or the gate is a coin flip; it is not a performance
+   * budget, and nothing here got slower.
+   */
+  }, 420_000);
 });
