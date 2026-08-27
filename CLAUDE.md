@@ -247,6 +247,14 @@ AI-generated contextual images, SFX, and a watermark. Full spec in
   image cache entries onto the Block 7 fingerprint. Dry-run by default; it
   refuses to move an entry whose **old** key does not reproduce from its own
   manifest, so a rename is never made on a guess.
+- `npm run service` — free, local. Builds core and the service, then starts the
+  companion service on 127.0.0.1 on a free port, writing `.local/service.json`
+  with `{ port, token, pid, startedAt }`. **This is what the panel spawns**
+  (`service/dist/service.js`, directly, with a resolved Node binary) and what to
+  run by hand when diagnosing a panel that cannot reach it. `npm run
+  service:build` builds without starting.
+- `npm run validate:panel` — free, local. Parses `panel/CSXS/manifest.xml` and
+  fails on any parse error. Part of `npm run check`.
 - `npm run panel:build` / `npm run panel:dev` — build the CEP panel to
   `panel/dist` (gitignored) with esbuild, once or in watch. `panel/dist` is what
   the manifest's `MainPath` points at, so the panel shows nothing until this has
@@ -371,6 +379,28 @@ an exception.** `detectHost()` returns a discriminated union and never throws;
 `index.tsx` mounts unconditionally; every `loadX` rejection resolves to an
 empty list. The panel is a view over the service and the ExtendScript layer and
 is never the place a decision lives.
+
+### A comment must not break the file it documents
+
+**In XML, `--` is illegal anywhere inside a comment.** Name flags without their
+leading hyphens, or keep the explanation outside the comment. A comment above
+`<CEFCommandLine>` naming `--enable-nodejs` made the manifest unparseable and
+After Effects dropped the extension with nothing on screen to say why.
+`npm run validate:panel` parses it now. Full statement in
+`docs/CLAUDE_CODE_GUIDELINES.md` §1.
+
+### The panel spawns Node directly, at a resolved absolute path
+
+After Effects launches from the Finder and inherits no shell profile, so the
+panel's `PATH` is roughly `/usr/bin:/bin` — `npm` is not on it and neither is
+an nvm-installed Node. **Never `npm`, never through a shell, never a hardcoded
+path**: the version is in the nvm directory name, so a literal breaks on the
+next upgrade and on the partner's machine. `resolveNodePath` in
+`core/src/node-path.ts` tries, in order, `nodePath` in `.local/config.json`,
+`process.execPath` **when it really is node** (inside CEP it is After Effects),
+the newest `~/.nvm/versions/node/*/bin/node` compared **numerically**, then
+`/opt/homebrew/bin/node` and `/usr/local/bin/node`. Nothing resolving is a
+panel state, never a throw. `GET /health` reports which one won.
 
 ### The correction prompt version is frozen for the rest of Block 8
 
@@ -4310,6 +4340,109 @@ falls through to `latin`. It is the **only CJK codepoint in all five drafts**.
 The pairing happens to be right; the classification is not, and a same-script
 row is dimmed on the review sheet as one Levenshtein had evidence for when it
 had none.
+
+## Block 8 session 7 — the panel works end to end, and the tie is broken
+
+**Spent $0.00; no API was called.** Ledger 108 entries / sha `50ec3f57…` at both
+ends. After Effects was not driven.
+
+### The comment that took the panel down
+
+**A double hyphen cannot appear inside an XML comment.** Session 6's comment
+above `<CEFCommandLine>` named `--enable-nodejs` and `--mixed-context`; libxml2
+rejected the whole manifest with `XPATH Double hyphen within comment`, After
+Effects dropped the extension, and it vanished from the Extensions menu. The
+user removed the comment by hand and the panel loaded; all four `<Parameter>`
+lines survived. **Every test in the repo passed throughout**, because nothing
+parsed the file.
+
+`npm run validate:panel` parses it now, in `npm run check`. Two stages with
+different scopes: the double-hyphen rule in JavaScript, so the specific footgun
+is caught on any machine, and full well-formedness through **xmllint** — the
+same parser family CEP uses, so what it rejects is what After Effects rejects.
+xmllint absent is a printed notice, never a silent pass.
+
+### The spawn, three faults deep
+
+**It spawned `npm`.** After Effects inherits no shell profile, so the panel's
+`PATH` is roughly `/usr/bin:/bin`; `spawn npm ENOENT` was the result, and nvm's
+Node is invisible there too. It spawns the Node binary directly now, resolved
+and never hardcoded — see the convention above. **On this machine it resolves
+through nvm to `/Users/mohamedanouarzaki/.nvm/versions/node/v24.14.1/bin/node`**,
+and `GET /health` reports the path and which source it came from.
+
+**There was no service entry point at all.** `npm run service` starts it from a
+terminal; `service/dist/service.js` is the stable path the panel spawns.
+
+**It claimed a success it never checked** — "one has been started. Retry in a
+moment." while the spawn had already failed. The panel now waits for the spawn
+to fail, exit or survive, then polls `/health` until it answers or a bounded
+timeout expires, and reports a timeout **as a timeout**, naming the binary it
+used. ARCHITECTURE §8, in its general form: **anything asserting a verified
+property is emitted by the thing that verifies it.**
+
+### One symlink emptied both pickers and the logo
+
+`getSystemPath('extension')` returns the **symlink** CEP was given, not its
+target, and `repoRoot` resolved `..` from it — landing in
+`~/Library/Application Support/Adobe/CEP/extensions`, where there is no
+`benchmarks/footage.json`, no `modes/` and no `assets/brand/`. One fault, three
+symptoms. `realpathSync` first, and all three are answered.
+
+**Both catalogues come from the service now**, through the helpers that already
+own the rules — `service/src/frames/footage.ts` for where footage lives and
+core's `parseMode` for what a mode is — so no second copy exists in the panel.
+`GET /reels` and `GET /modes`.
+
+**A latent bug found on the way:** the panel tested `fonts.status === 'resolved'`
+and the enum is `'tbd' | 'set'`, so a properly-fonted mode would have been
+blocked at Block 9 with a message about missing fonts.
+
+### The dry run
+
+`GET /dry-run?reel=&mode=` reports what a run **would** do — which stages the
+plan records as done and what the rest would cost — and **runs nothing and
+bills nothing**. The stage keys are the plan's own (`transcription`,
+`analysis`, `images`, `zones`), read from a real plan; a guessed key would have
+reported every reel as unrun. On `vitasilk` and `test-1` every stage is cached,
+so it reads **nothing to pay**.
+
+### Experiment 2: the tie is broken, and 0 confirmed pairings moved
+
+Cross-script substitution carried **no information**: every pair scored 1, so a
+run of them tied and an arbitrary tiebreak decided the reel.
+`core/src/transliterate.ts` scores the pair against ORTHOGRAPHY_GUIDE §2's
+table — `من`/`mn` costs **0.2**, `من`/`ghir` costs **1**. Length-normalised, so
+a long pair is not penalised against a short one. Insertion cost untouched; no
+many-to-one operation.
+
+**Against the committed reference on `vitasilk`:**
+
+| bucket | count |
+|---|---:|
+| wrong, now pairs differently (**candidate repairs**) | **16 of 18** |
+| correct or misheard, now pairs differently (**regressions**) | **0** |
+| two tokens, still inexpressible | 1 |
+| wrong, unmoved | 2 |
+| correct, held | 54 |
+
+**Zero regressions**: all 54 pairings the user confirmed are untouched.
+
+**16 is a candidate figure, not an improvement.** Some of the moved rows are
+plainly right — `mn`→`من`, `ghir`→`غير`, `anno`→`أنه`, `chno`→`شنو`,
+`katsnay`→`كتسني`, `bach`→`باش` all now pair with their own token. Others moved
+the residual error rather than removing it: `il`/`nourrit`/`hydrate` are French
+words against two Arabic verbs, which is a many-to-one shape no substitution
+cost can express. **Only the user can tell the two apart**, on the re-review
+sheet.
+
+Movement on the other four reels, no reference so no claim about correctness:
+ground-truth **15**, test-1 **16**, test-2 **14**, test-3 **4**, vitasilk 17 —
+**66 corpus-wide**. Insert counts are unchanged on every reel.
+
+**The default is unchanged and every production path takes it**, verified:
+pairings for all five reels byte-identical under `DEFAULT_ALIGN_COSTS`.
+`--cost-model transliteration` selects the variant. **It is not adopted.**
 
 See `docs/BLOCKS.md` for the full block plan and `handoffs/` for prior
 session context.
