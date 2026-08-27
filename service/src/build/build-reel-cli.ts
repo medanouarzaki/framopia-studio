@@ -12,10 +12,8 @@ import { runBuildReel } from './drive.js';
 import { imageSize } from './image-size.js';
 import { canvasScalePercent, contentBoxes } from './content-box.js';
 import { assertPathsPresent, type PathRef } from './preflight.js';
-import { COMP_SIDE_PX } from '../placement/constants.js';
 import {
   buildReel,
-  placeholderScalePercent,
   auditedSolid,
   resolveSfxDir,
   type AuditComp,
@@ -99,6 +97,7 @@ const built = buildReel({
   topLeftFor: (slotId: string) => topLeft[slotId],
   cardTemplateId: CARD_TEMPLATE,
   introFor: (id) => entries.get(id)?.introS ?? 0,
+  minHoldFor: (id) => entries.get(id)?.minHoldS ?? 0,
   sfxFileFor: (id) => {
     const f = sfxFiles.get(id);
     if (f === undefined) throw new Error(`assets/sfx/sfx.json does not define ${id}`);
@@ -163,6 +162,10 @@ console.log(
     `C ${built.placementsC.length}, audio ${built.audio.length}, skipped ${built.skipped.length}`,
 );
 for (const s of built.skipped) console.log(`  SKIPPED ${s.kind} ${s.id}: ${s.reason}`);
+const onFloor = built.shortened.filter((s) => s.onFloor).length;
+console.log(
+  `short-card entrances: ${built.shortened.length} shortened, ${onFloor} on the two-frame floor`,
+);
 
 const startedAt = Date.now();
 const result = runBuildReel({

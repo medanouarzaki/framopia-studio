@@ -135,6 +135,14 @@ function framopiaBuildReel(optionsPath, outPath) {
                 var item = built[pl.elementId];
                 if (!item) throw new Error('no built element for ' + pl.elementId);
                 var layer = master.layers.add(item);
+                // Stretch before the in and out points: a stretch changes the
+                // layer's duration, so setting the ends first would be undone.
+                // This is layer time stretching, never keyframe editing —
+                // TEMPLATE_LIBRARY_GUIDE §5 forbids the system touching a
+                // template's keyframes.
+                if (pl.stretchPercent && pl.stretchPercent !== 100) {
+                    layer.stretch = pl.stretchPercent;
+                }
                 layer.startTime = pl.inPointS;
                 layer.inPoint = pl.inPointS;
                 layer.outPoint = pl.outPointS;

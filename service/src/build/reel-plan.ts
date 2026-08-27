@@ -7,7 +7,7 @@ import {
 import type { EditPlan, SubtitleGroup } from '../editplan/types.js';
 import { displayWindow } from '../analysis/display-timing.js';
 import { chooseBreak, type BreakCandidate } from './wrap.js';
-import { fitInsideFrame } from '../placement/geometry.js';
+import { shortCardTiming } from './short-card.js';
 import { FRAME_WIDTH } from '../placement/constants.js';
 
 /**
@@ -38,6 +38,8 @@ export interface ReelElement {
 
 export interface ReelPlacement {
   elementId: string;
+  /** Layer time stretch, so a short card still gets a readable entrance. */
+  stretchPercent?: number;
   kind: 'subtitle' | 'keyword' | 'image';
   inPointS: number;
   outPointS: number;
@@ -134,6 +136,7 @@ export interface ReelBuild {
   placementsC: ReelPlacement[];
   audio: { id: string; sfxId: string; sourceElementId: string; filePath: string; timeS: number; gainDb: number }[];
   skipped: Skipped[];
+  shortened: { id: string; stretchPercent: number; introS: number; onFloor: boolean }[];
 }
 
 /**
@@ -146,6 +149,7 @@ export function buildReel(options: {
   plan: EditPlan;
   audit: AuditComp[];
   introFor: (templateId: string) => number;
+  minHoldFor?: (templateId: string) => number;
   sfxFileFor: (sfxId: string) => string;
   candidateFileFor: (slotId: string) => { path: string; id: string } | null;
   /** Where the top-left rule put this slot, in frame fractions. */
@@ -160,7 +164,8 @@ export function buildReel(options: {
     rectFor?: (slotId: string) => { x: number; y: number; w: number; h: number } | undefined;
   }[];
 }): ReelBuild {
-  const { plan, audit, introFor, sfxFileFor, candidateFileFor, topLeftFor, cardTemplateId } = options;
+  const { plan, audit, introFor, minHoldFor, sfxFileFor, candidateFileFor, topLeftFor, cardTemplateId } = options;
+  const shortened: { id: string; stretchPercent: number; introS: number; onFloor: boolean }[] = [];
 
   const elements: ReelElement[] = [];
   const placementsA: ReelPlacement[] = [];
@@ -219,6 +224,7 @@ export function buildReel(options: {
   cards.sort((a, b) => a.startS - b.startS || (a.id < b.id ? -1 : 1));
 
   const inPoints = cards.map((c) => c.startS - introFor(c.templateId));
+  const holdFor = (templateId: string): number => minHoldFor?.(templateId) ?? 0;
   cards.forEach((card, i) => {
     const c = comp(audit, card.templateId);
     const pos = textCompPosition(c, 'TXT_MAIN');
@@ -231,16 +237,24 @@ export function buildReel(options: {
       candidate: chooseBreak(card.text),
     });
     const inPointS = inPoints[i] as number;
+    // A card too short for the standard entrance gets a faster one rather than
+    // no entrance at all; the instance is time-stretched, never re-keyframed.
+    const timing = shortCardTiming({
+      cardDurationS: card.endS - card.startS,
+      introS: introFor(card.templateId),
+      minHoldS: holdFor(card.templateId),
+    });
+    if (timing.stretchPercent < 100) shortened.push({ id: card.id, ...timing });
     placementsA.push({
       elementId: card.id, kind: card.kind, inPointS, outPointS: card.endS,
-      positionX: pos.x, positionY: pos.y,
+      positionX: pos.x, positionY: pos.y, stretchPercent: timing.stretchPercent,
     });
     // C: the earlier card yields to the next card's intro.
     const nextIn = inPoints[i + 1];
     placementsC.push({
       elementId: card.id, kind: card.kind, inPointS,
       outPointS: nextIn === undefined ? card.endS : Math.min(card.endS, nextIn),
-      positionX: pos.x, positionY: pos.y,
+      positionX: pos.x, positionY: pos.y, stretchPercent: timing.stretchPercent,
     });
   });
 
@@ -304,7 +318,7 @@ export function buildReel(options: {
     gainDb: e.gainDb,
   }));
 
-  return { elements, placementsA, placementsC, audio, skipped };
+  return { elements, placementsA, placementsC, audio, skipped, shortened };
 }
 
 export function resolveSfxDir(repoRoot: string): string {
