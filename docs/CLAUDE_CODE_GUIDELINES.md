@@ -60,6 +60,53 @@ checker enforces a rule, confirm the checker actually implements it — §2 of
 the orthography guide said the scorer flagged a standalone `w` for a full
 version before that was true.
 
+### A tool that can write to the plan is not a diagnostic
+
+A diagnostic reads and reports; if it is wrong, a document is wrong and
+someone re-runs it. A tool with a write path changes the artifact the rest of
+the pipeline is built on, and if it is wrong it corrupts state that nothing
+downstream will question. The two are not the same kind of thing and must not
+be built to the same standard.
+
+**Any tool carrying a write path resolves its inputs by the same declared
+rules as production code, and is tested as production code.** Never by
+`readdir` order, never by "the first one that looks right", never by a rule
+invented in the file itself.
+
+`repair-source-text-cli.ts` sat among the diagnostics and picked its
+transcription cache entry the way the two beside it did — the first
+`transcription-*` directory the listing returned. Unlike them it carried
+`--apply`. On `vitasilk` that listing returns the prompt v1 entry, so Block 7
+session 7 wrote nine `sourceText` values from a configuration the plan was not
+built from, into a committed plan, and reported `343/343 correct` while doing
+it. The other four reels were untouched only because their listings happened
+to return the pinned entry first.
+
+Two things follow. A tool is classified by its write path, not by where it
+lives or what it is called. And a tool that reports a success count is
+reporting against whatever it read: `343/343` was true of the draft it had,
+which was the wrong draft.
+
+### A tool names the inputs it selected, in the artifact and not only on stdout
+
+This is the sibling of the rule above about verified properties: that one says
+a claim must be emitted by the thing that checks it, this one says a figure
+must carry what produced it. **Every tool that selects among several possible
+inputs prints what it selected and writes it into whatever artifact it
+produces.** An entry id, a version, a sha — enough that a reader a month later
+can reproduce the figure or discover they cannot.
+
+`docs/DEFECT-alignment-script-mismatch.md` carried its figures for an entire
+block before anyone noticed they were drawn from three different transcription
+cache entries. Nothing was fabricated and no arithmetic was wrong; the
+document simply never said which configuration each number described, and by
+the time the question was asked the answer had to be recovered by re-deriving
+every figure against every entry on disk. One figure could not be attributed
+at all and is still open.
+
+Terminal output does not satisfy this. It scrolls away, it is not committed,
+and the artifact outlives the session that produced it.
+
 ## 4. Session report (mandatory, every session)
 
 ### A defect report names the state it destroyed
