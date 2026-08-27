@@ -1,4 +1,6 @@
 import { existsSync } from 'node:fs';
+import path from 'node:path';
+import { protectedDirsFor } from './protected-entries.js';
 import { alignCorrectedOntoDraft } from './align.js';
 import {
   cacheEntryDir,
@@ -167,11 +169,17 @@ export async function transcribeHybridCached(
     model: transcript.model,
   });
 
+  // A reference describes one transcript, and the call that made it cannot be
+  // repeated. Derived from the reference files, never named here.
+  const protectedDirs = protectedDirsFor(videoSha256, { cacheRoot });
+  for (const dir of protectedDirs) log(`cache: protecting ${path.basename(dir)} — a reference depends on it`);
+
   for (const dir of await evictStaleEntries(
     videoSha256,
     cacheRoot ?? CACHE_ROOT,
     MAX_ENTRIES_PER_VIDEO,
     TRANSCRIPTION_CACHE_STAGE,
+    protectedDirs,
   )) {
     log(`cache: evicted stale entry ${dir}`);
   }

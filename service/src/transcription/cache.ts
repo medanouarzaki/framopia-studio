@@ -53,6 +53,19 @@ export const MAX_ENTRIES_PER_VIDEO = 3;
  * shared budget would let an analysis write evict the transcription entry
  * the next run still needs.
  */
+/**
+ * Thrown rather than evicting when everything over budget is protected. A
+ * protected entry is one a hand-made reference describes, and the correction
+ * call that produced it is not reproducible: deleting it destroys the
+ * reference's meaning permanently.
+ */
+export class ProtectedEvictionError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ProtectedEvictionError';
+  }
+}
+
 export async function evictStaleEntries(
   videoSha256: string,
   root = CACHE_ROOT,
@@ -90,9 +103,21 @@ export async function evictStaleEntries(
 
   entries.sort((a, b) => b.mtimeMs - a.mtimeMs);
   const protectedDirs = new Set(protect.map((d) => path.resolve(d)));
-  const doomed = entries
-    .slice(keep)
-    .filter((e) => !protectedDirs.has(path.resolve(e.dir)));
+  const overBudget = entries.slice(keep);
+  const doomed = overBudget.filter((e) => !protectedDirs.has(path.resolve(e.dir)));
+
+  // Over budget and every candidate is protected. Skipping quietly would leave
+  // the video above `keep` for ever and read, from the outside, exactly like a
+  // budget that works — so it says so instead.
+  if (overBudget.length > 0 && doomed.length === 0) {
+    throw new ProtectedEvictionError(
+      `${videoSha256}: ${entries.length} ${stage ?? 'cache'} entries against a budget of ${keep}, ` +
+        `and every entry over budget is protected: ` +
+        `${overBudget.map((e) => path.basename(e.dir)).join(', ')}. ` +
+        'Nothing was evicted. Raise the budget or retire a reference deliberately.',
+    );
+  }
+
   for (const entry of doomed) {
     if (!entry.dir.startsWith(path.join(root, videoSha256) + path.sep)) continue;
     await rm(entry.dir, { recursive: true, force: true });
