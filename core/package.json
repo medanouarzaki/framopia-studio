@@ -29,6 +29,10 @@
     "./process-alive": {
       "types": "./dist/process-alive.d.ts",
       "default": "./dist/process-alive.js"
+    },
+    "./node-path": {
+      "types": "./dist/node-path.d.ts",
+      "default": "./dist/node-path.js"
     }
   },
   "files": [

@@ -10,6 +10,9 @@ import {
   templatesById,
   validateTemplateManifest,
 } from '@framopia/core';
+import { existsSync as fsExists, readFileSync as fsRead, readdirSync as fsReaddir } from 'node:fs';
+import { homedir } from 'node:os';
+import { NODE_NOT_FOUND_HELP, resolveNodePath, type ResolvedNode } from '@framopia/core';
 import { SIDECAR_PYTHON } from './images/sidecar.js';
 
 /**
@@ -49,6 +52,15 @@ export interface HealthPayload {
     issues: string[];
     count: number;
   };
+  /** So the panel can locate footage, modes and brand assets without guessing. */
+  repoRoot: string;
+  /**
+   * Which Node is running the pipeline, and which of the five sources it came
+   * from. The panel spawns this service with a resolved absolute path — After
+   * Effects inherits no shell PATH — and the user should be able to see which
+   * interpreter that is.
+   */
+  node: (ResolvedNode & { help?: string }) | { path: null; source: null; help: string };
 }
 
 function probe(command: string, args: string[]): ToolState {
@@ -83,6 +95,17 @@ export function health(serviceVersion: string): HealthPayload {
     ? probe(pythonPath, ['--version'])
     : { present: false, detail: `no interpreter at ${path.relative(REPO_ROOT, pythonPath)}; run tools/cv/setup.sh` };
   const templates = templateState();
+  const nodeFs = {
+    existsSync: fsExists,
+    readFileSync: (p: string, enc: string) => fsRead(p, enc as BufferEncoding) as string,
+    readdirSync: fsReaddir,
+  };
+  const resolved = resolveNodePath({
+    fs: nodeFs,
+    repo: REPO_ROOT,
+    execPath: process.execPath,
+    home: homedir(),
+  });
 
   return {
     ok: ffmpeg.present && ffprobe.present && venv.present && templates.valid,
@@ -93,5 +116,7 @@ export function health(serviceVersion: string): HealthPayload {
     ffprobe,
     sidecar: { venv, pythonPath },
     templates,
+    repoRoot: REPO_ROOT,
+    node: resolved ?? { path: null, source: null, help: NODE_NOT_FOUND_HELP },
   };
 }

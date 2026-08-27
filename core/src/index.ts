@@ -173,3 +173,12 @@ export {
   type ManifestCheckIssue,
   type ManifestCheckResult,
 } from './manifest-check.js';
+export {
+  newestNvmNode,
+  NODE_NOT_FOUND_HELP,
+  resolveNodePath,
+  type NodeFs,
+  type NodePathSource,
+  type ResolvedNode,
+  type ResolveNodeOptions,
+} from './node-path.js';

@@ -10,6 +10,8 @@
   ],
   "scripts": {
     "build:core": "npm run build --workspace @framopia/core",
+    "service:build": "npm run build:core && npm run build --workspace framopia-service",
+    "service": "npm run service:build && npm run service --workspace framopia-service",
     "check": "bash scripts/check.sh",
     "transcribe": "npm run build:core && npm run transcribe --workspace framopia-service --",
     "bench": "npm run build:core && npm run bench --workspace framopia-benchmarks --",
