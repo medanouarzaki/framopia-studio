@@ -32,7 +32,6 @@ function wordId(index: number): string {
  */
 export function buildTranscript(
   words: TranscriptWord[],
-  draftWords: TranscriptWord[] = [],
   correctedWords: CorrectedWord[] = [],
 ): BuiltTranscript {
   const texts = words.map((w) => w.text);
