@@ -244,6 +244,24 @@ AI-generated contextual images, SFX, and a watermark. Full spec in
   image cache entries onto the Block 7 fingerprint. Dry-run by default; it
   refuses to move an entry whose **old** key does not reproduce from its own
   manifest, so a rename is never made on a guess.
+- `npm run align:score -- --reel <label> [--compare <path>] [--allow-sha-drift]
+  [--entry <id>]` — free, local, **read-only**. Scores the current aligner
+  against the hand-made reference at `benchmarks/references/align/<reel>.json`.
+  **The only non-circular measure of aligner correctness in the project**: every
+  figure comes from a human's verdicts and nothing reads the aligner's own
+  record as ground truth. Single-run mode reports the four verdict counts with
+  their cross-script/same-script split and the share of judged pairings a human
+  has confirmed; it **refuses** when the reference's git sha is not the sha the
+  current pairing was generated at, because a reference judges one aligner.
+  `--compare <path>` scores the working tree against a reference from another
+  commit and buckets every moved row by the human's verdict — candidate repairs
+  (`wrong` and moved), **regressions** (`correct` and moved), still-inexpressible
+  (`two-tokens`), unrepaired (`wrong`, unmoved) — and writes
+  `<reel>.rereview.html`, holding only the moved rows with the old pairing beside
+  the new one. **The repair count is a candidate figure until a human passes over
+  that sheet**, and the tool says so in those words. Also writes
+  `<reel>.score.json`. With no reference it fails naming the path and
+  **synthesises nothing**.
 - `npm run align:review -- --reel <label> [--entry <id>]` — free, local,
   **read-only**. Runs the current aligner over a reel's cached Scribe draft and
   corrected words and writes `<reel>.pairs.json` and a self-contained
@@ -287,6 +305,28 @@ reverse order still selects the pinned version.
 
 A reel accumulates one entry per configuration: `vitasilk` holds three (prompt
 versions 1, 3 and 4), the other four hold two each (3 and 4).
+
+### A tool that can write to the plan is not a diagnostic
+
+**Any tool carrying a write path resolves its inputs by the same declared rules
+as production code, and is tested as production code.** A diagnostic that is
+wrong makes a document wrong; a tool with `--apply` corrupts the artifact
+everything downstream is built on. `repair-source-text-cli.ts` sat among the
+diagnostics, picked its cache entry by `readdir` order like the two beside it,
+and wrote nine `sourceText` values from the wrong draft into a committed plan
+while reporting `343/343 correct`. A tool is classified by its write path, not
+by where it lives. Full statement in `docs/CLAUDE_CODE_GUIDELINES.md` §3.
+
+### A tool names the inputs it selected, in the artifact and not only on stdout
+
+**Every tool that selects among several possible inputs prints what it selected
+and writes it into whatever artifact it produces** — entry id, version, sha,
+enough to reproduce the figure or discover you cannot. Terminal output does not
+count: it scrolls away, it is not committed, and the artifact outlives the
+session. `docs/DEFECT-alignment-script-mismatch.md` carried figures from three
+different cache entries for a whole block because no artifact said which
+produced which, and one of them is still unattributable. The sibling of §3's
+rule that a verified property must be emitted by the thing that verifies it.
 
 ### The correction prompt version is frozen for the rest of Block 8
 
@@ -488,7 +528,9 @@ per-slot confidence onto anchored words and leaves interpolated words at
 
 **Cleaning has never fired on real footage.** Zero `removed: true` words
 across all five reels ever run, and zero would have: the Scribe drafts contain
-no fillers and no immediate repeats at all (343 draft words, five reels). The
+no fillers and no immediate repeats at all (**339 draft word tokens** across
+the five reels, at the pinned prompt v4 entries; 343 is the *corrected* word
+count, not the draft's). The
 footage is scripted and delivered to camera, so `cleaning.ts` is untested
 against real input and its unit tests are the only evidence it works.
 
@@ -3902,6 +3944,102 @@ Per reel: ground-truth 76, test-1 67, test-2 69, test-3 58, vitasilk 73 —
 **343 words and 343 subtitle groups**. Rendered subtitle cards are fewer,
 because a keyword supersedes the groups it covers: 76 / 64 / 64 / 58 / 68 =
 **330**, with 13 groups superseded across the corpus.
+
+## Block 8 session 3 — the nine repaired, and the scorer
+
+**Spent $0.00; no API was called.** Ledger 108 entries / sha `50ec3f57…` at both
+ends, byte-identical. No panel code. **No aligner logic changed.**
+
+**The nine `sourceText` values are repaired.** `npm run repair:source-text
+-- --apply`, every reel resolving `transcription-758a3924d090d1b5` (prompt v4).
+`vitasilk` 9 corrected / 64 already right; the other four reels 0 corrected.
+Three carried a prompt v1 draft token outright (`w0017` `مسبسب.`→`مصبوغ.`,
+`w0054` `تهلّي`→`تهلي`, `w0070` `تتردديش`→`تردديش`); six had kept their own
+Latin text because the v1 draft held no token at that interval (`w0032`, `w0033`,
+`w0034`, `w0055`, `w0071`, `w0072`). Re-verified after: the plan's 73 words are
+still byte-identical to the pinned entry's `correctedTexts`, and
+`.local/build/.build-options.json` still matches the plan with **0 mismatches**
+across 68 subtitle cards and 3 keywords. Only `meta` and `transcript` changed;
+every other word field is byte-identical.
+
+**`npm run align:score` is the scorer.** Logic in `core/src/align-score.ts`
+(`scoreAlignment`, `compareAgainstReference`, `movedRows`), CLI at
+`tools/align-review/score-cli.ts`, with `tools/align-review/load.ts` now shared
+by both CLIs so the sheet and the scorer cannot read different cache entries.
+It is under the same import pin as the sheet — no ledger, no network — with
+`@framopia/core/align-score` added to the allowlist.
+
+- **The headline is over *judged* rows, not the reel.** A half-finished review
+  is not evidence that the aligner is half wrong.
+- **Sha drift is a refusal, not a warning**, in single-run mode; `--compare` is
+  exempt because comparing across commits is what it is for.
+- **A reference naming a word id the pairing does not have, or a word whose
+  text has changed, is rejected rather than partially scored.**
+- **`two-tokens` rows stay inexpressible whatever the change does**, because
+  `AlignmentRow` names a single draft token and the aligner has no many-to-one
+  operation. That count falls only when the operation set grows.
+- The re-review sheet is the same renderer with a `variant`, so the CSS, the
+  verdict buttons, the counters and the Download are literally the same code.
+  Its `localStorage` key carries the variant, so a partial pass over one sheet
+  can never restore into the other.
+
+**The sheet's `localStorage` key changed** from
+`framopia.align-review.<reel>.<sha>` to
+`framopia.align-review.<variant>.<reel>.<sha>`. Any in-progress marks in a
+browser under the old key are not read; nothing has been reviewed yet, so
+nothing was lost.
+
+### Corpus figures against per-reel figures
+
+Every figure below re-derived this session against the pinned entry.
+
+| figure | scope | ground-truth | test-1 | test-2 | test-3 | vitasilk | corpus |
+|---|---|---:|---:|---:|---:|---:|---:|
+| corrected words / subtitle groups | corpus | 76 | 67 | 69 | 58 | 73 | **343** |
+| cards shorter than intro + minHold | corpus | 33 | 21 | 26 | 18 | 22 | **120** |
+| cards with a clipped hold | corpus | 9 | 7 | 4 | 3 | 5 | **28** |
+| cards carrying an overlong single word | corpus | 2 | 0 | 1 | 3 | 1 | **7** |
+| blank screen between cards | corpus | 0.000 s | 0.000 s | 0.500 s | 0.080 s | 0.080 s | **0.660 s** |
+
+**All five are corpus figures.** The 28 is confirmed independently by
+`npm run validate-plan`, which reports 9 / 7 / 4 / 3 / 5. "Cards went 190 → 343"
+is corpus too, and 190 is the two-word-grouping count.
+
+The seven overlong words are **7 occurrences of 4 distinct words** —
+`polynucléotides` ×1, `mésothérapie` ×3, `hyaluronique` ×2, `matrddadich` ×1 —
+counted in the plans this session. They were seven *cards* under two-word
+grouping and are seven *cards* now, because at one word per card each
+occurrence is its own card. **The widths behind them are stale**:
+`benchmarks/RESULTS-block7-wrapping.md` was measured at 193 two-word cards and
+re-measuring needs After Effects.
+
+Corrected as live documentation: `CLAUDE.md`'s "343 draft words" (the draft is
+**339** word tokens; 343 is the corrected count), `docs/PROJECT_SPEC.md` §5's
+120 figure (now labelled corpus, with the per-reel split and what happens to
+those cards), `docs/TEMPLATE_BUILD_SPEC.md` §4's "7 of 190" table (kept as the
+two-word-era measurement, with the current 343/120/28 beside it and the retired
+claim that a short group "has no card at all" removed), and
+`service/src/analysis/retiming-cli.ts`, which **asserted** "No plan in the
+corpus stores display timing" into a committed report — false since Block 7
+session 4 — and now counts it.
+
+**Re-running `npm run retiming` after that fix gives 343 of 343 groups with
+display timing and reading A overlapping 337/338 pairs, against the committed
+record's 162/189.** The committed file was **not** regenerated: it is a dated
+record, and the change belongs to whoever decides whether the retiming question
+is still open.
+
+**`handoffs/block-7.md` carries two misattributions** and is history, not
+edited. It uses **343** as `vitasilk`'s subtitle card count (it is the corpus
+word total; `vitasilk` has 73 words, 73 groups, 68 rendered cards), and it says
+the hold rule removed **17.25 s of blank screen "on vitasilk"** when that is the
+corpus figure — `vitasilk` alone is 0.080 s today. Carry both into the Block 8
+handoff.
+
+**Checked and found correct, not changed:** `display-timing.ts`'s "only 3 cards
+in the whole corpus reach" `MAX_SUBTITLE_HOLD_S` — 3 is right (test-2 1,
+test-3 1, vitasilk 1); a first pass that compared for exact equality missed
+vitasilk's 1.26 s card, whose own speech exceeds the cap.
 
 See `docs/BLOCKS.md` for the full block plan and `handoffs/` for prior
 session context.
