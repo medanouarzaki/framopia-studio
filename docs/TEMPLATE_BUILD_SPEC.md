@@ -86,20 +86,33 @@ This is not a style preference. It is the loosest budget the corpus can carry,
 and the measurement is `benchmarks/RESULTS-block6-timing-budget.md` and
 `benchmarks/RESULTS-block6-script-grouping.md`.
 
-**What it costs to go longer**, measured across all five reels:
+**What it costs to go longer**, measured across all five reels at two-word
+grouping, which is what the corpus held when the templates were specified:
 
-| intro + outro | minHold | subtitle groups that cannot be built |
+| intro + outro | minHold | subtitle groups that could not carry the budget |
 |---|---|---|
 | **0.13 s (4 frames)** | 0.10 s | **7 of 190** |
 | 0.20 s (6 frames) | 0.10 s | 16 of 188 |
 
-**Two extra frames costs nine more unbuildable groups.** Those groups do not
-degrade gracefully — a group that cannot fit intro, minimum hold and outro
-inside its own display window has no card at all.
+**Two extra frames cost nine more groups.** Both rows are corpus figures.
 
-Even at the loosest budget the corpus is not clean. Of the seven failures, two
-are degenerate word timings rather than animation problems: vitasilk `mn` has
-0.000 s of speech and test-1 `tb3i m3aya` has 0.030 s. **No intro or outro
+**Two things have changed since and neither reopens the budget.** One word per
+card (Block 7 session 6) took the corpus from 190 cards to **343**, of which
+**120** are shorter than intro + minimum hold — per reel ground-truth 33,
+test-1 21, test-2 26, test-3 18, vitasilk 22. And a card that cannot carry its
+entrance is no longer without a card: Block 7 session 9 time-stretches the
+instance so the entrance fits, floored at two frames, so **all 343 are built**.
+What remains is **28 cards whose hold is clipped** — ground-truth 9, test-1 7,
+test-2 4, test-3 3, vitasilk 5 — reported by `npm run validate-plan` and
+`npm run timing-budget`, which both read `cardMinimumDurationS` from
+`service/src/build/short-card.ts` rather than restating the arithmetic.
+
+"Unbuildable" was the word this section used and it is the wrong one: those
+cards are built, and their hold is truncated by the out point.
+
+The corpus is not clean at any budget. Two of the original seven failures were
+degenerate word timings rather than animation problems: vitasilk `mn` has
+0.000 s of speech and test-1 `tb3i m3aya` had 0.030 s. **No intro or outro
 choice rescues those**; they are a Block 2 alignment question.
 
 The budget is tight because silence is scarce. Pooled across the corpus the

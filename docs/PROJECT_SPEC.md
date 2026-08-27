@@ -50,9 +50,13 @@ The output is **not a rendered video**. It is a fully built After Effects compos
   said, so the eye reads ahead of the ear on every such card — measured across the corpus
   at a median of 0.410 s and a maximum of 0.870 s. No retiming fixes it, because the two
   words are one layer. The cost is recorded in `reports/block-7-session-6.md`: cards go
-  190 → 343 across the five reels and 120 of them are shorter than a template's
-  intro + minimum hold. Keyword spans stay at up to two words — a keyword is its own
-  element and its templates are built for 1–2 words.
+  190 → 343 across the five reels and 120 of those 343 are shorter than a template's
+  intro + minimum hold. Both are corpus figures: per reel the shortened cards are
+  ground-truth 33, test-1 21, test-2 26, test-3 18, vitasilk 22. **None of them is
+  dropped** — Block 7 session 9 time-stretches the instance so the entrance fits,
+  floored at two frames (`MIN_INTRO_S` in `service/src/build/short-card.ts`) — and **28 of the 343 still have their hold clipped**: ground-truth 9,
+  test-1 7, test-2 4, test-3 3, vitasilk 5. Keyword spans stay at up to two words — a
+  keyword is its own element and its templates are built for 1–2 words.
 - Same language as speech; no translation.
 - Subtitle visual style and position are global across all clients; per-client only font/palette applied through the template.
 - Global subtitle fonts: **Inter Semi-Bold** for Latin script; Arabic companion font: **Almarai Bold**, set at **1.07x** the Latin size so the two faces read at the same optical weight.
