@@ -45,7 +45,7 @@ function sheetHtml(): string {
     cacheEntry: 'transcription-758a3924d090d1b5',
     promptVersion: 4,
     rows,
-    schemaVersion: 2,
+    schemaVersion: 3,
     alignerHash: ALIGNER,
   });
 }
@@ -68,7 +68,7 @@ function rereviewHtml(): string {
     rows: rereviewRows,
     variant: 'rereview',
     previousSha: PREVIOUS_SHA,
-    schemaVersion: 2,
+    schemaVersion: 3,
     alignerHash: ALIGNER,
   });
 }
@@ -201,35 +201,59 @@ describe('persistence', () => {
     expect(count('unset')).toBe('2');
   });
 
-  it('keys the store by sheet variant, reel and aligner sha, so one does not restore into another', () => {
+  /*
+   * The key gained a fingerprint of the row set. A re-review sheet holds only
+   * the rows a change moved, and restoring one change's marks onto another
+   * change's rows would be worse than losing them.
+   */
+  it('keys the store by variant, reel, sha and the row set', () => {
     mount();
     verdictButton(1, 'wrong').click();
 
     const keys = Object.keys(window.localStorage);
-    expect(keys).toEqual([`framopia.align-review.review.vitasilk.${HEAD}`]);
+    expect(keys).toHaveLength(1);
+    expect(keys[0]).toMatch(new RegExp(`^framopia\\.align-review\\.review\\.vitasilk\\.${HEAD}\\.[0-9a-f]+$`));
   });
 });
 
 describe('the download', () => {
 
-  it('produces a file that parses against the reference schema', async () => {
+  /*
+   * The contract this file exists to hold: one entry per displayed row, in
+   * display order, always. A sheet of seventeen rows, all marked on screen,
+   * once downloaded three, and nothing in the file said the other fourteen had
+   * ever been shown.
+   */
+  it('writes every displayed row, in display order, marked or not', async () => {
     mount();
     verdictButton(1, 'wrong').click();
     verdictButton(2, 'correct').click();
 
     const reference = parseAlignReference(JSON.parse(await download()));
 
-    expect(reference.schemaVersion).toBe(2);
+    expect(reference.schemaVersion).toBe(3);
     expect(reference.reel).toBe('vitasilk');
     expect(reference.headSha).toBe(HEAD);
     expect(reference.generatedAt).toBe('2026-08-27T00:00:00.000Z');
     expect(reference.entries).toEqual([
+      { wordId: 'w0000', wordText: 'Vita', draftTokenText: 'Vita', verdict: null },
       { wordId: 'w0001', wordText: 'mn', draftTokenText: 'من', verdict: 'wrong' },
       { wordId: 'w0002', wordText: 'ghir', draftTokenText: 'غير', verdict: 'correct' },
     ]);
   });
 
-  it('carries a note when one was typed, and omits unjudged rows', async () => {
+  it('carries counts written by the same walk that produced the entries', async () => {
+    mount();
+    verdictButton(1, 'wrong').click();
+
+    const reference = parseAlignReference(JSON.parse(await download()));
+
+    expect(reference.rowCount).toBe(rows.length);
+    expect(reference.markedCount).toBe(1);
+    expect(reference.entries).toHaveLength(rows.length);
+  });
+
+  it('carries a note, and keeps the unmarked rows with a null verdict', async () => {
     mount();
     verdictButton(0, 'correct').click();
     const note = tr(0).querySelector('.note input') as HTMLInputElement;
@@ -238,14 +262,19 @@ describe('the download', () => {
 
     const reference = parseAlignReference(JSON.parse(await download()));
 
-    expect(reference.entries).toHaveLength(1);
+    expect(reference.entries).toHaveLength(rows.length);
     expect(reference.entries[0]?.note).toBe('both Latin, a real match');
+    expect(reference.entries.filter((e) => e.verdict === null)).toHaveLength(rows.length - 1);
+    expect(reference.markedCount).toBe(1);
   });
 
   it('never presents the aligner’s pairing as a verdict', async () => {
     mount();
     const reference = parseAlignReference(JSON.parse(await download()));
-    expect(reference.entries).toEqual([]);
+
+    expect(reference.entries).toHaveLength(rows.length);
+    expect(reference.entries.every((e) => e.verdict === null)).toBe(true);
+    expect(reference.markedCount).toBe(0);
   });
 });
 
@@ -313,11 +342,11 @@ describe('the re-review sheet', () => {
     expect(count('wrong')).toBe('0');
     (document.querySelector('button.v[data-v="correct"]') as HTMLElement).click();
 
-    expect(rereviewKeys).toEqual([`framopia.align-review.rereview.vitasilk.${HEAD}`]);
-    expect(Object.keys(window.localStorage).sort()).toEqual([
-      `framopia.align-review.rereview.vitasilk.${HEAD}`,
-      `framopia.align-review.review.vitasilk.${HEAD}`,
-    ]);
+    expect(rereviewKeys[0]).toContain('.rereview.vitasilk.');
+    const keys = Object.keys(window.localStorage).sort();
+    expect(keys).toHaveLength(2);
+    expect(keys.filter((k) => k.includes('.rereview.'))).toHaveLength(1);
+    expect(keys.filter((k) => k.includes('.review.'))).toHaveLength(1);
   });
 
   it('downloads a reference in the same shape', async () => {
@@ -326,11 +355,12 @@ describe('the re-review sheet', () => {
 
     const reference = parseAlignReference(JSON.parse(await download()));
 
-    expect(reference.schemaVersion).toBe(2);
+    expect(reference.schemaVersion).toBe(3);
     expect(reference.reel).toBe('vitasilk');
     expect(reference.headSha).toBe(HEAD);
-    expect(reference.entries).toHaveLength(1);
-    expect(reference.entries[0]?.verdict).toBe('correct');
+    expect(reference.entries).toHaveLength(rereviewRows.length);
+    expect(reference.markedCount).toBe(1);
+    expect(reference.entries.filter((e) => e.verdict === 'correct')).toHaveLength(1);
   });
 });
 
@@ -378,15 +408,15 @@ describe('the misheard verdict on the sheet', () => {
     );
   });
 
-  it('downloads at schema 2 with the aligner hash, and parses', async () => {
+  it('downloads at the current schema with the aligner hash, and parses', async () => {
     mount();
     misheardButton(1).click();
 
     const reference = parseAlignReference(JSON.parse(await download()));
 
-    expect(reference.schemaVersion).toBe(2);
+    expect(reference.schemaVersion).toBe(3);
     expect(reference.alignerHash).toBe(ALIGNER);
-    expect(reference.entries[0]?.verdict).toBe('misheard');
+    expect(reference.entries.find((e) => e.wordId === 'w0001')?.verdict).toBe('misheard');
   });
 
   it('offers it on the re-review sheet too', () => {
