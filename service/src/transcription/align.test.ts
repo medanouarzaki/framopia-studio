@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { alignCorrectedOntoDraft } from './align.js';
+import { ACTIVE_ALIGN_COST_MODEL, alignCorrectedOntoDraft } from './align.js';
 import { mapScribeResponse, type ScribeRawResponse } from './scribe.js';
 import { parseCorrectionResponseText } from './correction.js';
 import type { TranscriptWord } from './types.js';
@@ -330,5 +330,48 @@ describe('a word carries the interval of the token it anchored to', () => {
     const out = alignCorrectedOntoDraft([draft('a', 0), draft('b', 1)], ['a', 'x', 'b']);
     expect(out[1]?.sourceText).toBeUndefined();
     expect(out[1]?.confidence).toBeNull();
+  });
+});
+
+/**
+ * The adopted cost model, and the one it replaced.
+ *
+ * Under a flat cost every cross-script pair scores 1, so a run of them ties and
+ * the backtrace's preference order decides which draft token each word gets.
+ * The transliteration-aware cost gives that comparison a minimum to find.
+ */
+describe('the alignment cost model', () => {
+  const draft: TranscriptWord[] = [
+    { text: 'Silk', start: 8.6, end: 8.9, confidence: 0.9 },
+    { text: 'من', start: 8.9, end: 9.0, confidence: 0.9 },
+    { text: 'غير', start: 9.1, end: 9.2, confidence: 0.9 },
+    { text: 'أنه', start: 9.3, end: 9.8, confidence: 0.9 },
+    { text: 'et', start: 9.9, end: 10.0, confidence: 0.9 },
+  ];
+  const corrected = ['Silk', 'mn', 'ghir', 'anno', 'il', 'et'];
+
+  it('is transliteration-aware by default', () => {
+    expect(ACTIVE_ALIGN_COST_MODEL).toBe('transliteration');
+  });
+
+  it('pairs each word with its own token', () => {
+    const words = alignCorrectedOntoDraft(draft, corrected);
+    expect(words.map((w) => w.sourceText)).toEqual(['Silk', 'من', 'غير', 'أنه', undefined, 'et']);
+  });
+
+  /*
+   * The legacy model stays selectable the way prompt version 2 does: every
+   * figure recorded before Block 8 part 2 was measured with it, and a
+   * comparison against those numbers has to be able to reproduce them.
+   */
+  it('keeps the legacy model selectable, and it still shifts the run', () => {
+    const words = alignCorrectedOntoDraft(draft, corrected, 'legacy');
+    expect(words.map((w) => w.sourceText)).toEqual(['Silk', undefined, 'من', 'غير', 'أنه', 'et']);
+  });
+
+  it('anchors no fewer words under the adopted model than under the legacy one', () => {
+    const anchored = (model: 'transliteration' | 'legacy'): number =>
+      alignCorrectedOntoDraft(draft, corrected, model).filter((w) => w.sourceText !== undefined).length;
+    expect(anchored('transliteration')).toBeGreaterThanOrEqual(anchored('legacy'));
   });
 });

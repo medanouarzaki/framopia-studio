@@ -1,4 +1,9 @@
-export { alignCorrectedOntoDraft } from './align.js';
+export {
+  ACTIVE_ALIGN_COST_MODEL,
+  ALIGN_COST_MODELS,
+  alignCorrectedOntoDraft,
+  type AlignCostModel,
+} from './align.js';
 export {
   assembleHybridResult,
   transcribeHybrid,

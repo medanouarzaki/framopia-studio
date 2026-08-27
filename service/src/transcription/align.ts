@@ -1,5 +1,42 @@
-import { align, normalizeToken } from '@framopia/core';
+import {
+  align,
+  DEFAULT_ALIGN_COSTS,
+  normalizeToken,
+  TRANSLITERATION_COSTS,
+  type AlignCosts,
+} from '@framopia/core';
 import type { TranscriptWord } from './types.js';
+
+/**
+ * Which substitution cost the anchoring uses.
+ *
+ * **`transliteration` is the default, adopted 2026-08-28 on the user's ruling.**
+ * Scribe returns Arabic script and the correction pass returns Arabizi, so
+ * under a flat cost every cross-script pair scores exactly 1: the comparison
+ * carries no information at all, whole runs tie, and the backtrace's
+ * preference order decides which draft token each word gets. Scoring the pair
+ * against ORTHOGRAPHY_GUIDE §2's character table gives it a minimum to find —
+ * `mn`/`من` costs 0.2 where `mn`/`غير` costs 1.
+ *
+ * The evidence is the two hand-made references in `benchmarks/references/align/`:
+ * the change moved 16 of the 18 pairings the user had marked wrong and **not
+ * one** of the 54 he had marked correct, and his second pass over those 17 rows
+ * returned 7 correct, 2 misheard, 7 wrong and 1 left unjudged — nine repaired,
+ * none damaged.
+ *
+ * **`legacy` is the flat model, kept selectable** the way prompt version 2
+ * stays selectable in `correction.ts`: it is what every figure recorded before
+ * Block 8 part 2 was measured with, and a comparison against those numbers has
+ * to be able to reproduce them. Nothing in the pipeline passes it.
+ */
+export type AlignCostModel = 'transliteration' | 'legacy';
+
+export const ALIGN_COST_MODELS: Record<AlignCostModel, AlignCosts> = {
+  transliteration: TRANSLITERATION_COSTS,
+  legacy: DEFAULT_ALIGN_COSTS,
+};
+
+export const ACTIVE_ALIGN_COST_MODEL: AlignCostModel = 'transliteration';
 
 /**
  * Places the corrected word texts onto the draft's timings.
@@ -10,6 +47,10 @@ import type { TranscriptWord } from './types.js';
  * words with no draft anchor (the correction pass split or inserted) is spread
  * linearly across the gap between the surviving anchors on either side.
  * Draft words the correction pass deleted simply do not appear.
+ *
+ * The substitution cost is transliteration-aware — see `ACTIVE_ALIGN_COST_MODEL`
+ * above. A caller may pass `legacy` to reproduce a figure recorded before that
+ * was adopted, and nothing in the pipeline does.
  *
  * Confidence is Scribe's acoustic confidence for the slot the word anchored
  * to, carried through unchanged. It describes how clearly that stretch of
@@ -22,10 +63,12 @@ import type { TranscriptWord } from './types.js';
 export function alignCorrectedOntoDraft(
   draftWords: TranscriptWord[],
   correctedTexts: string[],
+  costModel: AlignCostModel = ACTIVE_ALIGN_COST_MODEL,
 ): TranscriptWord[] {
   const pairs = align(
     draftWords.map((w) => normalizeToken(w.text)),
     correctedTexts.map((t) => normalizeToken(t)),
+    ALIGN_COST_MODELS[costModel],
   );
 
   const output: (TranscriptWord | null)[] = new Array(correctedTexts.length).fill(null);
