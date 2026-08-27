@@ -22,8 +22,11 @@ HEAD_THRESHOLD = 0.25
 
 def main() -> None:
     masks_dir = sys.argv[1]
+    # "head" (hair + face) or "face" (face skin alone). Block 7 session 8 made
+    # the two selectable; the caller says which it wants.
+    kind = sys.argv[2] if len(sys.argv) > 2 else "head"
     out = []
-    for path in sorted(glob.glob(os.path.join(masks_dir, "frame-*-head.png"))):
+    for path in sorted(glob.glob(os.path.join(masks_dir, f"frame-*-{kind}.png"))):
         stem = os.path.basename(path)
         index = stem.split("-")[1]
         arr = np.array(Image.open(path).convert("L"))

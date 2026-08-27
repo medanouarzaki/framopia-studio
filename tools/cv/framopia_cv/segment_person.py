@@ -36,6 +36,22 @@ BACKGROUND_CATEGORY = 0
 # an image placed a little lower is only a missed opportunity.
 HEAD_CATEGORIES = (1, 3)
 
+# Face skin alone, hair excluded. Block 7 session 8's proposal: an image
+# crossing the ends of long hair reads as composition, an image on a face is a
+# mistake, and HEAD_CATEGORIES treats the two as the same risk. On vitasilk the
+# hair reaches y 0.951 and caps every image on the reel.
+#
+# **A parameter, not a replacement.** Both masks are written and both stay
+# selectable; which one a build uses is the user's ruling on a comp, not a
+# decision taken here.
+#
+# Accessories (category 5) are deliberately not included even though glasses
+# sit on a face: the same category carries a held bottle, and folding it in
+# would re-import exactly the over-exclusion this is meant to remove. Whether
+# category 3 covers a bespectacled face closely enough is measured rather than
+# assumed — see benchmarks/RESULTS-block7-image-ceiling.md.
+FACE_CATEGORIES = (3,)
+
 DEFAULT_THRESHOLD = 0.5
 
 
@@ -102,6 +118,11 @@ def head_confidence(planes: list[np.ndarray]) -> np.ndarray:
     return _sum_categories(planes, HEAD_CATEGORIES)
 
 
+def face_confidence(planes: list[np.ndarray]) -> np.ndarray:
+    """Face skin alone. The stricter half of the head, with hair left out."""
+    return _sum_categories(planes, FACE_CATEGORIES)
+
+
 def person_stats(binary: np.ndarray) -> tuple[float, dict | None]:
     """Coverage and bounding box of a boolean person mask.
 
@@ -164,6 +185,7 @@ def segment_frame(
     out_dir: str,
     threshold: float = DEFAULT_THRESHOLD,
     write_head: bool = True,
+    write_face: bool = True,
 ) -> dict:
     planes = category_confidences(frame_path)
     others = [i for i in range(len(planes)) if i != BACKGROUND_CATEGORY]
@@ -204,6 +226,16 @@ def segment_frame(
         result["headMaskPath"] = str(head_path)
         result["headPixelRatio"] = head_ratio
         result["headBottomY"] = head_bottom
+
+    if write_face:
+        face = face_confidence(planes)
+        face_binary = face > threshold
+        face_path = directory / f"{stem}-face.png"
+        _write_or_verify(face_path, np.round(face * 255).astype(np.uint8))
+        face_ratio, face_bottom = head_stats(face_binary)
+        result["faceMaskPath"] = str(face_path)
+        result["facePixelRatio"] = face_ratio
+        result["faceBottomY"] = face_bottom
 
     return result
 

@@ -21,6 +21,7 @@
     "segment": "tsx src/frames/segment-cli.ts",
     "zones": "tsx src/frames/zones-cli.ts",
     "components": "tsx src/frames/components-cli.ts",
+    "image-ceiling": "tsx src/placement/image-ceiling-cli.ts",
     "image-fill": "tsx src/placement/image-fill-cli.ts",
     "image-size": "tsx src/placement/image-size-cli.ts",
     "place": "tsx src/placement/place-cli.ts",
