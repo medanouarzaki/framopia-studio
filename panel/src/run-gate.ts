@@ -40,12 +40,14 @@ export function runGate(options: {
   }
   if (reel === null) return { enabled: false, reason: 'Pick a video.' };
   if (mode === null) return { enabled: false, reason: 'Pick a client mode.' };
-  if (!mode.fontsResolved) {
-    return {
-      enabled: false,
-      reason: `${mode.name} has no fonts yet; PROJECT_SPEC §5 reserves them for the client.`,
-    };
-  }
+
+  /*
+   * Fonts are deliberately **not** checked here. They decide how the comp is
+   * built, not whether speech can be transcribed, analysed or imaged, and
+   * PROJECT_SPEC §5 reserves a client's own fonts for Block 9 — which comes
+   * after this block, so gating Run on them made Block 8's definition of done
+   * unreachable. The warning lives at Build, where it is true.
+   */
 
   /*
    * The pipeline itself is Block 8's next session. Saying so is better than a

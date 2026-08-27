@@ -202,3 +202,4 @@ export {
   type RepoRootFs,
   type RepoRootResolution,
 } from './repo-root.js';
+export { buildFonts, type BuildFonts, type ModeFontsLike } from './build-fonts.js';

@@ -37,6 +37,10 @@
     "./repo-root": {
       "types": "./dist/repo-root.d.ts",
       "default": "./dist/repo-root.js"
+    },
+    "./build-fonts": {
+      "types": "./dist/build-fonts.d.ts",
+      "default": "./dist/build-fonts.js"
     }
   },
   "files": [
