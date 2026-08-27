@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { contentAwareScalePercent, contentCentreOffset, type ContentBox } from './content-box.js';
+import { contentAnchorPoint, contentAwareScalePercent, type ContentBox } from './content-box.js';
 
 const full: ContentBox = { canvasW: 2048, canvasH: 2048, x: 0, y: 0, w: 2048, h: 2048 };
 const half: ContentBox = { canvasW: 2048, canvasH: 2048, x: 512, y: 512, w: 1024, h: 1024 };
@@ -40,19 +40,18 @@ describe('contentAwareScalePercent', () => {
   });
 });
 
-describe('contentCentreOffset', () => {
-  it('is zero when the content is centred', () => {
-    expect(contentCentreOffset(full, 100)).toEqual({ dx: 0, dy: 0 });
-    expect(contentCentreOffset(half, 100)).toEqual({ dx: 0, dy: 0 });
+describe('contentAnchorPoint', () => {
+  it('is the canvas centre when the content is centred', () => {
+    expect(contentAnchorPoint(full)).toEqual({ x: 1024, y: 1024 });
+    expect(contentAnchorPoint(half)).toEqual({ x: 1024, y: 1024 });
   });
 
-  it('moves the layer the other way from the content offset', () => {
-    // Content centre sits at y 900 against a canvas centre of 1024, so it is
-    // 124 above; the layer moves down by 124 at 100%.
-    expect(contentCentreOffset(tall, 100)).toEqual({ dx: 0, dy: 124 });
+  it('follows the content when it sits off centre', () => {
+    // 764 + 520/2 = 1024 across, 203 + 1394/2 = 900 down.
+    expect(contentAnchorPoint(tall)).toEqual({ x: 1024, y: 900 });
   });
 
-  it('scales the correction with the layer', () => {
-    expect(contentCentreOffset(tall, 50)).toEqual({ dx: 0, dy: 62 });
+  it('is in source pixels, so it does not depend on the layer scale', () => {
+    expect(contentAnchorPoint(tall)).toEqual(contentAnchorPoint({ ...tall }));
   });
 });

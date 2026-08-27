@@ -102,12 +102,11 @@ function framopiaBuildReel(optionsPath, outPath) {
                 ph.property('Scale').setValue([e.placeholderScalePercent, e.placeholderScalePercent]);
                 // The file's content is not always centred in its canvas, so
                 // centring the canvas puts the subject off-centre in the zone.
-                if (e.contentOffset) {
-                    var basePos = ph.property('Position').value;
-                    ph.property('Position').setValue([
-                        basePos[0] + e.contentOffset.dx,
-                        basePos[1] + e.contentOffset.dy
-                    ]);
+                // Moved by the anchor point, not the position: img_slide_left
+                // keyframes Position and AE refuses setValue on a keyframed
+                // property.
+                if (e.contentAnchor) {
+                    ph.property('Anchor Point').setValue([e.contentAnchor.x, e.contentAnchor.y]);
                 }
                 e.measured = {
                     sourceWidth: img.width,

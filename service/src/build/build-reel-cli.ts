@@ -10,7 +10,7 @@ import {
 import { readEditPlan } from '../editplan/io.js';
 import { runBuildReel } from './drive.js';
 import { imageSize } from './image-size.js';
-import { contentAwareScalePercent, contentBoxes, contentCentreOffset } from './content-box.js';
+import { contentAnchorPoint, contentAwareScalePercent, contentBoxes } from './content-box.js';
 import { assertPathsPresent, type PathRef } from './preflight.js';
 import {
   buildReel,
@@ -152,15 +152,13 @@ for (const e of built.elements) {
     sourceWidth: src.width,
     content,
   });
-  e.contentOffset = content === undefined
-    ? undefined
-    : contentCentreOffset(content, e.placeholderScalePercent);
+  e.contentAnchor = content === undefined ? undefined : contentAnchorPoint(content);
   const longEdge = content === undefined ? src.width : Math.max(content.w, content.h);
   console.log(
     `${e.id}: solid ${solid.width}px at ${solid.scalePercent}% / canvas ${src.width}px ` +
       `/ content ${longEdge}px -> scale ${canvasOnly.toFixed(4)}% (canvas) ` +
       `-> ${e.placeholderScalePercent.toFixed(4)}% (content), ` +
-      `offset ${e.contentOffset === undefined ? 'none' : `${e.contentOffset.dx.toFixed(1)}, ${e.contentOffset.dy.toFixed(1)}`}`,
+      `anchor ${e.contentAnchor === undefined ? 'canvas centre' : `${e.contentAnchor.x.toFixed(0)}, ${e.contentAnchor.y.toFixed(0)}`}`,
   );
 }
 

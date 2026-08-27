@@ -88,20 +88,16 @@ export function contentAwareScalePercent(options: {
 }
 
 /**
- * How far the layer must move so the content's centre lands where the canvas's
- * centre would have. In comp units at the given scale, so the caller adds it to
- * the position it already computed.
+ * The anchor point that puts the content's centre where the canvas's centre
+ * would have been, in the layer's own source pixels.
+ *
+ * Expressed as an anchor rather than a position offset because
+ * `img_slide_left` keyframes `IMG_MAIN`'s Position — After Effects refuses
+ * `setValue` on a keyframed property, and re-writing someone's animation to
+ * shift a picture would be the wrong fix anyway. The anchor point is
+ * unkeyframed on both image templates, and moving it moves the content inside
+ * the layer while the template's motion plays over it untouched.
  */
-export function contentCentreOffset(
-  content: ContentBox,
-  scalePercent: number,
-): { dx: number; dy: number } {
-  const s = scalePercent / 100;
-  // `-0` compares unequal to `0` under deep equality and would read as a
-  // correction where there is none.
-  const zeroed = (v: number): number => (v === 0 ? 0 : v);
-  return {
-    dx: zeroed(-(content.x + content.w / 2 - content.canvasW / 2) * s),
-    dy: zeroed(-(content.y + content.h / 2 - content.canvasH / 2) * s),
-  };
+export function contentAnchorPoint(content: ContentBox): { x: number; y: number } {
+  return { x: content.x + content.w / 2, y: content.y + content.h / 2 };
 }
