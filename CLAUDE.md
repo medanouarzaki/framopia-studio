@@ -259,7 +259,7 @@ AI-generated contextual images, SFX, and a watermark. Full spec in
   AE once after the first install**; after that a rebuild only needs the panel
   closed and reopened (Window → Extensions → Framopia Studio).
 - `npm run align:score -- --reel <label> [--compare <path>] [--allow-sha-drift]
-  [--entry <id>]` — free, local, **read-only**. Scores the current aligner
+  [--cost-model default|expensive-insert] [--entry <id>]` — free, local, **read-only**. Scores the current aligner
   against the hand-made reference at `benchmarks/references/align/<reel>.json`.
   **The only non-circular measure of aligner correctness in the project**: every
   figure comes from a human's verdicts and nothing reads the aligner's own
@@ -275,7 +275,12 @@ AI-generated contextual images, SFX, and a watermark. Full spec in
   the new one. **The repair count is a candidate figure until a human passes over
   that sheet**, and the tool says so in those words. Also writes
   `<reel>.score.json`. With no reference it fails naming the path and
-  **synthesises nothing**.
+  **synthesises nothing**. Drift is judged on **`alignerHash`** — a hash of
+  `core/src/align.ts`, `core/src/normalize.ts` and `core/src/align-review.ts`,
+  the three modules that can change a pairing — not on the repo HEAD; a
+  reference written before the hash existed is **noticed, not rejected**.
+  `--cost-model` selects an alignment cost model for an experiment; the default
+  is what every production path uses.
 - `npm run align:review -- --reel <label> [--entry <id>]` — free, local,
   **read-only**. Runs the current aligner over a reel's cached Scribe draft and
   corrected words and writes `<reel>.pairs.json` and a self-contained
@@ -356,6 +361,16 @@ reporting tools with the builder was insufficient because `sweepTemplate` held
 a second copy of how the entrance budget splits — arithmetic rather than a
 named value, which is why it was missed. A comment saying "keep in sync" is
 not a pin.
+
+### Nothing in the panel's startup path may throw
+
+There is no error surface before React mounts, so anything thrown at module
+load reaches the user as a blank panel — which is exactly what happened when
+`cep_node` was missing. **A missing capability is a state the app renders, not
+an exception.** `detectHost()` returns a discriminated union and never throws;
+`index.tsx` mounts unconditionally; every `loadX` rejection resolves to an
+empty list. The panel is a view over the service and the ExtendScript layer and
+is never the place a decision lives.
 
 ### The correction prompt version is frozen for the rest of Block 8
 
@@ -4171,6 +4186,130 @@ paraphrasing.
 up its typecheck, lint and tests with no change to `scripts/check.sh`.
 
 **Not built this session, deliberately:** the job API. Health and spawn only.
+
+## Block 8 session 6 — the panel renders, and the insertion is a tie
+
+**Spent $0.00; no API was called.** Ledger 108 entries / sha `50ec3f57…` at both
+ends. After Effects was not driven.
+
+### Why the panel showed nothing
+
+**Two faults, stacked.**
+
+**The manifest, not the detection.** `<CEFCommandLine>` declared only
+`--allow-file-access` and `--allow-file-access-from-files`. CEP injects
+`cep_node` only when **`--enable-nodejs`** is declared, and only puts it on the
+page's own window when **`--mixed-context`** merges the Node and browser
+contexts. Both were missing, so the panel loaded into a Chromium with no Node
+at all. The code tested `globalThis.cep_node`, which **is** `window.cep_node`
+in a browser — the detection was right. Confirmed against the extensions
+already loading in this AE: `flow-v1.5.2` declares exactly those four flags,
+and the running `CEPHtmlEngine` process shows them on its command line.
+
+**The throw, which mattered more.** `cepNode()` threw when the global was
+absent, and `index.tsx` resolved the host at module scope — so the throw ran
+**before React mounted** and the panel's own error surface never rendered.
+`detectHost()` returns a value now, `index.tsx` mounts unconditionally, and an
+unusable host is a first-class screen naming what is missing **and what it
+prevents**. Other startup throws found and converted: `index.tsx`'s missing
+`#root` (now plain DOM text), `connect()`'s unguarded `readHandshake` and
+`processAlive` (now a `service-handshake` error state), and the reel/mode
+loaders (now resolve to empty lists).
+
+**Why the suite passed throughout: happy-dom never provides `cep_node`**, so
+the throwing branch was the only one ever taken and it passed by being
+universal. It is exercised present, absent and malformed now, and a
+present-but-unusable host reports `host bridge` rather than "not running inside
+After Effects", which would send the user looking in the wrong place.
+
+### The panel is rendered by a real engine now
+
+`npm run panel:build` then Playwright over `panel/dist` from `file://`, with a
+stubbed `cep_node` rather than the real bridge. It asserts measured dimensions,
+the brand mark, the four section headings, each of the three service states,
+the disabled Run control with its reason, and **an uncaught-error count of
+zero** — none of which happy-dom can answer, which is how an empty panel passed
+a green suite. The panel's `test` script builds first, and the check skips with
+a notice if the browser binary is absent.
+
+### The first reference is committed
+
+`benchmarks/references/align/vitasilk.json`, **73 of 73 rows judged** —
+54 correct / 18 wrong / 1 two-tokens / 0 no-token, validated against the schema
+before committing. **74.0% of judged pairings have a human-confirmed
+alignment**, and **15 of the 18 wrong are cross-script**. `assets/brand/Framopia_LOGO.png`
+is committed too: 962×1077, 8-bit RGBA **with alpha**, and the panel header uses
+it instead of the fallback mark (pinned by a browser test).
+
+### The three insertions are a tie, not a cost
+
+`vitasilk`'s 18 wrong pairings sit in three runs, each opening with an insert.
+**Every one costs exactly the same as pairing the two words directly.**
+
+| insert | next draft token | run | closes at | winning path | straight pairing |
+|---|---|---:|---|---:|---:|
+| `5` at corrected 0 | `خمس` | 5 subs | `minutes.` | 1 insert + 5 subs = **6** | 6 subs + 1 insert = **6** |
+| `mn` at corrected 28 | `من` | 9 subs | `et` | 1 insert + 9 subs = **10** | 10 subs + 1 insert = **10** |
+| `chno` at corrected 50 | `شنو` | 7 subs | `salon.` | 1 insert + 7 subs = **8** | 8 subs + 1 insert = **8** |
+
+**The tie is broken by the backtrace, and this was proved rather than argued.**
+Flipping only the preference from `substitute > insert` to `insert >
+substitute` moves all three insertions to the **end** of their runs — `5` to
+corrected 5, and so on — with the **total edit cost identical at 45 either
+way**. The rule is the `else if` chain at `core/src/align.ts:43-53` walking
+backwards from `(n, m)`: it takes a substitution whenever one lies on an
+optimal path, so the single insertion is pushed to the earliest hypothesis
+index in the run. The normaliser cannot help — `normalizeToken('5')` is `5` and
+`normalizeToken('خمس')` is `خمس`; it lowercases Latin and strips edge
+punctuation and never crosses scripts.
+
+**Insert operations per reel** (runs are consecutive substitutions ending at an
+exact match): ground-truth **4** inserts, 3 with runs of 5, 8 and 6;
+test-1 **3**, 1 with a run of 9; test-2 **1**, run of 5; test-3 **2**, runs of 1
+and 3; vitasilk **3**, runs of 5, 9 and 7. **13 inserts, 10 followed by a run
+ending at an exact match.**
+
+**The many-to-one question is not yet worth an operation.** Across all five
+reels there are **14 bare numerals**, and **1** has a draft side spanning two or
+more tokens under the current alignment — ground-truth's `20`, with `يوم`
+("day") deleted beside it, which is a deletion rather than a merge. The known
+`26` ← `ستة` + `وعشرين` case does **not** show as spanning, because the
+neighbouring shift absorbed `ستة`; it anchors to `وعشرين` alone. **The
+aligner's own output undercounts merges for exactly the reason the defect
+exists**, and the only honest count is the human one: 1 `two-tokens` row in 73.
+
+### Experiment 1: measured, and it does nothing here
+
+`--cost-model expensive-insert` raises insertion from 1 to 2 — the next integer
+above substitution, chosen because the paths tie exactly and the smallest
+tie-breaking amount is the only value worth trying first.
+
+**Against the committed reference: 0 candidate repairs, 0 regressions, 18
+wrong unmoved, 1 two-tokens still inexpressible, 54 correct held.** Nothing
+moved on `vitasilk` at all.
+
+**And the arithmetic says no value could.** Both competing paths contain
+**exactly one insertion**, so raising its price raises both equally. Across the
+corpus the variant moves **13 rows, all on ground-truth**, where a run has two
+insertions competing and dropping one genuinely saves cost (4 inserts → 3);
+test-1, test-2, test-3 and vitasilk move **0**. **The variant is not adopted.**
+
+**The default path is unchanged**, verified: pairings for all five reels are
+byte-identical to before under the default model.
+
+### Also
+
+**`processAlive` has one home**, `core/src/process-alive.ts`, imported by
+`service/src/lock.ts` and `panel/src/host.ts`. A test asserts both import it
+and that neither signals a pid directly.
+
+**Known issue, not changed:** `vitasilk` draft token 5 is **`五`**, CJK for
+five, and `tokenScript` classifies it `latin` — the same script as the
+corrected `5` it pairs with — because the classifier tests only for Arabic and
+falls through to `latin`. It is the **only CJK codepoint in all five drafts**.
+The pairing happens to be right; the classification is not, and a same-script
+row is dimmed on the review sheet as one Levenshtein had evidence for when it
+had none.
 
 See `docs/BLOCKS.md` for the full block plan and `handoffs/` for prior
 session context.
