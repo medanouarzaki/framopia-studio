@@ -134,7 +134,7 @@ export {
   type DraftToken,
   type TokenScript,
 } from './align-review.js';
-export { renderSheet, type SheetInputs } from './align-sheet.js';
+export { renderSheet, type SheetInputs, type SheetRow } from './align-sheet.js';
 export { ACTIVE_PROMPT_VERSION, type PromptVersion } from './prompt-version.js';
 export {
   CacheEntrySelectionError,
@@ -145,3 +145,13 @@ export {
   type CachedEntryDescriptor,
   type SelectOptions,
 } from './cache-select.js';
+export {
+  AlignScoreError,
+  compareAgainstReference,
+  movedRows,
+  scoreAlignment,
+  type AlignComparison,
+  type AlignScore,
+  type MovedRow,
+  type VerdictTally,
+} from './align-score.js';

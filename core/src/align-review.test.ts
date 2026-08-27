@@ -110,7 +110,11 @@ describe('parseAlignReference', () => {
  */
 describe('tools/align-review cannot spend money or reach the network', () => {
   const toolDir = path.join(REPO_ROOT, 'tools', 'align-review');
-  const allowedModules = new Set(['@framopia/core/align-review', '@framopia/core/cache-select']);
+  const allowedModules = new Set([
+    '@framopia/core/align-review',
+    '@framopia/core/align-score',
+    '@framopia/core/cache-select',
+  ]);
   const allowedBuiltins = new Set(['node:fs', 'node:path', 'node:url']);
   const importRe = /(?:^|\n)\s*import\s[^;]*?from\s+['"]([^'"]+)['"]/g;
   const dynamicRe = /\b(?:require|import)\s*\(\s*['"]([^'"]+)['"]\s*\)/g;

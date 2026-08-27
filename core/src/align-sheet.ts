@@ -1,4 +1,4 @@
-import type { AlignmentRow } from './align-review.js';
+import { tokenScript, type AlignmentRow } from './align-review.js';
 
 /**
  * The review sheet, as one self-contained HTML file. No CDN, no build step,
@@ -14,13 +14,28 @@ import type { AlignmentRow } from './align-review.js';
  * session 1 verified the structure and never ran the script.
  */
 
+/**
+ * A row on the sheet. `previousDraftText` is set only on the re-review sheet,
+ * where the question is not "is this pairing right" but "did this change make
+ * it right" — so the reviewer has to see both.
+ */
+export type SheetRow = AlignmentRow & { previousDraftText?: string | null };
+
 export interface SheetInputs {
   reel: string;
   headSha: string;
   generatedAt: string;
   cacheEntry: string;
   promptVersion: number | null;
-  rows: AlignmentRow[];
+  rows: SheetRow[];
+  /**
+   * `rereview` holds only the rows a change moved and adds the old pairing
+   * beside the new one. Its localStorage key differs, so a partial pass over
+   * one sheet can never restore into the other.
+   */
+  variant?: 'review' | 'rereview';
+  /** Re-review only: the sha the previous pairing was generated at. */
+  previousSha?: string;
 }
 
 interface Fact {
@@ -65,12 +80,16 @@ export function renderSheet(input: SheetInputs): string {
    * configuration and the verdicts below are a judgement of one of them; a
    * reviewer who cannot see which is judging something he cannot name.
    */
+  const rereview = input.variant === 'rereview';
   const facts: Fact[] = [
     { label: 'reel', value: input.reel },
     { label: 'cache entry', value: input.cacheEntry },
     { label: 'prompt version', value: `v${input.promptVersion ?? '?'}` },
     { label: 'aligner sha', value: input.headSha.slice(0, 12) },
-    { label: 'rows', value: String(input.rows.length) },
+    { label: rereview ? 'rows moved' : 'rows', value: String(input.rows.length) },
+    ...(rereview && input.previousSha !== undefined
+      ? [{ label: 'was', value: input.previousSha.slice(0, 12) }]
+      : []),
   ];
 
   const rows = input.rows
@@ -79,6 +98,7 @@ export function renderSheet(input: SheetInputs): string {
       return `<tr class="row ${cls}" data-i="${r.index}" data-cross="${r.crossScript ? '1' : '0'}">
 <td class="idx">${r.index}<span class="wid">${esc(r.wordId)}</span></td>
 <td class="word">${token(r.wordText, r.wordScript)}</td>
+${rereview ? `<td class="draft was">${token(r.previousDraftText ?? '', (r.previousDraftText ?? null) === null ? null : tokenScript(r.previousDraftText as string))}</td>` : ''}
 <td class="draft">${token(r.draftText ?? '', r.draftText === null ? null : r.draftScript)}</td>
 <td class="op"><span class="pill op-${esc(r.op)}">${esc(r.op)}</span></td>
 <td class="time">${secs(r.draftStart)}<span class="sep">–</span>${secs(r.draftEnd)}</td>
@@ -105,7 +125,7 @@ export function renderSheet(input: SheetInputs): string {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Alignment review — ${esc(input.reel)}</title>
+<title>${rereview ? 'Re-review' : 'Alignment review'} — ${esc(input.reel)}</title>
 <style>
 :root {
   --bg: #0e0f11;
@@ -174,6 +194,8 @@ td { padding: 11px 12px; vertical-align: middle; }
 .tok.arabic { font-size: 19px; }
 .tok.none { color: var(--faint); }
 .draft .tok { color: var(--muted); }
+.draft.was .tok { color: var(--faint); }
+.draft.was { border-right: 1px solid var(--line); }
 .time { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .time .sep { color: var(--faint); padding: 0 3px; }
 .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; border: 1px solid var(--line); background: var(--panel-2); color: var(--muted); }
@@ -197,7 +219,7 @@ footer { padding: 0 32px 40px; color: var(--faint); font-size: 12.5px; max-width
 </head>
 <body>
 <header>
-<h1>Alignment review <span class="accent">·</span> ${esc(input.reel)}</h1>
+<h1>${rereview ? 'Re-review' : 'Alignment review'} <span class="accent">·</span> ${esc(input.reel)}</h1>
 <div class="provenance">
 ${facts.map((f) => `<div class="fact"><span class="k">${esc(f.label)}</span><span class="v">${esc(f.value)}</span></div>`).join('\n')}
 </div>
@@ -220,7 +242,7 @@ ${facts.map((f) => `<div class="fact"><span class="k">${esc(f.label)}</span><spa
 <main>
 <table>
 <thead><tr>
-<th>#</th><th>corrected word</th><th>draft token</th><th>op</th><th>interval (s)</th><th>scripts</th><th>verdict</th><th>note</th>
+<th>#</th><th>corrected word</th>${rereview ? '<th>was paired with</th>' : ''}<th>${rereview ? 'now paired with' : 'draft token'}</th><th>op</th><th>interval (s)</th><th>scripts</th><th>verdict</th><th>note</th>
 </tr></thead>
 <tbody>
 ${rows}
@@ -228,7 +250,11 @@ ${rows}
 </table>
 </main>
 <footer>
-A verdict here is a human statement about which draft token a corrected word really came from. It is the only non-circular measure of aligner correctness in this project: a checker reading the aligner's own output cannot see a wrong pairing, because the aligner is self-consistent with it. Rows whose two sides share a script are dimmed — those are the pairings Levenshtein had evidence for — but they are fully reviewable, because a fix that breaks them is a regression.
+${
+  rereview
+    ? 'Only the rows this change moved. The left column is what the aligner paired the word with when the reference was made; the right is what it pairs it with now. A row that was marked <strong>wrong</strong> and has moved is a candidate repair and nothing more — the reference said the old pairing was wrong and says nothing about whether the new one is right. Until this sheet is filled in, the improvement count is a candidate figure.'
+    : "A verdict here is a human statement about which draft token a corrected word really came from. It is the only non-circular measure of aligner correctness in this project: a checker reading the aligner's own output cannot see a wrong pairing, because the aligner is self-consistent with it. Rows whose two sides share a script are dimmed — those are the pairings Levenshtein had evidence for — but they are fully reviewable, because a fix that breaks them is a regression."
+}
 </footer>
 <script>
 (function () {
@@ -236,7 +262,8 @@ A verdict here is a human statement about which draft token a corrected word rea
   var HEAD = ${JSON.stringify(input.headSha)};
   var GENERATED = ${JSON.stringify(input.generatedAt)};
   var WORDS = ${JSON.stringify(payload)};
-  var KEY = 'framopia.align-review.' + REEL + '.' + HEAD;
+  var VARIANT = ${JSON.stringify(input.variant ?? 'review')};
+  var KEY = 'framopia.align-review.' + VARIANT + '.' + REEL + '.' + HEAD;
 
   var state = {};
   try {

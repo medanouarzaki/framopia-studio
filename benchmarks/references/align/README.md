@@ -41,6 +41,18 @@ no operation for either. It has no many-to-one op at all, so Scribe's
 `ستة` + `وعشرين` → `26` is expressed as one substitution plus one deletion and
 the merged word takes one token's interval rather than the span of both.
 
+## Scoring one
+
+`npm run align:score -- --reel <label>` reads the file here and reports what it
+says: the four verdict counts split by script, and the share of judged pairings
+a human has confirmed. It **refuses** if the reference's `headSha` is not the
+sha the current pairing was generated at — a reference judges one aligner, and
+scoring it against another is the circularity the file exists to remove.
+
+`npm run align:score -- --reel <label> --compare <path>` measures a change
+against a reference made before it, bucketing every moved row by the human's
+verdict on it, and writes a short re-review sheet holding only those rows.
+
 ## Known limitation
 
 **A `wrong` verdict identifies a bad pairing without identifying the right

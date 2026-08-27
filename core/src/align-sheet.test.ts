@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildAlignmentRows } from './align-review.js';
-import { renderSheet } from './align-sheet.js';
+import { renderSheet, type SheetRow } from './align-sheet.js';
 import { parseAlignReference } from './align-review.js';
 
 /**
@@ -25,16 +25,7 @@ const draft = [
 
 const rows = buildAlignmentRows(draft, ['Vita', 'mn', 'ghir']);
 
-function mount(): void {
-  const html = renderSheet({
-    reel: 'vitasilk',
-    headSha: HEAD,
-    generatedAt: '2026-08-27T00:00:00.000Z',
-    cacheEntry: 'transcription-758a3924d090d1b5',
-    promptVersion: 4,
-    rows,
-  });
-
+function mount(html = sheetHtml()): void {
   document.documentElement.innerHTML = html
     .replace(/^[\s\S]*?<body>/, '')
     .replace(/<\/body>[\s\S]*$/, '');
@@ -43,6 +34,38 @@ function mount(): void {
   const source = /<script>([\s\S]*?)<\/script>/.exec(html)?.[1];
   if (source === undefined) throw new Error('the sheet carries no inline script');
   new Function(source).call(globalThis);
+}
+
+function sheetHtml(): string {
+  return renderSheet({
+    reel: 'vitasilk',
+    headSha: HEAD,
+    generatedAt: '2026-08-27T00:00:00.000Z',
+    cacheEntry: 'transcription-758a3924d090d1b5',
+    promptVersion: 4,
+    rows,
+  });
+}
+
+const PREVIOUS_SHA = '0000000000000000000000000000000000000000';
+
+/** The two rows a change moved, with what they used to pair with. */
+const rereviewRows: SheetRow[] = [
+  { ...(rows[1] as SheetRow), previousDraftText: 'Vita' },
+  { ...(rows[2] as SheetRow), previousDraftText: null },
+];
+
+function rereviewHtml(): string {
+  return renderSheet({
+    reel: 'vitasilk',
+    headSha: HEAD,
+    generatedAt: '2026-08-27T00:00:00.000Z',
+    cacheEntry: 'transcription-758a3924d090d1b5',
+    promptVersion: 4,
+    rows: rereviewRows,
+    variant: 'rereview',
+    previousSha: PREVIOUS_SHA,
+  });
 }
 
 const tr = (i: number): HTMLElement =>
@@ -57,6 +80,25 @@ const visible = (): number[] =>
   [...document.querySelectorAll('tr.row')]
     .filter((el) => !(el as HTMLElement).hidden)
     .map((el) => Number(el.getAttribute('data-i')));
+
+async function download(): Promise<string> {
+  let captured: Blob | null = null;
+  const createObjectURL = vi
+    .spyOn(URL, 'createObjectURL')
+    .mockImplementation((blob: Blob | MediaSource) => {
+      captured = blob as Blob;
+      return 'blob:captured';
+    });
+  vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
+  // happy-dom navigates on an anchor click otherwise.
+  vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
+
+  (document.getElementById('download') as HTMLElement).click();
+  expect(createObjectURL).toHaveBeenCalledOnce();
+  const text = await (captured as unknown as Blob).text();
+  vi.restoreAllMocks();
+  return text;
+}
 
 beforeEach(() => {
   window.localStorage.clear();
@@ -154,34 +196,16 @@ describe('persistence', () => {
     expect(count('unset')).toBe('2');
   });
 
-  it('keys the store by reel and by aligner sha, so one does not restore into another', () => {
+  it('keys the store by sheet variant, reel and aligner sha, so one does not restore into another', () => {
     mount();
     verdictButton(1, 'wrong').click();
 
     const keys = Object.keys(window.localStorage);
-    expect(keys).toEqual([`framopia.align-review.vitasilk.${HEAD}`]);
+    expect(keys).toEqual([`framopia.align-review.review.vitasilk.${HEAD}`]);
   });
 });
 
 describe('the download', () => {
-  async function download(): Promise<string> {
-    let captured: Blob | null = null;
-    const createObjectURL = vi
-      .spyOn(URL, 'createObjectURL')
-      .mockImplementation((blob: Blob | MediaSource) => {
-        captured = blob as Blob;
-        return 'blob:captured';
-      });
-    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
-    // happy-dom navigates on an anchor click otherwise.
-    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
-
-    (document.getElementById('download') as HTMLElement).click();
-    expect(createObjectURL).toHaveBeenCalledOnce();
-    const text = await (captured as unknown as Blob).text();
-    vi.restoreAllMocks();
-    return text;
-  }
 
   it('produces a file that parses against the reference schema', async () => {
     mount();
@@ -217,5 +241,90 @@ describe('the download', () => {
     mount();
     const reference = parseAlignReference(JSON.parse(await download()));
     expect(reference.entries).toEqual([]);
+  });
+});
+
+/**
+ * The re-review sheet. Adopting a fix means a human passing over only the rows
+ * it moved, so this sheet is on the critical path of every future aligner
+ * change and gets the same treatment as the sheet it descends from.
+ */
+describe('the re-review sheet', () => {
+  it('shows the old pairing beside the new one', () => {
+    mount(rereviewHtml());
+
+    expect([...document.querySelectorAll('thead th')].map((th) => th.textContent)).toEqual([
+      '#',
+      'corrected word',
+      'was paired with',
+      'now paired with',
+      'op',
+      'interval (s)',
+      'scripts',
+      'verdict',
+      'note',
+    ]);
+    expect(document.querySelectorAll('tr.row')).toHaveLength(2);
+    const was = document.querySelectorAll('td.draft.was');
+    expect(was).toHaveLength(2);
+    expect(was[0]?.textContent).toBe('Vita');
+    expect(was[1]?.textContent).toBe('—');
+  });
+
+  it('names itself a re-review and carries the sha it is measured against', () => {
+    mount(rereviewHtml());
+
+    expect(document.querySelector('h1')?.textContent).toContain('Re-review');
+    const provenance = document.querySelector('.provenance')?.textContent ?? '';
+    expect(provenance).toContain('rows moved');
+    expect(provenance).toContain(PREVIOUS_SHA.slice(0, 12));
+    expect(provenance).toContain(HEAD.slice(0, 12));
+  });
+
+  it('carries the same four verdict buttons and counters', () => {
+    mount(rereviewHtml());
+    expect(count('unset')).toBe('2');
+
+    const row = document.querySelector('tr.row') as HTMLElement;
+    const i = Number(row.getAttribute('data-i'));
+    (row.querySelector('button.v[data-v="correct"]') as HTMLElement).click();
+
+    expect(row.querySelectorAll('button.v.sel')).toHaveLength(1);
+    expect(count('correct')).toBe('1');
+    expect(count('unset')).toBe('1');
+    expect(i).toBeGreaterThanOrEqual(0);
+  });
+
+  /*
+   * A partial pass over one sheet must never restore into the other: they hold
+   * different rows and ask different questions.
+   */
+  it('keys its store apart from the review sheet', () => {
+    mount(rereviewHtml());
+    (document.querySelector('button.v[data-v="wrong"]') as HTMLElement).click();
+    const rereviewKeys = Object.keys(window.localStorage);
+
+    mount(sheetHtml());
+    expect(count('wrong')).toBe('0');
+    (document.querySelector('button.v[data-v="correct"]') as HTMLElement).click();
+
+    expect(rereviewKeys).toEqual([`framopia.align-review.rereview.vitasilk.${HEAD}`]);
+    expect(Object.keys(window.localStorage).sort()).toEqual([
+      `framopia.align-review.rereview.vitasilk.${HEAD}`,
+      `framopia.align-review.review.vitasilk.${HEAD}`,
+    ]);
+  });
+
+  it('downloads a reference in the same shape', async () => {
+    mount(rereviewHtml());
+    (document.querySelector('button.v[data-v="correct"]') as HTMLElement).click();
+
+    const reference = parseAlignReference(JSON.parse(await download()));
+
+    expect(reference.schemaVersion).toBe(1);
+    expect(reference.reel).toBe('vitasilk');
+    expect(reference.headSha).toBe(HEAD);
+    expect(reference.entries).toHaveLength(1);
+    expect(reference.entries[0]?.verdict).toBe('correct');
   });
 });

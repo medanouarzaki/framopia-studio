@@ -17,6 +17,10 @@
     "./cache-select": {
       "types": "./dist/cache-select.d.ts",
       "default": "./dist/cache-select.js"
+    },
+    "./align-score": {
+      "types": "./dist/align-score.d.ts",
+      "default": "./dist/align-score.js"
     }
   },
   "files": [

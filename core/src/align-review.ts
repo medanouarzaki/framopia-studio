@@ -217,4 +217,4 @@ export function serializeAlignReference(reference: AlignReference): string {
   return `${JSON.stringify(reference, null, 2)}\n`;
 }
 
-export { renderSheet, type SheetInputs } from './align-sheet.js';
+export { renderSheet, type SheetInputs, type SheetRow } from './align-sheet.js';
