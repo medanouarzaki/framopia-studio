@@ -43,6 +43,7 @@
     "migrate:regroup": "npm run build:core && npm run migrate:regroup --workspace framopia-service --",
     "repair:candidate-paths": "npm run build:core && npm run repair:candidate-paths --workspace framopia-service --",
     "repair:source-text": "npm run build:core && npm run repair:source-text --workspace framopia-service --",
+    "migrate:alignment": "npm run build:core && npm run migrate:alignment --workspace framopia-service --",
     "migrate:templates-sfx": "npm run build:core && npm run migrate:templates-sfx --workspace framopia-service --",
     "build:comp": "npm run build:core && npm run build:comp --workspace framopia-service --",
     "build:reel": "npm run build:core && npm run build:reel --workspace framopia-service --",

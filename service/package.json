@@ -36,6 +36,7 @@
     "repair:source-text": "tsx src/transcription/repair-source-text-cli.ts",
     "repair:candidate-paths": "tsx src/images/repair-candidate-paths-cli.ts",
     "migrate:regroup": "tsx src/analysis/migrate-regroup-cli.ts",
+    "migrate:alignment": "tsx src/transcription/migrate-alignment-cli.ts",
     "migrate:display-timing": "tsx src/analysis/migrate-display-timing-cli.ts",
     "diagnose:missing": "tsx src/analysis/missing-cards-cli.ts",
     "diagnose:timing": "tsx src/analysis/timing-defect-cli.ts",
