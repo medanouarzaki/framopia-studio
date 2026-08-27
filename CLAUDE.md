@@ -434,15 +434,46 @@ library and nothing used the native API, so the old code — which tested for
 Effects is `/`, so the root became `/` and the panel reported a missing file at
 `/service/dist/service.js`.
 
-### The panel is laid out by a container query, not a media query
+### CEP runs Chromium 99, and the bundle is gated against it
+
+**CEP 12, in After Effects 2026, runs Chromium 99.0.4844.84** — read off the
+machine twice: the running `CEPHtmlEngine` process carries
+`--user-agent-product=Chrome/99.0.4844.84`, and the bundled
+`Chromium Embedded Framework.framework` declares `99.2.15.0`. That is roughly
+three years behind the Chromium Playwright ships, so **the headless check is
+more capable than production** and has certified something CEP could not do.
+
+`core/src/cep-capabilities.ts` holds the version and the features it lacks;
+`panel/src/capabilities.test.ts` asserts them against **`panel/dist`**, not
+`panel/src`, because the bundler sits between the two. **The build cannot be
+the gate**: esbuild at `--target=chrome99` passes a container query through
+without a word. Comments are stripped before scanning, so a note explaining why
+a feature was removed does not trip it.
+
+Not available in Chromium 99, and on the denylist: CSS container queries
+(`@container`, `container-type`, `container-name`, Chrome 105), `:has()` (105),
+`@scope` (118), `color-mix()` (111), `text-wrap: balance` (114),
+`Object.groupBy` (117), `Array.fromAsync` (121), `toSorted`/`toReversed`/
+`toSpliced` (110), `AbortSignal.timeout` (103), `URL.canParse` (120).
+**Available and used**: `ResizeObserver` (64), `AbortController` (66), grid and
+flex `gap` (84), `overflow-wrap: anywhere` (80), custom properties (49).
+
+### The panel is laid out by a measured width, not a container query
 
 A docked CEP panel's **window** is the size of the screen while its **panel** is
-a column wide, so a media query lays out for the wrong thing. `.app` is a
-container; the split is at **830 px of the panel's own width**, measured: a
-column must never be narrower than the single column already is when docked at
-the manifest's 420 px, where the value side of a fact row is 242 px. Two columns
-reach 241 px at 820 and 246 px at 830. Service sits beside Video and Client
-mode, Build spans both beneath.
+a column wide, so a media query lays out for the wrong thing — and a container
+query lays out for nothing at all, because Chromium 99 does not implement one.
+A `ResizeObserver` toggles a `wide` class on `.app` from the panel's measured
+width; it fires on observe, so the first measurement is taken **after** layout
+rather than during the first render, and it re-evaluates on every resize.
+
+The split is at **830 px of the panel's own width** (`PANEL_TWO_COLUMN_PX` in
+`panel/src/panel-width.ts`), measured in session 9: a column must never be
+narrower than the single column already is when docked at the manifest's
+420 px, where the value side of a fact row is 242 px. Two columns reach 241 px
+at 820 and 246 px at 830. Service sits beside Video and Client mode, Build spans
+both beneath. Verified from 380 px to 1920 px with **zero overflow at every
+width**.
 
 ### The service must be built before the panel can start it
 
@@ -4618,6 +4649,46 @@ compares them against the binary it resolved. A mismatch is a **visible warning
 naming both**, not a gate — a service on another Node is still a working
 service. This matters today: the running service was started from a terminal,
 where `PATH` is the user's shell rather than After Effects'.
+
+## Block 8 session 10 — the layout CEP could not render
+
+**Spent $0.00; no API was called.** Ledger 108 entries / sha `50ec3f57…` at both
+ends. After Effects was not driven, and the service the user started by hand
+(pid 57858) was left alone.
+
+**Session 9's two-column layout never applied inside After Effects.** The user
+measured it live: the panel is **1572 px** wide against an 830 px breakpoint,
+renders one column, and `getComputedStyle(el).containerType` is **`undefined`**.
+
+**The cause is the engine.** CEP 12 runs **Chromium 99.0.4844.84** and
+`container-type` shipped in **Chrome 105**, so the `@container` block was dead
+text. CSS an engine does not recognise is **dropped without a word** — nothing
+throws and nothing logs, which is why four passing headless assertions and a
+broken panel coexisted.
+
+**The empty `className` was not a bug.** `<main>` never had a class: session 9
+styled it by element selector and switched it by container query. The user's
+own reading confirms the base rule applied — `display: grid` and
+`grid-template-columns: 1532px`, one column at full width. Only the `@container`
+block was ignored. The diagnostic was looking for a class that was never
+designed to exist.
+
+**Replaced with a `ResizeObserver`** — Chrome 64, and what CEP has — toggling a
+`wide` class. It fires on observe, so the first measurement is taken after
+layout rather than during the first render; a width read once at mount is the
+other common way a breakpoint never fires. The 830 px breakpoint and its
+derivation are unchanged; only the mechanism failed.
+
+**The headless check is now capability-gated**, because it is roughly three
+years newer than the host and had certified this. Details in the convention
+above. **esbuild was tried as the gate and rejected**: at `--target=chrome99` it
+passes `@container` and `container-type` through silently, so the build could
+not be relied on.
+
+**The sweep found nothing else.** The panel's whole DOM surface is
+`ResizeObserver` (Chrome 64), `AbortController` and `AbortSignal` (66); its
+whole CSS surface tops out at flex `gap` (84) and `overflow-wrap: anywhere`
+(80). The built bundle carries **no at-rules at all** and no modern pseudo-class.
 
 See `docs/BLOCKS.md` for the full block plan and `handoffs/` for prior
 session context.
