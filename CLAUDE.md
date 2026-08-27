@@ -3611,11 +3611,10 @@ element and the reason. **All seven error paths are proven.**
 
 ### The checkers are stale against the builder
 
-`timing-budget` and `validate-plan` agree with each other — 120 subtitle cards
-plus 1 keyword below the 0.23 s floor — and **both now disagree with the
-builder**, which gives those 120 a shortened entrance so all 343 build. Neither
-tool knows about short-card intros. Nothing was changed; it is recorded because
-quoting either figure as "unbuildable" is now wrong.
+~~`timing-budget` and `validate-plan` agree with each other — 120 subtitle cards
+plus 1 keyword below the 0.23 s floor — and both now disagree with the
+builder.~~ **Fixed in session 11: both read the builder's own rule and report
+28.** See the session 11 section.
 
 ### Only vitasilk builds end to end
 
@@ -3629,6 +3628,85 @@ quoting either figure as "unbuildable" is now wrong.
 
 Everything the other four are missing is behind a **billable** stage — keyword
 analysis, slot planning, image generation. Nothing is broken.
+
+
+## Block 7 is complete — session 11 closed it
+
+**Spent $0.00; no API was called.** Ledger 108 entries / sha `50ec3f57…` at
+both ends. `templates/library.aep` byte-identical at `dac234ce…`. One After
+Effects instance (PID 44015) throughout.
+
+### The watermark runs a flat second
+
+`WATERMARK_DURATION_S = 1` in `service/src/placement/constants.ts` — **the
+user's ruling**, replacing "one second after the last beep" once he had seen it
+built. Read back from AE: `outPoint` **1**, frame 29.97 of 61, index **1** with
+**0 layers above**, `alphaMode` **5414 = AlphaMode.PREMULTIPLIED**, audio
+**[-20, -20]**.
+
+**The beep measurement is kept and repurposed.** It no longer sets the duration,
+so `assertBeepsFitWatermark` checks the last beep finishes before the mark
+leaves — a future file whose beeps run long fails loudly rather than being cut
+mid-beep. Current margin: last beep **0.400 s** against **1.000 s**, so
+**0.600 s spare**.
+
+**The audio ends with the picture** because both are the same AV layer and AE
+bounds a layer's audio by its out point. AE reports `hasAudio true`,
+`audioActive true` and `outPoint 1`. **Not verified by rendering** — nothing was
+rendered — so this rests on AE's layer model plus the out point read back.
+
+**The retired test is gone**, not left green: session 10 pinned that a 0.9 s
+beep recomputes to 1.9 s, which is now false. It is replaced by one pinning the
+flat second and four pinning the new assertion.
+
+### The reporting tools now report what the builder does
+
+`timing-budget` and `validate-plan` said **120** cards were unbuildable while
+the builder placed all **343**. Both now read `cardMinimumDurationS` from
+`service/src/build/short-card.ts`, the rule's single declaration, and both
+report **28** — the cards whose hold is clipped because their entrance has
+already compressed to the two-frame floor.
+
+**"Unbuildable" was the wrong word and is not used any more.** Those 28 are
+built; their hold is truncated. The predicate is `cardHoldFits`.
+
+**The floor is 0.118 s, not 0.230 s.** With the entrance compressible to two
+frames, the sum scales with it: `(introS + minHoldS) × MIN_INTRO_S / introS`.
+
+**A second home nobody had named.** `sweepTemplate` in `timing-budget.ts` split
+the budget evenly between intro and outro, with a comment saying only the sum
+was ever read. That stopped being true the moment the rule began compressing the
+**entrance** alone — halved, the sweep measured twice the builder's floor. The
+whole budget is the entrance now, matching the built templates' `outroS: 0`. Six
+homes of the floor arithmetic were searched before changing it; this was the one
+that mattered and it was found by the figures still disagreeing after the first
+fix.
+
+**Four tests asserted the retired behaviour and were rewritten**, including one
+literally named "only the sum is ever compared".
+
+### The widened timeout, measured and narrowed
+
+Session 10 widened the cutout test from 120 s to 420 s. Re-measured with After
+Effects idle: **one cutout 18 s against 72 s under load**, and **the whole test
+39 s against Block 4's 35 s**. **It was contention, not a slowdown** — nothing
+in the CV path got slower. The bound is **240 s**, which clears the measured
+loaded case (~153 s) with headroom and is not wider than the measurement
+justifies.
+
+### Block 7's definition of done
+
+| item | verdict |
+|---|---|
+| a run on the fixture produces a correct comp | **met** |
+| all error paths return structured errors | **met** — seven proven |
+| **headless** | **NOT met** |
+
+**"Headless" is not met and never was.** Every AE operation goes through
+AppleScript `DoScript` into an already-running After Effects. `-r` is unusable
+here: a resident `-r` process was observed executing its body a session later
+and quitting the application. The builder cannot run without a person having
+opened AE. That is Block 10's golden-run problem.
 
 
 See `docs/BLOCKS.md` for the full block plan and `handoffs/` for prior
