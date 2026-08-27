@@ -49,11 +49,15 @@ header.brand .version {
 }
 
 /*
- * The panel is a container, not a viewport. A CEP panel docked into an After
- * Effects workspace has a window the size of the whole screen and a panel the
- * width of a column, so a media query would lay out for the wrong thing.
+ * The panel is a container, not a viewport: a docked CEP panel's window is the
+ * size of the screen while its panel is a column wide, so a media query lays
+ * out for the wrong thing.
+ *
+ * This was a container query until Block 8 session 10. CEP 12 runs Chromium 99
+ * and `container-type` shipped in Chrome 105, so the whole `@container` block
+ * was dead text and the panel rendered one column at 1572 px. The `wide` class
+ * is toggled from a measured width instead — see panel-width.ts.
  */
-.app { container-type: inline-size; container-name: panel; }
 
 main {
   flex: 1 1 auto; overflow-y: auto; padding: 20px;
@@ -61,21 +65,15 @@ main {
 }
 
 /*
- * 830px, measured rather than chosen. The rule: a column must never be
- * narrower than the single column already is when the panel is docked at the
- * manifest's 420px, where the value side of a fact row measures 242px. Two
- * columns reach 241px at 820 and 246px at 830, and the worst wrap — the
- * resolved node path and the ffmpeg banner — drops from three lines to two at
- * the same width. Below it a second column would make the panel worse, not
- * wider. The figures are in reports/block-8-session-9.md.
+ * The breakpoint itself lives in panel-width.ts, which is what decides the
+ * class; 830px, measured in session 9. Below it a second column would be
+ * narrower than the single column already is when docked.
  */
-@container panel (min-width: 830px) {
-  main { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
-  main > section.service { grid-column: 1; grid-row: 1 / span 2; }
-  main > section.video { grid-column: 2; grid-row: 1; }
-  main > section.mode { grid-column: 2; grid-row: 2; }
-  main > section.build { grid-column: 1 / -1; }
-}
+.app.wide main { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.app.wide main > section.service { grid-column: 1; grid-row: 1 / span 2; }
+.app.wide main > section.video { grid-column: 2; grid-row: 1; }
+.app.wide main > section.mode { grid-column: 2; grid-row: 2; }
+.app.wide main > section.build { grid-column: 1 / -1; }
 
 section > h2 {
   margin: 0 0 10px;

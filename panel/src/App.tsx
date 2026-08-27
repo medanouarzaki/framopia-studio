@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { buildFonts } from '@framopia/core/build-fonts';
 import { connect, fetchDryRun, fetchModes, fetchReels, type Connection } from './service.js';
 import { nodeMatch } from './node-match.js';
+import { isWide, observeWidth } from './panel-width.js';
 
 /** How often to notice a service that has gone away. Chosen, not measured. */
 const HEARTBEAT_MS = 5000;
@@ -59,6 +60,19 @@ function Panel({
   onRedetect: () => void;
 }): JSX.Element {
   const { host, logoSrc } = env;
+  const shell = useRef<HTMLDivElement>(null);
+  const [wide, setWide] = useState(false);
+
+  /*
+   * The two-column switch. A class toggled from a measured width, not a
+   * container query: CEP runs Chromium 99 and container queries shipped in 105,
+   * so the query was dead text and the panel stayed one column at 1572 px.
+   */
+  useEffect(() => {
+    const element = shell.current;
+    if (element === null) return;
+    return observeWidth(element, (width) => setWide(isWide(width)));
+  }, []);
   const [service, setService] = useState<ServiceState>({ kind: 'starting' });
   const [reels, setReels] = useState<Reel[]>([]);
   const [modes, setModes] = useState<ClientMode[]>([]);
@@ -158,7 +172,7 @@ function Panel({
   }, [connection, reel, mode]);
 
   return (
-    <div className="app">
+    <div className={wide ? 'app wide' : 'app'} ref={shell}>
       <header className="brand">
         {logoSrc === null ? <div className="mark" aria-hidden="true" /> : <img src={logoSrc} alt="" />}
         <div className="name">
