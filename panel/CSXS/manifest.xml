@@ -36,13 +36,6 @@
         <Resources>
           <MainPath>./dist/index.html</MainPath>
           <ScriptPath>./jsx/build.jsx</ScriptPath>
-          <!--
-            CEP injects `cep_node` only when --enable-nodejs is declared here,
-            and only puts it on the page's own window when --mixed-context
-            merges the Node and browser contexts. Without both, the panel loads
-            and has no Node at all. The four flags below are exactly what the
-            extensions already working in this AE declare.
-          -->
           <CEFCommandLine>
             <Parameter>--enable-nodejs</Parameter>
             <Parameter>--allow-file-access</Parameter>
