@@ -389,6 +389,37 @@ After Effects dropped the extension with nothing on screen to say why.
 `npm run validate:panel` parses it now. Full statement in
 `docs/CLAUDE_CODE_GUIDELINES.md` §1.
 
+### The repository root has one resolver, and it is verified
+
+`resolveRepoRoot` in `core/src/repo-root.ts` is the only implementation, used
+by the panel and by core's own `REPO_ROOT`. It **follows symlinks** — CEP always
+loads the extension through
+`~/Library/Application Support/Adobe/CEP/extensions/com.framopia.studio`, and
+walking `..` from a symlinked location lands in the extensions folder — walks
+up from any directory inside the repo, and **verifies** each candidate against
+`package.json`'s name and the `service/`, `modes/` and `core/` directories
+before believing it. **It never returns an empty string**: failure is a
+`RepoRootError` naming every candidate and what each returned.
+
+The panel offers three candidates and takes the first that verifies:
+`__adobe_cep__.getSystemPath`, `CSInterface.getSystemPath`, and
+**`window.location`** — the last needs no CEP API at all, because the page is
+loaded from `.../com.framopia.studio/dist/index.html`.
+
+**`CSInterface` is never defined in this extension.** `index.html` loads no CEP
+library and nothing used the native API, so the old code — which tested for
+`CSInterface` alone — always fell through to an empty extension path.
+`realpathSync('')` returns the process cwd, which for a Finder-launched After
+Effects is `/`, so the root became `/` and the panel reported a missing file at
+`/service/dist/service.js`.
+
+### The service must be built before the panel can start it
+
+The panel spawns `<repo>/service/dist/service.js`. `npm run service:build`
+builds it; `npm run service` builds and starts it from a terminal. The panel
+re-checks that the file exists **on every attempt**, against the freshly
+resolved root, so the message cannot outlive the condition.
+
 ### The panel spawns Node directly, at a resolved absolute path
 
 After Effects launches from the Finder and inherits no shell profile, so the
@@ -4443,6 +4474,73 @@ ground-truth **15**, test-1 **16**, test-2 **14**, test-3 **4**, vitasilk 17 —
 **The default is unchanged and every production path takes it**, verified:
 pairings for all five reels byte-identical under `DEFAULT_ALIGN_COSTS`.
 `--cost-model transliteration` selects the variant. **It is not adopted.**
+
+## Block 8 session 8 — the panel reaches a healthy service
+
+**Spent $0.00; no API was called.** Ledger 108 entries / sha `50ec3f57…` at both
+ends. After Effects was not driven.
+
+### One empty string, three symptoms
+
+The panel reported `the service is not built: /service/dist/service.js does not
+exist` — an absolute path from the root of the disk, about a location that
+never existed. The chain, each link measured:
+
+1. `index.html` loads no CEP library and nothing in the bundle used
+   `__adobe_cep__` — **0 occurrences** in the built `panel.js`. So
+   `globalThis.CSInterface` was `undefined`.
+2. `detectHost` read `csInterface === undefined ? '' : …`, so the extension
+   path was **`''`** on every load.
+3. `realpathSync('')` returns the **process cwd**. Under Node in the repo that
+   is the repo, which is why it never showed up in a test; for a
+   Finder-launched After Effects it is **`/`**.
+4. `path.resolve('/', '..')` is `/`, and `path.join('/', 'service', 'dist',
+   'service.js')` is exactly the string on the user's screen.
+
+**It was never two disagreeing copies of the resolver** — session 7's symlink
+fix was correct, and it was fed an empty input. The same empty root also means
+**the pickers and the logo were never fixed inside After Effects either**;
+session 7 proved them only against a stub that defined `CSInterface`, a global
+CEP does not provide.
+
+### Retry was not dead
+
+It was wired and it did re-run the health check. But `detectHost()` ran once at
+module load, so the host — and the root inside it — was captured before the
+user could do anything about it, and every press produced **byte-identical
+text**. A working button was indistinguishable from a dead one, and no press
+could ever have recovered from a wrong root.
+
+Detection is re-run in full on every press now, and every attempt renders with
+a counter and a timestamp, so a repeated identical failure still moves.
+
+### Proven without the user
+
+`service/src/spawn.integration.test.ts` runs the panel's whole route outside
+CEP — resolve the repository, resolve Node, check the build, spawn
+`service/dist/service.js` with a bare Node binary, poll `/health` — and asserts
+`ok: true` and that `repoRoot` comes back as the real root. **693 ms**, inside
+`npm run check`. It publishes to its own lock file through
+`FRAMOPIA_SERVICE_JSON`, so it cannot disturb a service the developer is
+running.
+
+**What remains unproven is the CEP half**: `cep_node` supplying `fs` and
+`child_process`, and `__adobe_cep__`/`location` supplying the candidate paths.
+Those exist only inside After Effects.
+
+The browser check drives the built panel through **spawn failure** — asserting
+the message names a path under the real root and *not* one starting at the root
+of the disk — and **spawn success**, and asserts a second Retry renders a
+distinguishable state.
+
+### Messages that name things
+
+Swept for the shape that produced the bad message: a message naming a path,
+command or file that is computed rather than verified. Every one found is
+verified at the moment it is shown, except two that are honest hedges rather
+than claims. `core/src/messages.test.ts` now pins that **every `npm run …` a
+user-facing message tells someone to type is a real script**, and that the
+node-missing help is written once rather than retyped in the panel.
 
 See `docs/BLOCKS.md` for the full block plan and `handoffs/` for prior
 session context.
