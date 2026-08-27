@@ -30,10 +30,21 @@ const built = existsSync(path.join(DIST, 'panel.js')) && existsSync(INDEX);
  * modules the panel asks for at startup; `fs` reports nothing on disk, so the
  * pickers render their empty wording and no fixture is needed.
  */
-function stubHost(files: Record<string, string>, repo = '/repo'): string {
+function stubHost(files: Record<string, string>, repo = REPO): string {
   return `
   window.__repo = ${JSON.stringify(repo)};
   window.__files = ${JSON.stringify(files)};
+  // The resolver verifies a candidate against package.json and the marker
+  // directories, so a stub that answers false to everything cannot produce a
+  // root — which is the behaviour being relied on.
+  window.__repoFiles = {};
+  window.__repoFiles[window.__repo + '/package.json'] = JSON.stringify({ name: 'framopia-studio' });
+  ['service', 'modes', 'core', 'panel', 'panel/dist'].forEach(function (d) {
+    window.__repoFiles[window.__repo + '/' + d] = '';
+  });
+  // A node binary, so resolution gets past node-missing to the build check.
+  window.__repoFiles['/home/.nvm/versions/node'] = '';
+  window.__repoFiles['/home/.nvm/versions/node/v24.14.1/bin/node'] = '';
   // CEP's mixed context puts Node's process global on the page; host.ts reads
   // it for processAlive, so a stub without it is not a faithful stub.
   window.process = window.process || { kill: function () { return true; } };
@@ -50,11 +61,20 @@ function stubHost(files: Record<string, string>, repo = '/repo'): string {
         };
       }
       if (id === 'fs') {
+        const has = (p) =>
+          Object.prototype.hasOwnProperty.call(window.__files, p) ||
+          Object.prototype.hasOwnProperty.call(window.__repoFiles, p);
         return {
-          existsSync: (p) => Object.prototype.hasOwnProperty.call(window.__files, p),
-          readFileSync: (p) => window.__files[p],
-          readdirSync: () => [],
-          realpathSync: (p) => p,
+          existsSync: has,
+          readFileSync: (p) =>
+            Object.prototype.hasOwnProperty.call(window.__files, p)
+              ? window.__files[p]
+              : window.__repoFiles[p],
+          readdirSync: (p) => (p === '/home/.nvm/versions/node' ? ['v24.14.1'] : []),
+          realpathSync: (p) => {
+            if (!has(p) && p !== window.__repo) throw new Error('ENOENT: ' + p);
+            return p;
+          },
         };
       }
       if (id === 'os') return { homedir: () => '/home' };
@@ -69,7 +89,10 @@ function stubHost(files: Record<string, string>, repo = '/repo'): string {
 `;
 }
 
-const HANDSHAKE = { '/repo/.local/service.json': JSON.stringify({ port: 51234, token: 't', pid: 4242 }) };
+const HANDSHAKE = {
+  [`${REPO}/.local/service.json`]: JSON.stringify({ port: 51234, token: 't', pid: 4242 }),
+};
+const SERVICE_BUILT = { [`${REPO}/service/dist/service.js`]: '' };
 
 const HEALTHY_PAYLOAD = {
   ok: true,
@@ -257,10 +280,7 @@ describe.skipIf(!built)('the built panel in a real browser', () => {
    * because the path was wrong and a broken image is still an element.
    */
   it('loads the real logo, not merely an <img> element', async () => {
-    const loaded = await load({
-      files: { ...HANDSHAKE, [LOGO]: '' },
-      repo: REPO,
-    });
+    const loaded = await load({ files: { ...HANDSHAKE, [LOGO]: '' } });
     if (loaded === null) return;
     const { page } = loaded;
     try {
@@ -328,4 +348,74 @@ describe.skipIf(built)('the built panel', () => {
     console.warn('panel/dist is missing — run `npm run panel:build` to run the render check');
     expect(built).toBe(false);
   });
+});
+
+/**
+ * The two ends of the spawn path, in a real engine.
+ *
+ * The user saw the failure end wearing an authoritative message about
+ * `/service/dist/service.js`, a file that could never exist because the root
+ * had resolved to `/`. Both ends are driven here, and the rendered text is
+ * asserted to differ.
+ */
+describe.skipIf(!built)('the spawn path in a real browser', () => {
+  it('reports the service as not built, naming a path under the real root', async () => {
+    const loaded = await load({ files: {} });
+    if (loaded === null) return;
+    const { page } = loaded;
+    try {
+      await page.waitForSelector('.dot.unreachable', { timeout: 15_000 });
+      const card = (await page.locator('.card').first().textContent()) ?? '';
+
+      expect(card).toContain('not built');
+      expect(card).toContain(`${REPO}/service/dist/service.js`);
+      /*
+       * The regression: a path starting at the root of the disk, which is what
+       * an empty repository root composes into. The correct path contains the
+       * same tail, so the test has to look at what precedes it.
+       */
+      expect(card).not.toMatch(/[\s:]\/service\/dist\/service\.js/);
+    } finally {
+      await page.close();
+    }
+  }, 30_000);
+
+  it('reaches healthy when the service is built and answers', async () => {
+    const loaded = await load({ files: { ...HANDSHAKE, ...SERVICE_BUILT }, fetch: 'healthy' });
+    if (loaded === null) return;
+    const { page } = loaded;
+    try {
+      await page.waitForSelector('.dot.healthy', { timeout: 15_000 });
+      const card = (await page.locator('.card').first().textContent()) ?? '';
+      expect(card).toContain('Ready');
+      expect(card).not.toContain('not built');
+    } finally {
+      await page.close();
+    }
+  }, 30_000);
+
+  /*
+   * Two identical failures must look different. A working Retry that renders
+   * byte-identical text is indistinguishable from a dead one, which is exactly
+   * what the user reported.
+   */
+  it('renders a distinguishable state on a second retry', async () => {
+    const loaded = await load({ files: {} });
+    if (loaded === null) return;
+    const { page } = loaded;
+    try {
+      await page.waitForSelector('.attempt', { timeout: 15_000 });
+      expect(await page.locator('.attempt').first().getAttribute('data-attempt')).toBe('0');
+      const first = (await page.locator('.card').first().textContent()) ?? '';
+
+      await page.getByRole('button', { name: 'Retry' }).first().click();
+      await page.waitForSelector('.attempt[data-attempt="1"]', { timeout: 15_000 });
+      const second = (await page.locator('.card').first().textContent()) ?? '';
+
+      expect(second).not.toBe(first);
+      expect(second).toContain('attempt 2');
+    } finally {
+      await page.close();
+    }
+  }, 30_000);
 });

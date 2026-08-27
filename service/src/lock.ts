@@ -12,7 +12,13 @@ import { LOCAL_DIR, processAlive } from '@framopia/core';
  * leftover, not a claim. Obeying it would leave the panel waiting forever on a
  * service nobody is running.
  */
-export const SERVICE_JSON_PATH = path.join(LOCAL_DIR, 'service.json');
+/*
+ * `FRAMOPIA_SERVICE_JSON` lets a spawned service publish somewhere else, so a
+ * test can drive the real entry point without taking the lock a developer's
+ * own service is holding. Nothing in production sets it.
+ */
+export const SERVICE_JSON_PATH =
+  process.env['FRAMOPIA_SERVICE_JSON'] ?? path.join(LOCAL_DIR, 'service.json');
 
 export interface ServiceHandshake {
   port: number;
