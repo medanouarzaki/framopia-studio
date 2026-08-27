@@ -260,3 +260,64 @@ prompt version 4. Full working in
   diagnosis and the adoption above.
 - `benchmarks/references/align/` — the two hand-made references the adoption
   rests on.
+
+## Amendment — the corpus is pinned at ORTHOGRAPHY_GUIDE v1.0.7 (2026-08-28)
+
+**The five reels stay on transcriptions made against guide v1.0.7 for the
+remainder of Block 8.** The guide itself is unchanged and stays at v1.0.8; what
+is pinned is the corpus, not the rules.
+
+**How it arose.** The transcription fingerprint reads the guide version out of
+the file, deliberately, so a guide bump invalidates on its own. The bump to
+v1.0.8 happened in Block 4 session 3 and nothing has been re-transcribed since,
+so the invalidation was never felt. Block 8 session 13 found it by recomputing
+every fingerprint against the entries on disk: the pinned entry
+`transcription-758a3924d090d1b5` reproduces exactly at (prompt v4, guide
+v1.0.7), and today's configuration computes `ceba491c1af5b52f`, which exists
+nowhere.
+
+**Why the corpus is pinned rather than re-transcribed.**
+
+- **The correction call is not reproducible.** Three identical calls in Block 2
+  returned three different corrected texts. Re-transcribing does not restore the
+  same words at better spelling; it returns *different* words.
+- **Different words invalidate both hand-made references.**
+  `benchmarks/references/align/vitasilk.json` (73 rows) and
+  `vitasilk.rereview.json` (17 rows) judge pairings between specific corrected
+  words and specific draft tokens. Change the corrected words and every row
+  names something that no longer exists. They are the project's only
+  non-circular measure of aligner correctness and **cannot be regenerated** —
+  they are a human's judgement, collected over two passes.
+- **The money does not justify it.** Re-transcribing all five reels costs
+  ~$0.84, and the cascade it triggers — new texts miss the analysis and slot
+  caches, new slot ideas miss every image — takes it to **~$3.57** against a
+  remaining balance of roughly **$8.04**, which must also cover `test-1`'s
+  image candidates (~$1.21, approved in principle) and Block 10's golden runs
+  on two machines.
+
+**What v1.0.7 does not carry** is v1.0.8's single rule: the conjunction before
+an Arabic-script term attaches in Arabic script as a proclitic (`ومادة`, not
+`w مادة`). That is one orthographic rule affecting a small number of tokens, and
+it is a spelling difference in text the pipeline already produces — not a defect
+in timing, alignment, or anything downstream.
+
+**The compatible-reuse policy.** A cache entry at the **same prompt version**
+with an **older guide version** is reused, and labelled `compatible` everywhere
+it is visible — the dry run, the runner's log, and the Edit Plan's own
+`pipeline.<stage>.cacheProvenance`. Any other difference resolves `none` and a
+run bills. `core/src/entry-resolve.ts` is the single implementation and
+`resolveTranscriptionEntry` the single caller-facing entry point; the rule is
+pinned by tests in both packages.
+
+**The analysis stages do not get a compatible reuse.** Their fingerprint carries
+no guide version, so the only way an analysis entry can differ is in the prompt
+version, the mode content the call reads, the transcript or the candidate count
+— and each of those changes the question the model was asked. `test-1` and
+`vitasilk` hold keyword entries at analysis prompt version 3 against an active
+4, and v4 asks for §6 term boundaries v3 was never asked for. Those resolve
+`none`.
+
+**Deferred to Block 10**, with the second reference: whether to re-transcribe
+the corpus at the current guide, what it costs at that point, and whether a
+reference collected against v1.0.7 pairings can be carried forward or has to be
+re-made. Nothing here forecloses it.

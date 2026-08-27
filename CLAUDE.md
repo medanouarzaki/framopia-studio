@@ -222,6 +222,14 @@ AI-generated contextual images, SFX, and a watermark. Full spec in
   `_A` and `_C`, differing only in subtitle out-points so the retiming question
   can be judged by flipping between them. One duplicated comp per element,
   shared by both masters, so nothing else can differ.
+- `npm run migrate:alignment [-- --apply]` — free, local, **$0.00 and no API
+  call**. Re-aligns every plan from its resolved transcription cache entry under
+  the adopted transliteration cost and rewrites the word timings, then recomputes
+  everything derived from them: card spans, display timing, keyword and image-slot
+  spans, SFX event times and `transcript.contentHash`. **Refuses to write if
+  `hashTranscript` moves** — alignment may not change word text, so nothing
+  text-derived (keyword selection, image prompts, candidates) can move. Dry-run
+  by default.
 - `npm run migrate:display-timing [-- --apply]` — free, local. Gives existing
   plans the display timing `applyDisplayTiming` has always computed but never
   persisted. Dry-run by default.
@@ -534,7 +542,7 @@ them to 230, which is the guard. One regression is recorded rather than netted
 away: `vitasilk` `w0036` (`26`) lost its anchor, its true source being two
 tokens the aligner cannot express.
 
-### The transcription cache is stale against the guide, and a re-run bills
+### The corpus is pinned at ORTHOGRAPHY_GUIDE v1.0.7, and reuse is labelled
 
 **`ORTHOGRAPHY_GUIDE.md` is v1.0.8; every transcription cache entry on disk was
 written at v1.0.7 or earlier.** The transcription fingerprint reads the guide
@@ -563,9 +571,40 @@ entries were written at 3. `test-2`'s is at 4. The **slot** entries hit, and so
 do all ten `vitasilk` image entries, against the transcripts as they stand.
 
 **Nothing in any cache key depends on alignment.** Adopting the transliteration
-cost costs $0.00 to put on the plans, because alignment is recomputed locally
+cost cost $0.00 to put on the plans, because alignment is recomputed locally
 from the cached Scribe response on a cache hit. What costs money is
 re-transcribing, and the guide bump is why that would happen.
+
+**So the corpus is pinned at guide v1.0.7 for the rest of Block 8** (user
+ruling, recorded as an amendment in `docs/DECISION-transcription-config.md`).
+Re-transcribing is not reproducible, so it would return *different* corrected
+words and invalidate both hand-made references — the project's only
+non-circular measure, and impossible to regenerate. The guide file itself stays
+at v1.0.8; what is pinned is the corpus.
+
+**Cache reuse is explicit, never silent.** `core/src/entry-resolve.ts` is the
+one rule and `resolveTranscriptionEntry` the one caller-facing entry point,
+used by the runner, the dry run and the diagnostics. It returns how the entry
+was found:
+
+- **`exact`** — the computed fingerprint is on disk.
+- **`compatible`** — same prompt version, older guide version. Reused, and said
+  out loud everywhere it is visible: the runner logs it before anything is
+  spent, the dry run reports it per stage, and the plan records it in
+  `pipeline.<stage>.cacheProvenance` and `cacheEntryId`.
+- **`none`** — a run would transcribe and bill. **Said before the call, not
+  discovered by being billed.**
+
+**The rule is narrow on purpose**: a guide-version difference at an identical
+prompt version, and nothing else. **The analysis stages therefore never resolve
+`compatible`** — their fingerprint carries no guide version, so their only
+possible difference is the prompt version, the mode content or the transcript,
+each of which changes the question the model was asked. `test-1` and `vitasilk`
+sit at analysis prompt version 3 against an active 4 and resolve `none`.
+
+An entry whose manifest is corrupt is invisible to the resolver, so the runner
+still reads the exact fingerprint directory when it exists: a damaged entry is
+a miss **with its own warning**, never reported as an absent one.
 
 ### A re-run clears keywords, images and sfx, and nothing would refuse
 
@@ -4895,6 +4934,47 @@ guard with a better anchored count than the adopted model** (332 against 330).
 The hand-made reference catches it instantly: 54 regressions against the adopted
 model's 0. **Session 12's safety check was worth much less than it read**, and
 the reference is what made the adoption safe.
+
+## Block 8 part 2, session 14 — the dry run was lying, and the plans are migrated
+
+**Spent $0.00; no API was called.** Ledger 108 entries / sha `50ec3f57…` at both
+ends. After Effects was not driven.
+
+**The dry run misstated cost, and it is the feature built to keep part 2
+affordable.** It read `plan.pipeline[stage].status` — what the plan *remembers* —
+and printed "already on the plan; a re-run reads the cache and bills nothing".
+It never consulted the cache. `vitasilk` therefore read **"nothing to pay"**
+while a real run would have re-transcribed and re-run keyword analysis. Two
+lookups existed and disagreed: `selectTranscriptionEntry` by prompt version for
+the diagnostics, the computed fingerprint for the runner, and the dry run used
+neither.
+
+**What it reports now**, per reel, against the cache on disk:
+
+| reel | transcription | analysis | images | estimate |
+|---|---|---|---|---:|
+| ground-truth | compatible | **none** | not planned | $0.18 |
+| test-1 | compatible | **none** | **none**, 0 of 8 cached | **$1.73** |
+| test-2 | compatible | **none** (slots miss; keywords hit) | not planned | $0.18 |
+| test-3 | compatible | **none** | not planned | $0.18 |
+| vitasilk | compatible | **none** | exact, 10 of 10 | $0.18 |
+
+Corpus **$2.45**, against the "$0.00, nothing to pay" it used to print for
+`vitasilk`.
+
+**The plans are migrated onto the adopted aligner** — `npm run migrate:alignment
+-- --apply`, $0.00. **67 words retimed and 78 cards moved across the corpus**,
+independently reproducing session 13's 67 moved anchors. Word texts, ids,
+`lang`, `removed` and `edited` are untouched; keywords, image slots, candidates,
+zones, costs and pipeline records are unchanged except for the timing fields
+derived from words. **Clipped holds fell 28 → 23.**
+
+`vitasilk`'s 8.8–11.9 s span — the one the user reported twice in Block 7 — now
+pairs `mn`/`من`, `ghir`/`غير` and `anno`/`أنه` each with its own token, and `mn`
+gained a real anchor where it had been a zero-duration interpolated point. The
+tail of that run is still displaced, because `il nourrit` needs a split and `26`
+a merge; before-and-after word by word in
+`docs/DEFECT-alignment-script-mismatch.md` §A.0.3.
 
 See `docs/BLOCKS.md` for the full block plan and `handoffs/` for prior
 session context.

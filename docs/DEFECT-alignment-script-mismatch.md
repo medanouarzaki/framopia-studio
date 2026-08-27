@@ -156,6 +156,69 @@ count bounds the structural damage and says nothing about correctness.
 The adversarial cost models are a measurement fixture and are **not** in the
 shipped cost-model table.
 
+### A.0.3 The migration — the fix reaches the artifacts, 2026-08-28
+
+The adoption in §A.0 changed the code. The five plans on disk still carried
+timings from the flat model until Block 8 session 14 ran
+`npm run migrate:alignment -- --apply`, which re-aligns each reel from its
+pinned cache entry. **$0.00 and no API call**: alignment is pure, and the raw
+Scribe response and the corrected texts are both in the entry.
+
+| reel | words | retimed | `sourceText` changed | cards moved |
+|---|---:|---:|---:|---:|
+| ground-truth | 76 | 15 | 15 | 19 |
+| test-1 | 67 | 17 | 16 | 20 |
+| test-2 | 69 | 14 | 14 | 15 |
+| test-3 | 58 | 4 | 4 | 5 |
+| vitasilk | 73 | 17 | 17 | 19 |
+| **corpus** | **343** | **67** | **66** | **78** |
+
+**67 is the same 67** §A.0.2 measured as rows moved against the legacy model,
+derived independently here from the plans rather than from the aligner, which
+is what makes it a check rather than a restatement.
+
+Word **texts, ids, order, `lang`, `script`, `removed` and `edited` are
+untouched**, and the migration refuses to write if `hashTranscript` moves —
+nothing text-derived may change, so keyword selection and image prompts cannot.
+Everything derived from a timing is recomputed in the same pass: card spans,
+display timing, keyword and image-slot spans, SFX event times, and
+`transcript.contentHash`, so `mergeIntoExistingPlan` never sees a changed hash
+and never clears `keywords`, `images` or `sfx`.
+
+**Clipped holds fell 28 to 23** across the corpus (ground-truth 9→8, test-1
+7→5, test-2 4→3, test-3 3→2, vitasilk 5→5), because pairings that now sit on
+their own token give cards that fit their template floor.
+
+#### `vitasilk` 8.8–11.9 s, before and after
+
+The span the user reported twice in Block 7. Timings in seconds; `sourceText`
+is the draft token each word anchored to.
+
+| word | text | before | after |
+|---|---|---|---|
+| w0027 | `Silk` | `Silk` 8.619–8.860 | `Silk` 8.619–8.860 |
+| w0028 | `mn` | **`mn` 8.899–8.899 (interpolated)** | **`من` 8.939–9.000** |
+| w0029 | `ghir` | `من` 8.939–9.000 | **`غير` 9.079–9.199** |
+| w0030 | `anno` | `غير` 9.079–9.199 | **`أنه` 9.279–9.759** |
+| w0031 | `il` | `أنه` 9.279–9.759 | `ينغى,` 9.779–9.800 |
+| w0032 | `nourrit` | `ينغى,` 9.779–9.800 | `يهدئ.` 9.819–11.079 |
+| w0033 | `il` | `يهدئ.` 9.819–11.079 | `فيه` 11.159–11.279 |
+| w0034 | `hydrate` | `فيه` 11.159–11.279 | `ستة` 11.479–11.579 |
+| w0035 | `fih` | `ستة` 11.479–11.579 | `وعشرين` 11.619–12.039 |
+| w0036 | `26` | `وعشرين` 11.619–12.039 | **none, interpolated 12.059** |
+
+**The head of the run is repaired.** `mn`, `ghir` and `anno` each now hold the
+Arabic token they actually translate, and `mn` gained a real anchor where it had
+been a zero-duration interpolated point.
+
+**The tail is displaced, not repaired, and this is the split-and-merge limit in
+§A.5 rather than a new defect.** `il nourrit` and `il hydrate` are two words
+each against one draft token, and `26` is one word against two — shapes no
+substitution cost can express. The one-token shift is pushed down the run to
+`w0036`, which loses its anchor entirely, the regression already recorded in
+§A.0.1. **Six corrected words against five draft tokens still needs an operation
+the aligner does not have.**
+
 ### A.5 Splits and merges, measured against the adopted model
 
 Runs between two exact anchors where the two sides differ in length. Read-only,
