@@ -5,7 +5,8 @@
   "workspaces": [
     "core",
     "service",
-    "benchmarks"
+    "benchmarks",
+    "panel"
   ],
   "scripts": {
     "build:core": "npm run build --workspace @framopia/core",
@@ -50,6 +51,9 @@
     "migrate:image-cache": "npm run build:core && tsx tools/migrate-image-cache/cli.ts --",
     "watermark:measure": "tsx tools/measure-watermark/cli.ts",
     "align:review": "npm run build:core && tsx tools/align-review/cli.ts --",
-    "align:score": "npm run build:core && tsx tools/align-review/score-cli.ts --"
+    "align:score": "npm run build:core && tsx tools/align-review/score-cli.ts --",
+    "panel:build": "npm run build:core && npm run build --workspace framopia-panel",
+    "panel:dev": "npm run build:core && npm run dev --workspace framopia-panel",
+    "panel:install": "npm run install:cep --workspace framopia-panel"
   }
 }

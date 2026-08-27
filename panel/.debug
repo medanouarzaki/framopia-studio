@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Remote debugging. With PlayerDebugMode set on com.adobe.CSXS.12, open
+  http://localhost:8099 in Chrome while the panel is open in After Effects.
+-->
+<ExtensionList>
+  <Extension Id="com.framopia.studio.panel">
+    <HostList>
+      <Host Name="AEFT" Port="8099" />
+    </HostList>
+  </Extension>
+</ExtensionList>

@@ -40,3 +40,6 @@ benchmarks/results/latest-cutouts/
 # Compiled python bytecode from the cv sidecar.
 __pycache__/
 .pytest_cache/
+
+# The panel bundle is built from panel/src; CEP loads it from here.
+panel/dist/

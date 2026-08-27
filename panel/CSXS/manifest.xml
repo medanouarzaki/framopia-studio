@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Extension manifest for After Effects 2026 (26.0).
+
+  Version="6.0" and RequiredRuntime CSXS 6.0 are the manifest schema, not the
+  CEP runtime: AE 2026 ships CEP 12 (the CEPHtmlEngine process reports
+  AdobeCEP/12.0.1), which is why debug mode is enabled on the
+  com.adobe.CSXS.12 preference domain. Every working extension installed on
+  this machine declares schema 6.0 against host AEFT, which is where both
+  values came from.
+-->
+<ExtensionManifest Version="6.0"
+                   ExtensionBundleId="com.framopia.studio"
+                   ExtensionBundleName="Framopia Studio"
+                   ExtensionBundleVersion="0.1.0"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <ExtensionList>
+    <Extension Id="com.framopia.studio.panel" Version="0.1.0" />
+  </ExtensionList>
+
+  <ExecutionEnvironment>
+    <HostList>
+      <Host Name="AEFT" Version="[26.0,99.9]" />
+    </HostList>
+    <LocaleList>
+      <Locale Code="All" />
+    </LocaleList>
+    <RequiredRuntimeList>
+      <RequiredRuntime Name="CSXS" Version="6.0" />
+    </RequiredRuntimeList>
+  </ExecutionEnvironment>
+
+  <DispatchInfoList>
+    <Extension Id="com.framopia.studio.panel">
+      <DispatchInfo>
+        <Resources>
+          <MainPath>./dist/index.html</MainPath>
+          <ScriptPath>./jsx/build.jsx</ScriptPath>
+          <CEFCommandLine>
+            <Parameter>--allow-file-access</Parameter>
+            <Parameter>--allow-file-access-from-files</Parameter>
+          </CEFCommandLine>
+        </Resources>
+        <Lifecycle>
+          <AutoVisible>true</AutoVisible>
+        </Lifecycle>
+        <UI>
+          <Type>Panel</Type>
+          <Menu>Framopia Studio</Menu>
+          <Geometry>
+            <Size><Height>760</Height><Width>420</Width></Size>
+            <MinSize><Height>480</Height><Width>360</Width></MinSize>
+          </Geometry>
+        </UI>
+      </DispatchInfo>
+    </Extension>
+  </DispatchInfoList>
+</ExtensionManifest>
