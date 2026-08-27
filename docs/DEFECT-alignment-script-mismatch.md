@@ -1,6 +1,10 @@
 # Alignment mis-pairs Arabic-script draft tokens against Arabizi corrected text
 
-**Status: open.** Found Block 7 session 7, diagnosed session 9, written up
+**Status: fixed for the cross-script tie, open for splits and merges.**
+The transliteration-aware substitution cost was adopted on 2026-08-28 (§A.0).
+What remains is one-to-many and many-to-one correspondence, measured in §A.5.
+
+**Previously:** Found Block 7 session 7, diagnosed session 9, written up
 session 10, re-derived against a single declared configuration in Block 8
 session 2. **`service/src/transcription/align.ts` and `core/src/align.ts` are
 unchanged**; a fix was written, measured as a regression and discarded.
@@ -24,6 +28,121 @@ directory order. Free: no model call, no re-transcription.
 Every reel's pinned entry is `transcription-758a3924d090d1b5`; the fingerprint
 covers the prompt version, the Gemini model pin, the guide version, the Scribe
 model and the keyterms, none of which differ per reel.
+
+### A.0 The fix, adopted 2026-08-28
+
+**The transliteration-aware substitution cost is the default**
+(`ACTIVE_ALIGN_COST_MODEL` in `service/src/transcription/align.ts`). The flat
+model stays selectable as `legacy`, which is what every figure recorded before
+this date was measured with.
+
+Under the flat model every cross-script pair costs exactly 1, so the comparison
+carries no information: a run of them ties and the backtrace's preference order
+decides which draft token each word gets. Scoring the pair against
+ORTHOGRAPHY_GUIDE §2's character table gives it a minimum — `mn`/`من` costs 0.2
+where `mn`/`غير` costs 1.
+
+**The evidence, all of it human.** Two hand-made references, neither generated
+by code:
+
+| | |
+|---|---|
+| `benchmarks/references/align/vitasilk.json` | 73 rows, all judged. 54 correct, 18 wrong, 1 two-tokens. **74.0% human-confirmed.** Schema 1. |
+| `benchmarks/references/align/vitasilk.rereview.json` | the 17 rows the change moved, judged **2026-08-28**. **7 correct, 2 misheard, 7 wrong, 1 unjudged.** Schema 3, `rowCount` 17, `markedCount` 16. |
+
+The change moved **16 of the 18** pairings marked wrong and **not one** of the
+54 marked correct. The second pass returned **nine repaired** (7 correct + 2
+misheard) and **none damaged**. Reel `vitasilk`, entry
+`transcription-758a3924d090d1b5`, prompt version 4, at sha `6708431`.
+
+**The corpus safety check**, all five reels, from the cached Scribe responses
+and corrected texts with no model call. The guard is Block 7's discarded fix,
+which looked reasonable and took anchored words from 330 to 230:
+
+| reel | words | anchored legacy → adopted | interpolated | anchors moved | zero-duration | duplicate intervals |
+|---|---:|---|---:|---:|---|---:|
+| ground-truth | 76 | 72 → **72** | 4 → 4 | 15 | 4 → 4 | 0 → 0 |
+| test-1 | 67 | 64 → **64** | 3 → 3 | 17 | 3 → 3 | 0 → 0 |
+| test-2 | 69 | 68 → **68** | 1 → 1 | 14 | 1 → 1 | 0 → 0 |
+| test-3 | 58 | 56 → **56** | 2 → 2 | 4 | 2 → 2 | 0 → 0 |
+| vitasilk | 73 | 70 → **70** | 3 → 3 | 17 | 3 → 3 | 0 → 0 |
+| **corpus** | **343** | **330 → 330** | 13 → 13 | **67** | 13 → 13 | **0 → 0** |
+
+**No reel loses an anchored word**, and the corpus total reproduces Block 7's
+recorded 330 independently. Entry `transcription-758a3924d090d1b5` on every
+reel, prompt version 4, sha `6708431`.
+
+### A.0.1 One regression, which the adoption figures did not count
+
+**`vitasilk` `w0036` (`26`) lost its anchor.** Under the legacy model it held
+`وعشرين`; under the adopted model it holds nothing and is interpolated.
+
+Part 1 reported "zero regressions" and that was true of what the scorer
+measures: a regression there is a row the user had marked **correct** or
+**misheard** that then moved, and `26` was marked **two-tokens**, which the
+scorer buckets as *still inexpressible*. **The row still got worse**, and the
+report should have said so. In the second pass the user left it **unjudged** —
+the honest answer for a row whose correct pairing the aligner cannot express.
+
+It is the **only merge regression**. Nine rows lost an anchor when the model
+changed and nine gained one, a net wash consistent with 330 → 330:
+
+- **lost**: ground-truth `tal`, `dial`, `wa7d`, `dial`; test-1 `dial`, `la`;
+  vitasilk `eyyh`, **`26`**, `f`
+- **gained**: ground-truth `pigmentés`, `3ndi`, `li`, `houa`; test-1 `tb3i`,
+  `m3aya`; vitasilk `5`, `mn`, `chno`
+
+Of the three losses on `vitasilk` — the only reel with a reference — the user
+judged `eyyh` and `f` **wrong** in their new state, so neither is a regression
+against human judgement; only `26` is. The six on `ground-truth` and `test-1`
+are unjudged, because no reference exists for those reels.
+
+### A.5 Splits and merges, measured against the adopted model
+
+Runs between two exact anchors where the two sides differ in length. Read-only,
+from the cached responses; entry `transcription-758a3924d090d1b5`, prompt
+version 4, sha `6708431`.
+
+| reel | split runs (corrected > draft) | merge runs (draft > corrected) |
+|---|---:|---:|
+| ground-truth | 3 | 1 |
+| test-1 | 1 | 2 |
+| test-2 | 1 | 1 |
+| test-3 | 2 | 1 |
+| vitasilk | 3 | 1 |
+| **corpus** | **10** | **6** |
+
+Part 1 sized many-to-one at "one merge in the corpus" and recorded that as a
+floor. Against the fixed aligner it is **6 merge runs and 10 split runs** — the
+floor was low by roughly an order of magnitude, and **splits outnumber merges**,
+which part 1 never measured at all.
+
+**`vitasilk` `w0031`–`w0036` needs both directions inside one span.** The run is
+`mn ghir anno il nourrit il hydrate fih 26 vitamines` against
+`من غير أنه ينغى, يهدئ. فيه ستة وعشرين vitamin`. The user identified the true
+correspondence: the span is spoken in French and Scribe transcribes to Arabic
+script only, collapsing each French pair into one token.
+
+```
+il + nourrit  <- ينغى           one token, two words   (split)
+il + hydrate  <- يهدئ           one token, two words   (split)
+fih           <- فيه            one to one
+26            <- ستة + وعشرين   two tokens, one word   (merge)
+```
+
+Six corrected words against five draft tokens, requiring a split **and** a merge
+in the same span. No substitution cost can express either.
+
+**Splits do not correlate with code-switching, and the numbers say so.** French
+is **16.9%** of the words inside split runs (12 of 71) against **21.3%** of the
+corpus (73 of 343). If anything the association is slightly negative. The
+`il nourrit / il hydrate` case is real and is French, but most split runs are
+**Darija proclitic morphology** — `فهو` → `fa houa`, `فهذه` → `fa hadi`,
+`دالحلول` → `dial l7loul`, `الفيديو` → `la vidéo` — where the correction pass
+separates a fused Arabic token into two Arabizi words under §2's attachment
+rules. **Caveat on the measure**: it counts every word inside a run that
+happens to be uneven, not the extra word itself, which cannot be identified
+without the true correspondence.
 
 ### A.1 Scale, per reel
 
