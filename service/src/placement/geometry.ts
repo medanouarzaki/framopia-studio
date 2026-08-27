@@ -76,3 +76,29 @@ export function usableRegions(rect: Rect): Rect[] {
   if (below > 0) pieces.push({ ...clipped, y: belowY, h: below });
   return pieces;
 }
+
+/**
+ * A square of the wanted side, as near the wanted centre as the frame allows.
+ *
+ * Every placement path has to end here. The solver already guarantees its own
+ * output is inside the frame (`satisfiesHardConstraints`), but Block 7 session
+ * 7's image-size variants reused a solved centre with a larger side and were
+ * bounded by nothing — `img001` at the (c) size crossed the left edge by 130 px
+ * and `img005` crossed the top by 22 px, one of which reached the user before
+ * anything reported it.
+ *
+ * The side is reduced only when it cannot fit the frame at all; otherwise the
+ * square moves in rather than shrinking, because these variants exist to
+ * compare sizes and silently shrinking one would compare something else.
+ */
+export function fitInsideFrame(
+  centreX: number,
+  centreY: number,
+  sideW: number,
+): Rect {
+  const side = Math.min(sideW, 1, FRAME_ASPECT);
+  const h = side / FRAME_ASPECT;
+  const x = Math.min(Math.max(centreX - side / 2, 0), 1 - side);
+  const y = Math.min(Math.max(centreY - h / 2, 0), 1 - h);
+  return { x, y, w: side, h };
+}

@@ -7,6 +7,8 @@ import {
 import type { EditPlan, SubtitleGroup } from '../editplan/types.js';
 import { displayWindow } from '../analysis/display-timing.js';
 import { chooseBreak, type BreakCandidate } from './wrap.js';
+import { fitInsideFrame } from '../placement/geometry.js';
+import { FRAME_WIDTH } from '../placement/constants.js';
 
 /**
  * Turns a plan into the element list and per-master placements the reel
@@ -285,14 +287,23 @@ export function buildReel(options: {
      */
     for (const v of imageVariants) {
       const sidePx = v.scaleFor(slot.id);
+      // Bounded to the frame. Reusing a solved centre with a larger side is
+      // bounded by nothing on its own, and two variants escaped the frame
+      // before this existed.
+      const fitted = fitInsideFrame(
+        positionX / plan.source.width,
+        positionY / plan.source.height,
+        sidePx / FRAME_WIDTH,
+      );
+      const fittedSidePx = fitted.w * FRAME_WIDTH;
       variantPlacements.get(v.name)?.push({
         elementId: slot.id,
         kind: 'image',
         inPointS: slot.start,
         outPointS: slot.end,
-        positionX,
-        positionY,
-        scalePercent: (sidePx / c.width) * 100,
+        positionX: (fitted.x + fitted.w / 2) * plan.source.width,
+        positionY: (fitted.y + fitted.h / 2) * plan.source.height,
+        scalePercent: (fittedSidePx / c.width) * 100,
       });
     }
   }
