@@ -64,6 +64,23 @@ function esc(value: string): string {
 }
 
 /**
+ * JSON for embedding inside a `<script>` block.
+ *
+ * `JSON.stringify` alone is not enough: a `</script>` inside any string closes
+ * the element, and U+2028 and U+2029 are line terminators in JavaScript but
+ * legal inside a JSON string, so either one turns a value into a syntax error.
+ * A word or a note is user text and reaches here verbatim.
+ */
+function scriptJson(value: unknown): string {
+  return JSON.stringify(value)
+    .replace(/</g, '\\u003c')
+    .replace(/>/g, '\\u003e')
+    .replace(/&/g, '\\u0026')
+    .replace(/\u2028/g, '\\u2028')
+    .replace(/\u2029/g, '\\u2029');
+}
+
+/**
  * `dir` is set on the token's own element, never on the row or the container.
  * A row carries an Arabizi word beside an Arabic-script token and a bidi
  * algorithm given the whole row will reorder the Latin half around it — which
@@ -285,15 +302,15 @@ ${
 </footer>
 <script>
 (function () {
-  var REEL = ${JSON.stringify(input.reel)};
-  var HEAD = ${JSON.stringify(input.headSha)};
-  var GENERATED = ${JSON.stringify(input.generatedAt)};
-  var WORDS = ${JSON.stringify(payload)};
-  var VARIANT = ${JSON.stringify(input.variant ?? 'review')};
-  var SCHEMA_VERSION = ${JSON.stringify(input.schemaVersion)};
-  var ALIGNER_HASH = ${JSON.stringify(input.alignerHash)};
-  var ROW_SET = ${JSON.stringify(rowSetFingerprint)};
-  var RESTORED = ${JSON.stringify(input.restored ?? {})};
+  var REEL = ${scriptJson(input.reel)};
+  var HEAD = ${scriptJson(input.headSha)};
+  var GENERATED = ${scriptJson(input.generatedAt)};
+  var WORDS = ${scriptJson(payload)};
+  var VARIANT = ${scriptJson(input.variant ?? 'review')};
+  var SCHEMA_VERSION = ${scriptJson(input.schemaVersion)};
+  var ALIGNER_HASH = ${scriptJson(input.alignerHash)};
+  var ROW_SET = ${scriptJson(rowSetFingerprint)};
+  var RESTORED = ${scriptJson(input.restored ?? {})};
 
   /*
    * Keyed by the row set as well as the reel and the sha. A re-review sheet
@@ -315,7 +332,7 @@ ${
    * they are worth more than the tidiness of dropping the old shape.
    */
   var LEGACY_KEY = 'framopia.align-review.' + VARIANT + '.' + REEL + '.' + HEAD;
-  var INDEX_TO_ID = ${JSON.stringify(Object.fromEntries(input.rows.map((r) => [String(r.index), r.wordId])))};
+  var INDEX_TO_ID = ${scriptJson(Object.fromEntries(input.rows.map((r) => [String(r.index), r.wordId])))};
 
   /*
    * Keyed by word id, never by position or by the corrected-word index.
