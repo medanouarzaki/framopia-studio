@@ -21,6 +21,14 @@
     "./align-score": {
       "types": "./dist/align-score.d.ts",
       "default": "./dist/align-score.js"
+    },
+    "./aligner-hash": {
+      "types": "./dist/aligner-hash.d.ts",
+      "default": "./dist/aligner-hash.js"
+    },
+    "./process-alive": {
+      "types": "./dist/process-alive.d.ts",
+      "default": "./dist/process-alive.js"
     }
   },
   "files": [

@@ -1,5 +1,6 @@
 import {
   ALIGN_VERDICTS,
+  ALIGNMENT_CORRECT_VERDICTS,
   type AlignmentRow,
   type AlignReference,
   type AlignVerdict,
@@ -37,12 +38,18 @@ export interface AlignScore {
   rowsJudged: number;
   byVerdict: Record<AlignVerdict, VerdictTally>;
   /**
-   * The headline: of the pairings a human has actually judged, the share
-   * marked `correct`. Deliberately **not** over all rows — an unjudged row is
-   * not evidence of anything, and dividing by the whole reel would report a
-   * half-finished review as a bad aligner.
+   * The headline: of the pairings a human has actually judged, the share whose
+   * **alignment** he confirmed — `correct` plus `misheard`. Deliberately not
+   * over all rows: an unjudged row is not evidence of anything, and dividing by
+   * the whole reel would report a half-finished review as a bad aligner.
+   *
+   * The two are never folded together in what the tool prints. `misheard`
+   * measures Scribe and `correct` measures the aligner, and a number that
+   * hides which is which is the reason the verdict exists.
    */
   confirmedShare: number;
+  /** Of the confirmed alignments, those whose draft token is the wrong word. */
+  mishearCount: number;
 }
 
 function emptyTallies(): Record<AlignVerdict, VerdictTally> {
@@ -103,12 +110,14 @@ export function scoreAlignment(
   }
 
   const judged = reference.entries.length;
+  const confirmed = ALIGNMENT_CORRECT_VERDICTS.reduce((n, v) => n + byVerdict[v].total, 0);
   return {
     reel: reference.reel,
     rowsTotal: rows.length,
     rowsJudged: judged,
     byVerdict,
-    confirmedShare: judged === 0 ? 0 : byVerdict.correct.total / judged,
+    confirmedShare: judged === 0 ? 0 : confirmed / judged,
+    mishearCount: byVerdict.misheard.total,
   };
 }
 
@@ -137,9 +146,9 @@ export interface AlignComparison {
    */
   repairCandidates: MovedRow[];
   /**
-   * `correct` rows that now pair differently. A human confirmed the old
-   * pairing, so every one of these is a regression. Non-zero here is a
-   * finding.
+   * `correct` **or `misheard`** rows that now pair differently. A human
+   * confirmed the alignment on both, so every one of these is a regression.
+   * Non-zero here is a finding, never a footnote.
    */
   regressions: MovedRow[];
   /**
@@ -153,7 +162,7 @@ export interface AlignComparison {
   unrepaired: MovedRow[];
   /** `no-token` rows, moved or not, so the arithmetic closes over the reference. */
   noToken: MovedRow[];
-  /** `correct` rows that did not move — what the change preserved. */
+  /** `correct` and `misheard` rows that did not move — what the change preserved. */
   held: MovedRow[];
 }
 
@@ -179,18 +188,18 @@ export function compareAgainstReference(
     };
   });
 
-  const of = (verdict: AlignVerdict, moved: boolean | null): MovedRow[] =>
-    all.filter((r) => r.verdict === verdict && (moved === null || r.moved === moved));
+  const of = (verdicts: readonly AlignVerdict[], moved: boolean | null): MovedRow[] =>
+    all.filter((r) => verdicts.includes(r.verdict) && (moved === null || r.moved === moved));
 
   return {
     reel: reference.reel,
     score,
-    repairCandidates: of('wrong', true),
-    regressions: of('correct', true),
-    stillInexpressible: of('two-tokens', null),
-    unrepaired: of('wrong', false),
-    noToken: of('no-token', null),
-    held: of('correct', false),
+    repairCandidates: of(['wrong'], true),
+    regressions: of(ALIGNMENT_CORRECT_VERDICTS, true),
+    stillInexpressible: of(['two-tokens'], null),
+    unrepaired: of(['wrong'], false),
+    noToken: of(['no-token'], null),
+    held: of(ALIGNMENT_CORRECT_VERDICTS, false),
   };
 }
 

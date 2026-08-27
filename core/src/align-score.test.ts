@@ -184,7 +184,7 @@ describe('compareAgainstReference', () => {
 
 describe('a malformed reference is rejected with the fault named', () => {
   const good = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     reel: 'vitasilk',
     generatedAt: '2026-08-27T00:00:00.000Z',
     headSha: SHA,
@@ -200,14 +200,14 @@ describe('a malformed reference is rejected with the fault named', () => {
 
   it('rejects a missing schema version', () => {
     const { schemaVersion, ...rest } = good;
-    expect(schemaVersion).toBe(1);
+    expect(schemaVersion).toBe(2);
     expect(() => parseAlignReference(rest)).toThrow(/schemaVersion/);
   });
 
-  it('rejects a verdict outside the four, naming them', () => {
+  it('rejects a verdict outside the five, naming them', () => {
     const bad = { ...good, entries: [{ ...good.entries[0], verdict: 'probably' }] };
     expect(() => parseAlignReference(bad)).toThrow(
-      /verdict is not one of correct, wrong, two-tokens, no-token/,
+      /verdict is not one of correct, wrong, misheard, two-tokens, no-token/,
     );
   });
 
@@ -217,5 +217,85 @@ describe('a malformed reference is rejected with the fault named', () => {
       entries: [good.entries[0], { wordId: 'w0001', wordText: 'w', draftTokenText: null }],
     };
     expect(() => parseAlignReference(bad)).toThrow(/entries\[1\]\.verdict/);
+  });
+});
+
+/**
+ * `misheard` is the fifth verdict: the pairing is in the right place and the
+ * draft token is a different word from the one spoken. It counts as a correct
+ * alignment because that is what it is, and it is reported separately because
+ * it measures Scribe rather than the aligner.
+ */
+describe('the misheard verdict', () => {
+  const withMisheard = reference([
+    entry('w0000', 'Vita', 'Vita', 'correct'),
+    entry('w0002', 'mn', 'من', 'misheard'),
+    entry('w0003', 'ghir', 'غير', 'wrong'),
+  ]);
+
+  it('counts towards the confirmed alignment and is tallied on its own', () => {
+    const score = scoreAlignment(rows, withMisheard);
+
+    expect(score.byVerdict.misheard).toEqual({ total: 1, cross: 1, same: 0 });
+    expect(score.mishearCount).toBe(1);
+    expect(score.confirmedShare).toBeCloseTo(2 / 3);
+    expect(score.byVerdict.correct.total).toBe(1);
+  });
+
+  it('is a regression when the change moves it, exactly like correct', () => {
+    const older = reference(
+      [entry('w0002', 'mn', 'Vita', 'misheard')],
+      '0000000000000000000000000000000000000000',
+    );
+    const c = compareAgainstReference(rows, older);
+
+    expect(c.regressions.map((r) => r.wordId)).toEqual(['w0002']);
+    expect(c.repairCandidates).toEqual([]);
+  });
+
+  it('is held, not repaired, when the change leaves it alone', () => {
+    const c = compareAgainstReference(rows, withMisheard);
+    expect(c.held.map((r) => r.wordId).sort()).toEqual(['w0000', 'w0002']);
+  });
+
+  it('is refused in a version 1 file, which never offered the button', () => {
+    expect(() =>
+      parseAlignReference({
+        schemaVersion: 1,
+        reel: 'vitasilk',
+        generatedAt: '2026-08-27T00:00:00.000Z',
+        headSha: SHA,
+        entries: [{ wordId: 'w0000', wordText: 'Vita', draftTokenText: 'Vita', verdict: 'misheard' }],
+      }),
+    ).toThrow(/schemaVersion 1 does not define/);
+  });
+});
+
+describe('reading a version 1 reference', () => {
+  const v1 = {
+    schemaVersion: 1,
+    reel: 'vitasilk',
+    generatedAt: '2026-08-27T00:00:00.000Z',
+    headSha: SHA,
+    entries: [{ wordId: 'w0000', wordText: 'Vita', draftTokenText: 'Vita', verdict: 'correct' }],
+  };
+
+  it('is read without migration and keeps the version it was written at', () => {
+    const parsed = parseAlignReference(v1);
+    expect(parsed.schemaVersion).toBe(1);
+    expect(parsed.entries).toHaveLength(1);
+    expect(parsed.alignerHash).toBeUndefined();
+  });
+
+  it('carries an alignerHash through when one is present', () => {
+    expect(parseAlignReference({ ...v1, schemaVersion: 2, alignerHash: 'abc' }).alignerHash).toBe('abc');
+  });
+
+  it('rejects an alignerHash that is not a string', () => {
+    expect(() => parseAlignReference({ ...v1, alignerHash: 7 })).toThrow(/alignerHash/);
+  });
+
+  it('rejects a schema version this build cannot read, naming what it can', () => {
+    expect(() => parseAlignReference({ ...v1, schemaVersion: 9 })).toThrow(/reads 1 and 2/);
   });
 });

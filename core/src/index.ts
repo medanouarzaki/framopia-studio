@@ -1,7 +1,14 @@
 export { ConfigError, CONFIG_PATH, loadConfig, type FramopiaConfig } from './config.js';
 export { appendCost, readCosts, COSTS_PATH, type CostEntry } from './costs.js';
 export { appVersion } from './app-version.js';
-export { align, type AlignedPair, type AlignOp } from './align.js';
+export {
+  align,
+  DEFAULT_ALIGN_COSTS,
+  EXPENSIVE_INSERT_COSTS,
+  type AlignCosts,
+  type AlignedPair,
+  type AlignOp,
+} from './align.js';
 export { normalizeToken } from './normalize.js';
 export {
   GEMINI_IMAGE_MODEL_FLASH,
@@ -120,7 +127,9 @@ export {
 } from './templates.js';
 export {
   ALIGN_REFERENCE_SCHEMA_VERSION,
+  ALIGN_REFERENCE_READABLE_VERSIONS,
   ALIGN_VERDICTS,
+  ALIGNMENT_CORRECT_VERDICTS,
   AlignReferenceError,
   buildAlignmentRows,
   parseAlignReference,
@@ -155,3 +164,5 @@ export {
   type MovedRow,
   type VerdictTally,
 } from './align-score.js';
+export { ALIGNER_SOURCE_FILES, alignerHash } from './aligner-hash.js';
+export { processAlive, type Killer } from './process-alive.js';

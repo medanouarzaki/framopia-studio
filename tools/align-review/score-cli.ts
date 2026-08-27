@@ -15,7 +15,10 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import {
+  ALIGN_REFERENCE_SCHEMA_VERSION,
   buildAlignmentRows,
+  DEFAULT_ALIGN_COSTS,
+  EXPENSIVE_INSERT_COSTS,
   parseAlignReference,
   renderSheet,
   AlignReferenceError,
@@ -32,6 +35,7 @@ import {
   type MovedRow,
 } from '@framopia/core/align-score';
 import { CacheEntrySelectionError } from '@framopia/core/cache-select';
+import { ALIGNER_SOURCE_FILES, alignerHash } from '@framopia/core/aligner-hash';
 import {
   argFlag,
   argValue,
@@ -48,6 +52,19 @@ import {
 const entryFlag = argValue('--entry');
 const compareFlag = argValue('--compare');
 const allowShaDrift = argFlag('--allow-sha-drift');
+
+/**
+ * Experiment 1, opt-in. The default is what every production path uses and
+ * what every recorded figure was measured with; naming it here is the whole
+ * point of a flag rather than a constant edit.
+ */
+const COST_MODELS = { default: DEFAULT_ALIGN_COSTS, 'expensive-insert': EXPENSIVE_INSERT_COSTS };
+const costModelName = (argValue('--cost-model') ?? 'default') as keyof typeof COST_MODELS;
+if (!(costModelName in COST_MODELS)) {
+  console.error(`align:score: unknown --cost-model "${costModelName}"; one of ${Object.keys(COST_MODELS).join(', ')}`);
+  process.exit(1);
+}
+const costs = COST_MODELS[costModelName];
 
 function readReference(file: string, what: string): AlignReference {
   if (!existsSync(file)) {
@@ -74,10 +91,21 @@ function reportSingle(reel: string, reference: AlignReference, rows: readonly Al
         `${String(tally.cross).padStart(14)} ${String(tally.same).padStart(13)}`,
     );
   }
+  /*
+   * Stated as a split, never as one number. `correct` measures the aligner and
+   * `misheard` measures Scribe; a headline that folded them together would
+   * hide a transcription problem inside an alignment score.
+   */
   console.log(
-    `\n  ${pct(score.confirmedShare)} of judged pairings are human-confirmed ` +
-      `(${score.byVerdict.correct.total}/${score.rowsJudged}).`,
+    `\n  ${pct(score.confirmedShare)} of judged pairings have a human-confirmed alignment ` +
+      `(${score.byVerdict.correct.total} correct + ${score.mishearCount} misheard of ${score.rowsJudged}).`,
   );
+  if (score.mishearCount > 0) {
+    console.log(
+      `  Of those, ${score.mishearCount} are misheard: the pairing is right and the draft token is a\n` +
+        '  different word from the one spoken, which is Scribe rather than the aligner.',
+    );
+  }
 }
 
 function reportComparison(comparison: AlignComparison): void {
@@ -86,7 +114,7 @@ function reportComparison(comparison: AlignComparison): void {
 
   console.log('\n  what the change moved, by the human verdict on each row:');
   line('wrong, now pairs differently', comparison.repairCandidates);
-  line('correct, now pairs differently', comparison.regressions);
+  line('correct or misheard, now pairs differently', comparison.regressions);
   line('two tokens, still inexpressible', comparison.stillInexpressible);
   line('wrong, unmoved', comparison.unrepaired);
   line('correct, held', comparison.held);
@@ -99,6 +127,8 @@ function reportComparison(comparison: AlignComparison): void {
     for (const r of comparison.regressions.slice(0, 10)) {
       console.log(`    ${r.wordId} "${r.wordText}": ${r.previousDraftText} -> ${r.currentDraftText}`);
     }
+  } else {
+    console.log('\n  0 regressions: no pairing a human confirmed has moved.');
   }
 
   console.log(
@@ -114,7 +144,7 @@ function main(): void {
   if (reel === null) throw new ReviewError(`--reel is required; one of ${reelLabels()}`);
 
   const entry = loadEntry(videoShaFor(reel), reel, entryFlag);
-  const rows: AlignmentRow[] = buildAlignmentRows(entry.draft, entry.correctedTexts);
+  const rows: AlignmentRow[] = buildAlignmentRows(entry.draft, entry.correctedTexts, costs);
   const sha = headSha();
   const generatedAt = new Date().toISOString();
 
@@ -127,25 +157,41 @@ function main(): void {
     );
   }
 
-  console.log(`${reel}: scoring ${describeEntry(entry)} at ${sha.slice(0, 12)}`);
+  console.log(
+    `${reel}: scoring ${describeEntry(entry)} at ${sha.slice(0, 12)}` +
+      (costModelName === 'default' ? '' : ` [cost model: ${costModelName}]`),
+  );
   console.log(`  reference ${referencePath} (judged at ${reference.headSha.slice(0, 12)})`);
 
   /*
-   * A reference judges one aligner. Scoring it against a different one and
-   * printing a number is precisely the circularity this tool exists to remove,
-   * so it refuses rather than warns. --compare is exempt: comparing across
-   * commits is what it is for.
+   * A reference judges one aligner, and `alignerHash` is what says which:
+   * a hash of the modules that produce a pairing, so a commit touching a
+   * report or a stylesheet no longer looks like an aligner change.
+   *
+   * A reference written before the hash existed carries only `headSha`, which
+   * changes on every commit to anything. Refusing on that would reject a
+   * reference the aligner has never stopped agreeing with, so it is a notice
+   * rather than a refusal — the check is genuinely weaker for those files and
+   * saying so is better than a false confidence in either direction.
    */
-  if (compareFlag === null && reference.headSha !== sha && !allowShaDrift) {
-    throw new ReviewError(
-      `the reference was judged at ${reference.headSha} and the current pairing is at ${sha}. ` +
-        'A reference judges one aligner; scoring it against another says nothing. ' +
-        'Re-review at this sha, use --compare to measure the change, or pass ' +
-        '--allow-sha-drift if you have established the pairing is unaffected.',
-    );
-  }
-  if (compareFlag === null && reference.headSha !== sha && allowShaDrift) {
-    console.log('  --allow-sha-drift: the reference judges a different sha and is scored anyway');
+  const currentAligner = alignerHash();
+  if (compareFlag === null) {
+    if (reference.alignerHash === undefined) {
+      console.log(
+        `  note: this reference predates alignerHash, so drift can only be judged from headSha` +
+          `${reference.headSha === sha ? ' (which matches).' : `, which has moved (${reference.headSha.slice(0, 12)} -> ${sha.slice(0, 12)}). Whether the aligner itself changed is not recorded in the file.`}`,
+      );
+    } else if (reference.alignerHash !== currentAligner && !allowShaDrift) {
+      throw new ReviewError(
+        `the reference judges aligner ${reference.alignerHash.slice(0, 12)} and this build is ` +
+          `${currentAligner.slice(0, 12)}. A reference judges one aligner; scoring it against ` +
+          `another says nothing. The hashed modules are ${ALIGNER_SOURCE_FILES.join(', ')}. ` +
+          'Re-review at this build, use --compare to measure the change, or pass ' +
+          '--allow-sha-drift if you have established the pairing is unaffected.',
+      );
+    } else if (reference.alignerHash !== currentAligner) {
+      console.log('  --allow-sha-drift: the reference judges a different aligner and is scored anyway');
+    }
   }
 
   reportSingle(reel, reference, rows);
@@ -157,8 +203,12 @@ function main(): void {
     cacheEntry: entry.name,
     promptVersion: entry.promptVersion,
     currentSha: sha,
+    currentAlignerHash: currentAligner,
+    costModel: costModelName,
     referencePath: path.relative(path.join(OUT_DIR, '..', '..', '..'), referencePath),
     referenceSha: reference.headSha,
+    referenceAlignerHash: reference.alignerHash ?? null,
+    referenceSchemaVersion: reference.schemaVersion,
   };
 
   let comparison: AlignComparison | null = null;
@@ -185,6 +235,8 @@ function main(): void {
         rows: sheetRows,
         variant: 'rereview',
         previousSha: reference.headSha,
+        schemaVersion: ALIGN_REFERENCE_SCHEMA_VERSION,
+        alignerHash: currentAligner,
       }),
     );
   }

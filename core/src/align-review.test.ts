@@ -113,6 +113,7 @@ describe('tools/align-review cannot spend money or reach the network', () => {
   const allowedModules = new Set([
     '@framopia/core/align-review',
     '@framopia/core/align-score',
+    '@framopia/core/aligner-hash',
     '@framopia/core/cache-select',
   ]);
   const allowedBuiltins = new Set(['node:fs', 'node:path', 'node:url']);

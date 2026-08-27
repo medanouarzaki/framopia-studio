@@ -14,8 +14,14 @@
  */
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { buildAlignmentRows, renderSheet, type AlignmentRow } from '@framopia/core/align-review';
+import {
+  ALIGN_REFERENCE_SCHEMA_VERSION,
+  buildAlignmentRows,
+  renderSheet,
+  type AlignmentRow,
+} from '@framopia/core/align-review';
 import { ACTIVE_PROMPT_VERSION, CacheEntrySelectionError } from '@framopia/core/cache-select';
+import { alignerHash } from '@framopia/core/aligner-hash';
 import {
   argValue,
   describeEntry,
@@ -39,6 +45,7 @@ function main(): void {
 
   const generatedAt = new Date().toISOString();
   const sha = headSha();
+  const aligner = alignerHash();
 
   mkdirSync(OUT_DIR, { recursive: true });
   const pairsPath = path.join(OUT_DIR, `${reel}.pairs.json`);
@@ -52,6 +59,7 @@ function main(): void {
         cacheEntry: entry.name,
         promptVersion: entry.promptVersion,
         pinnedPromptVersion: ACTIVE_PROMPT_VERSION,
+        alignerHash: aligner,
         draftTokens: entry.draft.length,
         rows,
       },
@@ -70,6 +78,8 @@ function main(): void {
       cacheEntry: entry.name,
       promptVersion: entry.promptVersion,
       rows,
+      schemaVersion: ALIGN_REFERENCE_SCHEMA_VERSION,
+      alignerHash: aligner,
     }),
   );
 

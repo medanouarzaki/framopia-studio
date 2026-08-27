@@ -16,6 +16,7 @@ import { parseAlignReference } from './align-review.js';
  * one browser API the download path depends on.
  */
 const HEAD = 'ff9d06c706fe2656713da3f0ec26ac1e357f26e5';
+const ALIGNER = 'c444591b86ea058ec6b52191368a6fc66d29a9ed693d6ac66da15d44accd6c09';
 
 const draft = [
   { text: 'Vita', start: 8.2, end: 8.5 },
@@ -44,6 +45,8 @@ function sheetHtml(): string {
     cacheEntry: 'transcription-758a3924d090d1b5',
     promptVersion: 4,
     rows,
+    schemaVersion: 2,
+    alignerHash: ALIGNER,
   });
 }
 
@@ -65,6 +68,8 @@ function rereviewHtml(): string {
     rows: rereviewRows,
     variant: 'rereview',
     previousSha: PREVIOUS_SHA,
+    schemaVersion: 2,
+    alignerHash: ALIGNER,
   });
 }
 
@@ -214,7 +219,7 @@ describe('the download', () => {
 
     const reference = parseAlignReference(JSON.parse(await download()));
 
-    expect(reference.schemaVersion).toBe(1);
+    expect(reference.schemaVersion).toBe(2);
     expect(reference.reel).toBe('vitasilk');
     expect(reference.headSha).toBe(HEAD);
     expect(reference.generatedAt).toBe('2026-08-27T00:00:00.000Z');
@@ -321,10 +326,72 @@ describe('the re-review sheet', () => {
 
     const reference = parseAlignReference(JSON.parse(await download()));
 
-    expect(reference.schemaVersion).toBe(1);
+    expect(reference.schemaVersion).toBe(2);
     expect(reference.reel).toBe('vitasilk');
     expect(reference.headSha).toBe(HEAD);
     expect(reference.entries).toHaveLength(1);
     expect(reference.entries[0]?.verdict).toBe('correct');
+  });
+});
+
+describe('the misheard verdict on the sheet', () => {
+  const misheardButton = (i: number): HTMLElement =>
+    tr(i).querySelector('button.v[data-v="misheard"]') as HTMLElement;
+
+  it('offers five mutually exclusive verdicts on every row', () => {
+    mount();
+    expect([...tr(0).querySelectorAll('button.v')].map((b) => b.getAttribute('data-v'))).toEqual([
+      'correct',
+      'wrong',
+      'misheard',
+      'two-tokens',
+      'no-token',
+    ]);
+  });
+
+  it('replaces any other verdict rather than adding to it', () => {
+    mount();
+    verdictButton(1, 'correct').click();
+    misheardButton(1).click();
+
+    expect(tr(1).querySelectorAll('button.v.sel')).toHaveLength(1);
+    expect(misheardButton(1).classList.contains('sel')).toBe(true);
+    expect(count('correct')).toBe('0');
+    expect(count('misheard')).toBe('1');
+  });
+
+  it('is counted on its own line and clears on a second click', () => {
+    mount();
+    expect(count('misheard')).toBe('0');
+    misheardButton(2).click();
+    expect(count('misheard')).toBe('1');
+    expect(count('unset')).toBe('2');
+    misheardButton(2).click();
+    expect(count('misheard')).toBe('0');
+    expect(count('unset')).toBe('3');
+  });
+
+  it('carries the hint that says what it means', () => {
+    mount();
+    expect(misheardButton(0).getAttribute('title')).toBe(
+      'the pairing is in the right place but the machine heard a different word',
+    );
+  });
+
+  it('downloads at schema 2 with the aligner hash, and parses', async () => {
+    mount();
+    misheardButton(1).click();
+
+    const reference = parseAlignReference(JSON.parse(await download()));
+
+    expect(reference.schemaVersion).toBe(2);
+    expect(reference.alignerHash).toBe(ALIGNER);
+    expect(reference.entries[0]?.verdict).toBe('misheard');
+  });
+
+  it('offers it on the re-review sheet too', () => {
+    mount(rereviewHtml());
+    const row = document.querySelector('tr.row') as HTMLElement;
+    expect(row.querySelector('button.v[data-v="misheard"]')).not.toBeNull();
   });
 });

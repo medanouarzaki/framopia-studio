@@ -1,4 +1,4 @@
-import { align, type AlignOp } from './align.js';
+import { align, DEFAULT_ALIGN_COSTS, type AlignCosts, type AlignOp } from './align.js';
 import { normalizeToken } from './normalize.js';
 
 /**
@@ -76,10 +76,12 @@ export function wordId(index: number): string {
 export function buildAlignmentRows(
   draft: readonly DraftToken[],
   correctedTexts: readonly string[],
+  costs: AlignCosts = DEFAULT_ALIGN_COSTS,
 ): AlignmentRow[] {
   const pairs = align(
     draft.map((w) => normalizeToken(w.text)),
     correctedTexts.map((t) => normalizeToken(t)),
+    costs,
   );
 
   const rows: AlignmentRow[] = correctedTexts.map((text, index) => ({
@@ -115,7 +117,13 @@ export function buildAlignmentRows(
   return rows;
 }
 
-export const ALIGN_REFERENCE_SCHEMA_VERSION = 1;
+/**
+ * 2 adds the `misheard` verdict. Version 1 files stay valid and are read
+ * without migration — they simply contain no `misheard` rows, which is the
+ * truth about them: nobody was offered the button.
+ */
+export const ALIGN_REFERENCE_SCHEMA_VERSION = 2;
+export const ALIGN_REFERENCE_READABLE_VERSIONS = [1, 2] as const;
 
 /**
  * The four judgements a reviewer can make. `two-tokens` and `no-token` exist
@@ -124,14 +132,28 @@ export const ALIGN_REFERENCE_SCHEMA_VERSION = 1;
  * inserted word has no token at all. A reference that could only say
  * correct/wrong would record those as ordinary errors and lose what they are.
  */
-export type AlignVerdict = 'correct' | 'wrong' | 'two-tokens' | 'no-token';
+export type AlignVerdict = 'correct' | 'wrong' | 'misheard' | 'two-tokens' | 'no-token';
 
 export const ALIGN_VERDICTS: readonly AlignVerdict[] = [
   'correct',
   'wrong',
+  'misheard',
   'two-tokens',
   'no-token',
 ];
+
+/**
+ * Verdicts that say the aligner put the word in the right place.
+ *
+ * `misheard` belongs here and is still counted on its own line: the pairing is
+ * correct and the draft token is a different word from the one spoken, which
+ * measures Scribe, not the aligner. Folding it into `correct` would hide a
+ * transcription problem inside an alignment score; calling it `wrong` would
+ * blame the aligner for hearing. The user marked `msbsb`/`مصبوغ` and
+ * `siri`/`ديري` first one way and then the other, and neither was what he
+ * meant.
+ */
+export const ALIGNMENT_CORRECT_VERDICTS: readonly AlignVerdict[] = ['correct', 'misheard'];
 
 export interface AlignReferenceEntry {
   wordId: string;
@@ -147,11 +169,18 @@ export interface AlignReference {
   reel: string;
   generatedAt: string;
   /**
-   * The repo HEAD when the sheet was generated. A reference judges one
-   * aligner; without this the file cannot say which one, and a later reader
-   * would take a judgement of the old pairing as a judgement of the new.
+   * The repo HEAD when the sheet was generated. Provenance: it says which
+   * commit a human was looking at. It is a poor drift test on its own, because
+   * it changes when anything in the repo changes.
    */
   headSha: string;
+  /**
+   * A hash of the modules that produce a pairing (`alignerHash` in
+   * `core/src/aligner-hash.ts`). **Optional with a default**: references
+   * written before it existed carry only `headSha` and are read without
+   * migration.
+   */
+  alignerHash?: string;
   entries: AlignReferenceEntry[];
 }
 
@@ -173,9 +202,11 @@ export function parseAlignReference(input: unknown): AlignReference {
   if (typeof raw['schemaVersion'] !== 'number') {
     throw new AlignReferenceError('schemaVersion is missing or not a number');
   }
-  if (raw['schemaVersion'] !== ALIGN_REFERENCE_SCHEMA_VERSION) {
+  const version = raw['schemaVersion'];
+  if (!(ALIGN_REFERENCE_READABLE_VERSIONS as readonly number[]).includes(version)) {
     throw new AlignReferenceError(
-      `unknown schemaVersion ${String(raw['schemaVersion'])}; this build reads ${ALIGN_REFERENCE_SCHEMA_VERSION}`,
+      `unknown schemaVersion ${String(version)}; this build reads ` +
+        `${ALIGN_REFERENCE_READABLE_VERSIONS.join(' and ')}`,
     );
   }
 
@@ -196,6 +227,11 @@ export function parseAlignReference(input: unknown): AlignReference {
     if (typeof verdict !== 'string' || !ALIGN_VERDICTS.includes(verdict as AlignVerdict)) {
       throw new AlignReferenceError(`entries[${i}].verdict is not one of ${ALIGN_VERDICTS.join(', ')}`);
     }
+    if (verdict === 'misheard' && version < 2) {
+      throw new AlignReferenceError(
+        `entries[${i}].verdict is "misheard", which schemaVersion ${version} does not define`,
+      );
+    }
     const draftTokenText = e['draftTokenText'];
     if (draftTokenText !== null && typeof draftTokenText !== 'string') {
       throw new AlignReferenceError(`entries[${i}].draftTokenText is neither a string nor null`);
@@ -210,7 +246,26 @@ export function parseAlignReference(input: unknown): AlignReference {
     return entry;
   });
 
-  return { schemaVersion: ALIGN_REFERENCE_SCHEMA_VERSION, reel, generatedAt, headSha, entries };
+  const alignerHash = raw['alignerHash'];
+  if (alignerHash !== undefined && typeof alignerHash !== 'string') {
+    throw new AlignReferenceError('alignerHash is present but not a string');
+  }
+
+  /*
+   * The file keeps the version it was written at. Rewriting a v1 file as v2 on
+   * read would claim the reviewer was offered `misheard` when he was not.
+   */
+  const reference: AlignReference = {
+    schemaVersion: version,
+    reel,
+    generatedAt,
+    headSha,
+    entries,
+  };
+  if (typeof alignerHash === 'string' && alignerHash.length > 0) {
+    reference.alignerHash = alignerHash;
+  }
+  return reference;
 }
 
 export function serializeAlignReference(reference: AlignReference): string {
@@ -218,3 +273,4 @@ export function serializeAlignReference(reference: AlignReference): string {
 }
 
 export { renderSheet, type SheetInputs, type SheetRow } from './align-sheet.js';
+export { DEFAULT_ALIGN_COSTS, EXPENSIVE_INSERT_COSTS, type AlignCosts } from './align.js';

@@ -36,6 +36,9 @@ export interface SheetInputs {
   variant?: 'review' | 'rereview';
   /** Re-review only: the sha the previous pairing was generated at. */
   previousSha?: string;
+  /** Stamped into the downloaded reference; the browser cannot compute it. */
+  schemaVersion: number;
+  alignerHash: string;
 }
 
 interface Fact {
@@ -86,6 +89,7 @@ export function renderSheet(input: SheetInputs): string {
     { label: 'cache entry', value: input.cacheEntry },
     { label: 'prompt version', value: `v${input.promptVersion ?? '?'}` },
     { label: 'aligner sha', value: input.headSha.slice(0, 12) },
+    { label: 'aligner', value: input.alignerHash.slice(0, 12) },
     { label: rereview ? 'rows moved' : 'rows', value: String(input.rows.length) },
     ...(rereview && input.previousSha !== undefined
       ? [{ label: 'was', value: input.previousSha.slice(0, 12) }]
@@ -106,6 +110,7 @@ ${rereview ? `<td class="draft was">${token(r.previousDraftText ?? '', (r.previo
 <td class="verdicts">
 <button class="v" data-v="correct">correct</button>
 <button class="v" data-v="wrong">wrong</button>
+<button class="v" data-v="misheard" title="the pairing is in the right place but the machine heard a different word">misheard</button>
 <button class="v" data-v="two-tokens">two tokens</button>
 <button class="v" data-v="no-token">no token</button>
 </td>
@@ -232,6 +237,7 @@ ${facts.map((f) => `<div class="fact"><span class="k">${esc(f.label)}</span><spa
 <div class="counts">
 <span>correct <b id="c-correct">0</b></span>
 <span>wrong <b id="c-wrong">0</b></span>
+<span>misheard <b id="c-misheard">0</b></span>
 <span>two tokens <b id="c-two-tokens">0</b></span>
 <span>no token <b id="c-no-token">0</b></span>
 <span class="left">unset <b id="c-unset">0</b></span>
@@ -252,8 +258,8 @@ ${rows}
 <footer>
 ${
   rereview
-    ? 'Only the rows this change moved. The left column is what the aligner paired the word with when the reference was made; the right is what it pairs it with now. A row that was marked <strong>wrong</strong> and has moved is a candidate repair and nothing more — the reference said the old pairing was wrong and says nothing about whether the new one is right. Until this sheet is filled in, the improvement count is a candidate figure.'
-    : "A verdict here is a human statement about which draft token a corrected word really came from. It is the only non-circular measure of aligner correctness in this project: a checker reading the aligner's own output cannot see a wrong pairing, because the aligner is self-consistent with it. Rows whose two sides share a script are dimmed — those are the pairings Levenshtein had evidence for — but they are fully reviewable, because a fix that breaks them is a regression."
+    ? '<strong>misheard</strong> means the pairing is in the right place but the machine heard a different word. Only the rows this change moved. The left column is what the aligner paired the word with when the reference was made; the right is what it pairs it with now. A row that was marked <strong>wrong</strong> and has moved is a candidate repair and nothing more — the reference said the old pairing was wrong and says nothing about whether the new one is right. Until this sheet is filled in, the improvement count is a candidate figure.'
+    : "<strong>misheard</strong> is for a pairing that is in the right place where the machine heard a different word — it counts as a correct alignment and is tracked separately, because it measures the transcription rather than the alignment. A verdict here is a human statement about which draft token a corrected word really came from. It is the only non-circular measure of aligner correctness in this project: a checker reading the aligner's own output cannot see a wrong pairing, because the aligner is self-consistent with it. Rows whose two sides share a script are dimmed — those are the pairings Levenshtein had evidence for — but they are fully reviewable, because a fix that breaks them is a regression."
 }
 </footer>
 <script>
@@ -263,6 +269,8 @@ ${
   var GENERATED = ${JSON.stringify(input.generatedAt)};
   var WORDS = ${JSON.stringify(payload)};
   var VARIANT = ${JSON.stringify(input.variant ?? 'review')};
+  var SCHEMA_VERSION = ${JSON.stringify(input.schemaVersion)};
+  var ALIGNER_HASH = ${JSON.stringify(input.alignerHash)};
   var KEY = 'framopia.align-review.' + VARIANT + '.' + REEL + '.' + HEAD;
 
   var state = {};
@@ -289,7 +297,7 @@ ${
   }
 
   function paint() {
-    var counts = { correct: 0, wrong: 0, 'two-tokens': 0, 'no-token': 0 };
+    var counts = { correct: 0, wrong: 0, misheard: 0, 'two-tokens': 0, 'no-token': 0 };
     var unset = 0;
     rows.forEach(function (tr) {
       var i = tr.getAttribute('data-i');
@@ -362,10 +370,11 @@ ${
       entries.push(out);
     }
     var doc = {
-      schemaVersion: 1,
+      schemaVersion: SCHEMA_VERSION,
       reel: REEL,
       generatedAt: GENERATED,
       headSha: HEAD,
+      alignerHash: ALIGNER_HASH,
       entries: entries
     };
     var blob = new Blob([JSON.stringify(doc, null, 2) + '\\n'], { type: 'application/json' });
