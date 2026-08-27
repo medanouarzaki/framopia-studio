@@ -7,6 +7,8 @@ import { createJob, getJob, UnknownJobTypeError } from './jobs.js';
 import { readEditPlan, writeEditPlan } from './editplan/io.js';
 import { clearManualZone, ManualZoneError, setManualZone } from './frames/plan-zones.js';
 import type { Zone } from './editplan/types.js';
+import { listModes, listReels } from './catalogue.js';
+import { dryRun, DryRunError } from './dry-run.js';
 import { health } from './health.js';
 import { clearHandshake, inspectLock, SERVICE_JSON_PATH, writeHandshake } from './lock.js';
 
@@ -99,6 +101,36 @@ export function createApp(token: string): http.Server {
 
       if (req.headers['x-service-token'] !== token) {
         sendJson(res, 401, serviceError('auth', 'missing or wrong service token', false));
+        return;
+      }
+
+      if (req.method === 'GET' && url.pathname === '/reels') {
+        sendJson(res, 200, { reels: listReels() });
+        return;
+      }
+
+      if (req.method === 'GET' && url.pathname === '/modes') {
+        sendJson(res, 200, { modes: listModes() });
+        return;
+      }
+
+      /*
+       * What a run would do, before anything is paid for. It runs nothing:
+       * every figure is read off the plan and the pricing constants.
+       */
+      if (req.method === 'GET' && url.pathname === '/dry-run') {
+        const reel = url.searchParams.get('reel');
+        const mode = url.searchParams.get('mode');
+        if (reel === null || mode === null) {
+          sendJson(res, 400, serviceError('dry-run', 'reel and mode are both required', false));
+          return;
+        }
+        try {
+          sendJson(res, 200, dryRun(reel, mode));
+        } catch (error) {
+          if (!(error instanceof DryRunError)) throw error;
+          sendJson(res, 400, serviceError('dry-run', error.message, false));
+        }
         return;
       }
 
