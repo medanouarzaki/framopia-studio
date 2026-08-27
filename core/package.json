@@ -33,6 +33,10 @@
     "./node-path": {
       "types": "./dist/node-path.d.ts",
       "default": "./dist/node-path.js"
+    },
+    "./repo-root": {
+      "types": "./dist/repo-root.d.ts",
+      "default": "./dist/repo-root.js"
     }
   },
   "files": [

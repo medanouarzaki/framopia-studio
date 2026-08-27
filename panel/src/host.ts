@@ -1,5 +1,6 @@
 import { processAlive } from '@framopia/core/process-alive';
 import { NODE_NOT_FOUND_HELP, resolveNodePath } from '@framopia/core/node-path';
+import { resolveRepoRoot, type RepoRootCandidate, type RepoRootFs } from '@framopia/core/repo-root';
 import type { PanelHost, SpawnResult } from './service.js';
 import type { HostEnvironment } from './types.js';
 
@@ -71,18 +72,71 @@ type ChildProcessModule = {
  * symlink, which is what makes this work rather than pointing into the
  * extensions folder.
  */
-export function repoRoot(extensionPath: string): string {
-  const path = requireCepNode().require('path') as { resolve: (...p: string[]) => string };
-  const fs = requireCepNode().require('fs') as FsModule;
-  /*
-   * `getSystemPath('extension')` returns the path CEP was given, which is the
-   * symlink in ~/Library/.../CEP/extensions — not its target. Resolving `..`
-   * from it lands in the extensions folder, where there is no footage.json, no
-   * modes/ and no brand assets, which is why all three pickers were empty and
-   * the logo fell back to a coloured square. The symlink has to be followed.
-   */
-  const real = fs.realpathSync(extensionPath);
-  return path.resolve(real, '..');
+/**
+ * A file path out of whatever CEP hands back, which may be a `file://` URL and
+ * may be percent-encoded — the repo lives under `T7 Shield`, so the space is
+ * not hypothetical.
+ */
+function toFilePath(value: string | null | undefined): string | null {
+  if (typeof value !== 'string' || value === '') return null;
+  let out = value;
+  if (out.startsWith('file://')) out = out.slice('file://'.length);
+  try {
+    out = decodeURI(out);
+  } catch {
+    // Already decoded, or not a URL at all.
+  }
+  return out === '' ? null : out;
+}
+
+interface AdobeCep {
+  getSystemPath?: (type: string) => string;
+}
+
+/**
+ * Every way the panel can learn where it is, in order.
+ *
+ * The third is the one that has always worked and was never used: the page is
+ * loaded from `.../com.framopia.studio/dist/index.html`, so `location` names
+ * the extension directly, with no CEP API involved at all.
+ *
+ * The first two are the CEP APIs. `__adobe_cep__` is injected natively; the
+ * `CSInterface` wrapper only exists if `CSInterface.js` has been loaded, and
+ * this extension has never loaded it — which is precisely why the old code,
+ * which tested for `CSInterface` alone, always fell through to an empty string.
+ */
+export function panelRootCandidates(): RepoRootCandidate[] {
+  const global = globalThis as {
+    __adobe_cep__?: AdobeCep;
+    CSInterface?: new () => { getSystemPath: (type: string) => string };
+    location?: { href?: string };
+  };
+
+  let native: string | null = null;
+  try {
+    native = toFilePath(global.__adobe_cep__?.getSystemPath?.('extension'));
+  } catch {
+    native = null;
+  }
+
+  let wrapper: string | null = null;
+  try {
+    wrapper =
+      global.CSInterface === undefined
+        ? null
+        : toFilePath(new global.CSInterface().getSystemPath('extension'));
+  } catch {
+    wrapper = null;
+  }
+
+  const href = toFilePath(global.location?.href);
+  const page = href === null ? null : href.replace(/[?#].*$/, '').replace(/\/[^/]*$/, '');
+
+  return [
+    { source: '__adobe_cep__.getSystemPath', path: native },
+    { source: 'CSInterface.getSystemPath', path: wrapper },
+    { source: 'window.location', path: page },
+  ];
 }
 
 /** Long enough for an ENOENT or an immediate exit to arrive. Chosen, not measured. */
@@ -199,10 +253,6 @@ export function logoPath(repo: string): string | null {
   return fs.existsSync(file) ? `file://${file}` : null;
 }
 
-interface CSInterfaceLike {
-  getSystemPath: (type: string) => string;
-}
-
 /**
  * Resolves everything host-dependent, or reports why it cannot. **It never
  * throws**: startup has no error surface of its own, so anything thrown here
@@ -230,21 +280,29 @@ export function detectHost(): HostEnvironment {
   }
 
   try {
-    const csInterface = (globalThis as { CSInterface?: new () => CSInterfaceLike }).CSInterface;
-    const extensionPath = csInterface === undefined ? '' : new csInterface().getSystemPath('extension');
-    const repo = repoRoot(extensionPath);
+    const fs = requireCepNode().require('fs') as RepoRootFs;
+    /*
+     * Never an empty string and never an unverified value: a path built from
+     * an empty root is how the panel came to report a missing file at
+     * /service/dist/service.js.
+     */
+    const resolution = resolveRepoRoot({ fs, candidates: panelRootCandidates() });
+    const repo = resolution.root;
     return {
       available: true,
       repo,
+      rootSource: resolution.source,
       host: createHost(repo),
       logoSrc: logoPath(repo),
     };
   } catch (error) {
     return {
       available: false,
-      missing: 'host bridge',
-      cause: `Node is available but the panel could not resolve its own location: ${(error as Error).message}`,
-      prevents: 'The repository root is unknown, so nothing on disk can be found.',
+      missing: 'the repository',
+      cause: `Node is available but the panel could not find the Framopia repository: ${(error as Error).message}`,
+      prevents:
+        'Nothing on disk can be located, so the service cannot be started and no reel or ' +
+        'client mode can be listed.',
     };
   }
 }

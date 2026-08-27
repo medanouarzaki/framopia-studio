@@ -191,3 +191,14 @@ export {
   transliterationSubstituteCost,
   TRANSLITERATION_TABLE,
 } from './transliterate.js';
+export {
+  REPO_MARKER_DIRS,
+  REPO_PACKAGE_NAME,
+  RepoRootError,
+  resolveRepoRoot,
+  verifyRepoRoot,
+  type RepoRootAttempt,
+  type RepoRootCandidate,
+  type RepoRootFs,
+  type RepoRootResolution,
+} from './repo-root.js';

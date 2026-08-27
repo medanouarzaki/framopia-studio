@@ -86,6 +86,8 @@ export type HostEnvironment =
   | {
       available: true;
       repo: string;
+      /** Which mechanism found the repository, shown when something is wrong. */
+      rootSource: string;
       host: import('./service.js').PanelHost;
       logoSrc: string | null;
     }
