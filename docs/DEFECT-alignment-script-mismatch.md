@@ -97,6 +97,65 @@ judged `eyyh` and `f` **wrong** in their new state, so neither is a regression
 against human judgement; only `26` is. The six on `ground-truth` and `test-1`
 are unjudged, because no reference exists for those reels.
 
+### A.0.2 The corpus guard cannot fail for this class of change
+
+Session 12's safety check before the adoption was **"anchored words must not
+drop on any reel"**, on the precedent of Block 7's discarded fix, which took the
+corpus from 330 to 230. It passed with every reel identical. **It is worth much
+less than it reads.**
+
+An anchored word is one the aligner gives a `sourceText`, so the count is the
+number of match and substitute operations. Insertion and deletion cost 1 each,
+so pairing two tokens instead of leaving both unpaired replaces a cost of 2 with
+the substitution cost. **While every substitution costs less than 2, the DP will
+always prefer to pair**, and the number of pairings is fixed by the token counts
+and monotonicity rather than by which pair costs what. A substitution cost can
+move *which* token a word anchors to; it can barely move *how many* anchor at
+all.
+
+Measured over the cached corpus, entry `transcription-758a3924d090d1b5`, prompt
+version 4, with two deliberately terrible cost models — one returning a stable
+pseudo-random cost in [0, 1] that ignores the tokens entirely, one inverting the
+adopted model so that a pair the §2 table calls a good match becomes expensive:
+
+| model | anchored, corpus | rows moved vs legacy, corpus |
+|---|---:|---:|
+| legacy (flat) | 330 | — |
+| adopted (transliteration) | **330** | 66 of 343 |
+| random | 329 | 112 of 343 |
+| inverted | **332** | **332 of 343** |
+| substitution cost 3 (out of class) | 115 | — |
+
+**The inverted model reshuffles 332 of 343 pairings — 97% of the corpus — and
+passes the guard with a better score than the adopted model.** The random model
+moves a third of the corpus and costs one anchored word. Only the fourth row,
+where a substitution costs more than an insert plus a delete, moves the count at
+all — and that is what Block 7's discarded fix effectively did by forbidding
+cross-script pairing outright, which is why the guard caught *that* one.
+
+**So the guard detects a change that makes pairing structurally impossible, and
+nothing else.** It cannot see a reshuffle, which is the failure mode a
+substitution-cost change actually risks.
+
+**What does detect it is the hand-made reference**, and by a wide margin. Scored
+against `benchmarks/references/align/vitasilk.json`, over the rows the user
+marked `correct` or `misheard`:
+
+| model | regressions | confirmed rows held |
+|---|---:|---:|
+| adopted | **0** | 54 |
+| random | 6 | 48 |
+| inverted | **54** | **0** |
+
+The inverted model destroys every single pairing a human confirmed, and the
+reference says so immediately. **The adoption is safe because of the reference,
+not because of the corpus guard.** For the four reels with no reference the
+honest statement is that nothing has verified their 50 moved rows; the corpus
+count bounds the structural damage and says nothing about correctness.
+
+The adversarial cost models are a measurement fixture and are **not** in the
+shipped cost-model table.
+
 ### A.5 Splits and merges, measured against the adopted model
 
 Runs between two exact anchors where the two sides differ in length. Read-only,
@@ -117,11 +176,19 @@ floor. Against the fixed aligner it is **6 merge runs and 10 split runs** — th
 floor was low by roughly an order of magnitude, and **splits outnumber merges**,
 which part 1 never measured at all.
 
-**`vitasilk` `w0031`–`w0036` needs both directions inside one span.** The run is
+**`vitasilk` `w0031`–`w0036` needs both directions inside one span, and the
+span is a French clause.** The run is
 `mn ghir anno il nourrit il hydrate fih 26 vitamines` against
 `من غير أنه ينغى, يهدئ. فيه ستة وعشرين vitamin`. The user identified the true
-correspondence: the span is spoken in French and Scribe transcribes to Arabic
-script only, collapsing each French pair into one token.
+correspondence: the span is spoken in French and Scribe transcribes it to
+Arabic script, collapsing each French pair into one token.
+
+The evidence that it is French is inside the draft itself: Scribe wrote
+**`vitamin` in Latin script** in the middle of that run, having heard enough
+French to switch scripts for one word while rendering `il nourrit` and
+`il hydrate` as `ينغى` and `يهدئ`. **Splits therefore concentrate where the
+speaker switches language mid-clause**, which is the mechanism, whatever the
+aggregate below does or does not detect.
 
 ```
 il + nourrit  <- ينغى           one token, two words   (split)
@@ -133,16 +200,39 @@ fih           <- فيه            one to one
 Six corrected words against five draft tokens, requiring a split **and** a merge
 in the same span. No substitution cost can express either.
 
-**Splits do not correlate with code-switching, and the numbers say so.** French
-is **16.9%** of the words inside split runs (12 of 71) against **21.3%** of the
-corpus (73 of 343). If anything the association is slightly negative. The
-`il nourrit / il hydrate` case is real and is French, but most split runs are
-**Darija proclitic morphology** — `فهو` → `fa houa`, `فهذه` → `fa hadi`,
-`دالحلول` → `dial l7loul`, `الفيديو` → `la vidéo` — where the correction pass
-separates a fused Arabic token into two Arabizi words under §2's attachment
-rules. **Caveat on the measure**: it counts every word inside a run that
-happens to be uneven, not the extra word itself, which cannot be identified
-without the true correspondence.
+**No correlation between splits and code-switching was detected — by a measure
+too coarse to detect one.** French is **16.9%** of the words inside split runs
+(12 of 71) against **21.3%** of the corpus (73 of 343). That is not evidence of
+no association, because the measure counts **every word inside a run that
+happens to be uneven**, not the extra word itself, and the extra word cannot be
+identified without the true correspondence — the thing being measured. A single
+French collapse sitting inside an otherwise Darija run contributes one French
+word and several Darija ones, so the mechanism dilutes its own signal.
+
+Two of the ten split runs are counter-examples, and neither is morphology:
+
+- **`الفيديو` → `la vidéo`** (test-1) is a code-switch, not a proclitic. The
+  French noun and its French article were spoken in French and written by
+  Scribe wholly in Arabic script — **the same mechanism as `il nourrit`**. It
+  was listed under morphology in the first writing of this section, which was
+  wrong: `ال` here is not the Darija definite article being separated, it is
+  Scribe's rendering of French `la`.
+- **`pigmentées` → `pigmentés`** (ground-truth, test-3) is a French word
+  sitting inside a split run. Checked against the drafts, it is **not** an
+  instance of the collapse mechanism: Scribe wrote `pigmentées?` and
+  `pigmentées،` in **Latin** script and the pair is one-to-one. The split in
+  each of those runs is elsewhere — `للخر` → `tal lkher` and `فهو` →
+  `fa houa`. It is evidence that French appears in split runs, not evidence of
+  why they split.
+
+The remaining listed examples survive the same test as genuine Darija proclitic
+morphology: `فهو` → `fa houa`, `فهذه` → `fa hadi`, `دالحلول` → `dial l7loul`,
+where the correction pass separates a fused Arabic token into two Arabizi words
+under §2's attachment rules.
+
+**What would settle it** is a per-run judgement of where the extra word came
+from, which is a human pass of the kind the reference files already are — not a
+larger aggregate over the same coarse counts.
 
 ### A.1 Scale, per reel
 
