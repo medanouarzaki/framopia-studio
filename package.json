@@ -48,6 +48,7 @@
     "audit:templates": "tsx tools/validate-templates/cli.ts --audit",
     "validate:templates": "tsx tools/validate-templates/cli.ts",
     "migrate:image-cache": "npm run build:core && tsx tools/migrate-image-cache/cli.ts --",
-    "watermark:measure": "tsx tools/measure-watermark/cli.ts"
+    "watermark:measure": "tsx tools/measure-watermark/cli.ts",
+    "align:review": "npm run build:core && tsx tools/align-review/cli.ts --"
   }
 }

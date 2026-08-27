@@ -118,3 +118,19 @@ export {
   type AuditSourceRect,
   type AuditTextStyle,
 } from './templates.js';
+export {
+  ALIGN_REFERENCE_SCHEMA_VERSION,
+  ALIGN_VERDICTS,
+  AlignReferenceError,
+  buildAlignmentRows,
+  parseAlignReference,
+  serializeAlignReference,
+  tokenScript,
+  wordId,
+  type AlignmentRow,
+  type AlignReference,
+  type AlignReferenceEntry,
+  type AlignVerdict,
+  type DraftToken,
+  type TokenScript,
+} from './align-review.js';

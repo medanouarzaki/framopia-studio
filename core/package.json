@@ -9,6 +9,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./align-review": {
+      "types": "./dist/align-review.d.ts",
+      "default": "./dist/align-review.js"
     }
   },
   "files": [

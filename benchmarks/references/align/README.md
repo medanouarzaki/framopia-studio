@@ -1,0 +1,51 @@
+# Alignment references
+
+A reference file in this directory is a **hand-made human judgment** of which
+draft token each corrected word really came from, for one reel, against one
+aligner.
+
+It is the only non-circular measure of aligner correctness in the project.
+`service/src/transcription/align.ts` gives every word the interval of the draft
+token it *records* anchoring to, so the record is self-consistent with the
+pairing whether or not the pairing is right — no checker reading the aligner's
+own output can see the defect. `docs/DEFECT-alignment-script-mismatch.md` §4
+sets that out, and §6 gives the scale: 61% of the corpus rests on a
+cross-script pairing Levenshtein had no evidence for.
+
+## Rules
+
+- **Never generated.** No tool writes a file here. `npm run align:review`
+  produces the review sheet and the browser produces the download; a human
+  presses the buttons in between, and that press is the whole value of the
+  file.
+- **Never edited by a tool either.** A correction to a verdict is a human
+  changing their mind, made in the sheet and downloaded again.
+- **It records which aligner it judged.** Every file carries the repo HEAD sha
+  at the time its sheet was generated. A judgment of one pairing is not a
+  judgment of a different one.
+- **A verdict is the human's.** The file never presents the aligner's proposed
+  pairing as truth; `draftTokenText` is there to say what was being judged, not
+  to assert that it was right.
+
+## Verdicts
+
+| verdict | meaning |
+|---|---|
+| `correct` | this word really does come from that draft token |
+| `wrong` | it does not |
+| `two-tokens` | it comes from two or more draft tokens, and one pairing cannot express it |
+| `no-token` | nothing in the draft corresponds to this word |
+
+`two-tokens` and `no-token` are separate from `wrong` because the aligner has
+no operation for either. It has no many-to-one op at all, so Scribe's
+`ستة` + `وعشرين` → `26` is expressed as one substitution plus one deletion and
+the merged word takes one token's interval rather than the span of both.
+
+## Known limitation
+
+**A `wrong` verdict identifies a bad pairing without identifying the right
+one.** So a reference can say that a candidate fix stopped producing a known
+error, and it can say that the fix broke a pairing previously marked
+`correct` — but it cannot confirm that whatever the fix produced *instead* on
+a `wrong` row is now right. Adopting any fix therefore needs a **second human
+pass over only the rows that fix changed**, not a re-review of the whole reel.
