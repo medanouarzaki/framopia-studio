@@ -32,6 +32,7 @@
     "repair:candidate-paths": "tsx src/images/repair-candidate-paths-cli.ts",
     "migrate:regroup": "tsx src/analysis/migrate-regroup-cli.ts",
     "migrate:display-timing": "tsx src/analysis/migrate-display-timing-cli.ts",
+    "diagnose:missing": "tsx src/analysis/missing-cards-cli.ts",
     "diagnose:timing": "tsx src/analysis/timing-defect-cli.ts",
     "retiming": "tsx src/analysis/retiming-cli.ts",
     "timing-budget": "tsx src/analysis/timing-budget-cli.ts"
