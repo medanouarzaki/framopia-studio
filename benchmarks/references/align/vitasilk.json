@@ -1,0 +1,446 @@
+{
+  "schemaVersion": 1,
+  "reel": "vitasilk",
+  "generatedAt": "2026-08-27T16:42:15.013Z",
+  "headSha": "dcc3b1d7392a4c0bd2248cc37ed7966c75c5aaa6",
+  "entries": [
+    {
+      "wordId": "w0000",
+      "wordText": "5",
+      "draftTokenText": null,
+      "verdict": "wrong"
+    },
+    {
+      "wordId": "w0001",
+      "wordText": "d9ay9",
+      "draftTokenText": "خمس",
+      "verdict": "wrong"
+    },
+    {
+      "wordId": "w0002",
+      "wordText": "eyyh",
+      "draftTokenText": "دقائق.",
+      "verdict": "wrong"
+    },
+    {
+      "wordId": "w0003",
+      "wordText": "a",
+      "draftTokenText": "أي",
+      "verdict": "wrong"
+    },
+    {
+      "wordId": "w0004",
+      "wordText": "lalla",
+      "draftTokenText": "هذا",
+      "verdict": "wrong"
+    },
+    {
+      "wordId": "w0005",
+      "wordText": "5",
+      "draftTokenText": "五",
+      "verdict": "correct"
+    },
+    {
+      "wordId": "w0006",
+      "wordText": "minutes",
+      "draftTokenText": "minutes.",
+      "verdict": "correct"
+    },
+    {
+      "wordId": "w0007",
+      "wordText": "ymkn",
+      "draftTokenText": "يمكن",
+      "verdict": "correct"
+    },
+    {
+      "wordId": "w0008",
+      "wordText": "lik",
+      "draftTokenText": "لك",
+      "verdict": "correct"
+    },
+    {
+      "wordId": "w0009",
+      "wordText": "diri",
+      "draftTokenText": "ديري",
+      "verdict": "correct"
+    },
+    {
+      "wordId": "w0010",
+      "wordText": "un",
+      "draftTokenText": "un",
+      "verdict": "correct"
+    },
+    {
+      "wordId": "w0011",
+      "wordText": "soin",
+      "draftTokenText": "soin",
+      "verdict": "correct"
+    },
+    {
+      "wordId": "w0012",
+      "wordText": "li",
+      "draftTokenText": "لي",
+      "verdict": "correct"
+    },
+    {
+      "wordId": "w0013",
+      "wordText": "ghayrdd",
+      "draftTokenText": "غيرد",
+      "verdict": "correct"
+    },
+    {
+      "wordId": "w0014",
+      "wordText": "lik",
+      "draftTokenText": "لك",
+      "verdict": "correct"
+    },
+    {
+      "wordId": "w0015",
+      "wordText": "ch3rk",
+      "draftTokenText": "شعرك",
+      "verdict": "correct"
+    },
+    {
+      "wordId": "w0016",
+      "wordText": "7rir",
+      "draftTokenText": "حرير",
+      "verdict": "correct"
+    },
+    {
+      "wordId": "w0017",
+      "wordText": "msbsb",
+      "draftTokenText": "مصبوغ.",
+      "verdict": "correct"
+    },
+    {
+      "wordId": "w0018",
+      "wordText": "jbt",
+      "draftTokenText": "جبت",
+      "verdict": "correct"
+    },
+    {
+      "wordId": "w0019",
+      "wordText": "likom",
+      "draftTokenText": "لكم",
+      "verdict": "correct"
+    },
+    {
+      "wordId": "w0020",
+      "wordText": "le",
+      "draftTokenText": "le",
+      "verdict": "correct"
+    },
+    {
+      "wordId": "w0021",
+      "wordText": "filler",
+      "draftTokenText": "filler",
+      "verdict": "correct"
+    },
+    {
+      "wordId": "w0022",
+      "wordText": "glow",
+      "draftTokenText": "glow",
+      "verdict": "correct"
+    },
+    {
+      "wordId": "w0023",
+      "wordText": "mn",
+      "draftTokenText": "من",
+      "verdict": "correct"
+    },
+    {
+      "wordId": "w0024",
+      "wordText": "la",
+      "draftTokenText": "la",
+      "verdict": "correct"
+    },
+    {
+      "wordId": "w0025",
+      "wordText": "marque",
+      "draftTokenText": "marque",
+      "verdict": "correct"
+    },
+    {
+      "wordId": "w0026",
+      "wordText": "Vita",
+      "draftTokenText": "Vita",
+      "verdict": "correct"
+    },
+    {
+      "wordId": "w0027",
+      "wordText": "Silk",
+      "draftTokenText": "Silk",
+      "verdict": "correct"
+    },
+    {
+      "wordId": "w0028",
+      "wordText": "mn",
+      "draftTokenText": null,
+      "verdict": "wrong"
+    },
+    {
+      "wordId": "w0029",
+      "wordText": "ghir",
+      "draftTokenText": "من",
+      "verdict": "wrong"
+    },
+    {
+      "wordId": "w0030",
+      "wordText": "anno",
+      "draftTokenText": "غير",
+      "verdict": "wrong"
+    },
+    {
+      "wordId": "w0031",
+      "wordText": "il",
+      "draftTokenText": "أنه",
+      "verdict": "wrong"
+    },
+    {
+      "wordId": "w0032",
+      "wordText": "nourrit",
+      "draftTokenText": "ينغى,",
+      "verdict": "wrong"
+    },
+    {
+      "wordId": "w0033",
+      "wordText": "il",
+      "draftTokenText": "يهدئ.",
+      "verdict": "wrong"
+    },
+    {
+      "wordId": "w0034",
+      "wordText": "hydrate",
+      "draftTokenText": "فيه",
+      "verdict": "wrong"
+    },
+    {
+      "wordId": "w0035",
+      "wordText": "fih",
+      "draftTokenText": "ستة",
+      "verdict": "wrong"
+    },
+    {
+      "wordId": "w0036",
+      "wordText": "26",
+      "draftTokenText": "وعشرين",
+      "verdict": "two-tokens"
+    },
+    {
+      "wordId": "w0037",
+      "wordText": "vitamines",
+      "draftTokenText": "vitamin",
+      "verdict": "correct"
+    },
+    {
+      "wordId": "w0038",
+      "wordText": "et",
+      "draftTokenText": "et",
+      "verdict": "correct"
+    },
+    {
+      "wordId": "w0039",
+      "wordText": "aussi",
+      "draftTokenText": "aussi",
+      "verdict": "correct"
+    },
+    {
+      "wordId": "w0040",
+      "wordText": "des",
+      "draftTokenText": "des",
+      "verdict": "correct"
+    },
+    {
+      "wordId": "w0041",
+      "wordText": "enzymes",
+      "draftTokenText": "enzymes",
+      "verdict": "correct"
+    },
+    {
+      "wordId": "w0042",
+      "wordText": "et",
+      "draftTokenText": "et",
+      "verdict": "correct"
+    },
+    {
+      "wordId": "w0043",
+      "wordText": "c'est",
+      "draftTokenText": "c'est",
+      "verdict": "correct"
+    },
+    {
+      "wordId": "w0044",
+      "wordText": "la",
+      "draftTokenText": "la",
+      "verdict": "correct"
+    },
+    {
+      "wordId": "w0045",
+      "wordText": "dernière",
+      "draftTokenText": "dernière",
+      "verdict": "correct"
+    },
+    {
+      "wordId": "w0046",
+      "wordText": "génération",
+      "draftTokenText": "génération",
+      "verdict": "correct"
+    },
+    {
+      "wordId": "w0047",
+      "wordText": "dial",
+      "draftTokenText": "ديال",
+      "verdict": "correct"
+    },
+    {
+      "wordId": "w0048",
+      "wordText": "lissage",
+      "draftTokenText": "lissage",
+      "verdict": "correct"
+    },
+    {
+      "wordId": "w0049",
+      "wordText": "brésilien",
+      "draftTokenText": "brésilien.",
+      "verdict": "correct"
+    },
+    {
+      "wordId": "w0050",
+      "wordText": "chno",
+      "draftTokenText": null,
+      "verdict": "wrong"
+    },
+    {
+      "wordId": "w0051",
+      "wordText": "katsnay",
+      "draftTokenText": "شنو",
+      "verdict": "wrong"
+    },
+    {
+      "wordId": "w0052",
+      "wordText": "bach",
+      "draftTokenText": "كتسني",
+      "verdict": "wrong"
+    },
+    {
+      "wordId": "w0053",
+      "wordText": "thllay",
+      "draftTokenText": "باش",
+      "verdict": "wrong"
+    },
+    {
+      "wordId": "w0054",
+      "wordText": "f",
+      "draftTokenText": "تهلي",
+      "verdict": "wrong"
+    },
+    {
+      "wordId": "w0055",
+      "wordText": "ch3rk",
+      "draftTokenText": "شعرك؟",
+      "verdict": "correct"
+    },
+    {
+      "wordId": "w0056",
+      "wordText": "siri",
+      "draftTokenText": "ديري",
+      "verdict": "correct"
+    },
+    {
+      "wordId": "w0057",
+      "wordText": "la9rab",
+      "draftTokenText": "الأقرب",
+      "verdict": "correct"
+    },
+    {
+      "wordId": "w0058",
+      "wordText": "salon",
+      "draftTokenText": "salon.",
+      "verdict": "correct"
+    },
+    {
+      "wordId": "w0059",
+      "wordText": "ila",
+      "draftTokenText": "إذا",
+      "verdict": "correct"
+    },
+    {
+      "wordId": "w0060",
+      "wordText": "l9iti",
+      "draftTokenText": "لقيتي",
+      "verdict": "correct"
+    },
+    {
+      "wordId": "w0061",
+      "wordText": "3ndhom",
+      "draftTokenText": "عندهم",
+      "verdict": "correct"
+    },
+    {
+      "wordId": "w0062",
+      "wordText": "la",
+      "draftTokenText": "la",
+      "verdict": "correct"
+    },
+    {
+      "wordId": "w0063",
+      "wordText": "marque",
+      "draftTokenText": "marque",
+      "verdict": "correct"
+    },
+    {
+      "wordId": "w0064",
+      "wordText": "Vita",
+      "draftTokenText": "Vita",
+      "verdict": "correct"
+    },
+    {
+      "wordId": "w0065",
+      "wordText": "Silk",
+      "draftTokenText": "Silk",
+      "verdict": "correct"
+    },
+    {
+      "wordId": "w0066",
+      "wordText": "wl9iti",
+      "draftTokenText": "ولقيتي",
+      "verdict": "correct"
+    },
+    {
+      "wordId": "w0067",
+      "wordText": "le",
+      "draftTokenText": "le",
+      "verdict": "correct"
+    },
+    {
+      "wordId": "w0068",
+      "wordText": "filler",
+      "draftTokenText": "filler",
+      "verdict": "correct"
+    },
+    {
+      "wordId": "w0069",
+      "wordText": "glow",
+      "draftTokenText": "glow",
+      "verdict": "correct"
+    },
+    {
+      "wordId": "w0070",
+      "wordText": "matrddadich",
+      "draftTokenText": "تردديش",
+      "verdict": "correct"
+    },
+    {
+      "wordId": "w0071",
+      "wordText": "wla",
+      "draftTokenText": "ولا",
+      "verdict": "correct"
+    },
+    {
+      "wordId": "w0072",
+      "wordText": "d9i9a",
+      "draftTokenText": "دقيقة",
+      "verdict": "correct"
+    }
+  ]
+}
