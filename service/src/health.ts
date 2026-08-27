@@ -60,7 +60,7 @@ export interface HealthPayload {
    * Effects inherits no shell PATH — and the user should be able to see which
    * interpreter that is.
    */
-  node: (ResolvedNode & { help?: string }) | { path: null; source: null; help: string };
+  node: (ResolvedNode & { help?: string; version: string }) | { path: null; source: null; help: string };
 }
 
 function probe(command: string, args: string[]): ToolState {
@@ -117,6 +117,15 @@ export function health(serviceVersion: string): HealthPayload {
     sidecar: { venv, pythonPath },
     templates,
     repoRoot: REPO_ROOT,
-    node: resolved ?? { path: null, source: null, help: NODE_NOT_FOUND_HELP },
+    /*
+     * `process.version` is the interpreter actually running this service, not
+     * the one the resolver would pick. The panel compares the two: if they
+     * differ, the same pipeline behaves differently depending on how it was
+     * started, and nothing on screen would otherwise show it.
+     */
+    node:
+      resolved === null
+        ? { path: null, source: null, help: NODE_NOT_FOUND_HELP }
+        : { ...resolved, version: process.version, path: process.execPath, source: resolved.source },
   };
 }

@@ -48,7 +48,34 @@ header.brand .version {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
-main { flex: 1 1 auto; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 22px; }
+/*
+ * The panel is a container, not a viewport. A CEP panel docked into an After
+ * Effects workspace has a window the size of the whole screen and a panel the
+ * width of a column, so a media query would lay out for the wrong thing.
+ */
+.app { container-type: inline-size; container-name: panel; }
+
+main {
+  flex: 1 1 auto; overflow-y: auto; padding: 20px;
+  display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px; align-content: start;
+}
+
+/*
+ * 830px, measured rather than chosen. The rule: a column must never be
+ * narrower than the single column already is when the panel is docked at the
+ * manifest's 420px, where the value side of a fact row measures 242px. Two
+ * columns reach 241px at 820 and 246px at 830, and the worst wrap — the
+ * resolved node path and the ffmpeg banner — drops from three lines to two at
+ * the same width. Below it a second column would make the panel worse, not
+ * wider. The figures are in reports/block-8-session-9.md.
+ */
+@container panel (min-width: 830px) {
+  main { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  main > section.service { grid-column: 1; grid-row: 1 / span 2; }
+  main > section.video { grid-column: 2; grid-row: 1; }
+  main > section.mode { grid-column: 2; grid-row: 2; }
+  main > section.build { grid-column: 1 / -1; }
+}
 
 section > h2 {
   margin: 0 0 10px;
@@ -73,15 +100,20 @@ section > h2 {
 .dot.healthy { background: var(--ok); }
 .dot.unreachable { background: var(--accent); }
 .status .headline { font-weight: 600; }
-.status .detail { color: var(--muted); margin-top: 3px; }
+.status .detail { color: var(--muted); margin-top: 3px; min-width: 0; overflow-wrap: anywhere; }
 
 .facts { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 7px; }
 .facts li { display: flex; gap: 10px; align-items: baseline; }
 .facts .k { color: var(--faint); min-width: 96px; flex: 0 0 auto; }
-.facts .v { color: var(--text); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; }
+/* A long path or an ffmpeg banner wraps rather than widening the card. */
+.facts .v {
+  color: var(--text); font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11.5px; min-width: 0; overflow-wrap: anywhere;
+}
 .facts .v.bad { color: var(--accent); }
 .facts .v.good { color: var(--ok); }
 
+.card.note .detail { color: var(--muted); overflow-wrap: anywhere; }
 .issues { margin: 10px 0 0; padding-left: 18px; color: var(--accent); }
 
 label.field { display: block; }
@@ -107,7 +139,8 @@ button.run {
 }
 button.run:disabled { background: var(--panel-2); border-color: var(--line); color: var(--faint); }
 
-.reason { margin-top: 8px; color: var(--muted); }
+/* These carry absolute paths and ffmpeg banners; they wrap, never overflow. */
+.reason { margin-top: 8px; color: var(--muted); min-width: 0; overflow-wrap: anywhere; }
 
 .spend { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
 .spend .amount {

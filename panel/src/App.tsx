@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
+import { buildFonts } from '@framopia/core/build-fonts';
 import { connect, fetchDryRun, fetchModes, fetchReels, type Connection } from './service.js';
+import { nodeMatch } from './node-match.js';
+
+/** How often to notice a service that has gone away. Chosen, not measured. */
+const HEARTBEAT_MS = 5000;
 import { runGate } from './run-gate.js';
 import { formatUsd, SPEND_SOFT_ALARM_USD, spendLevel } from './spend.js';
 import type { ClientMode, DryRunPlan, HostEnvironment, Reel, ServiceState } from './types.js';
@@ -80,6 +85,35 @@ function Panel({
   }, [check]);
 
   /*
+   * A service that dies while the panel is open would otherwise leave `Ready`
+   * on screen indefinitely — the panel checked once and never again. This
+   * re-checks quietly; `check` sets `starting` first, so the card would flicker
+   * on every tick, and a heartbeat that answers is not worth redrawing for.
+   */
+  useEffect(() => {
+    if (connection === null) return;
+    const timer = setInterval(() => {
+      void fetch(`http://127.0.0.1:${connection.port}/health`)
+        .then((res) => {
+          if (!res.ok) throw new Error(`health returned HTTP ${res.status}`);
+        })
+        .catch((error: Error) => {
+          setService({
+            kind: 'unreachable',
+            error: {
+              error: error.message,
+              stage: 'service-lost',
+              cause: `the service stopped answering: ${error.message}`,
+              retryable: true,
+            },
+          });
+          setConnection(null);
+        });
+    }, HEARTBEAT_MS);
+    return () => clearInterval(timer);
+  }, [connection]);
+
+  /*
    * Both lists come from the service. A list that cannot be read leaves an
    * empty picker, which the screen already words for itself; an unhandled
    * rejection here would take the panel down.
@@ -141,9 +175,10 @@ function Panel({
           attempt={attempt}
           attemptedAt={attemptedAt}
           onRetry={onRedetect}
+          resolvedNode={host.resolveNode()}
         />
 
-        <section>
+        <section className="video">
           <h2>Video</h2>
           <div className="card">
             <label className="field">
@@ -169,7 +204,7 @@ function Panel({
           </div>
         </section>
 
-        <section>
+        <section className="mode">
           <h2>Client mode</h2>
           <div className="card">
             <label className="field">
@@ -193,8 +228,9 @@ function Panel({
           </div>
         </section>
 
-        <section>
+        <section className="build">
           <h2>Build</h2>
+          {mode === null ? null : <FontsNote mode={mode} />}
           {dry === null ? null : <DryRun plan={dry} />}
           {dryError === null ? null : (
             <p className="reason" role="status">
@@ -274,6 +310,28 @@ function HostUnavailable({
 }
 
 /**
+ * What the build will set the type in.
+ *
+ * It sits at Build and not at Run because fonts decide how the comp is drawn,
+ * not whether speech can be transcribed, analysed or imaged — and
+ * PROJECT_SPEC §5 reserves a client's own fonts for Block 9, which comes after
+ * this block. Gating Run on them made Block 8's definition of done
+ * unreachable.
+ */
+function FontsNote({ mode }: { mode: ClientMode }): JSX.Element | null {
+  const fonts = buildFonts({
+    name: mode.name,
+    fonts: mode.fonts === undefined ? { status: 'tbd' } : { status: 'set', ...mode.fonts },
+  });
+  if (fonts.warning === null) return null;
+  return (
+    <div className="card note" style={{ marginBottom: 12 }} role="status">
+      <div className="detail">{fonts.warning}</div>
+    </div>
+  );
+}
+
+/**
  * The dry run: what a run would do, read before anything is spent. Every
  * figure comes from the service, which reads them off the plan — the panel
  * computes none of them.
@@ -335,14 +393,18 @@ function ServiceCard({
   attempt,
   attemptedAt,
   onRetry,
+  resolvedNode,
 }: {
   state: ServiceState;
   attempt: number;
   attemptedAt: string;
   onRetry: () => void;
+  resolvedNode: { path: string } | null;
 }): JSX.Element {
+  const mismatch =
+    state.kind === 'healthy' ? nodeMatch(state.health, resolvedNode).warning : null;
   return (
-    <section>
+    <section className="service">
       <h2>Service</h2>
       <div className="card">
         <Attempt attempt={attempt} attemptedAt={attemptedAt} />
@@ -417,6 +479,11 @@ function ServiceCard({
                 </span>
               </li>
             </ul>
+            {mismatch === null ? null : (
+              <p className="reason" role="status">
+                {mismatch}
+              </p>
+            )}
             {state.health.templates.issues.length > 0 ? (
               <ul className="issues">
                 {state.health.templates.issues.map((issue) => (

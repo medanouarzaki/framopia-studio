@@ -23,7 +23,7 @@ export interface HealthPayload {
    * Which Node is running the pipeline, and which source it resolved from.
    * Optional: a service older than this field must not blank the panel.
    */
-  node?: { path: string | null; source: string | null; help?: string };
+  node?: { path: string | null; source: string | null; version?: string; help?: string };
 }
 
 export interface DryRunStage {
@@ -70,6 +70,8 @@ export interface ClientMode {
   name: string;
   version: number;
   fontsResolved: boolean;
+  /** Present only when the mode names its own fonts. */
+  fonts?: { latin: string; arabic: string };
 }
 
 export type ServiceState =

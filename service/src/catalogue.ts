@@ -28,6 +28,8 @@ export interface CatalogueMode {
   name: string;
   version: number;
   fontsResolved: boolean;
+  /** Present only when the mode names its own; the panel says which will render. */
+  fonts?: { latin: string; arabic: string };
 }
 
 function planPathFor(videoPath: string): string {
@@ -73,14 +75,16 @@ export function listModes(): CatalogueMode[] {
       const modePath = path.join(MODES_DIR, file);
       try {
         const mode = parseMode(readFileSync(modePath, 'utf8'), modePath);
-        return [
-          {
-            id: mode.id,
-            name: mode.name,
-            version: mode.version,
-            fontsResolved: mode.fonts.status === 'set',
-          },
-        ];
+        const entry: CatalogueMode = {
+          id: mode.id,
+          name: mode.name,
+          version: mode.version,
+          fontsResolved: mode.fonts.status === 'set',
+        };
+        if (mode.fonts.status === 'set') {
+          entry.fonts = { latin: mode.fonts.latin, arabic: mode.fonts.arabic };
+        }
+        return [entry];
       } catch {
         return [];
       }
