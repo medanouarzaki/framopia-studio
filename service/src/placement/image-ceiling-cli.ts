@@ -67,7 +67,7 @@ function largestSquareAvoiding(blocked: Rect[]): { side: number; rect: Rect } {
 const f0 = (v: number): string => v.toFixed(0);
 const f3 = (v: number): string => v.toFixed(3);
 
-interface Row { reel: string; slotId: string; label: string; px: number; binds: string }
+interface Row { reel: string; slotId: string; label: string; px: number; binds: string; rect?: Rect }
 const rows: Row[] = [];
 
 for (const reel of ['vitasilk', 'test 1']) {
@@ -112,8 +112,8 @@ for (const reel of ['vitasilk', 'test 1']) {
       return largestSquare(region) * fill * FRAME_WIDTH;
     };
 
-    const push = (label: string, px: number, binds: string): void => {
-      rows.push({ reel, slotId: slot.id, label, px, binds });
+    const push = (label: string, px: number, binds: string, rect?: Rect): void => {
+      rows.push({ reel, slotId: slot.id, label, px, binds, rect });
     };
 
     push('baseline (as built)', (slot.scale ?? 0) * COMP_SIDE_PX, 'the zone rectangle');
@@ -128,7 +128,7 @@ for (const reel of ['vitasilk', 'test 1']) {
     const headZero = spanBox(heads, slot, 0);
     const faceNow = spanBox(faces, slot, HEAD_CLEARANCE);
 
-    const noZone = (block: Rect | null): { px: number; binds: string } => {
+    const noZone = (block: Rect | null): { px: number; binds: string; rect: Rect } => {
       const blocked = block === null ? bands : [block, ...bands];
       const best = largestSquareAvoiding(blocked);
       const eps = 2 / FRAME_WIDTH;
@@ -137,15 +137,15 @@ for (const reel of ['vitasilk', 'test 1']) {
       else if (block !== null && Math.abs(best.rect.x - (block.x + block.w)) < eps) binds = 'the mask, to its right';
       else if (block !== null && Math.abs(best.rect.y + best.rect.h - block.y) < eps) binds = 'the mask, above it';
       else if (Math.abs(best.rect.y + best.rect.h - SUBTITLE_BAND.y) < eps) binds = 'the subtitle band';
-      return { px: best.side * FRAME_WIDTH, binds };
+      return { px: best.side * FRAME_WIDTH, binds, rect: best.rect };
     };
 
     const hZero = noZone(headZero);
-    push('HEAD_CLEARANCE 0 (no zone)', hZero.px, hZero.binds);
+    push('HEAD_CLEARANCE 0 (no zone)', hZero.px, hZero.binds, hZero.rect);
     const fNow = noZone(faceNow);
-    push('hair is not head (no zone)', fNow.px, fNow.binds);
+    push('hair is not head (no zone)', fNow.px, fNow.binds, fNow.rect);
     const all = noZone(spanBox(faces, slot, 0));
-    push('all of the above', all.px, all.binds);
+    push('all of the above', all.px, all.binds, all.rect);
   }
 }
 
@@ -226,6 +226,27 @@ sizes.face = {};
 for (const r of rows.filter((x) => x.label === 'hair is not head (no zone)' && x.reel === 'vitasilk')) {
   sizes.face[r.slotId] = r.px;
 }
-writeFileSync(path.join(REPO_ROOT, '.local', 'build', 'image-ceilings.json'), `${JSON.stringify(sizes, null, 2)}\n`, 'utf8');
+/*
+ * The rect, not only the side. A square that fits *somewhere* is not a
+ * placement: building it on the slot's original centre put an image across the
+ * speaker's face on two slots, because the centre the solver chose belongs to
+ * the smaller square. The variants carry the position the ceiling actually
+ * found.
+ */
+const rects: Record<string, Record<string, Rect>> = {};
+const rectFor = (key: string, label: string): void => {
+  rects[key] = {};
+  for (const r of rows.filter((x) => x.label === label && x.reel === 'vitasilk' && x.rect)) {
+    rects[key]![r.slotId] = r.rect as Rect;
+  }
+};
+rectFor('loose', 'HEAD_CLEARANCE 0 (no zone)');
+rectFor('face', 'hair is not head (no zone)');
+rectFor('max', 'all of the above');
+writeFileSync(
+  path.join(REPO_ROOT, '.local', 'build', 'image-ceilings.json'),
+  `${JSON.stringify({ sizes, rects }, null, 2)}\n`,
+  'utf8',
+);
 console.log(`wrote ${path.relative(REPO_ROOT, OUT_PATH)}`);
 for (const r of ranked) console.log(`${r.label}: mean ${r.mean.toFixed(2)}x`);

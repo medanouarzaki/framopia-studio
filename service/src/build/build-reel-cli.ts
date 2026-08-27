@@ -12,6 +12,7 @@ import { runBuildReel } from './drive.js';
 import { imageSize } from './image-size.js';
 import { contentAnchorPoint, contentAwareScalePercent, contentBoxes } from './content-box.js';
 import { assertPathsPresent, type PathRef } from './preflight.js';
+import { COMP_SIDE_PX } from '../placement/constants.js';
 import {
   buildReel,
   placeholderScalePercent,
@@ -81,20 +82,32 @@ assertPathsPresent(refs);
 console.log(`pre-flight: ${refs.length} referenced files all present`);
 
 /*
- * Image sizes to compare, from `npm run image-size`. `a` is what the plan
- * carries; `b` fills the assigned zone; `c` is the largest square the real
- * constraints allow. **No constant is changed** — the three are built side by
- * side so the choice is the user's eye, not an argument.
+ * Image sizes to compare, from `npm run image-ceiling`. **No constant is
+ * changed**: the variants are parameters, and which becomes the default is the
+ * user's ruling after he has looked.
+ *
+ *   strict — today's rules, the reference point
+ *   loose  — the zone rectangle dropped, every clearance and fill at its most
+ *            permissive, hair still counting as head
+ *   face   — the face-only mask, with the same loosened constants
+ *
+ * Image handling is the only thing that differs between them: the subtitle,
+ * keyword and audio placements are the same list in every comp.
  */
-const sizesPath = path.join(REPO_ROOT, '.local', 'build', 'image-sizes.json');
-const variantSizes: Record<string, Record<string, number>> = existsSync(sizesPath)
-  ? (JSON.parse(readFileSync(sizesPath, 'utf8')) as Record<string, Record<string, number>>)
-  : {};
-const sizeFor = (variant: 'a' | 'b' | 'c') => (slotId: string): number => {
+const ceilingsPath = path.join(REPO_ROOT, '.local', 'build', 'image-ceilings.json');
+interface Ceilings {
+  sizes: Record<string, Record<string, number>>;
+  rects: Record<string, Record<string, { x: number; y: number; w: number; h: number }>>;
+}
+const ceilings: Ceilings = existsSync(ceilingsPath)
+  ? (JSON.parse(readFileSync(ceilingsPath, 'utf8')) as Ceilings)
+  : { sizes: {}, rects: {} };
+const variantSizes = ceilings.sizes;
+const IMAGE_VARIANTS = ['strict', 'loose', 'face'] as const;
+const sizeFor = (variant: string) => (slotId: string): number => {
   const px = variantSizes[variant]?.[slotId];
   const slot = plan.images.slots.find((s) => s.id === slotId);
-  const fallback = (slot?.scale ?? 0) * 1200;
-  return px ?? fallback;
+  return px ?? (slot?.scale ?? 0) * COMP_SIDE_PX;
 };
 
 const built = buildReel({
@@ -102,11 +115,11 @@ const built = buildReel({
   audit,
   imageVariants: Object.keys(variantSizes).length === 0
     ? []
-    : [
-        { name: 'a' as const, scaleFor: sizeFor('a') },
-        { name: 'b' as const, scaleFor: sizeFor('b') },
-        { name: 'c' as const, scaleFor: sizeFor('c') },
-      ],
+    : IMAGE_VARIANTS.map((name) => ({
+        name,
+        scaleFor: sizeFor(name),
+        rectFor: (slotId: string) => ceilings.rects[name]?.[slotId],
+      })),
   introFor: (id) => entries.get(id)?.introS ?? 0,
   sfxFileFor: (id) => {
     const f = sfxFiles.get(id);
@@ -190,6 +203,8 @@ const result = runBuildReel({
     })),
   ],
   activeComp: flag('active') ?? `master_${reel}_C`,
+  // Reported so the frame bound can be checked per comp rather than trusted.
+  reportPlacements: true,
   parkAtS: Number(flag('park') ?? plan.source.durationS / 2),
   // --park pins the playhead at a named moment; without it the build finds a
   // wrapped card, which is only useful when wrapping is what is being judged.

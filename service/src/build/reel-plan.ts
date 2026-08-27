@@ -126,7 +126,7 @@ export function auditedSolid(c: AuditComp, placeholder: string): {
  * them on screen. `a` is what the plan carries; the others are measured
  * ceilings from `npm run image-size`.
  */
-export type ImageSizeVariant = 'a' | 'b' | 'c';
+export type ImageSizeVariant = 'strict' | 'loose' | 'face';
 
 export interface ReelBuild {
   elements: ReelElement[];
@@ -150,7 +150,12 @@ export function buildReel(options: {
   sfxFileFor: (sfxId: string) => string;
   candidateFileFor: (slotId: string) => { path: string; id: string } | null;
   /** Extra placements, each a copy of the image set at a different size. */
-  imageVariants?: { name: ImageSizeVariant; scaleFor: (slotId: string) => number }[];
+  imageVariants?: {
+    name: ImageSizeVariant;
+    scaleFor: (slotId: string) => number;
+    /** Where the ceiling found room, in frame fractions. Falls back to the solved centre. */
+    rectFor?: (slotId: string) => { x: number; y: number; w: number; h: number } | undefined;
+  }[];
 }): ReelBuild {
   const { plan, audit, introFor, sfxFileFor, candidateFileFor, imageVariants = [] } = options;
   const variantPlacements = new Map<ImageSizeVariant, ReelPlacement[]>(
@@ -287,14 +292,21 @@ export function buildReel(options: {
      */
     for (const v of imageVariants) {
       const sidePx = v.scaleFor(slot.id);
-      // Bounded to the frame. Reusing a solved centre with a larger side is
-      // bounded by nothing on its own, and two variants escaped the frame
-      // before this existed.
-      const fitted = fitInsideFrame(
-        positionX / plan.source.width,
-        positionY / plan.source.height,
-        sidePx / FRAME_WIDTH,
-      );
+      /*
+       * Centred where the ceiling found room, not on the solved centre. A
+       * square that fits *somewhere* is not a placement: growing the solved
+       * centre put an image across the speaker's face on two slots, because
+       * that centre belongs to the smaller square.
+       */
+      const found = v.rectFor?.(slot.id);
+      const centreX = found === undefined
+        ? positionX / plan.source.width
+        : found.x + found.w / 2;
+      const centreY = found === undefined
+        ? positionY / plan.source.height
+        : found.y + found.h / 2;
+      // Bounded to the frame regardless of where the centre came from.
+      const fitted = fitInsideFrame(centreX, centreY, sidePx / FRAME_WIDTH);
       const fittedSidePx = fitted.w * FRAME_WIDTH;
       variantPlacements.get(v.name)?.push({
         elementId: slot.id,
