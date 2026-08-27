@@ -244,15 +244,15 @@ AI-generated contextual images, SFX, and a watermark. Full spec in
   image cache entries onto the Block 7 fingerprint. Dry-run by default; it
   refuses to move an entry whose **old** key does not reproduce from its own
   manifest, so a rename is never made on a guess.
-- `npm run align:review -- --reel <label>` — free, local, **read-only**. Runs the
-  current aligner over a reel's cached Scribe draft and corrected words and
-  writes `<reel>.pairs.json` and a self-contained `<reel>.html` review sheet to
-  `benchmarks/results/latest-align-review/`. One row per corrected word with the
-  draft token it was paired with, the aligner's own operation, and four verdict
-  buttons. It stamps the **cache entry and prompt version it read** into both
-  outputs, because a reel can hold several configurations and every figure
-  depends on which one was used. Judgements download to
-  `benchmarks/references/align/` — see the README there.
+- `npm run align:review -- --reel <label> [--entry <id>]` — free, local,
+  **read-only**. Runs the current aligner over a reel's cached Scribe draft and
+  corrected words and writes `<reel>.pairs.json` and a self-contained
+  `<reel>.html` review sheet to `benchmarks/results/latest-align-review/`. One
+  row per corrected word with the draft token it was paired with, the aligner's
+  own operation, and four verdict buttons. The sheet carries the reel, **cache
+  entry, prompt version, aligner sha and row count on screen**, not only in the
+  JSON. Judgements download to `benchmarks/references/align/` — see the README
+  there.
 
 **`.local/cv/` is not a cache.** Nothing fingerprints it, no stage looks
 entries up in it, and it is deliberately outside `.local/cache/` so that it is
@@ -272,6 +272,30 @@ scripts above, never by a cache miss.
 - Secrets (API keys, tokens) live only in `.local/`, which is gitignored.
   Never log secret values. `config.example.json` at repo root documents
   the shape of `.local/config.json` with placeholder values.
+
+### Cache-entry selection is declared, never by directory order
+
+**The active transcription cache entry is the one whose prompt version equals
+`ACTIVE_PROMPT_VERSION`.** Not `readdir` order, not newest-by-mtime, not first
+match. `selectTranscriptionEntry` in `core/src/cache-select.ts` is the only
+implementation; nothing matching, or more than one matching, **fails naming the
+reel, the pin and every version on disk** rather than falling back.
+`--entry <id>` reads a historical entry deliberately, and every tool prints the
+entry id and prompt version it selected and stamps it into whatever it writes.
+Pinned by `core/src/cache-select.test.ts`, including that a listing arriving in
+reverse order still selects the pinned version.
+
+A reel accumulates one entry per configuration: `vitasilk` holds three (prompt
+versions 1, 3 and 4), the other four hold two each (3 and 4).
+
+### The correction prompt version is frozen for the rest of Block 8
+
+`ACTIVE_PROMPT_VERSION` is **4** and must not move until Block 8 closes.
+Changing it changes the corrected words, which changes the pairings under
+review, which **invalidates every hand-made reference under
+`benchmarks/references/align/`** — files nobody can regenerate, because they are
+a human's judgement. Any change to it is a deliberate, reported act with the
+references re-collected, never a side effect of another change.
 
 ## Status
 
@@ -3787,6 +3811,97 @@ fix changed.
 
 Sheets generated for all five reels. Cross-script pairings under prompt v4:
 ground-truth 51/76, test-1 43/67, test-2 46/69, test-3 29/58, vitasilk 39/73.
+
+## Block 8 session 2 — cache-entry selection made explicit
+
+**Spent $0.00; no API was called.** Ledger 108 entries / sha `50ec3f57…` at both
+ends, byte-identical. No panel code. **No plan was written and no aligner code
+changed.**
+
+**Session 1's `Status: PROBLEM` is explained, and the cause was a real defect.**
+Three diagnostics selected a transcription cache entry by taking the first
+`transcription-*` directory `readdir` returned. On this volume that is the
+pinned prompt v4 entry for `ground-truth`, `test-1`, `test-2` and `test-3`, and
+the **prompt v1** entry for `vitasilk`, because `0cb5…` sorts ahead of `758a…` —
+**exactly the mixture the defect document carried.** The sites were
+`cachedFor` in `service/src/transcription/repair-source-text-cli.ts` and
+`scribeWordsFor` in `service/src/analysis/missing-cards-cli.ts` and
+`service/src/analysis/timing-defect-cli.ts`. All three now use the declared rule
+above. **The production paths were never affected**: transcription, analysis and
+image caches all resolve by computed fingerprint through `cacheEntryDir`.
+
+**The `il` 0.540 s figure is still unattributed.** It matches the prompt v3
+entry, which is *last* in the same listing — a selector that kept the last hit,
+or a hand-named entry, would produce it, and nothing in the repo records which.
+Written up as a hypothesis with its evidence in the defect document, not as a
+conclusion.
+
+**The edit plans and the built comp are correct.** `vitasilk`'s 73 plan words
+are byte-identical to the pinned v4 entry's corrected texts (0 positional
+diffs); the v1 entry differs from it by 14 words and the v3 entry by 10.
+`.local/build/.build-options.json` matches the plan exactly — 68 subtitle cards
+(73 groups less 5 superseded), 3 keywords, 0 text mismatches.
+
+**One thing downstream was damaged and is deliberately not repaired.**
+**9 of `vitasilk`'s 73 words carry a `sourceText` written from the prompt v1
+draft** — `w0017`, `w0032`, `w0033`, `w0034`, `w0054`, `w0055`, `w0070`,
+`w0071`, `w0072`. Block 7 session 7 ran `npm run repair:source-text --apply`
+and reported 343/343 correct; it was reading the wrong draft on that one reel.
+The other four reels are clean (0 corrected). `sourceText` is cosmetic — nothing
+reads it — but Block 8's transcript editor is where it surfaces.
+`npm run repair:source-text` now reads the pinned entry and reports the 9;
+**running it with `--apply` fixes them.** Not done here: the session's goal
+ended at the finding.
+
+**`benchmarks/RESULTS-block7-missing-cards.md` was wrong and is regenerated.**
+Its §4 anchor table described the **v1** draft (`ينغّي،`, `ييدرات.`, and three
+anchors reported as "none"); against the pinned draft those are `ينغى,`,
+`يهدئ.` and real anchors. Its display-window columns were separately **stale**,
+predating Block 7 session 9's hold rule.
+
+**`npm run diagnose:timing` had been crashing** and could write no report at
+all: one word per card since Block 7 session 6 leaves `anticipation` empty on
+every reel, and the pooled row indexed `pooled[0]`. It degrades honestly now —
+the row prints `—` and the diagnosis says the figure cannot be recomputed
+rather than restating a number measured before the change.
+
+**The defect document is rewritten in two parts**, `docs/DEFECT-alignment-script-mismatch.md`:
+**§A Current evidence**, every figure stamped with reel, entry id, prompt
+version and the git sha at derivation; **§B Superseded figures**, the originals
+verbatim and unadjusted, each annotated with the entry it is now known to have
+come from. Nothing was deleted and nothing was adjusted.
+
+**Re-derived against the pinned entry only** (all five reels, `transcription-758a3924d090d1b5`,
+prompt v4, git sha `ff9d06c`): corpus **343 corrected words**, **208 (61%)**
+paired across scripts, **49** cross-script runs. `vitasilk` **73 words / 39 at
+risk / 10 runs**. The reel carries **three insertions** (`5`, **`mn` at
+corrected 28**, `chno`) and **one deletion** (`ما` at draft 67) — **no deletion
+of `من`**; the displacement comes from the insertion. `il` is displaced
+**0.500 s** at corrected 31 and **1.340 s** at corrected 33.
+
+**`ACTIVE_PROMPT_VERSION` and `PromptVersion` moved to `core/src/prompt-version.ts`**
+and are re-exported from `service/src/transcription/correction.ts`, so every
+existing import is unchanged. They had to leave `correction.ts` because that
+module imports `@google/genai` and `tools/align-review` is pinned as unable to
+reach the network. **The value is unchanged at 4 and no cache was invalidated.**
+
+**The review sheet is executed by tests now, not only read.** `renderSheet`
+moved to `core/src/align-sheet.ts` so `npm run check` can run it in a DOM;
+`tools/align-review/` is the CLI alone. **happy-dom** is the new devDependency
+(`@framopia/core`), chosen over jsdom because it implements `localStorage` and
+`Blob` without setup, starts fast enough for a UI block to run these on every
+change, and jsdom leaves `URL.createObjectURL` unimplemented — the one API the
+download path needs. Eleven tests cover the verdict buttons, the three-state
+filter, the counters, the `localStorage` round trip keyed by reel and aligner
+sha, and a downloaded blob that parses against the reference schema.
+`core/tsconfig.json` gains `DOM` and `DOM.Iterable` to `lib` for them.
+
+**Word counts, corrected.** `handoffs/block-7.md` uses **343** as both
+`vitasilk`'s card count and the corpus word count; it is the corpus figure.
+Per reel: ground-truth 76, test-1 67, test-2 69, test-3 58, vitasilk 73 —
+**343 words and 343 subtitle groups**. Rendered subtitle cards are fewer,
+because a keyword supersedes the groups it covers: 76 / 64 / 64 / 58 / 68 =
+**330**, with 13 groups superseded across the corpus.
 
 See `docs/BLOCKS.md` for the full block plan and `handoffs/` for prior
 session context.
