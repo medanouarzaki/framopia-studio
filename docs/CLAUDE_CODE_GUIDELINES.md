@@ -97,6 +97,37 @@ numbers still disagreed after the first fix.
 If a rule cannot be reduced to one declaration, the test that pins the copies
 together is the next best thing. A comment saying "keep this in sync" is not.
 
+### A test environment more capable than the host proves nothing about the host
+
+The panel runs inside After Effects, in **CEP 12's Chromium 99**. The headless
+check runs whatever Chromium Playwright ships — roughly three years newer. Every
+capability the test environment has and the host lacks is a way for a green
+suite to certify something that cannot work.
+
+It has happened twice, in two different shapes:
+
+- **A stub supplied what the host does not.** The tests defined
+  `globalThis.CSInterface` themselves; CEP never provides it, because no CEP
+  library is loaded. `getSystemPath` was therefore never called, the extension
+  path was the empty string, and the panel was broken in After Effects while
+  the pickers and the logo were reported as fixed.
+- **The test browser honoured what the host ignores.** A container-query layout
+  passed at four widths in Playwright. Chromium 99 does not implement
+  `container-type` — `getComputedStyle(el).containerType` is `undefined` in the
+  running panel — so the whole `@container` block was dead text and the panel
+  rendered one column at 1572 px with the breakpoint at 830.
+
+The second is the worse kind, because CSS an engine does not recognise is
+**dropped without a word**. Nothing throws, nothing logs, and the result looks
+exactly like a layout bug.
+
+So: **know the host's engine version, and gate against it explicitly.** The
+version belongs in code, read off the machine rather than from documentation;
+the features it lacks belong in a list asserted against the **built bundle**,
+not the source, because the bundler sits between them. Do not assume the build
+tool will catch it: esbuild at `--target=chrome99` passes a container query
+through without a word.
+
 ### A stub asserts a claim about the real environment, and that claim needs evidence
 
 A stub is not neutral scaffolding. Writing `window.CSInterface = …` in a test
