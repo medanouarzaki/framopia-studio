@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { TemplateEntry } from '@framopia/core';
 import {
+  MAX_SUBTITLE_HOLD_S,
   applyDisplayTiming,
   displayWindow,
   findShortWords,
@@ -55,16 +56,61 @@ describe('applyDisplayTiming', () => {
     ]);
   });
 
-  it('extends a short card forward into the silence that follows it', () => {
+  // Block 7 session 7: a card holds until the next card's word, not merely
+  // until it reaches its template floor, so the screen is never blank between
+  // two cards. The bound is MAX_SUBTITLE_HOLD_S.
+  it('holds a short card until the next card begins, up to the bound', () => {
     const result = run([group({ id: 'g001', start: 1, end: 1.1 }), group({ id: 'g002', start: 5, end: 5.5 })]);
     expect(result.groups[0]?.displayStart).toBe(1);
-    expect(result.groups[0]?.displayEnd).toBeCloseTo(1.33, 10);
+    expect(result.groups[0]?.displayEnd).toBeCloseTo(1 + MAX_SUBTITLE_HOLD_S, 10);
     expect(result.unbuildable).toEqual([]);
   });
 
-  it('leaves a card already long enough exactly as it is', () => {
-    const result = run([group({ id: 'g001', start: 1, end: 2 })]);
+  it('holds a card that already reaches its floor, rather than stopping at its word', () => {
+    // The next card binds before the hold bound does: 1 + 1.2 would be 2.2.
+    const result = run([group({ id: 'g001', start: 1, end: 2 }), group({ id: 'g002', start: 2.15, end: 3 })]);
+    expect(result.groups[0]?.displayEnd).toBeCloseTo(2.15, 10);
+  });
+
+  it('never ends a card before its own word is finished', () => {
+    // The next card starts while this word is still being spoken, which the
+    // hold must not shorten it below.
+    const result = run([group({ id: 'g001', start: 1, end: 2 }), group({ id: 'g002', start: 1.5, end: 3 })]);
     expect(result.groups[0]?.displayEnd).toBe(2);
+  });
+
+  it('holds the last card of a reel to the reel end, under the same bound', () => {
+    const short = run([group({ id: 'g001', start: 1, end: 1.1 })], 1.5);
+    expect(short.groups[0]?.displayEnd).toBeCloseTo(1.5, 10);
+    const long = run([group({ id: 'g001', start: 1, end: 1.1 })], 30);
+    expect(long.groups[0]?.displayEnd).toBeCloseTo(1 + MAX_SUBTITLE_HOLD_S, 10);
+  });
+
+  it('never exceeds MAX_SUBTITLE_HOLD_S, however long the silence', () => {
+    const result = run([group({ id: 'g001', start: 1, end: 1.1 }), group({ id: 'g002', start: 20, end: 20.5 })]);
+    const g = result.groups[0];
+    expect((g?.displayEnd ?? 0) - (g?.displayStart ?? 0)).toBeCloseTo(MAX_SUBTITLE_HOLD_S, 10);
+  });
+
+  it('never starts a window before its own word', () => {
+    const result = run([
+      group({ id: 'g001', start: 1, end: 1.1 }),
+      group({ id: 'g002', start: 3, end: 3.4 }),
+    ]);
+    for (const g of result.groups) expect(g.displayStart).toBe(g.start);
+  });
+
+  it('never overlaps the next card window', () => {
+    const result = run([
+      group({ id: 'g001', start: 1, end: 1.1 }),
+      group({ id: 'g002', start: 1.6, end: 1.7 }),
+      group({ id: 'g003', start: 2.0, end: 2.6 }),
+    ]);
+    for (let i = 1; i < result.groups.length; i += 1) {
+      expect(result.groups[i - 1]?.displayEnd).toBeLessThanOrEqual(
+        result.groups[i]?.displayStart ?? 0,
+      );
+    }
   });
 
   it('never extends into the next group', () => {
@@ -86,7 +132,9 @@ describe('applyDisplayTiming', () => {
       group({ id: 'g002', start: 1.2, end: 2 }),
     ]);
     expect(result.groups).toHaveLength(1);
-    expect(result.groups[0]?.displayEnd).toBe(2);
+    // The merged card is the only one, so it holds to the bound rather than
+    // stopping at its own last word.
+    expect(result.groups[0]?.displayEnd).toBeCloseTo(1 + MAX_SUBTITLE_HOLD_S, 10);
   });
 
   it('never extends past the end of the reel', () => {
@@ -151,10 +199,14 @@ describe('applyDisplayTiming', () => {
     expect(result.unbuildable).toEqual([]);
   });
 
-  it('leaves an unassigned group alone rather than guessing a floor', () => {
+  // The hold is about continuity, not about a floor, so a card with no
+  // template still holds — but it is never reported unbuildable, because
+  // without a template there is no floor to miss. Assignment runs before this
+  // pass since session 6, so an untemplated card should not arise in practice.
+  it('reports no floor failure for an unassigned group, but still holds it', () => {
     const result = run([group({ id: 'g001', start: 1, end: 1.05, templateId: null })]);
     expect(result.unbuildable).toEqual([]);
-    expect(result.groups[0]?.displayEnd).toBe(1.05);
+    expect(result.groups[0]?.displayEnd).toBeGreaterThan(1.05);
   });
 
   it('is deterministic', () => {

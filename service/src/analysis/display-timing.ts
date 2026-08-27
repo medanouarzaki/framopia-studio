@@ -138,8 +138,20 @@ export function applyDisplayTiming(options: {
   const withWindows = renumbered.map((group, i) => {
     const floor = floorFor(templates, group.templateId);
     const next = renumbered[i + 1];
+    /*
+     * A card holds until the next card's word begins (Block 7 session 7).
+     * Stopping at the template floor left the screen blank between cards —
+     * 17.25 s of it across the corpus — and a word persisting *after* it is
+     * spoken is ordinary subtitle behaviour, unlike a word appearing before it
+     * is spoken, which is what the user objected to at two words per card.
+     *
+     * The last card of a reel has no next word, so it holds to the reel's end
+     * under the same bound. Ending it at its word instead would single out the
+     * one card whose successor happens not to exist.
+     */
     const ceiling = Math.min(next?.start ?? reelDurationS, reelDurationS);
-    const end = floor === null ? group.end : Math.max(group.end, Math.min(group.start + floor, ceiling));
+    const held = Math.min(ceiling, group.start + MAX_SUBTITLE_HOLD_S);
+    const end = Math.max(group.end, held);
 
     if (floor !== null && end - group.start < floor - DURATION_EPSILON_S) {
       const original = groups.find((g) => g.wordIds.join(' ') === group.wordIds.join(' '));
@@ -165,6 +177,21 @@ export function applyDisplayTiming(options: {
 
   return { groups: withWindows, merged, unbuildable };
 }
+
+/**
+ * Longest a card stays up after its word has been spoken.
+ *
+ * **CHOSEN, NOT MEASURED**, 1.20 s. What would change it is the user's eye on
+ * a built reel: a card lingering through a long pause reads as a stall, and a
+ * card cut short reads as a flicker. Only 3 cards in the whole corpus reach it,
+ * so it is a guard against a long silence rather than a rule that shapes the
+ * normal case.
+ *
+ * It coincides with `MAX_GROUP_DURATION_S` in grouping.ts, which caps how long
+ * a *pair* of words could occupy one card. The two are separate numbers that
+ * happen to agree, and neither is derived from the other.
+ */
+export const MAX_SUBTITLE_HOLD_S = 1.2;
 
 /** A word this short is an alignment artifact, not a display problem. */
 export const MIN_SANE_WORD_DURATION_S = 0.05;
