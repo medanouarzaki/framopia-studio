@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
-import { connect, type PanelHost } from './service.js';
+import { connect } from './service.js';
 import { runGate } from './run-gate.js';
 import { formatUsd, SPEND_SOFT_ALARM_USD, spendLevel } from './spend.js';
-import type { ClientMode, Reel, ServiceState } from './types.js';
+import type { ClientMode, HostEnvironment, Reel, ServiceState } from './types.js';
 
 /**
  * The whole panel, for now: service state, a video, a client mode, and a Run
@@ -14,20 +14,20 @@ import type { ClientMode, Reel, ServiceState } from './types.js';
  * than a full one that is scaffolded, and the user judges this by eye.
  */
 export interface AppProps {
-  host: PanelHost;
-  /** Injected so the screen can be rendered from a fixture without a service. */
-  loadReels: () => Promise<Reel[]>;
-  loadModes: () => Promise<ClientMode[]>;
   /**
-   * null when `assets/brand/Framopia_LOGO.png` is not on disk. PROJECT_SPEC §6
-   * names that file and the repo does not carry it yet; a broken image icon
-   * would read as a bug, so the wordmark stands alone until the user supplies
-   * it.
+   * Resolved once at startup. When it is unavailable the app still mounts and
+   * says so, which is the whole reason it is a value rather than a throw.
    */
-  logoSrc: string | null;
+  env: HostEnvironment;
 }
 
-export function App({ host, loadReels, loadModes, logoSrc }: AppProps): JSX.Element {
+export function App({ env }: AppProps): JSX.Element {
+  if (!env.available) return <HostUnavailable env={env} />;
+  return <Panel env={env} />;
+}
+
+function Panel({ env }: { env: Extract<HostEnvironment, { available: true }> }): JSX.Element {
+  const { host, loadReels, loadModes, logoSrc } = env;
   const [service, setService] = useState<ServiceState>({ kind: 'starting' });
   const [reels, setReels] = useState<Reel[]>([]);
   const [modes, setModes] = useState<ClientMode[]>([]);
@@ -42,8 +42,13 @@ export function App({ host, loadReels, loadModes, logoSrc }: AppProps): JSX.Elem
 
   useEffect(() => {
     void check();
-    void loadReels().then(setReels);
-    void loadModes().then(setModes);
+    /*
+     * A reel or mode list that cannot be read leaves an empty picker, which
+     * the screen already words for itself. An unhandled rejection here would
+     * take the panel down for a missing footage.json.
+     */
+    void loadReels().then(setReels, () => setReels([]));
+    void loadModes().then(setModes, () => setModes([]));
   }, [check, loadReels, loadModes]);
 
   const reel = reels.find((r) => r.label === reelLabel) ?? null;
@@ -125,6 +130,54 @@ export function App({ host, loadReels, loadModes, logoSrc }: AppProps): JSX.Elem
               {gate.reason}
             </p>
           )}
+        </section>
+      </main>
+    </div>
+  );
+}
+
+/**
+ * The panel with no host. It is a screen, not an error dialog: the brand
+ * header stays, the cause is the service-error treatment every other failure
+ * gets, and it says what the missing capability prevents rather than only what
+ * is absent — "cep_node is not available" means nothing to a motion designer
+ * standing in front of a blank panel.
+ */
+function HostUnavailable({
+  env,
+}: {
+  env: Extract<HostEnvironment, { available: false }>;
+}): JSX.Element {
+  return (
+    <div className="app">
+      <header className="brand">
+        <div className="mark" aria-hidden="true" />
+        <div className="name">
+          Framopia <em>Studio</em>
+        </div>
+      </header>
+      <main>
+        <section>
+          <h2>Host</h2>
+          <div className="card">
+            <div className="status">
+              <div className="dot unreachable" />
+              <div>
+                <div className="headline">After Effects is not providing {env.missing}</div>
+                <div className="detail">{env.cause}</div>
+              </div>
+            </div>
+            <ul className="facts">
+              <li>
+                <span className="k">missing</span>
+                <span className="v bad">{env.missing}</span>
+              </li>
+              <li>
+                <span className="k">prevents</span>
+                <span className="v">{env.prevents}</span>
+              </li>
+            </ul>
+          </div>
         </section>
       </main>
     </div>

@@ -8,10 +8,11 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App.js';
+import { cepNodeAvailable, detectHost } from './host.js';
 import { runGate } from './run-gate.js';
 import { formatUsd, SPEND_SOFT_ALARM_USD, spendLevel } from './spend.js';
 import type { PanelHost } from './service.js';
-import type { ClientMode, HealthPayload, Reel } from './types.js';
+import type { ClientMode, HealthPayload, HostEnvironment, Reel } from './types.js';
 
 const good = (detail: string) => ({ present: true, detail });
 
@@ -44,17 +45,29 @@ function hostThatAnswers(): PanelHost {
   };
 }
 
-async function render(host: PanelHost, over: Partial<Parameters<typeof App>[0]> = {}): Promise<void> {
+type AvailableEnv = Extract<HostEnvironment, { available: true }>;
+
+function envFor(host: PanelHost, over: Partial<AvailableEnv> = {}): AvailableEnv {
+  return {
+    available: true,
+    repo: '/repo',
+    host,
+    loadReels: () => Promise.resolve(reels),
+    loadModes: () => Promise.resolve(modes),
+    logoSrc: null,
+    ...over,
+  };
+}
+
+async function render(host: PanelHost, over: Partial<AvailableEnv> = {}): Promise<void> {
   await act(async () => {
-    root.render(
-      <App
-        host={host}
-        loadReels={() => Promise.resolve(reels)}
-        loadModes={() => Promise.resolve(modes)}
-        logoSrc={null}
-        {...over}
-      />,
-    );
+    root.render(<App env={envFor(host, over)} />);
+  });
+}
+
+async function renderEnv(env: HostEnvironment): Promise<void> {
+  await act(async () => {
+    root.render(<App env={env} />);
   });
 }
 
@@ -263,5 +276,113 @@ describe('spend', () => {
 
   it('is not triggerable by anything on this machine today', () => {
     expect(spendLevel(1.550444)).toBe('normal');
+  });
+});
+
+/**
+ * The regression this suite missed. happy-dom never provides `cep_node`, so
+ * before this session the throwing branch was the only one ever taken and it
+ * passed by being universal — while inside After Effects the same branch threw
+ * at module load and the user got a blank panel.
+ *
+ * The fix is only meaningful if all three shapes are exercised: present,
+ * absent, and present-but-unusable.
+ */
+describe('host detection', () => {
+  const cepGlobal = globalThis as { cep_node?: unknown; CSInterface?: unknown };
+
+  afterEach(() => {
+    delete cepGlobal.cep_node;
+    delete cepGlobal.CSInterface;
+  });
+
+  function fakeCepNode(modules: Record<string, unknown>): void {
+    cepGlobal.cep_node = {
+      require: (id: string) => {
+        const mod = modules[id];
+        if (mod === undefined) throw new Error(`fake cep_node has no module "${id}"`);
+        return mod;
+      },
+      global: {},
+    };
+  }
+
+  it('reports cep_node as available when it is', () => {
+    fakeCepNode({ path: { resolve: () => '/repo', join: (...p: string[]) => p.join('/') } });
+    expect(cepNodeAvailable()).toBe(true);
+  });
+
+  it('reports it as unavailable when it is not, without throwing', () => {
+    expect(cepNodeAvailable()).toBe(false);
+    expect(() => detectHost()).not.toThrow();
+  });
+
+  it('mounts and names the missing capability when cep_node is absent', async () => {
+    const env = detectHost();
+    expect(env.available).toBe(false);
+    await renderEnv(env);
+
+    expect(text()).toContain('Framopia');
+    expect(text()).toContain('cep_node');
+    expect(text()).toContain('--enable-nodejs');
+    expect(text()).toContain('--mixed-context');
+    expect(text()).toContain('restarted');
+    expect(text()).toContain('reel list');
+  });
+
+  /*
+   * The dangerous middle case: Node is there but something under it is not.
+   * Reporting "you are not running inside After Effects" to a user who plainly
+   * is would send him looking in the wrong place entirely.
+   */
+  it('mounts and distinguishes a malformed host from a missing one', async () => {
+    fakeCepNode({});
+    const env = detectHost();
+
+    expect(env.available).toBe(false);
+    expect(env.available === false && env.missing).toBe('host bridge');
+    expect(env.available === false && env.cause).toContain('Node is available');
+
+    await renderEnv(env);
+    expect(text()).toContain('host bridge');
+    expect(text()).not.toContain('--enable-nodejs');
+  });
+
+  it('resolves a working host into a mountable environment', async () => {
+    fakeCepNode({
+      path: {
+        resolve: (...p: string[]) => p.slice(0, -1).join('/') || '/repo',
+        join: (...p: string[]) => p.join('/'),
+      },
+      fs: {
+        existsSync: () => false,
+        readFileSync: () => '{}',
+        readdirSync: () => [],
+      },
+      child_process: { spawn: () => ({ unref: () => undefined }) },
+    });
+    cepGlobal.CSInterface = class {
+      getSystemPath(): string {
+        return '/repo/panel';
+      }
+    };
+
+    const env = detectHost();
+    expect(env.available).toBe(true);
+
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => healthy }));
+    await renderEnv(env);
+
+    // It mounted the real screen, not the unavailable one.
+    expect(text()).toContain('Service');
+    expect(text()).toContain('Video');
+    expect(text()).not.toContain('is not providing');
+  });
+
+  it('never throws for any shape of the global, including a hostile one', () => {
+    for (const value of [undefined, null, 0, '', {}, { require: 'not a function' }]) {
+      cepGlobal.cep_node = value;
+      expect(() => detectHost()).not.toThrow();
+    }
   });
 });

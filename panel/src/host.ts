@@ -1,5 +1,5 @@
 import type { PanelHost } from './service.js';
-import type { ClientMode, Reel } from './types.js';
+import type { ClientMode, HostEnvironment, Reel } from './types.js';
 
 /**
  * The CEP side. Everything that needs Node — reading the handshake, spawning
@@ -15,10 +15,35 @@ interface CepNode {
   global: Record<string, unknown>;
 }
 
-function cepNode(): CepNode {
-  const node = (globalThis as { cep_node?: CepNode }).cep_node;
-  if (node === undefined) {
-    throw new Error('cep_node is not available: this build is not running inside After Effects');
+/**
+ * `cep_node` or nothing. CEP puts it on the page's window — which is
+ * `globalThis` here — but only when the manifest declares `--enable-nodejs`
+ * *and* `--mixed-context`; with either missing the panel loads into a Chromium
+ * with no Node at all.
+ *
+ * **This returns null rather than throwing**, and every caller is written to
+ * cope. A missing capability is a state the panel renders, not an exception at
+ * module load: the first version threw here, the throw ran before React
+ * mounted, and the user got a black rectangle instead of the error surface
+ * built for exactly this.
+ */
+function cepNode(): CepNode | null {
+  return (globalThis as { cep_node?: CepNode }).cep_node ?? null;
+}
+
+export function cepNodeAvailable(): boolean {
+  return cepNode() !== null;
+}
+
+function requireCepNode(): CepNode {
+  const node = cepNode();
+  if (node === null) {
+    // Reached only from inside detectHost's try, never at module load.
+    throw new Error(
+      'cep_node is not available. The manifest must declare --enable-nodejs and ' +
+        '--mixed-context in <CEFCommandLine>, and After Effects must be restarted after ' +
+        'that change.',
+    );
   }
   return node;
 }
@@ -39,14 +64,14 @@ type ChildProcessModule = {
  * extensions folder.
  */
 export function repoRoot(extensionPath: string): string {
-  const path = cepNode().require('path') as { resolve: (...p: string[]) => string };
+  const path = requireCepNode().require('path') as { resolve: (...p: string[]) => string };
   return path.resolve(extensionPath, '..');
 }
 
 export function createHost(repo: string): PanelHost {
-  const fs = cepNode().require('fs') as FsModule;
-  const path = cepNode().require('path') as { join: (...p: string[]) => string };
-  const child = cepNode().require('child_process') as ChildProcessModule;
+  const fs = requireCepNode().require('fs') as FsModule;
+  const path = requireCepNode().require('path') as { join: (...p: string[]) => string };
+  const child = requireCepNode().require('child_process') as ChildProcessModule;
   const handshakePath = path.join(repo, '.local', 'service.json');
 
   return {
@@ -86,8 +111,8 @@ export function createHost(repo: string): PanelHost {
 
 /** The reels this machine has, from `benchmarks/footage.json` plus each plan's spend. */
 export function loadReels(repo: string): Reel[] {
-  const fs = cepNode().require('fs') as FsModule;
-  const path = cepNode().require('path') as { join: (...p: string[]) => string; basename: (p: string, e?: string) => string };
+  const fs = requireCepNode().require('fs') as FsModule;
+  const path = requireCepNode().require('path') as { join: (...p: string[]) => string; basename: (p: string, e?: string) => string };
   const footagePath = path.join(repo, 'benchmarks', 'footage.json');
   if (!fs.existsSync(footagePath)) return [];
 
@@ -124,8 +149,8 @@ export function loadReels(repo: string): Reel[] {
 
 /** The client modes in `modes/`, read the same way `validate:modes` reads them. */
 export function loadModes(repo: string): ClientMode[] {
-  const fs = cepNode().require('fs') as FsModule;
-  const path = cepNode().require('path') as { join: (...p: string[]) => string };
+  const fs = requireCepNode().require('fs') as FsModule;
+  const path = requireCepNode().require('path') as { join: (...p: string[]) => string };
   const dir = path.join(repo, 'modes');
   if (!fs.existsSync(dir)) return [];
 
@@ -162,8 +187,60 @@ export function loadModes(repo: string): ClientMode[] {
  * broken image, and the panel falls back to the wordmark.
  */
 export function logoPath(repo: string): string | null {
-  const fs = cepNode().require('fs') as FsModule;
-  const path = cepNode().require('path') as { join: (...p: string[]) => string };
+  const fs = requireCepNode().require('fs') as FsModule;
+  const path = requireCepNode().require('path') as { join: (...p: string[]) => string };
   const file = path.join(repo, 'assets', 'brand', 'Framopia_LOGO.png');
   return fs.existsSync(file) ? `file://${file}` : null;
+}
+
+interface CSInterfaceLike {
+  getSystemPath: (type: string) => string;
+}
+
+/**
+ * Resolves everything host-dependent, or reports why it cannot. **It never
+ * throws**: startup has no error surface of its own, so anything thrown here
+ * reaches the user as a blank panel.
+ *
+ * The two failures are told apart deliberately. No `cep_node` means the
+ * manifest or the AE restart, and the fix is a rebuild and a relaunch; a
+ * `cep_node` that is present but unusable is something else entirely, and
+ * telling the user "not running inside After Effects" when he plainly is would
+ * send him looking in the wrong place.
+ */
+export function detectHost(): HostEnvironment {
+  if (!cepNodeAvailable()) {
+    return {
+      available: false,
+      missing: 'cep_node',
+      cause:
+        'After Effects did not give this panel access to Node. The extension manifest must ' +
+        'declare --enable-nodejs and --mixed-context, and After Effects must be restarted ' +
+        'after that change.',
+      prevents:
+        'Nothing can be read from disk, so the reel list, the client modes and the ' +
+        'companion service are all unavailable.',
+    };
+  }
+
+  try {
+    const csInterface = (globalThis as { CSInterface?: new () => CSInterfaceLike }).CSInterface;
+    const extensionPath = csInterface === undefined ? '' : new csInterface().getSystemPath('extension');
+    const repo = repoRoot(extensionPath);
+    return {
+      available: true,
+      repo,
+      host: createHost(repo),
+      loadReels: () => Promise.resolve(loadReels(repo)),
+      loadModes: () => Promise.resolve(loadModes(repo)),
+      logoSrc: logoPath(repo),
+    };
+  } catch (error) {
+    return {
+      available: false,
+      missing: 'host bridge',
+      cause: `Node is available but the panel could not resolve its own location: ${(error as Error).message}`,
+      prevents: 'The repository root is unknown, so nothing on disk can be found.',
+    };
+  }
 }

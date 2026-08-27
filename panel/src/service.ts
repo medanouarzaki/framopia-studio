@@ -43,9 +43,25 @@ async function getHealth(port: number, signal: AbortSignal): Promise<HealthPaylo
 export async function connect(host: PanelHost): Promise<
   { ok: true; health: HealthPayload; port: number; token: string } | { ok: false; error: ServiceError }
 > {
-  const handshake = host.readHandshake();
+  /*
+   * The host reads a file and signals a pid; both can fail for reasons that
+   * are not this panel's business — a permissions change, a filesystem
+   * unmounting. Neither is worth an unhandled rejection inside an effect, so
+   * they become a state like everything else.
+   */
+  let handshake: ReturnType<PanelHost['readHandshake']>;
+  let alive = false;
+  try {
+    handshake = host.readHandshake();
+    alive = handshake !== null && host.processAlive(handshake.pid);
+  } catch (error) {
+    return {
+      ok: false,
+      error: serviceErrorOf('service-handshake', (error as Error).message, true),
+    };
+  }
 
-  if (handshake !== null && host.processAlive(handshake.pid)) {
+  if (handshake !== null && alive) {
     try {
       const health = await withTimeout((signal) => getHealth(handshake.port, signal));
       return { ok: true, health, port: handshake.port, token: handshake.token };

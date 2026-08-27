@@ -47,3 +47,27 @@ export type ServiceState =
   | { kind: 'starting' }
   | { kind: 'healthy'; health: HealthPayload }
   | { kind: 'unreachable'; error: ServiceError };
+
+/**
+ * What the panel's environment turned out to be. A discriminated union rather
+ * than a throw: an unavailable host is a state the screen renders, and the
+ * screen cannot render if resolving the host killed the module.
+ */
+export type HostEnvironment =
+  | {
+      available: true;
+      repo: string;
+      host: import('./service.js').PanelHost;
+      loadReels: () => Promise<Reel[]>;
+      loadModes: () => Promise<ClientMode[]>;
+      logoSrc: string | null;
+    }
+  | {
+      available: false;
+      /** The capability that is absent, named as the code names it. */
+      missing: string;
+      /** ARCHITECTURE §8: shown verbatim. */
+      cause: string;
+      /** What the user cannot do as a result, in plain words. */
+      prevents: string;
+    };
