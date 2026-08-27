@@ -42,7 +42,7 @@ function introFor(group: SubtitleGroup): number {
   return entry.introS;
 }
 
-interface Row { reel: string; groups: number; before: OverlapSummary; inside: OverlapSummary }
+interface Row { reel: string; groups: number; withDisplay: number; before: OverlapSummary; inside: OverlapSummary }
 
 const rows: Row[] = [];
 const failed: { reel: string; error: string }[] = [];
@@ -60,7 +60,13 @@ for (const file of readdirSync(FOOTAGE_DIR).filter((f) => f.endsWith('.editplan.
   if (groups.length === 0) continue;
   const run = (reading: RetimingReading): OverlapSummary =>
     summarise(groups, overlaps(groups, introFor, reading));
-  rows.push({ reel, groups: groups.length, before: run('intro-before'), inside: run('intro-inside') });
+  rows.push({
+    reel,
+    groups: groups.length,
+    withDisplay: groups.filter((g) => g.displayStart !== undefined && g.displayStart !== null).length,
+    before: run('intro-before'),
+    inside: run('intro-inside'),
+  });
 }
 
 const f3 = (v: number | null): string => (v === null ? '—' : v.toFixed(3));
@@ -117,10 +123,30 @@ L.push(`  no template and used the subtitle fallback of ${FALLBACK_INTRO_S} s` +
 L.push('- The display window is `displayStart`/`displayEnd` where present and the speech');
 L.push('  window otherwise, which is what `displayWindow` does at build time.');
 L.push('');
-L.push(`**No plan in the corpus stores display timing** — \`displayStart\` is absent on every`);
-L.push('group of every reel, so every figure below is measured on speech windows. When');
-L.push('display timing is written, extension into silence pushes `displayEnd` later and');
-L.push('these overlap counts can only rise.');
+/*
+ * Counted, not asserted. This said "no plan in the corpus stores display
+ * timing" as a flat claim; Block 7 session 4 wrote display timing onto all
+ * five plans and the sentence went on being emitted into a committed report.
+ * A figure a tool prints about its own inputs has to be measured from them.
+ */
+{
+  const withDisplay = rows.reduce((n, r) => n + r.withDisplay, 0);
+  const totalGroups = rows.reduce((n, r) => n + r.groups, 0);
+  if (withDisplay === 0) {
+    L.push('**No plan in the corpus stores display timing** — `displayStart` is absent on every');
+    L.push('group of every reel, so every figure below is measured on speech windows.');
+  } else if (withDisplay === totalGroups) {
+    L.push(
+      `**Every group in the corpus stores display timing** (${withDisplay} of ${totalGroups}), so the ` +
+        'figures below are measured on display windows, which is what the builder uses.',
+    );
+  } else {
+    L.push(
+      `**${withDisplay} of ${totalGroups} groups store display timing**, so the figures below mix ` +
+        'display windows with speech windows and are not comparable across reels.',
+    );
+  }
+}
 L.push('');
 L.push('## Reading A — `inPoint = displayStart − introS` (guide §5 as written)');
 L.push('');
