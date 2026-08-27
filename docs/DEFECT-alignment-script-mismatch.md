@@ -1,57 +1,152 @@
 # Alignment mis-pairs Arabic-script draft tokens against Arabizi corrected text
 
 **Status: open.** Found Block 7 session 7, diagnosed session 9, written up
-session 10 so Block 8 does not re-derive it. **`service/src/transcription/align.ts`
-is unchanged**; a fix was written, measured as a regression and discarded.
+session 10, re-derived against a single declared configuration in Block 8
+session 2. **`service/src/transcription/align.ts` and `core/src/align.ts` are
+unchanged**; a fix was written, measured as a regression and discarded.
 
 This is Block 2 territory — transcription and alignment — not comp building.
 It is recorded here because Block 7 is where it became visible.
 
-## 1. The symptom
+**Read §A before §B.** The figures this document carried until Block 8 session
+2 were not all derived from the same cache entry, and are kept verbatim in §B
+with the entry each is now known to have come from. §A is the current evidence.
 
-Subtitles out of step with the speech: a word appears while a different word is
-being said, and the effect reads as clumsy and arbitrary rather than as a
-constant offset. Reported by the user on `vitasilk` at **8.8–11.9 s**, and
-confirmed still present after one-word cards, the hold rule and short-card
-intros — none of which touch it.
+## A. Current evidence
 
-It is not a display problem. Grouping, display timing and the builder all
-reproduce the word timings faithfully; the timings themselves are attached to
-the wrong words.
+Every figure in this section was derived at git sha **`ff9d06c`**, with the
+aligner unmodified since **`fca6e58`** (`service/src/transcription/align.ts`)
+and **`2419746`** (`core/src/align.ts`). All five reels were read from the
+entry at the **pinned prompt version 4**, selected by
+`selectTranscriptionEntry` in `core/src/cache-select.ts` rather than by
+directory order. Free: no model call, no re-transcription.
 
-## 2. The mechanism
+Every reel's pinned entry is `transcription-758a3924d090d1b5`; the fingerprint
+covers the prompt version, the Gemini model pin, the guide version, the Scribe
+model and the keyterms, none of which differ per reel.
 
-`alignCorrectedOntoDraft` anchors corrected words onto draft timings with plain
-Levenshtein alignment over normalized tokens:
+### A.1 Scale, per reel
 
-```ts
-const pairs = align(
-  draftWords.map((w) => normalizeToken(w.text)),
-  correctedTexts.map((t) => normalizeToken(t)),
-);
+| reel | entry | prompt | corrected words | draft word tokens | paired across scripts | share | cross-script runs |
+|---|---|---:|---:|---:|---:|---:|---:|
+| ground-truth | `transcription-758a3924d090d1b5` | v4 | 76 | 73 | 51 | 67% | 10 |
+| test-1 | `transcription-758a3924d090d1b5` | v4 | 67 | 66 | 43 | 64% | 11 |
+| test-2 | `transcription-758a3924d090d1b5` | v4 | 69 | 72 | 46 | 67% | 8 |
+| test-3 | `transcription-758a3924d090d1b5` | v4 | 58 | 57 | 29 | 50% | 10 |
+| vitasilk | `transcription-758a3924d090d1b5` | v4 | 73 | 71 | 39 | 53% | 10 |
+| **corpus** | | v4 | **343** | **339** | **208** | **61%** | **49** |
 
-for (const pair of pairs) {
-  if (pair.hypIndex === null) continue;
-  if (pair.op !== 'match' && pair.op !== 'substitute') continue;
-  const anchor = draftWords[pair.refIndex as number];
-  if (anchor === undefined) continue;
-  output[pair.hypIndex] = {
-    text: correctedTexts[pair.hypIndex]!,
-    start: anchor.start,
-    end: anchor.end,
-    confidence: anchor.confidence,
-    sourceText: anchor.text,
-  };
-}
+"Paired across scripts" counts corrected words the aligner anchored to a draft
+token in the other script. Those are the pairings plain Levenshtein had **no
+evidence for**: `normalizeToken('mn')` and `normalizeToken('من')` are never
+equal, so across such a run every candidate pairing costs exactly the same and
+the path returned among the ties is an artifact of the DP's tie-break order.
+
+**61% of every word in the corpus rests on a pairing the aligner had no
+evidence for.** Most land correctly, because a run whose token counts agree
+pairs positionally by accident of the DP rather than by design. The 49 runs are
+where a count mismatch throws the whole run out.
+
+### A.2 The `vitasilk` shift
+
+Under the pinned entry the reel's whole alignment carries **three insertions
+and one deletion**:
+
+| op | index | token |
+|---|---|---|
+| insert | corrected 0 | `5` |
+| **insert** | **corrected 28** | **`mn`** |
+| insert | corrected 50 | `chno` |
+| delete | draft 67 | `ما` (23.799–23.879) |
+
+**There is no deletion of `من`.** The displacement in the reported 8.8–11.9 s
+stretch comes from the **insertion of `mn` at corrected index 28**: `mn` is
+given no draft token at all and is interpolated, and every corrected word after
+it takes the interval of the draft token **before** its own.
+
+```
+op          draft  corrected  draft token   corrected word   interval
+match         26      27      Silk          Silk             8.619-8.860
+insert         —      28      —             mn               (interpolated)
+substitute    27      29      من            ghir             8.939-9.000
+substitute    28      30      غير           anno             9.079-9.199
+substitute    29      31      أنه           il               9.279-9.759
+substitute    30      32      ينغى,         nourrit          9.779-9.800
+substitute    31      33      يهدئ.         il               9.819-11.079
+substitute    32      34      فيه           hydrate          11.159-11.279
 ```
 
-**Scribe returns Darija in Arabic script; the correction pass returns Arabizi in
-Latin script.** `normalizeToken('mn')` and `normalizeToken('من')` are not equal
-and never will be, so across such a run **every candidate pairing costs exactly
-the same**. Levenshtein has no signal to prefer one path over another, and the
-path it returns among the ties is an artifact of the DP's tie-break order.
+`ghir` — which *is* `غير` at draft 28 — takes `من`'s interval at draft 27.
+The shift is one token and it persists to the end of the run.
 
-Reproduced from the transcription cache, free, on `vitasilk`:
+### A.3 The `il` offset
+
+`il` appears twice in the corrected text and both are displaced:
+
+| corrected index | anchored to | its own token opens at | displacement |
+|---:|---|---:|---:|
+| 31 | draft 29 `أنه` 9.279–9.759 | 9.779 (`ينغى,`) | **0.500 s** |
+| 33 | draft 31 `يهدئ.` 9.819–11.079 | 11.159 (`فيه`) | **1.340 s** |
+
+The first is the one the user reported. The second is larger and was never
+named before.
+
+### A.4 Why the existing correspondence check cannot see any of this
+
+`align.test.ts` asserts that a word's interval is the interval of the draft
+token it *records* anchoring to, across a clean sequence, an insertion and a
+deletion. **It passes on the current aligner, and it passed while the alignment
+was wrong.**
+
+That is not a weak test; it is a test of the wrong thing. The aligner never
+gives a word an interval belonging to a token other than the one it *records*.
+It records the wrong pairing, and the record is self-consistent with it.
+
+**No checker reading the aligner's own output can detect this.** Detecting it
+requires an independent statement of which draft token each corrected word
+*should* correspond to — a hand-written correspondence for a fixture reel, or
+the transliteration knowledge that would fix the aligner in the first place.
+Block 7 session 6's weaker check ("does this interval exist somewhere in the
+Scribe response") passed 21 of 21 on a span that was wrong, for the same
+reason: an interval can be real and belong to a different word.
+
+`npm run align:review -- --reel <label>` produces the sheet that collects the
+human correspondence; `benchmarks/references/align/README.md` states what a
+reference file is. **No reference has been recorded yet**, so as of this
+writing there is still no non-circular measure of aligner correctness.
+
+## B. Superseded figures
+
+These are the figures this document carried from Block 7 session 10 until Block
+8 session 2, **verbatim and unadjusted**. They are not wrong arithmetic; they
+were derived from **three different transcription cache entries** and presented
+as one measurement. Each is annotated with the entry it is now known to have
+come from.
+
+`vitasilk` holds three entries — prompt versions 1, 3 and 4 — and the other
+four reels hold two each (3 and 4). Reproducing any figure below requires
+`--entry <id>`.
+
+### B.1 The scale table
+
+| reel | words | at risk | share | cross-script runs |
+|---|---:|---:|---:|---:|
+| ground-truth | 76 | 51 | 67% | 10 |
+| test-1 | 67 | 43 | 64% | 11 |
+| test-2 | 69 | 46 | 67% | 8 |
+| test-3 | 58 | 29 | 50% | 10 |
+| vitasilk | 73 | 40 | 55% | 10 |
+| **all** | **343** | **209** | **61%** | **49** |
+
+- The four non-`vitasilk` rows reproduce exactly from the **pinned prompt v4**
+  entry and are unchanged in §A.1.
+- The `vitasilk` row (73 words, **40** at risk, 10 runs) reproduces exactly and
+  only from **`transcription-0cb5401192dbfbc7`, prompt version 1**. The v3
+  entry gives 74 words / 40 / 10; the pinned v4 entry gives 73 / **39** / 10.
+- The corpus total of **209** therefore mixes four v4 reels with one v1 reel.
+  Against the pinned entry throughout it is **208**.
+
+### B.2 The quoted trace
 
 ```
 op          ref  hyp  draft        corrected    interval
@@ -63,17 +158,29 @@ substitute  30   30   ينغّي،       annaho       9.819-10.519
 substitute  31   31   ييدرات.      inourri      10.559-11.059
 ```
 
-The aligner **deletes draft token 27 (`من`)** and shifts every substitution
-after it by one. `mn` — which *is* `من` — takes `غير`'s interval; `ghir` — which
-is `غير` — takes `أنه`'s. **`il` opens 0.540 s before its own token.** The draft
-holds 72 word tokens against 73 corrected, so one net insertion has to go
-somewhere, and with all costs tied it went here.
+Stated with it: "The aligner **deletes draft token 27 (`من`)** and shifts every
+substitution after it by one" and "**The draft holds 72 word tokens against 73
+corrected**."
 
-The Latin-script tokens (`Silk`, `vitamin`) do match, so they anchor correctly
-and the sequence re-synchronises after them. The damage is confined to runs
-between such anchors — which is most of a Darija reel.
+- This is the **prompt version 1** entry throughout, reproduced from it token
+  for token. Its draft reads `ينغّي،` and `ييدرات.` where the pinned v4 entry
+  reads `ينغى,` and `يهدئ.`, and its corrected text carries `annaho` /
+  `inourri` where v4 carries `anno` / `il` / `nourrit` / `il` / `hydrate`.
+- 72 draft word tokens against 73 corrected is the **v1** entry's shape. The
+  pinned v4 entry holds **71 against 73**.
+- **Under the pinned entry there is no deletion of `من` at all** — see §A.2.
+  The reel's only deletion is `ما` at draft 67, and the displacement is caused
+  by an insertion. **The symptom survives; the quoted mechanism does not.**
 
-## 3. What was tried, and why it is worse
+### B.3 The `il` offset
+
+Stated as **0.540 s**.
+
+- Reproduces only from **`transcription-92adf5b1bf24601a`, prompt version 3**.
+  Prompt v1's corrected text contains no `il` token at all. Under the pinned v4
+  entry the same word is displaced **0.500 s** — see §A.3.
+
+### B.4 The discarded fix, and its measurements
 
 **The fix:** require an anchor to be an exact match, or a substitution between
 tokens of the *same* script — on the reasoning that a cross-script substitution
@@ -101,26 +208,50 @@ moved 144 timings and dropped anchored words from 330 to 230.
 substitutions are carrying most of the alignment correctly — they are wrong only
 where the token counts differ. Removing them removes the good with the bad.
 
-## 4. Why the existing correspondence check cannot see it
+**Which entry these were measured against is not recorded anywhere and cannot
+be recovered from the numbers**, since the experiment was never committed. The
+`8.899–8.899` interval for `mn` matches no entry's draft token, being an
+interpolated value. **Treat this table as a qualitative record of a discarded
+experiment, not as a measurement to compare a future fix against.** Re-run the
+experiment against the pinned entry before quoting it.
 
-`align.test.ts` asserts that a word's interval is the interval of the draft
-token it records anchoring to, across a clean sequence, an insertion and a
-deletion. **It passes on the current aligner, and it passed while the alignment
-was wrong.**
+## C. Why the figures mixed three configurations
 
-That is not a weak test; it is a test of the wrong thing. The aligner never
-gives a word an interval belonging to a token other than the one it *records*.
-It records the wrong pairing, and the record is self-consistent with it.
+**Hypothesis, with its evidence — not a conclusion.** The document's figures
+were produced by tools that selected a cache entry by directory order rather
+than by any declared rule, so which configuration a figure described depended
+on the filesystem.
 
-**No checker reading the aligner's own output can detect this.** Detecting it
-requires an independent statement of which draft token each corrected word
-*should* correspond to — either a hand-written correspondence for a fixture reel,
-or the transliteration knowledge that would fix the aligner in the first place.
-Session 6's weaker check ("does this interval exist somewhere in the Scribe
-response") passed 21 of 21 on a span that was wrong, for the same reason: an
-interval can be real and belong to a different word.
+The evidence:
 
-## 5. What a real fix needs
+1. **Three tools selected by `readdir` order.** `cachedFor` in
+   `service/src/transcription/repair-source-text-cli.ts` and `scribeWordsFor`
+   in `service/src/analysis/missing-cards-cli.ts` and
+   `service/src/analysis/timing-defect-cli.ts` each took the **first**
+   `transcription-*` directory the listing returned. All three are fixed as of
+   Block 8 session 2 and now use `selectTranscriptionEntry`.
+2. **On this volume that order yields exactly the observed mixture.** The
+   listing returns, per reel: `758a…` (v4) first for `ground-truth`, `test-1`,
+   `test-2` and `test-3`, and `0cb5…` (**v1**) first for `vitasilk`, because
+   `0cb5` sorts ahead of `758a`. That is precisely the split in §B.1 — four
+   reels at the pinned version and `vitasilk` at v1.
+3. **The `il` figure is not explained by first-match** and remains unattributed.
+   It matches the **v3** entry, which is *last* in the same listing on this
+   volume. A selector that iterated and kept the last hit, or a session that
+   named an entry by hand, would produce it. **Nothing in the repo records
+   which**, and the tools that could have produced it no longer exist in that
+   form.
+4. **`readdir` order is not a stable property.** Node returns entries in the
+   order the filesystem supplies. Nothing sorts them, and nothing about APFS
+   guarantees the order across machines, volumes or entry churn, so the same
+   command could have answered differently at any point.
+
+**What this does not explain:** why a single write-up drew on three
+configurations rather than one. First-match selection accounts for the
+`vitasilk`/v1 mixture; the v3 figure needs a second explanation that the repo
+does not carry.
+
+## D. What a real fix needs
 
 **A transliteration-aware distance between Arabic script and Arabizi**, so that
 `من` and `mn` are *near* rather than *tied* with every other candidate. That
@@ -133,7 +264,7 @@ character table** is the canonical source — `7` for `ح`, `3` for `ع`, `9` fo
 `ق`, and so on. Turning that into a per-character cost and using it inside
 `align` is the work.
 
-Two things to keep in mind when doing it:
+Three things to keep in mind when doing it:
 
 - **The merge case is separate.** Scribe's `ستة` + `وعشرين` became the single
   token `26`. `align` has no many-to-one operation at all — a merge is expressed
@@ -144,23 +275,6 @@ Two things to keep in mind when doing it:
 - **Re-aligning is free.** Every reel's raw Scribe response and corrected texts
   are in `.local/cache/<video-sha>/transcription-*/manifest.json`, so a fix can
   be measured across all five reels without re-transcribing anything.
-
-## 6. Scale
-
-How many words sit in a cross-script substitution run and are therefore at risk
-of being mis-paired. Measured from the cached responses, no model call:
-
-| reel | words | at risk | share | cross-script runs |
-|---|---:|---:|---:|---:|
-| ground-truth | 76 | 51 | 67% | 10 |
-| test-1 | 67 | 43 | 64% | 11 |
-| test-2 | 69 | 46 | 67% | 8 |
-| test-3 | 58 | 29 | 50% | 10 |
-| vitasilk | 73 | 40 | 55% | 10 |
-| **all** | **343** | **209** | **61%** | **49** |
-
-**61% of every word in the corpus rests on a pairing the aligner had no evidence
-for.** Most of them land correctly, because a run whose token counts agree pairs
-positionally by accident of the DP rather than by design. The 49 runs are where
-a count mismatch can throw the whole run out — and one of them is what the user
-sees at 9 seconds.
+- **Measure against one declared entry.** Use the pinned version, or state
+  `--entry` explicitly. This document exists in two parts because that was not
+  done once.
