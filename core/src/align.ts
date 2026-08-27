@@ -1,3 +1,5 @@
+import { transliterationSubstituteCost } from './transliterate.js';
+
 export type AlignOp = 'match' | 'substitute' | 'insert' | 'delete';
 
 export interface AlignedPair {
@@ -12,6 +14,12 @@ export interface AlignCosts {
   substitute: number;
   insert: number;
   delete: number;
+  /**
+   * A per-pair substitution cost, when a flat one is not enough. Experiment 2
+   * uses it to give cross-script pairs real signal; the default leaves it
+   * undefined and every production path takes the flat `substitute`.
+   */
+  substituteCost?: (reference: string, hypothesis: string) => number;
 }
 
 /**
@@ -37,6 +45,16 @@ export const DEFAULT_ALIGN_COSTS: AlignCosts = { substitute: 1, insert: 1, delet
 export const EXPENSIVE_INSERT_COSTS: AlignCosts = { substitute: 1, insert: 2, delete: 1 };
 
 /**
+ * Fractional costs mean the backtrace can no longer compare with `===`:
+ * accumulating 0.2 forty times does not land on the same float twice. The
+ * tolerance is far below the smallest cost difference the model produces.
+ */
+const EPSILON = 1e-9;
+function near(a: number, b: number): boolean {
+  return Math.abs(a - b) < EPSILON;
+}
+
+/**
  * Standard Levenshtein alignment with backtrace, operating on already
  * normalized tokens. Matches cost 0; the other three are `costs`, which
  * defaults to 1 each. Ties in backtrace prefer match > substitute > delete >
@@ -49,6 +67,22 @@ export const EXPENSIVE_INSERT_COSTS: AlignCosts = { substitute: 1, insert: 2, de
  * substitution whenever one is on an optimal path. See
  * docs/DEFECT-alignment-script-mismatch.md.
  */
+/**
+ * Experiment 2 (Block 8 session 7): give cross-script substitution real signal
+ * from ORTHOGRAPHY_GUIDE §2's character table, so `mn`/`من` costs less than
+ * `mn`/`غير` and the tie that decides these runs disappears.
+ *
+ * **Selectable, never default.** Insertion cost is untouched, and there is
+ * still no many-to-one operation; those are separate experiments and bundling
+ * them makes the measurement meaningless.
+ */
+export const TRANSLITERATION_COSTS: AlignCosts = {
+  substitute: 1,
+  insert: 1,
+  delete: 1,
+  substituteCost: transliterationSubstituteCost,
+};
+
 export function align(
   reference: string[],
   hypothesis: string[],
@@ -56,6 +90,10 @@ export function align(
 ): AlignedPair[] {
   const n = reference.length;
   const m = hypothesis.length;
+  const subCost = (i: number, j: number): number =>
+    costs.substituteCost === undefined
+      ? costs.substitute
+      : costs.substituteCost(reference[i - 1] as string, hypothesis[j - 1] as string);
 
   const dist: number[][] = Array.from({ length: n + 1 }, () => new Array<number>(m + 1).fill(0));
   for (let i = 0; i <= n; i += 1) dist[i]![0] = i * costs.delete;
@@ -67,7 +105,7 @@ export function align(
         dist[i]![j] = dist[i - 1]![j - 1]!;
       } else {
         dist[i]![j] = Math.min(
-          dist[i - 1]![j - 1]! + costs.substitute,
+          dist[i - 1]![j - 1]! + subCost(i, j),
           dist[i - 1]![j]! + costs.delete,
           dist[i]![j - 1]! + costs.insert,
         );
@@ -83,11 +121,11 @@ export function align(
       pairs.push({ op: 'match', refIndex: i - 1, hypIndex: j - 1 });
       i -= 1;
       j -= 1;
-    } else if (i > 0 && j > 0 && dist[i]![j] === dist[i - 1]![j - 1]! + costs.substitute) {
+    } else if (i > 0 && j > 0 && near(dist[i]![j]!, dist[i - 1]![j - 1]! + subCost(i, j))) {
       pairs.push({ op: 'substitute', refIndex: i - 1, hypIndex: j - 1 });
       i -= 1;
       j -= 1;
-    } else if (i > 0 && dist[i]![j] === dist[i - 1]![j]! + costs.delete) {
+    } else if (i > 0 && near(dist[i]![j]!, dist[i - 1]![j]! + costs.delete)) {
       pairs.push({ op: 'delete', refIndex: i - 1, hypIndex: null });
       i -= 1;
     } else {

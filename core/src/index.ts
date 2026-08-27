@@ -5,6 +5,7 @@ export {
   align,
   DEFAULT_ALIGN_COSTS,
   EXPENSIVE_INSERT_COSTS,
+  TRANSLITERATION_COSTS,
   type AlignCosts,
   type AlignedPair,
   type AlignOp,
@@ -182,3 +183,11 @@ export {
   type ResolvedNode,
   type ResolveNodeOptions,
 } from './node-path.js';
+export {
+  hasArabic,
+  MIN_CROSS_SCRIPT_COST,
+  transliterate,
+  transliterationDistance,
+  transliterationSubstituteCost,
+  TRANSLITERATION_TABLE,
+} from './transliterate.js';

@@ -273,4 +273,9 @@ export function serializeAlignReference(reference: AlignReference): string {
 }
 
 export { renderSheet, type SheetInputs, type SheetRow } from './align-sheet.js';
-export { DEFAULT_ALIGN_COSTS, EXPENSIVE_INSERT_COSTS, type AlignCosts } from './align.js';
+export {
+  DEFAULT_ALIGN_COSTS,
+  EXPENSIVE_INSERT_COSTS,
+  TRANSLITERATION_COSTS,
+  type AlignCosts,
+} from './align.js';

@@ -19,6 +19,7 @@ import {
   buildAlignmentRows,
   DEFAULT_ALIGN_COSTS,
   EXPENSIVE_INSERT_COSTS,
+  TRANSLITERATION_COSTS,
   parseAlignReference,
   renderSheet,
   AlignReferenceError,
@@ -58,7 +59,11 @@ const allowShaDrift = argFlag('--allow-sha-drift');
  * what every recorded figure was measured with; naming it here is the whole
  * point of a flag rather than a constant edit.
  */
-const COST_MODELS = { default: DEFAULT_ALIGN_COSTS, 'expensive-insert': EXPENSIVE_INSERT_COSTS };
+const COST_MODELS = {
+  default: DEFAULT_ALIGN_COSTS,
+  'expensive-insert': EXPENSIVE_INSERT_COSTS,
+  transliteration: TRANSLITERATION_COSTS,
+};
 const costModelName = (argValue('--cost-model') ?? 'default') as keyof typeof COST_MODELS;
 if (!(costModelName in COST_MODELS)) {
   console.error(`align:score: unknown --cost-model "${costModelName}"; one of ${Object.keys(COST_MODELS).join(', ')}`);
