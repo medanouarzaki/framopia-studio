@@ -1,6 +1,12 @@
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
-import { REPO_ROOT } from '@framopia/core';
+import {
+  CacheEntrySelectionError,
+  describeSelection,
+  listTranscriptionEntries,
+  REPO_ROOT,
+  selectTranscriptionEntry,
+} from '@framopia/core';
 import { readEditPlan, writeEditPlan } from '../editplan/io.js';
 import { CACHE_ROOT } from './cache.js';
 
@@ -19,22 +25,29 @@ const FOOTAGE_DIR = path.join(REPO_ROOT, 'my files', 'test videos');
 
 const argv = process.argv.slice(2);
 const apply = argv.includes('--apply');
+const entryFlag = argv.includes('--entry') ? (argv[argv.indexOf('--entry') + 1] ?? null) : null;
 
 interface CachedTranscription {
   scribeRaw?: { words?: { text: string; start: number; end: number; type: string; logprob?: number }[] };
   correctedTexts?: string[];
 }
 
-function cachedFor(videoSha: string): CachedTranscription | null {
-  const dir = path.join(CACHE_ROOT, videoSha);
-  if (!existsSync(dir)) return null;
-  for (const entry of readdirSync(dir)) {
-    if (!entry.startsWith('transcription-')) continue;
-    const manifest = path.join(dir, entry, 'manifest.json');
-    if (!existsSync(manifest)) continue;
-    return JSON.parse(readFileSync(manifest, 'utf8')) as CachedTranscription;
-  }
-  return null;
+/**
+ * The entry at the pinned prompt version, never the first one `readdir`
+ * happens to return. This took `readdir` order until Block 8 session 2, which
+ * on `vitasilk` is the prompt v1 entry — a different set of corrected words
+ * from the one the plan was built from.
+ */
+function cachedFor(
+  videoSha: string,
+  reel: string,
+): { cached: CachedTranscription; entry: string } {
+  const entries = listTranscriptionEntries(CACHE_ROOT, videoSha);
+  const chosen = selectTranscriptionEntry(entries, reel, { entryOverride: entryFlag });
+  return {
+    cached: JSON.parse(readFileSync(path.join(chosen.dir, 'manifest.json'), 'utf8')) as CachedTranscription,
+    entry: describeSelection(chosen),
+  };
 }
 
 let repaired = 0;
@@ -46,14 +59,23 @@ for (const file of readdirSync(FOOTAGE_DIR).filter((f) => f.endsWith('.editplan.
   const planPath = path.join(FOOTAGE_DIR, file);
   const plan = await readEditPlan(planPath);
 
-  const cached = cachedFor(plan.source.sha256);
-  const draftRaw = cached?.scribeRaw?.words?.filter((w) => w.type === 'word');
-  const corrected = cached?.correctedTexts;
-  if (!draftRaw || !corrected) {
-    console.log(`${reel.padEnd(14)} no transcription cache entry; left as it is`);
+  let selected: { cached: CachedTranscription; entry: string };
+  try {
+    selected = cachedFor(plan.source.sha256, reel);
+  } catch (error) {
+    if (!(error instanceof CacheEntrySelectionError)) throw error;
+    console.log(`${reel.padEnd(14)} ${error.message}`);
     unrepairable += plan.transcript.words.length;
     continue;
   }
+  const draftRaw = selected.cached.scribeRaw?.words?.filter((w) => w.type === 'word');
+  const corrected = selected.cached.correctedTexts;
+  if (!draftRaw || !corrected) {
+    console.log(`${reel.padEnd(14)} cache entry holds no draft or corrected words; left as it is`);
+    unrepairable += plan.transcript.words.length;
+    continue;
+  }
+  console.log(`${reel.padEnd(14)} reading ${selected.entry}`);
   if (corrected.length !== plan.transcript.words.length) {
     console.log(
       `${reel.padEnd(14)} cache holds ${corrected.length} corrected words against the plan's ` +

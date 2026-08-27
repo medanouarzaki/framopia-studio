@@ -134,3 +134,13 @@ export {
   type DraftToken,
   type TokenScript,
 } from './align-review.js';
+export { ACTIVE_PROMPT_VERSION, type PromptVersion } from './prompt-version.js';
+export {
+  CacheEntrySelectionError,
+  describeSelection,
+  listTranscriptionEntries,
+  selectTranscriptionEntry,
+  TRANSCRIPTION_ENTRY_PREFIX,
+  type CachedEntryDescriptor,
+  type SelectOptions,
+} from './cache-select.js';

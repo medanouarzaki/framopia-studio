@@ -1,29 +1,40 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { createPartFromBase64, createUserContent, GoogleGenAI } from '@google/genai';
-import { computeGeminiCost, DOCS_DIR, modelConfig, SCRIPT_RULES, type GeminiUsage } from '@framopia/core';
+import {
+  ACTIVE_PROMPT_VERSION,
+  computeGeminiCost,
+  DOCS_DIR,
+  modelConfig,
+  SCRIPT_RULES,
+  type GeminiUsage,
+  type PromptVersion,
+} from '@framopia/core';
 import { TranscriptionError, type TranscriptWord } from './types.js';
 import type { CorrectedWord } from './tagging.js';
 
-export type PromptVersion = 1 | 2 | 3 | 4;
 
 /**
- * Identity of the correction prompt, and part of the cache fingerprint per
- * ARCHITECTURE §6 — a change here must invalidate every cached correction.
+ * The active prompt version and its type live in `@framopia/core` and are
+ * re-exported here, where every existing caller expects them. They moved
+ * because `tools/align-review` has to name the configuration it read and may
+ * not import this module: `@google/genai` above puts a network client in the
+ * graph, and the review sheet is pinned as unable to reach one.
  *
- * **Version 4 is active**: version 3 plus the two spelling rules guide v1.0.7
- * settles, stated in the prompt rather than left to be inferred from the
- * guide text. The guide is injected verbatim either way, but the conjunction
- * rule was new in v1.0.7 and every transcript in Block 3 wrote a standalone
- * `w`; a rule the model has to find in a long document is a rule it follows
- * by chance. This is the only difference from version 3 — Block 2 session 3
- * varied two things at once and produced a result nobody could read.
+ * Which version says what is documented below with the prompts themselves.
+ * Version 4 is active: version 3 plus the two spelling rules guide v1.0.7
+ * settles, stated in the prompt rather than left to be inferred from the guide
+ * text. The guide is injected verbatim either way, but the conjunction rule was
+ * new in v1.0.7 and every transcript in Block 3 wrote a standalone `w`; a rule
+ * the model has to find in a long document is a rule it follows by chance.
+ * This is the only difference from version 3 — Block 2 session 3 varied two
+ * things at once and produced a result nobody could read.
  *
- * Version 3: version 1 plus a per-word `lang` in the response, and
- * nothing else. Activated in Block 2 session 7 on the evidence in
- * benchmarks/RESULTS-block2-langtagging.md — under guide v1.0.6 all three
- * runs tagged every word, agreed on every tag, and moved WER by 0.4 points
- * against a 3.7-point noise floor.
+ * Version 3: version 1 plus a per-word `lang` in the response, and nothing
+ * else. Activated in Block 2 session 7 on the evidence in
+ * benchmarks/RESULTS-block2-langtagging.md — under guide v1.0.6 all three runs
+ * tagged every word, agreed on every tag, and moved WER by 0.4 points against
+ * a 3.7-point noise floor.
  *
  * Version 1 is the Block 1 frozen prompt, verbatim, and stays selectable: it
  * is what run C and every Block 1 figure were measured with.
@@ -36,10 +47,8 @@ export type PromptVersion = 1 | 2 | 3 | 4;
  *
  * ARCHITECTURE §3 requires the `lang` field and PROJECT_SPEC §5 depends on it
  * for the Latin-versus-Arabic rendering decision.
- *
- * Switching is this constant and nothing else.
  */
-export const ACTIVE_PROMPT_VERSION: PromptVersion = 4;
+export { ACTIVE_PROMPT_VERSION, type PromptVersion } from '@framopia/core';
 
 /**
  * Version 2 only. The hybrid path rendered the Darija conjunction و as French
