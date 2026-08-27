@@ -12,11 +12,22 @@
  * and `normalizeToken` and nothing else, deliberately not the `@framopia/core`
  * barrel, which re-exports `appendCost`. A test in core pins that.
  */
-import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildAlignmentRows, type AlignmentRow, type DraftToken } from '@framopia/core/align-review';
-import { renderSheet } from './sheet.js';
+import {
+  buildAlignmentRows,
+  renderSheet,
+  type AlignmentRow,
+  type DraftToken,
+} from '@framopia/core/align-review';
+import {
+  ACTIVE_PROMPT_VERSION,
+  CacheEntrySelectionError,
+  describeSelection,
+  listTranscriptionEntries,
+  selectTranscriptionEntry,
+} from '@framopia/core/cache-select';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, '..', '..');
@@ -48,62 +59,48 @@ function argValue(flag: string): string | null {
   return i >= 0 && argv[i + 1] !== undefined ? (argv[i + 1] as string) : null;
 }
 
+/** Deliberate opt-out from the pinned entry, for reproducing a historical figure. */
+const entryFlag = argValue('--entry');
+
 /**
- * Picks the entry with the highest prompt version present. The reel may hold
- * several configurations — vitasilk has three — and every figure this sheet
- * shows depends on which one was read, so the entry name and its prompt
- * version are stamped into both outputs rather than left implicit. The defect
- * write-up's own numbers come from three different entries, which is only
- * visible because they can be named.
+ * The entry at the pinned prompt version, by the shared rule in
+ * `@framopia/core/cache-select`. Session 1 took the highest version present,
+ * which happened to agree with the pin but was still a rule of its own; the
+ * defect record's own figures came from three different entries, and none of
+ * them said which.
  */
-function loadEntry(videoSha: string): CachedEntry {
-  const dir = path.join(CACHE_ROOT, videoSha);
-  if (!existsSync(dir)) {
-    throw new ReviewError(`no cache directory for video ${videoSha} at ${dir}`);
+function loadEntry(videoSha: string, reel: string): CachedEntry {
+  const entries = listTranscriptionEntries(CACHE_ROOT, videoSha);
+  if (entries.length === 0) {
+    throw new ReviewError(`${reel}: no transcription cache entry under ${path.join(CACHE_ROOT, videoSha)}`);
   }
-  const candidates = readdirSync(dir)
-    .filter((name) => name.startsWith('transcription-'))
-    .filter((name) => existsSync(path.join(dir, name, 'manifest.json')));
-  if (candidates.length === 0) {
-    throw new ReviewError(`no transcription cache entry under ${dir}`);
+  const chosen = selectTranscriptionEntry(entries, reel, { entryOverride: entryFlag });
+
+  const manifest = JSON.parse(
+    readFileSync(path.join(chosen.dir, 'manifest.json'), 'utf8'),
+  ) as Record<string, unknown>;
+  const scribeRaw = manifest['scribeRaw'] as { words?: unknown } | undefined;
+  const words = Array.isArray(scribeRaw?.words) ? scribeRaw.words : null;
+  if (words === null) throw new ReviewError(`${chosen.id}/manifest.json holds no scribeRaw.words`);
+  if (manifest['correctionRaw'] === undefined) {
+    throw new ReviewError(`${chosen.id}/manifest.json holds no correctionRaw`);
   }
+  const correctedTexts = manifest['correctedTexts'];
+  if (!Array.isArray(correctedTexts)) {
+    throw new ReviewError(`${chosen.id}/manifest.json holds no correctedTexts`);
+  }
+  const draft = (words as { text: string; start: number; end: number; type: string }[])
+    .filter((w) => w.type === 'word')
+    .map(({ text, start, end }) => ({ text, start, end }));
 
-  const loaded = candidates.map((name) => {
-    const manifest = JSON.parse(
-      readFileSync(path.join(dir, name, 'manifest.json'), 'utf8'),
-    ) as Record<string, unknown>;
-    const scribeRaw = manifest['scribeRaw'] as { words?: unknown } | undefined;
-    const words = Array.isArray(scribeRaw?.words) ? scribeRaw.words : null;
-    if (words === null) throw new ReviewError(`${name}/manifest.json holds no scribeRaw.words`);
-    if (manifest['correctionRaw'] === undefined) {
-      throw new ReviewError(`${name}/manifest.json holds no correctionRaw`);
-    }
-    const correctedTexts = manifest['correctedTexts'];
-    if (!Array.isArray(correctedTexts)) {
-      throw new ReviewError(`${name}/manifest.json holds no correctedTexts`);
-    }
-    const draft = (words as { text: string; start: number; end: number; type: string }[])
-      .filter((w) => w.type === 'word')
-      .map(({ text, start, end }) => ({ text, start, end }));
-    const promptVersion = manifest['promptVersion'];
-    return {
-      name,
-      promptVersion: typeof promptVersion === 'number' ? promptVersion : null,
-      draft,
-      correctedTexts: correctedTexts as string[],
-    };
-  });
-
-  loaded.sort((a, b) => (b.promptVersion ?? -1) - (a.promptVersion ?? -1));
-  return loaded[0] as CachedEntry;
+  return {
+    name: chosen.id,
+    promptVersion: chosen.promptVersion,
+    draft,
+    correctedTexts: correctedTexts as string[],
+  };
 }
 
-/**
- * Read out of .git rather than by shelling out to git. The allowlist test in
- * core keeps this tool's imports to fs, path and url — no child_process, so
- * there is no process it could start that could reach the network. A sha is
- * not worth widening that.
- */
 function headSha(): string {
   const gitDir = path.join(REPO_ROOT, '.git');
   try {
@@ -139,7 +136,7 @@ function main(): void {
   }
   const plan = JSON.parse(readFileSync(planPath, 'utf8')) as { source: { sha256: string } };
 
-  const entry = loadEntry(plan.source.sha256);
+  const entry = loadEntry(plan.source.sha256, reel);
   const rows: AlignmentRow[] = buildAlignmentRows(entry.draft, entry.correctedTexts);
 
   const generatedAt = new Date().toISOString();
@@ -156,6 +153,7 @@ function main(): void {
         headSha: sha,
         cacheEntry: entry.name,
         promptVersion: entry.promptVersion,
+        pinnedPromptVersion: ACTIVE_PROMPT_VERSION,
         draftTokens: entry.draft.length,
         rows,
       },
@@ -181,7 +179,8 @@ function main(): void {
   const unanchored = rows.filter((r) => r.draftIndex === null).length;
   console.log(
     `${reel}: ${rows.length} corrected words against ${entry.draft.length} draft tokens ` +
-      `from ${entry.name} (prompt v${entry.promptVersion ?? '?'})`,
+      `from ${describeSelection({ id: entry.name, dir: '', promptVersion: entry.promptVersion })}` +
+      (entryFlag === null ? '' : ' [--entry override]'),
   );
   console.log(`  ${cross} cross-script pairings, ${unanchored} words with no draft token`);
   console.log(`  ${pairsPath}`);
@@ -191,7 +190,7 @@ function main(): void {
 try {
   main();
 } catch (error) {
-  if (error instanceof ReviewError) {
+  if (error instanceof ReviewError || error instanceof CacheEntrySelectionError) {
     console.error(`align:review: ${error.message}`);
     process.exit(1);
   }

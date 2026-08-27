@@ -1,4 +1,4 @@
-import type { AlignmentRow } from '@framopia/core/align-review';
+import type { AlignmentRow } from './align-review.js';
 
 /**
  * The review sheet, as one self-contained HTML file. No CDN, no build step,
@@ -8,6 +8,10 @@ import type { AlignmentRow } from '@framopia/core/align-review';
  * Framopia brand per PROJECT_SPEC §6 — dark-first, #ED1C24 the single accent.
  * This is the first thing Block 8 shows the user, so it is styled as product
  * rather than as a diagnostic dump.
+ *
+ * It lives in core rather than beside the CLI so that the markup and the
+ * behaviour it carries can be executed in a DOM by `npm run check`. Block 8
+ * session 1 verified the structure and never ran the script.
  */
 
 export interface SheetInputs {
@@ -17,6 +21,11 @@ export interface SheetInputs {
   cacheEntry: string;
   promptVersion: number | null;
   rows: AlignmentRow[];
+}
+
+interface Fact {
+  label: string;
+  value: string;
 }
 
 const escapes: Record<string, string> = {
@@ -50,6 +59,19 @@ function secs(value: number | null): string {
 export function renderSheet(input: SheetInputs): string {
   const cross = input.rows.filter((r) => r.crossScript).length;
   const unanchored = input.rows.filter((r) => r.draftIndex === null).length;
+
+  /*
+   * On screen, not only in the JSON. A reel holds one cache entry per
+   * configuration and the verdicts below are a judgement of one of them; a
+   * reviewer who cannot see which is judging something he cannot name.
+   */
+  const facts: Fact[] = [
+    { label: 'reel', value: input.reel },
+    { label: 'cache entry', value: input.cacheEntry },
+    { label: 'prompt version', value: `v${input.promptVersion ?? '?'}` },
+    { label: 'aligner sha', value: input.headSha.slice(0, 12) },
+    { label: 'rows', value: String(input.rows.length) },
+  ];
 
   const rows = input.rows
     .map((r) => {
@@ -114,7 +136,15 @@ header {
 }
 h1 { margin: 0 0 4px; font-size: 19px; font-weight: 600; letter-spacing: -.01em; }
 h1 .accent { color: var(--accent); }
-.meta { color: var(--faint); font-size: 12.5px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.meta { color: var(--faint); font-size: 12.5px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; margin-top: 10px; }
+.provenance { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.fact {
+  display: flex; align-items: baseline; gap: 8px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 7px;
+  padding: 5px 11px;
+}
+.fact .k { font-size: 10.5px; text-transform: uppercase; letter-spacing: .08em; color: var(--faint); }
+.fact .v { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; color: var(--text); }
 .bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 16px; }
 .spacer { flex: 1 1 auto; }
 button {
@@ -168,7 +198,10 @@ footer { padding: 0 32px 40px; color: var(--faint); font-size: 12.5px; max-width
 <body>
 <header>
 <h1>Alignment review <span class="accent">·</span> ${esc(input.reel)}</h1>
-<div class="meta">${input.rows.length} words &nbsp;·&nbsp; ${cross} cross-script &nbsp;·&nbsp; ${unanchored} with no draft token &nbsp;·&nbsp; ${esc(input.cacheEntry)} (prompt v${input.promptVersion ?? '?'}) &nbsp;·&nbsp; HEAD ${esc(input.headSha.slice(0, 12))} &nbsp;·&nbsp; ${esc(input.generatedAt)}</div>
+<div class="provenance">
+${facts.map((f) => `<div class="fact"><span class="k">${esc(f.label)}</span><span class="v">${esc(f.value)}</span></div>`).join('\n')}
+</div>
+<div class="meta">${cross} cross-script &nbsp;·&nbsp; ${unanchored} with no draft token &nbsp;·&nbsp; generated ${esc(input.generatedAt)}</div>
 <div class="bar">
 <button class="f on" data-f="all">all rows</button>
 <button class="f" data-f="cross">cross-script only</button>

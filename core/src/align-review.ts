@@ -216,3 +216,5 @@ export function parseAlignReference(input: unknown): AlignReference {
 export function serializeAlignReference(reference: AlignReference): string {
   return `${JSON.stringify(reference, null, 2)}\n`;
 }
+
+export { renderSheet, type SheetInputs } from './align-sheet.js';

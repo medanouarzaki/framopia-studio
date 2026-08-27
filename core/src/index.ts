@@ -134,6 +134,7 @@ export {
   type DraftToken,
   type TokenScript,
 } from './align-review.js';
+export { renderSheet, type SheetInputs } from './align-sheet.js';
 export { ACTIVE_PROMPT_VERSION, type PromptVersion } from './prompt-version.js';
 export {
   CacheEntrySelectionError,
