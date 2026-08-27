@@ -122,6 +122,7 @@ function framopiaBuildReel(optionsPath, outPath) {
 
         stage = 'build-masters';
         var comps = [];
+        var watermarkReport = null;
         for (i = 0; i < o.masters.length; i++) {
             var spec = o.masters[i];
             var master = app.project.items.addComp(
@@ -129,7 +130,7 @@ function framopiaBuildReel(optionsPath, outPath) {
             );
             master.layers.add(footage).startTime = 0;
 
-            var counts = { subtitle: 0, keyword: 0, image: 0, audio: 0 };
+            var counts = { subtitle: 0, keyword: 0, image: 0, audio: 0, watermark: 0 };
             for (j = 0; j < spec.placements.length; j++) {
                 var pl = spec.placements[j];
                 var item = built[pl.elementId];
@@ -151,6 +152,52 @@ function framopiaBuildReel(optionsPath, outPath) {
                     layer.property('Scale').setValue([pl.scalePercent, pl.scalePercent]);
                 }
                 counts[pl.kind] = counts[pl.kind] + 1;
+            }
+
+            /*
+             * The watermark, above everything (PROJECT_SPEC §4: overlaid, and
+             * it does not extend the video). Added before the audio layers so
+             * that `layers.add` leaves it at index 1 — AE inserts at the top,
+             * so the last visual layer added is the topmost.
+             */
+            if (spec.watermark) {
+                var wmItem = importOnce(spec.watermark.filePath, imports);
+                // ARCHITECTURE §1.2: the file is premultiplied against black and
+                // AE must be told so explicitly. Guessing it straight would
+                // brighten every edge of the artwork.
+                if (spec.watermark.premultiplied) {
+                    wmItem.mainSource.alphaMode = AlphaMode.PREMULTIPLIED;
+                    wmItem.mainSource.premulColor = [0, 0, 0];
+                }
+                var wm = master.layers.add(wmItem);
+                wm.moveToBeginning();
+                wm.startTime = 0;
+                wm.inPoint = 0;
+                wm.outPoint = spec.watermark.outPointS;
+                wm.property('Position').setValue([
+                    spec.watermark.positionX, spec.watermark.positionY
+                ]);
+                wm.property('Scale').setValue([
+                    spec.watermark.scalePercent, spec.watermark.scalePercent
+                ]);
+                wm.property('Audio').property('Audio Levels').setValue([
+                    spec.watermark.gainDb, spec.watermark.gainDb
+                ]);
+                counts.watermark = 1;
+                watermarkReport = {
+                    index: wm.index,
+                    inPoint: wm.inPoint,
+                    outPoint: wm.outPoint,
+                    position: wm.property('Position').value,
+                    scale: wm.property('Scale').value,
+                    audioLevels: wm.property('Audio').property('Audio Levels').value,
+                    width: wm.width,
+                    height: wm.height,
+                    // Read back rather than assumed: setting it is not proof.
+                    alphaMode: String(wmItem.mainSource.alphaMode),
+                    premultipliedConstant: String(AlphaMode.PREMULTIPLIED),
+                    layersAbove: wm.index - 1
+                };
             }
 
             for (j = 0; j < spec.audio.length; j++) {
@@ -235,6 +282,7 @@ function framopiaBuildReel(optionsPath, outPath) {
             elementsBuilt: o.elements.length,
             masters: comps,
             imageMeasurements: measured,
+            watermark: watermarkReport,
             textFits: fits,
             parkedOn: parkedOn,
             parkedAtS: parkedAt,

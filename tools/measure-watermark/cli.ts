@@ -14,7 +14,7 @@
  */
 import { execFileSync, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -648,6 +648,31 @@ function main(): void {
   L.push('');
 
   writeFileSync(OUT, `${L.join('\n')}\n`, 'utf8');
+
+  /*
+   * The machine-readable half. The builder needs the last beep's end to derive
+   * how long the watermark stays up, and deriving it here means a different
+   * watermark file recomputes rather than inheriting 1.4 s as a magic number.
+   */
+  const lastBeep = reported === null ? null : reported.bursts[reported.bursts.length - 1];
+  const facts = {
+    path: path.relative(REPO_ROOT, ASSET),
+    sha256: sha,
+    width,
+    height,
+    durationS,
+    frames: frameCount,
+    frameRate: video.r_frame_rate ?? null,
+    alphaPlane,
+    alphaIsPremultiplied: !binary && hyp !== null && hyp.exceedingAlpha === 0,
+    beeps: reported === null ? [] : reported.bursts.map((b) => ({ startS: b.startS, endS: b.endS })),
+    lastBeepEndS: lastBeep?.endS ?? null,
+    audio: audio === null ? null : { meanDb: vol?.mean ?? null, maxDb: vol?.max ?? null },
+  };
+  const factsPath = path.join(REPO_ROOT, '.local', 'build', 'watermark.json');
+  mkdirSync(path.dirname(factsPath), { recursive: true });
+  writeFileSync(factsPath, `${JSON.stringify(facts, null, 2)}\n`, 'utf8');
+  console.log(`wrote ${path.relative(REPO_ROOT, factsPath)}`);
   console.log(`wrote ${path.relative(REPO_ROOT, OUT)}`);
   console.log(`alpha plane: ${alphaPlane}; binary: ${binary}; frames: ${stats.length}`);
 }

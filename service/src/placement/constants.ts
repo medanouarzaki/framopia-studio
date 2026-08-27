@@ -109,6 +109,29 @@ export const TOP_LEFT_MARGIN = 0.03;
 export const TOP_LEFT_JITTER = 0.06;
 
 /**
+ * Watermark width as a fraction of frame width — 216 px on a 2160 frame.
+ *
+ * **CHOSEN, NOT MEASURED.** The user's ruling is "about one tenth of the frame
+ * width"; the artwork is 1924 x 2154, so the **width** is what is fitted and the
+ * height follows its own aspect ratio rather than being squared off. What would
+ * change it is his eye on a built comp.
+ */
+export const WATERMARK_WIDTH_FRACTION = 0.1;
+
+/**
+ * How long the watermark stays after its last beep. **A user ruling**, not a
+ * measurement: it leaves the screen one second after the sound finishes. The
+ * beep time itself is measured per file, so a different watermark recomputes.
+ */
+export const WATERMARK_HOLD_AFTER_LAST_BEEP_S = 1;
+
+/** Audio level for the watermark layer. The user's own setting. */
+export const WATERMARK_GAIN_DB = -20;
+
+/** Clearance between the watermark and the frame edge. CHOSEN, NOT MEASURED. */
+export const WATERMARK_MARGIN = 0.03;
+
+/**
  * Mirrors MIN_ZONE_SHORT_EDGE in the same file, and is applied here to the
  * **placed square** rather than to the zone. The constant's stated reason is
  * about the image a viewer sees, and after clearance and fill a placed square

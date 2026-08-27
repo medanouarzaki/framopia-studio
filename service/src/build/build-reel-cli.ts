@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import {
@@ -12,6 +13,12 @@ import { runBuildReel } from './drive.js';
 import { imageSize } from './image-size.js';
 import { canvasScalePercent, contentBoxes } from './content-box.js';
 import { assertPathsPresent, type PathRef } from './preflight.js';
+import {
+  COMP_SIDE_PX,
+  WATERMARK_GAIN_DB,
+  WATERMARK_HOLD_AFTER_LAST_BEEP_S,
+} from '../placement/constants.js';
+import { placeWatermark } from '../placement/watermark.js';
 import {
   buildReel,
   auditedSolid,
@@ -86,7 +93,25 @@ console.log(`pre-flight: ${refs.length} referenced files all present`);
  */
 const CARD_TEMPLATE = 'img_float';
 
-const faceBoxesPath = path.join(REPO_ROOT, '.local', 'build', `topleft-${reel}.json`);
+/*
+ * The watermark. Its duration is derived from the measured last beep rather
+ * than a constant, so a different file recomputes; the facts come from
+ * `npm run watermark:measure`.
+ */
+const WATERMARK_PATH = path.join(REPO_ROOT, 'assets', 'watermark', 'intro.mov');
+const watermarkFactsPath = path.join(REPO_ROOT, '.local', 'build', 'watermark.json');
+interface WatermarkFacts {
+  width: number;
+  height: number;
+  frames: number;
+  lastBeepEndS: number | null;
+  alphaIsPremultiplied: boolean;
+}
+const watermarkFacts: WatermarkFacts | null = existsSync(watermarkFactsPath)
+  ? (JSON.parse(readFileSync(watermarkFactsPath, 'utf8')) as WatermarkFacts)
+  : null;
+
+const faceBoxesPath = path.join(REPO_ROOT, '.local', 'build', `topleft-${path.basename(planPath).replace('.editplan.json', '')}.json`);
 const topLeft: Record<string, { x: number; y: number; w: number; h: number }> = existsSync(faceBoxesPath)
   ? (JSON.parse(readFileSync(faceBoxesPath, 'utf8')) as Record<string, { x: number; y: number; w: number; h: number }>)
   : {};
@@ -167,6 +192,92 @@ console.log(
   `short-card entrances: ${built.shortened.length} shortened, ${onFloor} on the two-frame floor`,
 );
 
+/**
+ * The face mask over a window, as one box. Read from masks already on disk;
+ * runs no model.
+ */
+const MASK_PY = path.join(REPO_ROOT, 'tools', 'cv', '.venv', 'bin', 'python');
+const MASK_SCRIPT = path.join(REPO_ROOT, 'tools', 'cv', 'head_boxes.py');
+interface MaskFrame { index: string; box: [number, number, number, number] | null }
+// The CV directory is named after the reel as it appears on disk, spaces and
+// all; `reel` has had them replaced for comp naming.
+const maskDir = path.join(REPO_ROOT, '.local', 'cv', path.basename(planPath).replace('.editplan.json', ''), 'masks-2fps');
+const faceFrames: MaskFrame[] = existsSync(maskDir) && existsSync(MASK_PY)
+  ? (JSON.parse(
+      execFileSync(MASK_PY, [MASK_SCRIPT, maskDir, 'face'], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }),
+    ) as { frames: MaskFrame[] }).frames
+  : [];
+
+function faceSpan(startS: number, endS: number): { x: number; y: number; w: number; h: number } | null {
+  const fps = plan.zones.sampleFps || 2;
+  const boxes = faceFrames
+    .filter((f) => {
+      const t = Number(f.index) / fps;
+      return f.box !== null && t >= startS - 1 / fps && t <= endS + 1 / fps;
+    })
+    .map((f) => f.box as [number, number, number, number]);
+  if (boxes.length === 0) return null;
+  const x0 = Math.min(...boxes.map((b) => b[0]));
+  const y0 = Math.min(...boxes.map((b) => b[1]));
+  return {
+    x: x0,
+    y: y0,
+    w: Math.max(...boxes.map((b) => b[2])) - x0,
+    h: Math.max(...boxes.map((b) => b[3])) - y0,
+  };
+}
+
+/*
+ * Placed against the face over its own window and against whatever else is on
+ * screen then, so it never lands on the speaker or under an image.
+ */
+let watermark: Record<string, unknown> | undefined;
+if (watermarkFacts !== null && watermarkFacts.lastBeepEndS !== null && existsSync(WATERMARK_PATH)) {
+  const outPointS = watermarkFacts.lastBeepEndS + WATERMARK_HOLD_AFTER_LAST_BEEP_S;
+  const occupied = built.placementsC
+    .filter((p) => p.kind === 'image' && p.inPointS < outPointS && 0 < p.outPointS)
+    .map((p) => {
+      const side = ((p.scalePercent ?? 0) / 100) * COMP_SIDE_PX;
+      return {
+        x: (p.positionX - side / 2) / plan.source.width,
+        y: (p.positionY - side / 2) / plan.source.height,
+        w: side / plan.source.width,
+        h: side / plan.source.height,
+      };
+    });
+  const wmFace = faceSpan(0, outPointS);
+  const placed = placeWatermark({
+    faceBox: wmFace,
+    occupied,
+    sourceWidth: watermarkFacts.width,
+    sourceHeight: watermarkFacts.height,
+    lastBeepEndS: watermarkFacts.lastBeepEndS,
+    holdAfterLastBeepS: WATERMARK_HOLD_AFTER_LAST_BEEP_S,
+    seed: plan.meta.id,
+  });
+  // Width is what is fitted; the artwork is 1924 x 2154 so the height follows
+  // its own aspect rather than being squared off.
+  const scalePercent = ((placed.rect.w * plan.source.width) / watermarkFacts.width) * 100;
+  watermark = {
+    filePath: WATERMARK_PATH,
+    premultiplied: watermarkFacts.alphaIsPremultiplied,
+    outPointS: placed.outPointS,
+    positionX: (placed.rect.x + placed.rect.w / 2) * plan.source.width,
+    positionY: (placed.rect.y + placed.rect.h / 2) * plan.source.height,
+    scalePercent,
+    gainDb: WATERMARK_GAIN_DB,
+  };
+  console.log(
+    `watermark: ${placed.corner}, ${(placed.rect.w * plan.source.width).toFixed(0)} x ` +
+      `${(placed.rect.h * plan.source.height).toFixed(0)} px from ${watermarkFacts.width}x${watermarkFacts.height} ` +
+      `-> scale ${scalePercent.toFixed(4)}%; out at ${placed.outPointS.toFixed(3)}s = ` +
+      `frame ${(placed.outPointS * (30000 / 1001)).toFixed(2)} of ${watermarkFacts.frames}`,
+  );
+  for (const r of placed.rejected) console.log(`  rejected ${r.corner}: ${r.reason}`);
+} else {
+  console.log('watermark: no measured facts on disk; not placed');
+}
+
 const startedAt = Date.now();
 const result = runBuildReel({
   footagePath: plan.source.videoPath,
@@ -178,7 +289,7 @@ const result = runBuildReel({
   safeWidth: SUBTITLE_SAFE_WIDTH,
   elements: built.elements,
   masters: [
-    { name: 'master_final', placements: built.placementsC, audio: built.audio },
+    { name: 'master_final', placements: built.placementsC, audio: built.audio, watermark },
     {
       // The same elements with the images and their audio left out, so the
       // subtitles can be judged with nothing else on screen. One difference.
