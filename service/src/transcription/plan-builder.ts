@@ -22,6 +22,13 @@ function wordId(index: number): string {
  * `sourceText` is the draft word the corrected word anchored to where one
  * exists, and the corrected text itself where the correction pass inserted a
  * word with no anchor — an inserted word has no raw ASR form to keep.
+ *
+ * It comes from the aligner, which knows which draft token each corrected word
+ * matched. It used to be `draftWords[i]`, **a positional index into a
+ * different array**: the correction pass inserts and merges, so from the first
+ * insertion the two lists no longer share an index and every subsequent word
+ * named its neighbour's token. That was wrong on all 343 words of all five
+ * plans (Block 7 session 6 found it; session 7 fixed it).
  */
 export function buildTranscript(
   words: TranscriptWord[],
@@ -40,7 +47,7 @@ export function buildTranscript(
       start: word.start ?? 0,
       end: word.end ?? word.start ?? 0,
       text: word.text,
-      sourceText: draftWords[i]?.text ?? word.text,
+      sourceText: word.sourceText ?? word.text,
       lang: tags.lang,
       script: tags.script,
       confidence: word.confidence,

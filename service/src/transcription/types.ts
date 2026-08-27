@@ -5,6 +5,15 @@ export interface TranscriptWord {
   end: number | null;
   /** (0, 1] where the engine reports one, null where it does not. */
   confidence: number | null;
+  /**
+   * The draft token this word anchored to, where it anchored to one.
+   *
+   * Carried from the aligner rather than looked up by index: the correction
+   * pass inserts and merges words, so the corrected list and the draft list do
+   * not share an index. Undefined on an interpolated word, which had no
+   * anchor and therefore no raw ASR form to keep.
+   */
+  sourceText?: string;
 }
 
 export type TranscriptionStage = 'scribe' | 'correction' | 'align';

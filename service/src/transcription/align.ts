@@ -40,6 +40,7 @@ export function alignCorrectedOntoDraft(
       start: anchor.start,
       end: anchor.end,
       confidence: anchor.confidence,
+      sourceText: anchor.text,
     };
   }
 

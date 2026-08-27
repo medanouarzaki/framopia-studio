@@ -238,3 +238,39 @@ describe('alignCorrectedOntoDraft — confidence propagation', () => {
     }
   });
 });
+
+/*
+ * Block 7 session 6 found `sourceText` naming the *next* word's draft token on
+ * all 343 words of all five plans: it was assigned `draftWords[i]`, a
+ * positional index into a different array. The aligner knows which draft token
+ * each corrected word matched, so it carries it.
+ */
+describe('sourceText follows the anchor, not the index', () => {
+  const draft = (text: string, start: number): TranscriptWord => ({
+    text,
+    start,
+    end: start + 0.2,
+    confidence: 0.9,
+  });
+
+  it('names the token each word actually matched, across an insertion', () => {
+    // The correction pass inserted "w" at position 1, so from there on the
+    // corrected index runs one ahead of the draft index.
+    const drafts = [draft('alpha', 0), draft('beta', 1), draft('gamma', 2)];
+    const out = alignCorrectedOntoDraft(drafts, ['alpha', 'w', 'beta', 'gamma']);
+    expect(out.map((w) => w.sourceText)).toEqual(['alpha', undefined, 'beta', 'gamma']);
+  });
+
+  it('leaves an inserted word with no source token at all', () => {
+    const drafts = [draft('alpha', 0), draft('beta', 1)];
+    const out = alignCorrectedOntoDraft(drafts, ['alpha', 'inserted', 'beta']);
+    expect(out[1]?.sourceText).toBeUndefined();
+    expect(out[1]?.confidence).toBeNull();
+  });
+
+  it('keeps the pairing when a word is corrected rather than matched', () => {
+    const drafts = [draft('alpha', 0), draft('betta', 1)];
+    const out = alignCorrectedOntoDraft(drafts, ['alpha', 'beta']);
+    expect(out.map((w) => w.sourceText)).toEqual(['alpha', 'betta']);
+  });
+});
