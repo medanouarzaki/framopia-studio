@@ -72,9 +72,11 @@ function near(a: number, b: number): boolean {
  * from ORTHOGRAPHY_GUIDE §2's character table, so `mn`/`من` costs less than
  * `mn`/`غير` and the tie that decides these runs disappears.
  *
- * **Selectable, never default.** Insertion cost is untouched, and there is
- * still no many-to-one operation; those are separate experiments and bundling
- * them makes the measurement meaningless.
+ * **Adopted as the default 2026-08-28** — see `ACTIVE_ALIGN_COST_MODEL` in
+ * `service/src/transcription/align.ts`, which is where the selection lives.
+ * Insertion cost is untouched, and there is still no many-to-one operation;
+ * those are separate experiments and bundling them makes the measurement
+ * meaningless.
  */
 export const TRANSLITERATION_COSTS: AlignCosts = {
   substitute: 1,
