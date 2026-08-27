@@ -1,3 +1,4 @@
+import { NODE_NOT_FOUND_HELP } from '@framopia/core/node-path';
 import type { ClientMode, DryRunPlan, HealthPayload, Reel, ServiceError } from './types.js';
 
 /**
@@ -98,14 +99,9 @@ export async function connect(host: PanelHost): Promise<
   if (node === null) {
     return {
       ok: false,
-      error: serviceErrorOf(
-        'node-missing',
-        'No Node interpreter could be found. After Effects starts from the Finder and does ' +
-          'not inherit your shell PATH, so a Node installed through nvm is invisible to it. ' +
-          'Add {"nodePath": "/absolute/path/to/node"} to .local/config.json — `which node` in ' +
-          'a terminal prints the path — then reopen the panel.',
-        false,
-      ),
+      // The one wording, shared with the service's health payload rather than
+      // retyped here, so the two cannot drift.
+      error: serviceErrorOf('node-missing', NODE_NOT_FOUND_HELP, false),
     };
   }
 
