@@ -401,6 +401,27 @@ so at Build. That fallback was already happening and nobody had decided it:
 `requireFonts` throws on a `tbd` mode and **nothing outside `core` has ever
 called it**, so every Block 7 build took the global pair without asking.
 
+### The review sheet writes every displayed row, or nothing
+
+A downloaded reference carries **one entry per displayed row**, in display
+order, an unmarked row written with `verdict: null` rather than omitted, plus
+`rowCount` and `markedCount` **computed by the same walk that writes the
+entries**. The download refuses loudly rather than write a partial file.
+
+Marks are keyed by **word id**. They were keyed by `data-i`, the corrected-word
+index, while the download walked positions `0..n-1`: on the main sheet every
+corrected word is a row so the two coincide, but a re-review sheet holds only
+the rows a change moved — indices `0,1,2,28…54` against positions `0..16` — so
+a mark survived only where a row's index equalled its own position. **Seventeen
+hand-made judgements went in and three came out.** Reference schema is **3**;
+versions 1 and 2 stay readable, and `scoreAlignment` ignores a null verdict
+rather than counting an unreviewed row as judged.
+
+`localStorage` is keyed by variant, reel, sha **and a fingerprint of the row
+set**, so one change's marks cannot be restored onto another change's rows. A
+sheet with nothing under its own key migrates once from the pre-fix key, mapping
+the old index keys onto word ids, and shows what it restored.
+
 ### A stub is a claim about the host, and needs evidence
 
 Writing `window.CSInterface = …` in a test asserts the host provides it. CEP
@@ -4689,6 +4710,44 @@ not be relied on.
 `ResizeObserver` (Chrome 64), `AbortController` and `AbortSignal` (66); its
 whole CSS surface tops out at flex `gap` (84) and `overflow-wrap: anywhere`
 (80). The built bundle carries **no at-rules at all** and no modern pseudo-class.
+
+## Block 8 part 2, session 11 — the review sheet lost fourteen judgements
+
+**Spent $0.00; no API was called.** Ledger 108 entries / sha `50ec3f57…` at both
+ends. After Effects was not driven.
+
+**The user marked all 17 rows of the re-review sheet. The downloaded file
+contained 3.** Reproduced against the real artifact in a real browser before
+anything was changed: 17 rows rendered, 17 buttons showing selected, the
+counters reading `unset=0` — and 3 entries in the file.
+
+**The mechanism, exactly.** Rows carried `data-i`, the corrected-word index, and
+marks were stored under it; the download looped positions `0..WORDS.length-1`
+and read `state[position]`. On the main review sheet every corrected word is a
+row, so index and position coincide and it worked. The re-review sheet holds
+only the rows a change moved: indices `0,1,2,28,29,…,54` against positions
+`0..16`. A mark was found **only where a row's index equalled its own
+position** — rows 0, 1 and 2. **Exactly three**, and they are `w0000` `5`/`خمس`,
+`w0001` `d9ay9`/`دقائق.`, `w0002` `eyyh`/none, which is precisely the set the
+user reported surviving.
+
+**The display was right and the writer was wrong**, which is why nothing looked
+amiss: `paint()` read the same sparse key it wrote, so every counter agreed with
+the screen. Only the download used a different key space.
+
+**Fixed at the root** — marks keyed by word id — **and the class of failure
+closed**: the file now carries every displayed row, and refuses rather than
+write a partial one. See the convention above.
+
+**Nine Playwright tests against the real artifact**, on the sparse index shape
+that caused the loss. Not happy-dom: guidelines §3 forbids proving a claim about
+the host in a more capable environment, and a human opens this file in Chrome.
+
+**A recovery path exists for the fourteen lost marks.** They were never in a
+file, but they were in `localStorage` in the user's browser under the pre-fix
+key. The sheet migrates that store once, mapping the old index keys onto word
+ids, and says so on screen. **Whether it fires depends on the user opening the
+regenerated sheet in the same browser profile.**
 
 See `docs/BLOCKS.md` for the full block plan and `handoffs/` for prior
 session context.
