@@ -98,3 +98,39 @@ export function parseHexColour(hex: string): Rgb {
 export function toAeColour(colour: Rgb): [number, number, number] {
   return [colour.r / 255, colour.g / 255, colour.b / 255];
 }
+
+export interface FrameReference {
+  /** The luminance the frame has to differ from. */
+  luminance: number;
+  /** What was measured, for the report. */
+  measured: 'the picture’s own edge' | 'the lit part of the subject';
+}
+
+/**
+ * Which measurement the frame colour is chosen against, given how the slot
+ * renders.
+ *
+ * **A whole picture meets the frame at its own outer ring.** That is what
+ * session 25 measured and it is right for the eight of ten candidates that
+ * render whole.
+ *
+ * **A cut-out has no ring.** Its surround is transparent — measured at alpha 0
+ * across the whole ring on every cutout in the corpus — so what shows behind
+ * the subject *is the frame*, and the ring reads as black only because dropping
+ * an alpha channel makes it black. Choosing from that picked a light frame for
+ * a subject whose lit half is nearly white, and the picture disappeared into
+ * its own frame. What has to be told apart from the frame is the subject.
+ */
+export function frameReferenceLuminance(options: {
+  rendersAsCutout: boolean;
+  edgeLuminance: number;
+  subjectLitLuminance: number | null;
+}): FrameReference {
+  if (options.rendersAsCutout && options.subjectLitLuminance !== null) {
+    return {
+      luminance: options.subjectLitLuminance,
+      measured: 'the lit part of the subject',
+    };
+  }
+  return { luminance: options.edgeLuminance, measured: 'the picture’s own edge' };
+}

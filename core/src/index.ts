@@ -164,11 +164,13 @@ export {
 export {
   cardFrameColour,
   contrastRatio,
+  frameReferenceLuminance,
   MIN_IMAGE_EDGE_CONTRAST,
   parseHexColour,
   relativeLuminance,
   toAeColour,
   type CardFrame,
+  type FrameReference,
   type Rgb,
 } from './image-border.js';
 export { impactFrameOf, IMPACT_THRESHOLD, type ImpactFrame } from './impact-frame.js';

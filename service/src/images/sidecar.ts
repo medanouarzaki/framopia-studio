@@ -128,15 +128,25 @@ export interface SidecarEdgeLuminance {
   bandPx: number;
   meanLuminance: number;
   p90Luminance: number;
+  /** How much of the picture is transparent — a cut-out is mostly nothing. */
+  transparentFraction: number;
+  subjectPixels: number;
+  /** The lit part of the subject; null when the picture has no subject. */
+  subjectLitLuminance: number | null;
+  subjectMedianLuminance: number | null;
 }
 
 /**
  * The mean relative luminance of an image's outermost ring.
  *
  * What the card frame's colour is derived from — see `cardFrameColour` in
- * `@framopia/core`. Measured on the file the builder will actually place, so a
- * card is measured on its canvas and never on a cutout, whose ring is
- * transparent and reads as black whatever the picture is.
+ * `@framopia/core` and `frameReferenceLuminance` beside it.
+ *
+ * Measured on the file the builder will actually place, and both figures are
+ * reported because which one matters depends on how the slot renders: a whole
+ * picture meets the frame at its own outer ring, while a cut-out has no ring —
+ * its surround is transparent and shows the frame itself, so what has to be
+ * told apart from the frame is the subject.
  */
 export function edgeLuminance(imagePath: string): Promise<SidecarEdgeLuminance> {
   return runSidecar<SidecarEdgeLuminance>({ task: 'edge_luminance', imagePath });

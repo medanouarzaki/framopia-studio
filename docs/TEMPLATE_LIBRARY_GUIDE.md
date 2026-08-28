@@ -606,3 +606,48 @@ frame height), with the second defined as exactly what the single constant
 produced — **nothing moved.** The candidate insets the user rules from are in
 `benchmarks/RESULTS-block8-watermark-inset.md`.
 
+### The frame contrasts with what actually meets it — 2026-08-29
+
+Session 25 derived the card frame's colour from **the raw generated picture's
+outer ring**. Every raw picture is dark, because every prompt carries the mode's
+dark palette, so it always chose the palette's lightest colour — and for a
+cut-out it was measuring a picture that is not the one on screen.
+
+**A cut-out has no ring.** Measured across the corpus, every cutout's outer 2%
+is **alpha 0** — fully transparent. Converting it to RGB makes it black, which
+is why the measurement read 0.0000 and reported an 18.6:1 frame. What actually
+shows behind the subject is the card itself, so the thing that has to be told
+apart from the frame is **the subject**.
+
+**And a subject is read by its lit surfaces.** `vitasilk`'s `img002-c1` runs
+from luminance 0.006 to 0.891 across its own pixels — deep shadow and bright
+highlight in one bottle — so **no frame colour contrasts with all of it**.
+Judging by the median picks a frame the lit half disappears into, which is what
+the user saw. `SUBJECT_LIT_PERCENTILE` is the **75th**, **CHOSEN, NOT
+MEASURED**.
+
+`frameReferenceLuminance` in `core/src/image-border.ts` is the one rule: the
+picture's own edge when the whole picture is shown, the lit part of the subject
+when it is cut out. WCAG 2.1's 3:1 minimum for a non-text boundary is unchanged,
+and so is `cardFrameColour`.
+
+**All ten candidates on `vitasilk`, before and after:**
+
+| candidate | renders | measured before | frame | measured after | frame |
+|---|---|---:|---|---:|---|
+| img001-c1 | whole | 0.0066 | light | 0.0066 | light |
+| img001-c2 | whole | 0.0027 | light | 0.0027 | light |
+| **img002-c1** | **cut out** | **0.0000** | **light** | **0.4640** | **background** |
+| img002-c2 | cut out | 0.0126 | light | 0.0389 | light |
+| img003-c1 | whole | 0.0266 | light | 0.0266 | light |
+| img003-c2 | whole | 0.0053 | light | 0.0053 | light |
+| img004-c1 | whole | 0.0019 | light | 0.0019 | light |
+| img004-c2 | whole | 0.0083 | light | 0.0083 | light |
+| img005-c1 | whole | 0.0257 | light | 0.0257 | light |
+| img005-c2 | whole | 0.0101 | light | 0.0101 | light |
+
+**One candidate changes, and it is the one that is built.** `img002-c1` goes
+from a frame worth **1.03:1** against what is on screen to **9.85:1**.
+`img002-c2`'s subject is dark enough that a light frame is still right for it,
+which is the rule being per-image rather than per-slot.
+

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  cardFrameColour, contrastRatio, MIN_IMAGE_EDGE_CONTRAST,
+  cardFrameColour, contrastRatio, frameReferenceLuminance, MIN_IMAGE_EDGE_CONTRAST,
   parseHexColour, relativeLuminance, toAeColour,
 } from './image-border.js';
 
@@ -76,5 +76,68 @@ describe('the card frame colour', () => {
 
   it('refuses an empty palette rather than inventing a frame', () => {
     expect(() => cardFrameColour({ edgeLuminance: 0.1, palette: {} })).toThrow(/palette/);
+  });
+});
+
+/**
+ * Session 25 measured the **raw generated picture's** outer ring for every
+ * candidate. Every raw picture is dark, because every prompt carries the mode's
+ * dark palette, so it always chose a light frame — and for a cut-out it was
+ * measuring a picture that is not the one on screen. A cut-out's ring is
+ * transparent; dropping the alpha channel makes it black; the light frame it
+ * then chose is exactly what the subject disappeared into.
+ */
+describe('which measurement the frame is chosen against', () => {
+  it('uses the picture’s own edge when the whole picture is shown', () => {
+    const ref = frameReferenceLuminance({
+      rendersAsCutout: false,
+      edgeLuminance: 0.0266,
+      subjectLitLuminance: 0.5,
+    });
+    expect(ref.luminance).toBe(0.0266);
+    expect(ref.measured).toContain('edge');
+  });
+
+  it('uses the lit part of the subject for a cut-out', () => {
+    const ref = frameReferenceLuminance({
+      rendersAsCutout: true,
+      edgeLuminance: 0,
+      subjectLitLuminance: 0.464,
+    });
+    expect(ref.luminance).toBe(0.464);
+    expect(ref.measured).toContain('subject');
+  });
+
+  /* A cut-out with nothing opaque in it has no subject to judge. */
+  it('falls back to the edge when there is no subject', () => {
+    expect(
+      frameReferenceLuminance({
+        rendersAsCutout: true,
+        edgeLuminance: 0.02,
+        subjectLitLuminance: null,
+      }).luminance,
+    ).toBe(0.02);
+  });
+
+  /* `vitasilk` `img002-c1`, the one the user was looking at. */
+  it('turns the frame dark for the cut-out that was disappearing', () => {
+    const K2 = {
+      background: parseHexColour('#1A0000'),
+      primary: parseHexColour('#820000'),
+      accent: parseHexColour('#C9A96E'),
+      light: parseHexColour('#F8F6F2'),
+    };
+    const before = cardFrameColour({ edgeLuminance: 0, palette: K2 });
+    expect(before.role).toBe('light');
+    const ref = frameReferenceLuminance({
+      rendersAsCutout: true,
+      edgeLuminance: 0,
+      subjectLitLuminance: 0.464,
+    });
+    const after = cardFrameColour({ edgeLuminance: ref.luminance, palette: K2 });
+    expect(after.role).toBe('background');
+    expect(after.contrast).toBeGreaterThan(MIN_IMAGE_EDGE_CONTRAST);
+    // What the old choice was really worth against what is on screen.
+    expect(contrastRatio(relativeLuminance(K2.light), 0.464)).toBeLessThan(2);
   });
 });

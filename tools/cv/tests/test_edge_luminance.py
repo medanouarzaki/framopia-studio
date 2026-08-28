@@ -33,3 +33,34 @@ def test_it_reports_the_band_and_the_size(tmp_path):
     result = edge_luminance(str(path))
     assert (result["width"], result["height"], result["bandPx"]) == (2048, 2048, 41)
     assert result["meanLuminance"] == 1.0
+
+
+def test_it_measures_the_subject_of_a_cutout(tmp_path):
+    """A cut-out's surround is transparent, so what has to be judged is the
+    subject — and by its lit part, not its median: a bottle with deep shadow and
+    a bright highlight reads by the highlight."""
+    pixels = np.zeros((200, 200, 4), dtype=np.uint8)
+    # A subject that is 60% dark and 40% bright, so the 75th percentile falls
+    # inside the bright part and the median inside the dark part.
+    pixels[50:150, 50:150] = [10, 10, 10, 255]
+    pixels[50:150, 110:150] = [240, 240, 240, 255]
+    path = tmp_path / "cutout.png"
+    Image.fromarray(pixels, mode="RGBA").save(path)
+
+    result = edge_luminance(str(path))
+    assert result["transparentFraction"] > 0.7
+    assert result["subjectPixels"] == 100 * 100
+    # The ring is transparent, so measuring it says nothing about the picture.
+    assert result["meanLuminance"] == 0.0
+    # The median follows the dark three-quarters; the lit figure does not.
+    assert result["subjectMedianLuminance"] < 0.01
+    assert result["subjectLitLuminance"] > 0.5
+
+
+def test_a_whole_picture_has_no_subject_to_report(tmp_path):
+    path = tmp_path / "whole.png"
+    Image.fromarray(np.full((100, 100, 3), 40, dtype=np.uint8)).save(path)
+    result = edge_luminance(str(path))
+    assert result["transparentFraction"] == 0.0
+    # Every pixel is opaque, so the subject is the whole picture.
+    assert result["subjectPixels"] == 100 * 100

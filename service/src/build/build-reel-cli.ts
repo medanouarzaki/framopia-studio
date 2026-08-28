@@ -6,6 +6,7 @@ import {
   SUBTITLE_SAFE_WIDTH,
   cardFrameColour,
   dialogueAttenuationDb,
+  frameReferenceLuminance,
   loadMode,
   loadSfxIndex,
   loadTemplateManifest,
@@ -311,12 +312,18 @@ if (modeId === undefined) {
   );
   for (const e of built.elements) {
     if (e.kind !== 'image' || e.imagePath === undefined) continue;
-    const edge = await edgeLuminance(e.imagePath);
-    const frame = cardFrameColour({ edgeLuminance: edge.meanLuminance, palette });
+    const slot = plan.images.slots.find((s) => s.id === e.id);
+    const measurement = await edgeLuminance(e.imagePath);
+    const reference = frameReferenceLuminance({
+      rendersAsCutout: slot?.presentation === 'cutout',
+      edgeLuminance: measurement.meanLuminance,
+      subjectLitLuminance: measurement.subjectLitLuminance,
+    });
+    const frame = cardFrameColour({ edgeLuminance: reference.luminance, palette });
     e.cardColor = toAeColour(frame.colour);
     console.log(
-      `${e.id}: edge luminance ${edge.meanLuminance.toFixed(4)} -> frame ${frame.role} ` +
-        `at ${frame.contrast.toFixed(2)}:1` +
+      `${e.id}: ${reference.measured} measures ${reference.luminance.toFixed(4)} -> ` +
+        `frame ${frame.role} at ${frame.contrast.toFixed(2)}:1` +
         (frame.meetsMinimum ? '' : ' — BELOW the 3:1 minimum, best available'),
     );
   }
