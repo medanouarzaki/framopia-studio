@@ -10,6 +10,7 @@ import {
   loadSfxIndex,
   loadTemplateManifest,
   parseHexColour,
+  resolveUserPath,
   templatesById,
   MIX_CEILING_DBFS,
   toAeColour,
@@ -42,11 +43,14 @@ function flag(name: string): string | undefined {
   return i === -1 ? undefined : process.argv[i + 1];
 }
 
-const planPath = flag('plan');
-if (planPath === undefined) {
-  console.error('usage: npm run build:reel -- --plan <abs path.editplan.json> [--out <abs path.aep>]');
+const planArg = flag('plan');
+if (planArg === undefined) {
+  console.error('usage: npm run build:reel -- --plan <path.editplan.json> [--out <path.aep>]');
   process.exit(1);
 }
+// Relative to where the command was typed, not to the workspace npm runs it in.
+const planPath = resolveUserPath(planArg);
+const outArg = flag('out');
 
 const plan = await readEditPlan(planPath);
 const reel = path.basename(planPath).replace('.editplan.json', '').replace(/\s+/g, '_');
@@ -372,7 +376,10 @@ const result = runBuildReel({
   // --park pins the playhead at a named moment; without it the build finds a
   // wrapped card, which is only useful when wrapping is what is being judged.
   parkOnWrapped: flag('park') === undefined,
-  savePath: flag('out') ?? path.join(REPO_ROOT, '.local', 'build', `${reel}-full.aep`),
+  savePath:
+    outArg === undefined
+      ? path.join(REPO_ROOT, '.local', 'build', `${reel}-full.aep`)
+      : resolveUserPath(outArg),
 });
 const wallS = (Date.now() - startedAt) / 1000;
 
