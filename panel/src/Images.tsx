@@ -85,8 +85,8 @@ export function Images({
         <p className="reason">{sourceLine(view)}</p>
         {view.cardFrameForced ? (
           <p className="reason">
-            Every image is drawn in a card frame, whatever the gate settled on. A slot the
-            gate called a cutout still uses the cut-out picture inside that frame.
+            Each picture is drawn inside a frame. Pick one per slot if you want to change it;
+            leave them and the first picture of each is used.
           </p>
         ) : null}
       </div>
@@ -122,13 +122,15 @@ function Slot({
       <p className="slothead">
         <strong>{slot.id}</strong>
         <em className="tag">
-          {slot.start.toFixed(2)}–{slot.end.toFixed(2)}s
+          on screen {slot.start.toFixed(1)}s to {slot.end.toFixed(1)}s
         </em>
-        <em className="tag">{slot.presentation ?? 'presentation undecided'}</em>
-        <em className="tag">{slot.zoneId ?? 'no zone'}</em>
-        {slot.templateId === null ? null : <em className="tag">{slot.templateId}</em>}
       </p>
       <p className="src">{slot.idea}</p>
+      <p className="reason">
+        {slot.rendersAsCutout
+          ? 'This one is shown with its background removed, so only the subject appears.'
+          : 'This one is shown whole, inside a frame.'}
+      </p>
 
       {slot.candidates.length === 0 ? (
         <p className="reason" role="status">
@@ -148,7 +150,7 @@ function Slot({
           <ul className="candidates">
             {slot.candidates.map((candidate) => (
               <li key={candidate.id} className={candidate.chosen ? 'candidate chosen' : 'candidate'}>
-                <Candidate candidate={candidate} />
+                <Candidate candidate={candidate} rendersAsCutout={slot.rendersAsCutout} />
                 <div className="wactions">
                   <button
                     type="button"
@@ -170,24 +172,39 @@ function Slot({
   );
 }
 
-function Candidate({ candidate }: { candidate: CandidateView }): JSX.Element {
+function Candidate({
+  candidate,
+  rendersAsCutout,
+}: {
+  candidate: CandidateView;
+  rendersAsCutout: boolean;
+}): JSX.Element {
+  // The raw picture is worth a second look only where it differs from what
+  // gets built, which is a cutout slot. On a card slot the two are the same
+  // file and showing it twice would say the build does something it does not.
+  const showRaw = rendersAsCutout && candidate.imageExists;
   return (
     <div className="cbody">
       <div className="shots">
-        {candidate.imageExists ? (
-          <img className="shot" src={`file://${candidate.imagePath}`} alt={`${candidate.id}`} />
-        ) : (
-          <span className="tag">image missing on disk</span>
-        )}
-        {candidate.cutoutExists && candidate.cutoutPath !== null ? (
+        {candidate.renderedExists ? (
           <img
-            className="shot cut"
-            src={`file://${candidate.cutoutPath}`}
-            alt={`${candidate.id} cutout`}
+            className={rendersAsCutout ? 'shot built cut' : 'shot built'}
+            src={`file://${candidate.renderedPath}`}
+            alt={`${candidate.id} as it will look`}
           />
         ) : (
-          <span className="tag">no cutout</span>
+          <span className="tag">this picture is missing from the disk</span>
         )}
+        {showRaw ? (
+          <figure className="rawshot">
+            <img
+              className="shot"
+              src={`file://${candidate.imagePath}`}
+              alt={`${candidate.id} before the background was removed`}
+            />
+            <figcaption className="src">before the background was removed</figcaption>
+          </figure>
+        ) : null}
       </div>
       <p className="slothead">
         <strong>{candidate.id}</strong>

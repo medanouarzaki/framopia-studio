@@ -326,6 +326,8 @@ export interface CandidateView {
   imageExists: boolean;
   cutoutPath: string | null;
   cutoutExists: boolean;
+  renderedPath: string;
+  renderedExists: boolean;
   modelId: string | null;
   resolution: string | null;
   generatedAt: string | null;
@@ -350,6 +352,7 @@ export interface ImageSlotView {
   end: number;
   idea: string;
   presentation: 'cutout' | 'card' | null;
+  rendersAsCutout: boolean;
   templateId: string | null;
   zoneId: string | null;
   candidates: CandidateView[];

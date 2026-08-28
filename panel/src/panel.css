@@ -411,3 +411,19 @@ ol.keywords { list-style: none; margin: 14px 0 0; padding: 0; }
   border-color: var(--warn);
   color: var(--warn);
 }
+
+/* What the build will show, and — only where it differs — the picture before
+   the background was removed. */
+.shot.built {
+  width: 176px;
+  height: 176px;
+}
+
+.rawshot {
+  margin: 0;
+}
+
+.rawshot .shot {
+  width: 76px;
+  height: 76px;
+}

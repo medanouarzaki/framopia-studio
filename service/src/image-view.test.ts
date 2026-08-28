@@ -87,6 +87,32 @@ describe('imagesView', () => {
     expect(view.slots.find((s) => s.id === 'img002')?.presentation).toBe('cutout');
   });
 
+  /*
+   * The picker showed a cut-out for every candidate, which on four of five
+   * slots is a picture the build never places. What the build places is
+   * `presentation`'s business, and the view answers it once so the panel does
+   * not decide it a second time.
+   */
+  it('names the file the build would actually place', async () => {
+    const view = await imagesView('vitasilk');
+    for (const slot of view.slots) {
+      for (const c of slot.candidates) {
+        if (slot.rendersAsCutout) {
+          expect(c.renderedPath, `${slot.id}/${c.id}`).toBe(c.cutoutPath);
+        } else {
+          expect(c.renderedPath, `${slot.id}/${c.id}`).toBe(c.imagePath);
+        }
+        expect(c.renderedExists, `${slot.id}/${c.id}`).toBe(true);
+      }
+    }
+  });
+
+  it('has one cutout slot in the corpus and four that show the whole picture', async () => {
+    const view = await imagesView('vitasilk');
+    expect(view.slots.filter((s) => s.rendersAsCutout).map((s) => s.id)).toEqual(['img002']);
+    expect(view.slots.filter((s) => !s.rendersAsCutout)).toHaveLength(4);
+  });
+
   it('refuses a reel with no plan by name', async () => {
     await expect(imagesView('nope')).rejects.toThrow(ImageViewError);
   });

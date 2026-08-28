@@ -25,6 +25,18 @@ export interface CandidateView {
   imageExists: boolean;
   cutoutPath: string | null;
   cutoutExists: boolean;
+  /**
+   * The file the build would actually place for this candidate — the generated
+   * picture on a card slot, the cut-out subject on a cutout slot.
+   *
+   * Derived here rather than in the panel, from the same `presentation` the
+   * builder reads, so the picker cannot show a version of the picture the build
+   * will not use. It showed the cut-out for every candidate until Block 8
+   * session 31, which on four of `vitasilk`'s five slots was a picture the user
+   * would never see.
+   */
+  renderedPath: string;
+  renderedExists: boolean;
   modelId: string | null;
   resolution: string | null;
   generatedAt: string | null;
@@ -54,6 +66,12 @@ export interface ImageSlotView {
   idea: string;
   /** What the gate settled on, when every candidate agreed. */
   presentation: 'cutout' | 'card' | null;
+  /**
+   * Whether this slot renders its subject cut out of its background. One slot
+   * in the corpus does; the rest show the whole generated picture inside the
+   * frame, which is what makes the cutout metrics irrelevant to them.
+   */
+  rendersAsCutout: boolean;
   templateId: string | null;
   zoneId: string | null;
   candidates: CandidateView[];
@@ -107,12 +125,16 @@ function planFor(reelLabel: string): { planPath: string } {
 
 function candidateViewOf(candidate: ImageCandidate, slot: ImageSlot): CandidateView {
   const cutoutPath = candidate.cutoutPath ?? null;
+  const rendersAsCutout = slot.presentation === 'cutout' && cutoutPath !== null;
+  const renderedPath = rendersAsCutout ? (cutoutPath as string) : candidate.path;
   return {
     id: candidate.id,
     imagePath: candidate.path,
     imageExists: existsSync(candidate.path),
     cutoutPath,
     cutoutExists: cutoutPath !== null && existsSync(cutoutPath),
+    renderedPath,
+    renderedExists: existsSync(renderedPath),
     modelId: candidate.modelId ?? null,
     resolution: candidate.resolution ?? null,
     generatedAt: candidate.generatedAt ?? null,
@@ -135,6 +157,7 @@ function slotViewOf(slot: ImageSlot): ImageSlotView {
     end: slot.end,
     idea: slot.idea,
     presentation: slot.presentation,
+    rendersAsCutout: slot.presentation === 'cutout',
     templateId: slot.templateId,
     zoneId: slot.zoneId,
     candidates: slot.candidates.map((c) => candidateViewOf(c, slot)),

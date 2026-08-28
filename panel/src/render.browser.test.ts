@@ -1870,6 +1870,7 @@ const IMAGES = {
       end: 1.599,
       idea: 'A single cosmetic bottle on a dark podium',
       presentation: 'card',
+      rendersAsCutout: false,
       templateId: 'img_float',
       zoneId: 'z_left_4',
       chosenCandidateId: null,
@@ -1883,6 +1884,8 @@ const IMAGES = {
           imageExists: true,
           cutoutPath: '/v/img001-c1.cutout.png',
           cutoutExists: true,
+          renderedPath: '/v/img001-c1.jpg',
+          renderedExists: true,
           modelId: 'gemini-3-pro-image',
           resolution: '2K',
           generatedAt: '2026-08-25T17:43:32.870Z',
@@ -1901,6 +1904,8 @@ const IMAGES = {
           imageExists: true,
           cutoutPath: null,
           cutoutExists: false,
+          renderedPath: '/v/img001-c2.jpg',
+          renderedExists: true,
           modelId: 'gemini-3-pro-image',
           resolution: '2K',
           generatedAt: '2026-08-25T17:44:02.870Z',
@@ -1921,6 +1926,7 @@ const IMAGES = {
       end: 8.859,
       idea: 'A salon interior',
       presentation: 'cutout',
+      rendersAsCutout: true,
       templateId: 'img_slide_left',
       zoneId: 'z_left_2',
       chosenCandidateId: null,
@@ -1934,6 +1940,8 @@ const IMAGES = {
           imageExists: true,
           cutoutPath: '/v/img002-c1.cutout.png',
           cutoutExists: true,
+          renderedPath: '/v/img002-c1.cutout.png',
+          renderedExists: true,
           modelId: 'gemini-3-pro-image',
           resolution: '2K',
           generatedAt: '2026-08-25T17:45:02.870Z',
@@ -1954,6 +1962,7 @@ const IMAGES = {
       end: 13.9,
       idea: 'A close-up of hair',
       presentation: null,
+      rendersAsCutout: false,
       templateId: null,
       zoneId: null,
       chosenCandidateId: null,
@@ -2048,6 +2057,48 @@ describe('the image candidate picker', () => {
     const text = (await loaded.page.textContent('ol.slots')) ?? '';
     expect(text).toContain('Overrides the gate: edge_halo 0.1004 > 0.1');
     expect(text).toContain('img001-c1 — chosen');
+    await loaded.page.close();
+  });
+
+  /*
+   * The picker showed a cut-out on grey for every candidate, which on four of
+   * `vitasilk`'s five slots is a version of the picture that never gets built.
+   * What it shows now is the file the build places.
+   */
+  it('shows the picture the build will place, not the cut-out of it', async () => {
+    const loaded = await loadImages();
+    if (loaded === null) return;
+    await loaded.page.waitForSelector('ol.slots li', { timeout: 5000 });
+    const built = await loaded.page.$$eval('img.shot.built', (els) =>
+      els.map((e) => (e as HTMLImageElement).getAttribute('src')),
+    );
+    // The card slot's own picture, and the cutout slot's cut-out.
+    expect(built).toContain('file:///v/img001-c1.jpg');
+    expect(built).toContain('file:///v/img002-c1.cutout.png');
+    // A card slot shows one picture, not the same file twice.
+    expect(built.filter((s) => s === 'file:///v/img001-c1.jpg')).toHaveLength(1);
+    await loaded.page.close();
+  });
+
+  it('says in plain words which slots have their background removed', async () => {
+    const loaded = await loadImages();
+    if (loaded === null) return;
+    await loaded.page.waitForSelector('ol.slots li', { timeout: 5000 });
+    const text = (await loaded.page.textContent('ol.slots')) ?? '';
+    expect(text).toContain('shown with its background removed');
+    expect(text).toContain('shown whole, inside a frame');
+    await loaded.page.close();
+  });
+
+  /* The raw picture is evidence, and only where it differs from the build. */
+  it('offers the picture before the background was removed, on a cutout slot only', async () => {
+    const loaded = await loadImages();
+    if (loaded === null) return;
+    await loaded.page.waitForSelector('ol.slots li', { timeout: 5000 });
+    const raws = await loaded.page.$$('figure.rawshot');
+    expect(raws).toHaveLength(1);
+    const text = (await loaded.page.textContent('ol.slots')) ?? '';
+    expect(text).toContain('before the background was removed');
     await loaded.page.close();
   });
 
