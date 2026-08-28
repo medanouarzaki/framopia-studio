@@ -651,3 +651,30 @@ from a frame worth **1.03:1** against what is on screen to **9.85:1**.
 `img002-c2`'s subject is dark enough that a light frame is still right for it,
 which is the rule being per-image rather than per-slot.
 
+### The voice came down for a sound nothing plays — 2026-08-29
+
+Session 27 unbound the hits and taught `deriveSfxEvents` to compute the mix
+attenuation against **the loudest offset a template actually binds**. It did not
+teach the builder, which computes the same figure for the reel's own audio
+layer — so the build printed **−3.80 dB** while the sounds were gained for
+**−3.07**.
+
+Two halves of one rule disagreeing, which is the thing sharing the rule is
+supposed to prevent, and it cost more than a level: the sounds were gained for
+one attenuation and the voice took another, so **the whooshes sat 3.73 dB above
+the voice where the rule says 3.00**.
+
+| reel | the voice took | the sounds were gained for | now |
+|---|---:|---:|---:|
+| ground-truth | −4.01 | −3.26 | **−3.26** |
+| test-1 | −3.98 | −3.23 | **−3.23** |
+| test-2 | −3.89 | −3.19 | **−3.19** |
+| test-3 | −3.82 | −3.11 | **−3.11** |
+| vitasilk | −3.80 | −3.07 | **−3.07** |
+
+**No sfx offset, gain, placement or binding changed.** Every reel is about
+0.7 dB louder overall, and the balance is now exactly the +3 dB the rule states.
+**The user ruled the sound correct at +3.73**, so if the whooshes now read as
+too quiet the number to move is `SFX_TARGET_OFFSET_DB.whoosh`, not the
+attenuation — and it is a single edit.
+

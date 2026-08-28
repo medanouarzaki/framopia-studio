@@ -7,6 +7,7 @@ import {
   cardFrameColour,
   dialogueAttenuationDb,
   frameReferenceLuminance,
+  loudestBoundOffsetDb,
   loadMode,
   loadSfxIndex,
   loadTemplateManifest,
@@ -415,6 +416,14 @@ const dialogueGainDb =
     : -dialogueAttenuationDb({
         dialogueLufs: plan.source.dialogueLufs,
         dialoguePeakDbfs: plan.source.dialoguePeakDbfs,
+        /*
+         * Against the loudest sound a template actually binds, which is what
+         * `deriveSfxEvents` gains the sounds for. Session 27 added this to the
+         * derivation and not here, so the voice was coming down 3.80 dB while
+         * the sounds were gained for 3.07 — the two halves of one rule
+         * disagreeing, which is exactly what sharing it is supposed to prevent.
+         */
+        loudestOffsetDb: loudestBoundOffsetDb(entries),
       });
 console.log(
   dialogueGainDb === 0
