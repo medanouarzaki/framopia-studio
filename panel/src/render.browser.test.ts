@@ -774,6 +774,60 @@ const VITASILK_DRY_STAGES = [
   },
 ];
 
+/*
+ * The mode picker drew a **red outline when focused**, and no test saw it
+ * because tests do not tab through controls. The accent belongs to Run
+ * pipeline; a focus ring is not exempt.
+ */
+describe.skipIf(!built)('focus', () => {
+  it('never paints the brand accent on any control it lands on', async () => {
+    const loaded = await loadFlow('build', 'build');
+    if (loaded === null) return;
+
+    const offenders = await loaded.page.evaluate(() => {
+      const norm = (c: string): string => c.replace(/\s/g, '');
+      const accent = 'rgb(237,28,36)';
+      const found: string[] = [];
+      const controls = [
+        ...document.querySelectorAll('select, button, input, a[href], [tabindex]'),
+      ] as HTMLElement[];
+      for (const el of controls) {
+        el.focus();
+        const s = getComputedStyle(el);
+        const painted =
+          norm(s.borderTopColor) === accent ||
+          norm(s.borderBottomColor) === accent ||
+          norm(s.borderLeftColor) === accent ||
+          norm(s.borderRightColor) === accent ||
+          norm(s.outlineColor) === accent ||
+          norm(s.color) === accent ||
+          norm(s.backgroundColor) === accent;
+        // Run pipeline is the one control allowed to be red, focused or not.
+        if (painted && !el.classList.contains('run')) {
+          found.push(`${el.tagName.toLowerCase()}.${el.className}`);
+        }
+      }
+      return found;
+    });
+
+    expect(offenders).toEqual([]);
+    await loaded.page.close();
+  });
+
+  it('still shows a visible ring, so focus is not simply removed', async () => {
+    const loaded = await loadFlow('build', 'build');
+    if (loaded === null) return;
+    const ring = await loaded.page.evaluate(() => {
+      const el = document.querySelector('select[aria-label="Client mode"]') as HTMLSelectElement;
+      const before = getComputedStyle(el).borderTopColor;
+      el.focus();
+      return { before, after: getComputedStyle(el).borderTopColor };
+    });
+    expect(ring.after).not.toBe(ring.before);
+    await loaded.page.close();
+  });
+});
+
 describe.skipIf(!built)('the cost block and the run', () => {
   async function loadBoth(): Promise<Loaded | null> {
     if (browser === undefined) return null;

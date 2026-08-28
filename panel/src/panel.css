@@ -15,6 +15,8 @@
   --accent: #ed1c24;
   --ok: #3fb950;
   --warn: #d29922;
+  /* Focus, deliberately not the accent. Bright enough to find by eye. */
+  --focus: #e8eaed;
 }
 
 * { box-sizing: border-box; }
@@ -209,7 +211,14 @@ select, button {
   background: var(--panel-2); border: 1px solid var(--line);
   border-radius: 7px; padding: 8px 11px; width: 100%;
 }
-select:focus, button:focus { outline: none; border-color: var(--accent); }
+/*
+ * Focus is visible and is **not** the brand accent. PROJECT_SPEC §6 spends
+ * #ED1C24 on one control and the user ruled that control is Run pipeline; a
+ * focus ring is not exempt from that, and the mode picker was drawing a red
+ * outline on focus. The ring stays — removing it would take keyboard use with
+ * it — and only its colour changes.
+ */
+select:focus, button:focus { outline: none; border-color: var(--focus); }
 select:disabled, button:disabled { color: var(--faint); cursor: not-allowed; }
 
 button.retry { width: auto; margin-top: 12px; cursor: pointer; }
