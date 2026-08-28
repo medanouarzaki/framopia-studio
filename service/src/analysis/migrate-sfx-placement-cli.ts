@@ -32,13 +32,42 @@ const impacts = templateImpacts();
  * voice. Written onto each plan as it is migrated, because the level rule needs
  * it wherever sfx are derived — not only here.
  */
+/**
+ * What this migration is allowed to touch. `meta` carries the timestamp,
+ * `source` the measured loudness the levels are set from, `sfx` the events
+ * themselves; anything else changing means the derivation reached somewhere it
+ * has no business in.
+ */
+const WRITABLE_KEYS = new Set(['meta', 'source', 'sfx']);
+
+function assertOnlyChanged(before: string, after: string, planPath: string): void {
+  const a = JSON.parse(before) as Record<string, unknown>;
+  const b = JSON.parse(after) as Record<string, unknown>;
+  const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
+  const changed = [...keys].filter(
+    (k) => JSON.stringify(a[k]) !== JSON.stringify(b[k]),
+  );
+  const illegal = changed.filter((k) => !WRITABLE_KEYS.has(k));
+  if (illegal.length > 0) {
+    throw new Error(
+      `${planPath}: this migration may only change ${[...WRITABLE_KEYS].join(', ')}, ` +
+        `and it changed ${illegal.join(', ')}`,
+    );
+  }
+}
+
 const loudnessPath = path.join(REPO_ROOT, '.local', 'build', 'loudness.json');
-const loudness = new Map<string, number>();
+const loudness = new Map<string, { integratedLufs: number; truePeakDbfs: number }>();
 if (existsSync(loudnessPath)) {
   const measured = JSON.parse(readFileSync(loudnessPath, 'utf8')) as {
-    reels: { reel: string; integratedLufs: number }[];
+    reels: { reel: string; integratedLufs: number; truePeakDbfs: number }[];
   };
-  for (const row of measured.reels) loudness.set(row.reel, row.integratedLufs);
+  for (const row of measured.reels) {
+    loudness.set(row.reel, {
+      integratedLufs: row.integratedLufs,
+      truePeakDbfs: row.truePeakDbfs,
+    });
+  }
 }
 /** The plan basename differs from the reel label on three reels. */
 const REEL_OF: Record<string, string> = {
@@ -66,14 +95,28 @@ for (const file of readdirSync(dir).filter((f) => f.endsWith('.editplan.json')).
   const reel = file.replace('.editplan.json', '');
   const planPath = path.join(dir, file);
   const plan = await readEditPlan(planPath);
+  // The file as it stands, so what the migration touched is asserted rather
+  // than reasoned about. A placement migration that reached the transcript or
+  // the keywords would be a defect nothing downstream would question.
+  const planTextBefore = readFileSync(planPath, 'utf8');
 
-  // The measured loudness goes on before the events are derived, so the level
-  // rule sees it on the very first pass rather than needing a second run.
-  const measuredLufs = loudness.get(REEL_OF[reel] ?? reel);
-  if (measuredLufs !== undefined) plan.source.dialogueLufs = measuredLufs;
+  // The measurements go on before the events are derived, so the level rule
+  // sees them on the very first pass rather than needing a second run.
+  const measured = loudness.get(REEL_OF[reel] ?? reel);
+  if (measured !== undefined) {
+    plan.source.dialogueLufs = measured.integratedLufs;
+    plan.source.dialoguePeakDbfs = measured.truePeakDbfs;
+  }
 
   const before = new Map(plan.sfx.events.map((e) => [e.sourceElementId + e.sfxId, e]));
-  const after = deriveSfxEvents(plan, templates, sfxIndex, impacts, plan.source.dialogueLufs);
+  const after = deriveSfxEvents(
+    plan,
+    templates,
+    sfxIndex,
+    impacts,
+    plan.source.dialogueLufs,
+    plan.source.dialoguePeakDbfs,
+  );
 
   let reelMoved = 0;
   const lines: string[] = [];
@@ -96,14 +139,16 @@ for (const file of readdirSync(dir).filter((f) => f.endsWith('.editplan.json')).
   console.log(`${reel.padEnd(14)} ${after.length} events, ${reelMoved} moved`);
   for (const line of lines) console.log(line);
 
-  if (apply && (after.length > 0 || measuredLufs !== undefined)) {
+  if (apply && (after.length > 0 || measured !== undefined)) {
     plan.sfx = { events: after };
     plan.meta.updatedAt = new Date().toISOString();
     await writeEditPlan(planPath, plan);
+    assertOnlyChanged(planTextBefore, readFileSync(planPath, 'utf8'), planPath);
     const reread = await readEditPlan(planPath);
     console.log(
       `    written and reopened: ${reread.sfx.events.length} events, ` +
-        `dialogue ${reread.source.dialogueLufs ?? 'unmeasured'} LUFS, ` +
+        `dialogue ${reread.source.dialogueLufs ?? 'unmeasured'} LUFS ` +
+        `peak ${reread.source.dialoguePeakDbfs ?? '?'} dBFS, ` +
         `keywords ${reread.keywords.items.length}, ` +
         `removedWordIds ${(reread.keywords.removedWordIds ?? []).length}`,
     );

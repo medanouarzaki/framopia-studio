@@ -176,7 +176,17 @@ function framopiaBuildReel(optionsPath, outPath) {
             var master = app.project.items.addComp(
                 spec.name, o.masterWidth, o.masterHeight, 1, o.reelDurationS, o.frameRate
             );
-            master.layers.add(footage).startTime = 0;
+            var reelLayer = master.layers.add(footage);
+            reelLayer.startTime = 0;
+            // Every reel is delivered with its peak on full scale, so a second
+            // sound cannot be added at any gain without the sum passing 0 dBFS.
+            // The whole mix comes down together, which leaves the balance
+            // between voice and effect exactly as the offsets describe it.
+            if (o.dialogueGainDb) {
+                reelLayer.property('Audio').property('Audio Levels').setValue([
+                    o.dialogueGainDb, o.dialogueGainDb
+                ]);
+            }
 
             var counts = { subtitle: 0, keyword: 0, image: 0, audio: 0, watermark: 0 };
             for (j = 0; j < spec.placements.length; j++) {

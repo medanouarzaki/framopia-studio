@@ -1,4 +1,10 @@
-import { placeSfx, sfxGainDb, type SfxIndex, type TemplateEntry } from '@framopia/core';
+import {
+  dialogueAttenuationDb,
+  placeSfx,
+  sfxGainDb,
+  type SfxIndex,
+  type TemplateEntry,
+} from '@framopia/core';
 import type { EditPlan, SfxEvent } from '../editplan/types.js';
 
 /** 30000/1001, the rate every comp and every reel is at. */
@@ -32,7 +38,13 @@ export class UnknownSfxError extends Error {
  * still applies, because a placement derived from a number nobody measured is
  * the defect this replaces.
  *
- * **Gain is measured against the reel's own dialogue**, not against full scale.
+ * **Gain is measured against the reel's own dialogue**, not against full scale,
+ * and against the dialogue **as the build will play it** — every reel here is
+ * delivered with its peak on full scale, so the build turns the whole mix down
+ * to make room and the offsets are taken from the attenuated level. Both halves
+ * come from `dialogueAttenuationDb`, which the builder reads too, so the layer
+ * gain and the sound gains cannot disagree.
+ *
  * The absolute −20/−24 dB figures were chosen in Block 5 against nothing and
  * were inaudible when first heard: every reel here is mastered near −14 LUFS,
  * so a −20 dBFS hit sits under the voice. When the plan carries
@@ -48,7 +60,13 @@ export function deriveSfxEvents(
   impacts: Map<string, number> = new Map(),
   /** The reel's integrated dialogue loudness, when it has been measured. */
   dialogueLufs: number | undefined = undefined,
+  /** The reel's true peak, when it has been measured. */
+  dialoguePeakDbfs: number | undefined = undefined,
 ): SfxEvent[] {
+  const attenuationDb =
+    dialogueLufs === undefined || dialoguePeakDbfs === undefined
+      ? 0
+      : dialogueAttenuationDb({ dialogueLufs, dialoguePeakDbfs });
   const known = new Set(sfxIndex.sfx.map((s) => s.id));
   const events: SfxEvent[] = [];
 
@@ -88,6 +106,7 @@ export function deriveSfxEvents(
               sfxId: binding.sfxId,
               filePeakDbfs: measured.peakDbfs,
               dialogueLufs,
+              attenuationDb,
             });
 
       const placed = placeSfx({

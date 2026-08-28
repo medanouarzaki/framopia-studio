@@ -65,6 +65,15 @@ export interface PlanSource {
    * to the absolute figures rather than to a guessed loudness.
    */
   dialogueLufs?: number;
+  /**
+   * The reel's own true peak in dBFS, from the same measurement.
+   *
+   * What decides how much headroom the mix needs: this corpus is delivered at
+   * 0.0–0.2 dBFS, so there is no room for a second sound at all until the mix
+   * is turned down. **Schema addition, optional with a default** — absent means
+   * not measured, and the build then attenuates nothing.
+   */
+  dialoguePeakDbfs?: number;
 }
 
 export interface ClientMode {

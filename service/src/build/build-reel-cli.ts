@@ -5,11 +5,13 @@ import {
   REPO_ROOT,
   SUBTITLE_SAFE_WIDTH,
   cardFrameColour,
+  dialogueAttenuationDb,
   loadMode,
   loadSfxIndex,
   loadTemplateManifest,
   parseHexColour,
   templatesById,
+  MIX_CEILING_DBFS,
   toAeColour,
 } from '@framopia/core';
 import { edgeLuminance } from '../images/sidecar.js';
@@ -323,8 +325,28 @@ if (!watermarkEnabled(plan.watermark)) {
 }
 
 const startedAt = Date.now();
+/*
+ * The reel comes down so the sound effects fit. Derived from the same rule the
+ * event gains are, so the layer and the sounds cannot drift apart; a reel whose
+ * loudness or peak was never measured is left alone.
+ */
+const dialogueGainDb =
+  plan.source.dialogueLufs === undefined || plan.source.dialoguePeakDbfs === undefined
+    ? 0
+    : -dialogueAttenuationDb({
+        dialogueLufs: plan.source.dialogueLufs,
+        dialoguePeakDbfs: plan.source.dialoguePeakDbfs,
+      });
+console.log(
+  dialogueGainDb === 0
+    ? '\ndialogue: unmeasured, placed at its own level'
+    : `\ndialogue: ${plan.source.dialogueLufs} LUFS peaking ${plan.source.dialoguePeakDbfs} dBFS -> ` +
+      `${dialogueGainDb.toFixed(2)} dB, leaving ${MIX_CEILING_DBFS} dBFS for the mix`,
+);
+
 const result = runBuildReel({
   footagePath: plan.source.videoPath,
+  dialogueGainDb,
   templatesAepPath: AEP_PATH,
   masterWidth: plan.source.width,
   masterHeight: plan.source.height,

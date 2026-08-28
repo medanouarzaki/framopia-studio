@@ -244,6 +244,7 @@ function rederiveSfx(plan: EditPlan): void {
     loadSfxIndex(),
     templateImpacts(),
     plan.source.dialogueLufs,
+    plan.source.dialoguePeakDbfs,
   );
 }
 

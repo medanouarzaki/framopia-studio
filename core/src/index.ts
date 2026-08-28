@@ -147,11 +147,17 @@ export {
 export { renderSheet, type SheetInputs, type SheetRow } from './align-sheet.js';
 export { ACTIVE_PROMPT_VERSION, type PromptVersion } from './prompt-version.js';
 export {
+  dialogueAttenuationDb,
   sfxGainDb,
   sfxKindOf,
+  sfxLevel,
   sfxPeakDbfs,
+  summedPeakDbfs,
+  MIX_CEILING_DBFS,
   SFX_TARGET_OFFSET_DB,
+  type SfxBinding,
   type SfxKind,
+  type SfxLevel,
 } from './sfx-level.js';
 export {
   cardFrameColour,
