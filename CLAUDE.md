@@ -278,6 +278,11 @@ AI-generated contextual images, SFX, and a watermark. Full spec in
   (`service/dist/service.js`, directly, with a resolved Node binary) and what to
   run by hand when diagnosing a panel that cannot reach it. `npm run
   service:build` builds without starting.
+- `npm run migrate:client-mode [-- --apply]` — free, local, one-shot. Gives an
+  existing plan the client it was built for, **derived from the config label the
+  analysis stage already wrote** (`keywords-prompt-v3-k2-syndicalia-v5`) rather
+  than guessed. A plan whose analysis never ran is left null. Dry run by
+  default; asserts it changed only `meta` and `clientMode`.
 - `npm run validate:panel` — free, local. Parses `panel/CSXS/manifest.xml` and
   fails on any parse error. Part of `npm run check`.
 - `npm run panel:build` / `npm run panel:dev` — build the CEP panel to
@@ -5963,3 +5968,94 @@ established by a **read-only** query before anything was touched. It was
 **saved, never discarded** — the distinction between a project that was never
 written and unsaved work is the one that matters, and a measurement settled it
 rather than an assumption.
+
+
+## Block 8 session 30 — the plan names its client, and step 4 exists
+
+**Spent $0.00.** Ledger 108 entries / sha `50ec3f57…` at both ends. After
+Effects: 1 instance, 0 `aerender` — **AE was not contacted**; nothing this
+session did needs it.
+
+### The plan records its client
+
+`plan.clientMode` was null on all five plans, so every build needed `--mode`
+typed and the card frame silently fell back to the template's colour without it.
+
+**The answer was already on the plans and nobody had read it.** The analysis and
+slot stages have always written a config label naming the mode and its version —
+`keywords-prompt-v3-k2-syndicalia-v5`. `modeFromConfigLabel` is the inverse of
+the function that writes it, lives beside it, and is pinned by a round-trip
+test.
+
+| reel | client | from |
+|---|---|---|
+| ground-truth | **null** | analysis pending; nothing on disk says |
+| test-1 | k2-syndicalia v5 | `keywords-prompt-v3-k2-syndicalia-v5` |
+| test-2 | k2-syndicalia v5 | `keywords-prompt-v4-k2-syndicalia-v5` |
+| test-3 | **null** | analysis pending; nothing on disk says |
+| vitasilk | k2-syndicalia v5 | `keywords-prompt-v3-k2-syndicalia-v5` |
+
+The analysis and slot stages write it now at the point the mode is chosen.
+`build:reel` reads it, **`--mode` is an override rather than a requirement**,
+and the build prints which source it used. The dry run and the panel show it.
+
+### Step 4, the image candidate picker
+
+`service/src/image-view.ts` and `panel/src/Images.tsx`; `GET /images?reel=` and
+`POST /images/choose`.
+
+**Rejected candidates are shown and can be chosen.** The gate rejects **8 of
+`vitasilk`'s 10**, four on genuine halo, so hiding them would hide the reason a
+slot looks the way it does. Each candidate shows its image, its cutout, the four
+§5.4 metrics, the verdict with its reason verbatim, and its recorded cost.
+Images load over `file://`, as the keyword picker's audio does.
+
+**Choosing writes `chosenCandidateId`, which is itself the human-flagged
+marker** — `humanFlaggedItems` reads it and `PlanMergeBlockedError` refuses to
+discard it, so a re-run cannot lose the choice. **Choosing a rejected candidate
+records `overriddenGateFailures`** (schema addition, optional with a default)
+so the plan says the gate was disagreed with rather than that it passed.
+
+**What happened before this existed, established rather than assumed: it is a
+documented placeholder, not an accident.** `candidateFileFor` took
+`candidates[0]` under a comment reading *"No slot carries a `chosenCandidateId`
+— the editor picks in Block 8"*. The builder honours a choice now and reports
+which of the two it used.
+
+**Presentation, established:** Block 7 session 9's `cardTemplateId` forces
+`img_float` on **every** slot, so every image is framed whatever the gate said —
+and `presentation` still selects *which file* goes inside the frame, the cutout
+PNG for a `cutout` slot and the generated image otherwise. Both are true at
+once, which is why the two reports disagreed. Unchanged; the picker states it.
+
+**The per-candidate `costUsd` is 0 on all ten** because the plan was last
+written from a cached run. The view carries the reel's cumulative
+`$1.550444` beside it rather than implying the images were free.
+
+### Image size is a placement question, and 140% fits nowhere
+
+`benchmarks/RESULTS-block8-image-placement.md`. **Read-only; nothing
+implemented.**
+
+140% wants **1076–1172 px**. The largest face-clearing square anywhere on the
+frame is **765–937 px** — short on all nine slots. **The corner rule is not the
+main constraint**: the band above the face holds 905–937 px against the corner's
+749–818, so moving off the corner is worth **≈1.17×**, and the remaining ~20% is
+where the speaker's face sits. The stored zones do not help: `vitasilk`'s
+largest is **816 px**, because zones come from the person mask rather than the
+face.
+
+Recommended: **place above the face rather than in the corner** — worth ≈1.17×,
+reopens only Block 7 session 9's corner ruling, needs no new measurement, and
+leaves the subject-bounding-box scaling untouched (that sizes the picture inside
+its comp; placement sizes the comp layer). Reaching 1.4 needs a bleed off the
+frame edge, spending the clearance, or accepting less.
+
+### The watermark inset is per axis
+
+`WATERMARK_MARGIN` was one number used for both axes, and the vertical placement
+**multiplied** by the frame aspect where it should divide: **64.8 px from the
+side, 204.8 px from the top**. Now `WATERMARK_MARGIN_X` and
+`WATERMARK_MARGIN_Y`, the second defined as exactly what the single constant
+produced — **nothing moved**. Candidates in
+`benchmarks/RESULTS-block8-watermark-inset.md`.
