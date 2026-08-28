@@ -4,6 +4,7 @@ import { listReels } from './catalogue.js';
 import { readEditPlan, writeEditPlan } from './editplan/io.js';
 import { dryRun } from './dry-run.js';
 import { buildChoiceFor } from './build/choose-candidate.js';
+import { nothingIsMeasured, rendersAsCutout, verdictFor } from './images/verdict.js';
 import type { EditPlan, ImageCandidate, ImageSlot } from './editplan/types.js';
 
 /**
@@ -50,9 +51,18 @@ export interface CandidateView {
   } | null;
   /** The §5.4 gate: the worst headroom across the metrics, 0 when it failed. */
   cutoutQuality: number | null;
+  /**
+   * Whether the cutout measurement bears on what this candidate would build.
+   * False on a slot that shows the whole picture, where the matte is never
+   * drawn — which is every slot in the corpus but one.
+   */
+  qualityApplies: boolean;
+  /** Null when nothing about this candidate is measured. */
+  backgroundCameAwayCleanly: boolean | null;
+  /** What the matte failed, where the matte matters. Empty otherwise. */
+  problems: string[];
+  /** The raw verdict as the gate recorded it, kept as evidence. */
   gatePassed: boolean | null;
-  gatePresentation: string | null;
-  /** Why it failed, verbatim, so a verdict can be argued with. */
   gateFailures: string[];
   /** Words the OCR pass found that the slot's idea did not ask for. */
   unexpectedText: string[];
@@ -72,6 +82,12 @@ export interface ImageSlotView {
    * frame, which is what makes the cutout metrics irrelevant to them.
    */
   rendersAsCutout: boolean;
+  /**
+   * True when the gate has nothing to say about this slot at all — it shows the
+   * whole picture, so cutout quality is not a property of what gets built, and
+   * no other check exists.
+   */
+  nothingIsMeasured: boolean;
   templateId: string | null;
   zoneId: string | null;
   candidates: CandidateView[];
@@ -125,8 +141,9 @@ function planFor(reelLabel: string): { planPath: string } {
 
 function candidateViewOf(candidate: ImageCandidate, slot: ImageSlot): CandidateView {
   const cutoutPath = candidate.cutoutPath ?? null;
-  const rendersAsCutout = slot.presentation === 'cutout' && cutoutPath !== null;
-  const renderedPath = rendersAsCutout ? (cutoutPath as string) : candidate.path;
+  const asCutout = slot.presentation === 'cutout' && cutoutPath !== null;
+  const renderedPath = asCutout ? (cutoutPath as string) : candidate.path;
+  const verdict = verdictFor(slot, candidate);
   return {
     id: candidate.id,
     imagePath: candidate.path,
@@ -141,8 +158,10 @@ function candidateViewOf(candidate: ImageCandidate, slot: ImageSlot): CandidateV
     costUsd: candidate.costUsd ?? null,
     metrics: candidate.metrics ?? null,
     cutoutQuality: candidate.cutoutQuality ?? null,
+    qualityApplies: verdict.applies,
+    backgroundCameAwayCleanly: verdict.backgroundCameAwayCleanly,
+    problems: verdict.problems,
     gatePassed: candidate.gate?.passed ?? null,
-    gatePresentation: candidate.gate?.presentation ?? null,
     gateFailures: candidate.gate?.failures ?? [],
     unexpectedText: candidate.textVerdict?.unexpected ?? [],
     chosen: slot.chosenCandidateId === candidate.id,
@@ -157,7 +176,8 @@ function slotViewOf(slot: ImageSlot): ImageSlotView {
     end: slot.end,
     idea: slot.idea,
     presentation: slot.presentation,
-    rendersAsCutout: slot.presentation === 'cutout',
+    rendersAsCutout: rendersAsCutout(slot),
+    nothingIsMeasured: nothingIsMeasured(slot),
     templateId: slot.templateId,
     zoneId: slot.zoneId,
     candidates: slot.candidates.map((c) => candidateViewOf(c, slot)),

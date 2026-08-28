@@ -1871,6 +1871,7 @@ const IMAGES = {
       idea: 'A single cosmetic bottle on a dark podium',
       presentation: 'card',
       rendersAsCutout: false,
+      nothingIsMeasured: true,
       templateId: 'img_float',
       zoneId: 'z_left_4',
       chosenCandidateId: null,
@@ -1892,8 +1893,10 @@ const IMAGES = {
           costUsd: 0,
           metrics: { alphaEdgeNoise: 0, holeRatio: 0, foregroundArea: 0.3178, edgeHalo: 0.1004 },
           cutoutQuality: 0,
+          qualityApplies: false,
+          backgroundCameAwayCleanly: null,
+          problems: [],
           gatePassed: false,
-          gatePresentation: 'card',
           gateFailures: ['edge_halo 0.1004 > 0.1'],
           unexpectedText: [],
           chosen: false,
@@ -1912,8 +1915,10 @@ const IMAGES = {
           costUsd: 0,
           metrics: { alphaEdgeNoise: 0, holeRatio: 0, foregroundArea: 0.31, edgeHalo: 0.1187 },
           cutoutQuality: 0,
+          qualityApplies: false,
+          backgroundCameAwayCleanly: null,
+          problems: [],
           gatePassed: false,
-          gatePresentation: 'card',
           gateFailures: ['edge_halo 0.1187 > 0.1'],
           unexpectedText: ['SERUM'],
           chosen: false,
@@ -1927,6 +1932,7 @@ const IMAGES = {
       idea: 'A salon interior',
       presentation: 'cutout',
       rendersAsCutout: true,
+      nothingIsMeasured: false,
       templateId: 'img_slide_left',
       zoneId: 'z_left_2',
       chosenCandidateId: null,
@@ -1948,8 +1954,10 @@ const IMAGES = {
           costUsd: 0,
           metrics: { alphaEdgeNoise: 0, holeRatio: 0, foregroundArea: 0.2, edgeHalo: 0.08 },
           cutoutQuality: 0.174,
+          qualityApplies: true,
+          backgroundCameAwayCleanly: true,
+          problems: [],
           gatePassed: true,
-          gatePresentation: 'cutout',
           gateFailures: [],
           unexpectedText: [],
           chosen: false,
@@ -1963,6 +1971,7 @@ const IMAGES = {
       idea: 'A close-up of hair',
       presentation: null,
       rendersAsCutout: false,
+      nothingIsMeasured: true,
       templateId: null,
       zoneId: null,
       chosenCandidateId: null,
@@ -2022,20 +2031,33 @@ async function loadImages(payload: unknown = IMAGES): Promise<Loaded | null> {
 }
 
 describe('the image candidate picker', () => {
-  it('shows every candidate, rejected ones included, with the reason', async () => {
+  it('shows every candidate, including the ones the gate did not like', async () => {
     const loaded = await loadImages();
     if (loaded === null) return;
     await loaded.page.waitForSelector('ol.slots li', { timeout: 5000 });
     const text = (await loaded.page.textContent('ol.slots')) ?? '';
     expect(text).toContain('img001-c1');
     expect(text).toContain('img001-c2');
-    // The verdict and the reason, not just a pass/fail flag.
-    expect(text).toContain('gate rejected');
-    expect(text).toContain('edge_halo 0.1004 > 0.1');
-    expect(text).toContain('gate passed');
-    // The metrics behind the verdict.
-    expect(text).toContain('halo 0.1004');
     expect(await loaded.page.$$('ol.slots li.candidate')).toHaveLength(3);
+    await loaded.page.close();
+  });
+
+  /*
+   * The cutout metrics measure how cleanly a background came away, which is a
+   * property of a slot that shows a cut-out subject. Four of `vitasilk`'s five
+   * do not, and all eight of the corpus's rejections were of that kind.
+   */
+  it('judges the background only where the background is removed', async () => {
+    const loaded = await loadImages();
+    if (loaded === null) return;
+    await loaded.page.waitForSelector('ol.slots li', { timeout: 5000 });
+    const text = (await loaded.page.textContent('ol.slots')) ?? '';
+    // The cutout slot's candidate is judged, in words.
+    expect(text).toContain('background came away cleanly');
+    // The card slots' candidates are not, and their thresholds are not on screen.
+    expect(text).not.toContain('edge_halo');
+    expect(text).not.toContain('gate rejected');
+    expect(text).toContain('Nothing is checked automatically about these pictures');
     await loaded.page.close();
   });
 

@@ -147,6 +147,41 @@ declaration of this, read by the builder and by the picker so the two cannot
 disagree, and pinned by `choose-candidate.test.ts` — including that all five of
 `vitasilk`'s slots build with eight of ten candidates rejected.
 
+## Amendment (2026-08-29) — cutout metrics judge cutout slots only
+
+`edge_halo`, `hole_ratio` and `alpha_edge_noise` measure **one thing: how
+cleanly the background came away.** That bears on a slot whose build shows the
+subject cut out of its background, and on nothing else.
+
+**Four of `vitasilk`'s five slots show the whole picture inside a frame.** On
+those the matte is never drawn, so a threshold it misses says nothing about what
+the user will see. Every rejection in the corpus is of exactly that kind:
+
+| | candidates | judged clean | judged poor |
+|---|---:|---:|---:|
+| before | 10 | 2 | **8** |
+| after | 10 | 2 | **0** |
+| of which on cutout slots | 2 | 2 | 0 |
+| of which on whole-picture slots | 8 | — | **not judged** |
+
+The eight that stop being reported are `img001-c1`/`c2` and `img003-c1`/`c2`
+(edge halo), `img004-c1`/`c2` (holes) and `img005-c1`/`c2` (edge noise) — all on
+slots that render whole. `img002`'s two candidates are the only ones the
+measurement was ever about, and both pass. The other four reels have no
+generated candidates, so nothing changes for them.
+
+**The measurement still happens and still decides the presentation.** §5.4 makes
+a poor matte fall back to a card, so the metrics are what turn a slot into a
+whole-picture slot in the first place; removing them would remove the fallback.
+What is scoped is the **verdict** — whether a candidate is reported as failing
+something — because past that fallback the metric has no consequence.
+`verdictFor` in `service/src/images/verdict.ts` is the one declaration.
+
+**"The `card` fallback has never fired on a generated image" is superseded.**
+That sentence, above, was true when it was written and is not now: the fallback
+has fired on **8 of 10** real candidates. It is the normal case, not the
+exception.
+
 ## References
 
 - `benchmarks/RESULTS-block4-imagebakeoff.md` — the six-image comparison.

@@ -339,8 +339,10 @@ export interface CandidateView {
     edgeHalo: number;
   } | null;
   cutoutQuality: number | null;
+  qualityApplies: boolean;
+  backgroundCameAwayCleanly: boolean | null;
+  problems: string[];
   gatePassed: boolean | null;
-  gatePresentation: string | null;
   gateFailures: string[];
   unexpectedText: string[];
   chosen: boolean;
@@ -353,6 +355,7 @@ export interface ImageSlotView {
   idea: string;
   presentation: 'cutout' | 'card' | null;
   rendersAsCutout: boolean;
+  nothingIsMeasured: boolean;
   templateId: string | null;
   zoneId: string | null;
   candidates: CandidateView[];

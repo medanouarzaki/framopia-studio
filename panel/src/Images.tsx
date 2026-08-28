@@ -130,6 +130,9 @@ function Slot({
         {slot.rendersAsCutout
           ? 'This one is shown with its background removed, so only the subject appears.'
           : 'This one is shown whole, inside a frame.'}
+        {slot.nothingIsMeasured
+          ? ' Nothing is checked automatically about these pictures — judge them by eye.'
+          : ''}
       </p>
 
       {slot.candidates.length === 0 ? (
@@ -208,30 +211,24 @@ function Candidate({
       </div>
       <p className="slothead">
         <strong>{candidate.id}</strong>
-        <em className={candidate.gatePassed === true ? 'tag pass' : 'tag reject'}>
-          {candidate.gatePassed === null
-            ? 'ungated'
-            : candidate.gatePassed
-              ? 'gate passed'
-              : 'gate rejected'}
-        </em>
-        {candidate.modelId === null ? null : <em className="tag">{candidate.modelId}</em>}
-        {candidate.resolution === null ? null : <em className="tag">{candidate.resolution}</em>}
-        <em className="tag">
-          {candidate.costUsd === null ? 'cost unrecorded' : `$${candidate.costUsd.toFixed(4)}`}
-        </em>
+        {candidate.qualityApplies ? (
+          <em className={candidate.backgroundCameAwayCleanly === true ? 'tag pass' : 'tag reject'}>
+            {candidate.backgroundCameAwayCleanly === true
+              ? 'background came away cleanly'
+              : 'background did not come away cleanly'}
+          </em>
+        ) : null}
       </p>
-      {candidate.gateFailures.length === 0 ? null : (
-        <p className="reason">{candidate.gateFailures.join('; ')}</p>
-      )}
-      {candidate.metrics === null ? (
-        <p className="src">no metrics recorded</p>
-      ) : (
-        <p className="src">{metricsLine(candidate)}</p>
-      )}
+      {/* Only where it changes what gets built. On a slot that shows the whole
+          picture the matte is never drawn, so a threshold it misses says
+          nothing about what the user will see. */}
+      {candidate.qualityApplies && candidate.problems.length > 0 ? (
+        <p className="reason">{candidate.problems.join('; ')}</p>
+      ) : null}
       {candidate.unexpectedText.length === 0 ? null : (
         <p className="src">
-          text the idea did not ask for: {candidate.unexpectedText.slice(0, 8).join(', ')}
+          words visible in the picture that the idea did not ask for:{' '}
+          {candidate.unexpectedText.slice(0, 8).join(', ')}
           {candidate.unexpectedText.length > 8
             ? ` and ${candidate.unexpectedText.length - 8} more`
             : ''}
@@ -241,31 +238,22 @@ function Candidate({
   );
 }
 
-/** The four §5.4 metrics, in the order the gate reports them. */
-export function metricsLine(candidate: CandidateView): string {
-  const m = candidate.metrics;
-  if (m === null) return 'no metrics recorded';
-  const quality =
-    candidate.cutoutQuality === null ? '' : `, headroom ${candidate.cutoutQuality.toFixed(4)}`;
-  return (
-    `edge noise ${m.alphaEdgeNoise.toFixed(4)}, holes ${m.holeRatio.toFixed(4)}, ` +
-    `foreground ${m.foregroundArea.toFixed(4)}, halo ${m.edgeHalo.toFixed(4)}${quality}`
-  );
-}
-
-/** Where the slots came from, per guidelines §3: a figure names its source. */
+/**
+ * Where the pictures came from, in words.
+ *
+ * The cache entry id and its provenance are deliberately not here. They are
+ * provenance for an artifact and the plan records them; on screen they were two
+ * identifiers the user had to ask about, and neither changes a decision he can
+ * make.
+ */
 export function sourceLine(view: ImagesView): string {
   const client =
     view.source.clientMode === null
-      ? 'no client recorded on the plan'
-      : `${view.source.clientMode} v${view.source.clientModeVersion}`;
+      ? 'This plan does not say which client it is for.'
+      : `Made for ${view.source.clientMode}.`;
   const spent =
     view.reelSpentUsd === null
-      ? 'no image spend recorded'
-      : `$${view.reelSpentUsd.toFixed(6)} spent on this reel's images`;
-  const entry =
-    view.source.cacheEntryId === null
-      ? 'no cache entry recorded'
-      : `${view.source.cacheEntryId} (${view.source.cacheProvenance ?? 'provenance unrecorded'})`;
-  return `Client ${client}, stage ${view.source.stageStatus}, ${spent} — ${entry}.`;
+      ? ''
+      : ` $${view.reelSpentUsd.toFixed(2)} spent generating pictures for this reel so far.`;
+  return `${client}${spent}`;
 }
