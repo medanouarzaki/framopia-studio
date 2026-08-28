@@ -95,7 +95,34 @@ function framopiaAudit(aepPath, outPath) {
                 } catch (e4) {
                     n = 0;
                 }
-                if (n > 0) into.push({ path: prefix + p.name, keyframes: n });
+                if (n > 0) {
+                    /*
+                     * The times and values of every key, not just how many.
+                     *
+                     * A count cannot answer where an entrance resolves, and
+                     * that is the frame a sound has to land on: the moment
+                     * kw_slam's scale settles, not the card's start. Emitted
+                     * exactly as AE reports them, so the derivation happens
+                     * outside where it can be read and tested.
+                     */
+                    var keys = [];
+                    for (var k = 1; k <= n; k++) {
+                        var key = { index: k, time: null, value: null, unreadable: null };
+                        try {
+                            key.time = p.keyTime(k);
+                        } catch (e5) {
+                            key.unreadable = 'keyTime threw: ' + String(e5);
+                        }
+                        try {
+                            key.value = p.keyValue(k);
+                        } catch (e6) {
+                            key.unreadable = (key.unreadable ? key.unreadable + '; ' : '') +
+                                'keyValue threw: ' + String(e6);
+                        }
+                        keys.push(key);
+                    }
+                    into.push({ path: prefix + p.name, keyframes: n, keys: keys });
+                }
             } else {
                 collectAnimated(p, into, prefix + p.name + '/');
             }

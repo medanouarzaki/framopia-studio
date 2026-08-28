@@ -53,6 +53,7 @@
     "validate:templates": "tsx tools/validate-templates/cli.ts",
     "validate:panel": "npm run build:core && tsx tools/validate-panel/cli.ts",
     "migrate:image-cache": "npm run build:core && tsx tools/migrate-image-cache/cli.ts --",
+    "sfx:measure": "npm run build:core && tsx tools/measure-sfx/cli.ts",
     "watermark:measure": "tsx tools/measure-watermark/cli.ts",
     "align:review": "npm run build:core && tsx tools/align-review/cli.ts --",
     "align:score": "npm run build:core && tsx tools/align-review/score-cli.ts --",

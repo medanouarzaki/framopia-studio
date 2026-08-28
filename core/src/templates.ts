@@ -322,9 +322,23 @@ export interface AuditProperty {
   unreadable: string | null;
 }
 
+export interface AuditKeyframe {
+  index: number;
+  /** Seconds from the comp's start, as AE reports it. */
+  time: number | null;
+  value: unknown;
+  unreadable: string | null;
+}
+
 export interface AuditAnimatedProperty {
   path: string;
   keyframes: number;
+  /**
+   * Every key's time and value. **Optional with a default**: an audit taken
+   * before Block 8 session 21 has counts and no keys, and reads as "not
+   * recorded" rather than as a template with no keyframes.
+   */
+  keys?: AuditKeyframe[];
 }
 
 export interface AuditSourceRect {

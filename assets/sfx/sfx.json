@@ -3,9 +3,101 @@
   "stub": false,
   "gainNote": "defaultGainDb values are starting points chosen by the user before any comp existed, deliberately quiet so a sound never competes with speech. They are to be judged by ear on a built comp and are expected to move.",
   "sfx": [
-    { "id": "hit_01", "file": "hit_01.mp3", "defaultGainDb": -20, "notes": "percussive hit; source hit-2.mp3" },
-    { "id": "hit_02", "file": "hit_02.wav", "defaultGainDb": -20, "notes": "percussive hit, distinct sound from hit_01; source hit-2.wav" },
-    { "id": "whoosh_01", "file": "whoosh_01.wav", "defaultGainDb": -24, "notes": "whoosh; source whoosh-1.wav" },
-    { "id": "whoosh_02", "file": "whoosh_02.mp3", "defaultGainDb": -24, "notes": "whoosh; source whoosh-2.mp3" }
+    {
+      "id": "hit_01",
+      "file": "hit_01.mp3",
+      "defaultGainDb": -20,
+      "notes": "percussive hit; source hit-2.mp3",
+      "measured": {
+        "file": "hit_01.mp3",
+        "codec": "mp3",
+        "container": "mp3",
+        "sampleRate": 48000,
+        "channels": 2,
+        "durationS": 5.856,
+        "durationFrames": 175.504,
+        "peakOffsetS": 2.052521,
+        "peakOffsetFrames": 61.514,
+        "peakDbfs": -0.72,
+        "encoderDelayS": 0,
+        "firstAudibleS": 0.047771,
+        "shape": "middle",
+        "peakFraction": 0.3505,
+        "measuredAt": "2026-08-28T14:37:02.614Z",
+        "measuredWith": "ffmpeg (homebrew)"
+      }
+    },
+    {
+      "id": "hit_02",
+      "file": "hit_02.wav",
+      "defaultGainDb": -20,
+      "notes": "percussive hit, distinct sound from hit_01; source hit-2.wav",
+      "measured": {
+        "file": "hit_02.wav",
+        "codec": "pcm_s24le",
+        "container": "wav",
+        "sampleRate": 96000,
+        "channels": 2,
+        "durationS": 6,
+        "durationFrames": 179.82,
+        "peakOffsetS": 0.543312,
+        "peakOffsetFrames": 16.283,
+        "peakDbfs": -0.03,
+        "encoderDelayS": 0,
+        "firstAudibleS": 0.500687,
+        "shape": "head",
+        "peakFraction": 0.0906,
+        "measuredAt": "2026-08-28T14:37:02.702Z",
+        "measuredWith": "ffmpeg (homebrew)"
+      }
+    },
+    {
+      "id": "whoosh_01",
+      "file": "whoosh_01.wav",
+      "defaultGainDb": -24,
+      "notes": "whoosh; source whoosh-1.wav",
+      "measured": {
+        "file": "whoosh_01.wav",
+        "codec": "pcm_s16le",
+        "container": "wav",
+        "sampleRate": 96000,
+        "channels": 2,
+        "durationS": 1.951229,
+        "durationFrames": 58.478,
+        "peakOffsetS": 0.691281,
+        "peakOffsetFrames": 20.718,
+        "peakDbfs": -1.23,
+        "encoderDelayS": 0,
+        "firstAudibleS": 0.349313,
+        "shape": "middle",
+        "peakFraction": 0.3543,
+        "measuredAt": "2026-08-28T14:37:02.905Z",
+        "measuredWith": "ffmpeg (homebrew)"
+      }
+    },
+    {
+      "id": "whoosh_02",
+      "file": "whoosh_02.mp3",
+      "defaultGainDb": -24,
+      "notes": "whoosh; source whoosh-2.mp3",
+      "measured": {
+        "file": "whoosh_02.mp3",
+        "codec": "mp3",
+        "container": "mp3",
+        "sampleRate": 44100,
+        "channels": 2,
+        "durationS": 1.201625,
+        "durationFrames": 36.013,
+        "peakOffsetS": 0.558118,
+        "peakOffsetFrames": 16.727,
+        "peakDbfs": -8.39,
+        "encoderDelayS": 0,
+        "firstAudibleS": 0.127506,
+        "shape": "middle",
+        "peakFraction": 0.4645,
+        "measuredAt": "2026-08-28T14:37:02.988Z",
+        "measuredWith": "ffmpeg (homebrew)"
+      }
+    }
   ]
 }
