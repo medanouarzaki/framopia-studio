@@ -1,5 +1,5 @@
 import { NODE_NOT_FOUND_HELP } from '@framopia/core/node-path';
-import type { ClientMode, DryRunPlan, HealthPayload, Reel, ServiceError, PlanSteps } from './types.js';
+import type { ClientMode, DryRunPlan, HealthPayload, Reel, ServiceError, PlanSteps , ServiceOrigin } from './types.js';
 
 /**
  * The panel's half of the ARCHITECTURE §1.3 handshake: the service binds
@@ -56,7 +56,7 @@ async function getHealth(port: number, signal: AbortSignal): Promise<HealthPaylo
  * still holding the file.
  */
 export async function connect(host: PanelHost): Promise<
-  { ok: true; health: HealthPayload; port: number; token: string } | { ok: false; error: ServiceError }
+  { ok: true; health: HealthPayload; port: number; token: string; origin: ServiceOrigin } | { ok: false; error: ServiceError }
 > {
   /*
    * The host reads a file and signals a pid; both can fail for reasons that
@@ -79,7 +79,7 @@ export async function connect(host: PanelHost): Promise<
   if (handshake !== null && alive) {
     try {
       const health = await withTimeout((signal) => getHealth(handshake.port, signal));
-      return { ok: true, health, port: handshake.port, token: handshake.token };
+      return { ok: true, health, port: handshake.port, token: handshake.token, origin: 'existing' };
     } catch (error) {
       // The pid is alive but nothing answers: a service mid-start, or a pid
       // reused by something else. Either way spawning a second one would make
@@ -146,7 +146,7 @@ export async function connect(host: PanelHost): Promise<
     if (fresh === null) continue;
     try {
       const health = await withTimeout((signal) => getHealth(fresh.port, signal));
-      return { ok: true, health, port: fresh.port, token: fresh.token };
+      return { ok: true, health, port: fresh.port, token: fresh.token, origin: 'spawned' };
     } catch (error) {
       lastError = (error as Error).message;
     }
@@ -169,7 +169,7 @@ export async function connect(host: PanelHost): Promise<
  */
 async function reachExisting(
   host: PanelHost,
-): Promise<{ ok: true; health: HealthPayload; port: number; token: string } | null> {
+): Promise<{ ok: true; health: HealthPayload; port: number; token: string; origin: ServiceOrigin } | null> {
   let handshake: ReturnType<PanelHost['readHandshake']>;
   try {
     handshake = host.readHandshake();
@@ -179,7 +179,7 @@ async function reachExisting(
   if (handshake === null || !host.processAlive(handshake.pid)) return null;
   try {
     const health = await withTimeout((signal) => getHealth(handshake.port, signal));
-    return { ok: true, health, port: handshake.port, token: handshake.token };
+    return { ok: true, health, port: handshake.port, token: handshake.token, origin: 'existing' };
   } catch {
     return null;
   }

@@ -62,6 +62,13 @@ export interface HealthPayload {
     /** tools/cv/.venv, so a report can name the path that is missing. */
     pythonPath: string;
   };
+  /**
+   * This service process, so the panel can say which one answered. The panel
+   * showed `ffmpeg version 8.0.1` from a terminal-started service and `missing`
+   * from its own, with nothing on the machine changed between; there was no way
+   * to tell the two apart on screen.
+   */
+  process: { pid: number; startedAt: string };
   templates: {
     valid: boolean;
     /** Every manifest problem, in the validator's own words. */
@@ -123,6 +130,9 @@ function probeTool(resolved: ResolvedFfmpeg): ToolState {
   };
 }
 
+/** When this process began, fixed at module load rather than read per call. */
+const STARTED_AT = new Date().toISOString();
+
 export function health(serviceVersion: string): HealthPayload {
   const ffmpegAt = resolveFfmpegPath('ffmpeg');
   const ffprobeAt = resolveFfmpegPath('ffprobe');
@@ -152,6 +162,7 @@ export function health(serviceVersion: string): HealthPayload {
     promptVersion: ACTIVE_PROMPT_VERSION,
     ffmpeg,
     ffprobe,
+    process: { pid: process.pid, startedAt: STARTED_AT },
     sidecar: { venv, pythonPath },
     templates,
     repoRoot: REPO_ROOT,
