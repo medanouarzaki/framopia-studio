@@ -37,6 +37,18 @@ export interface DryRunStage {
   entryId: string | null;
   /** Null when the stage costs nothing or nothing can be estimated for it. */
   estimateUsd: number | null;
+  /**
+   * **What a run will actually do with this stage**, which is the question the
+   * user is asking and the one the panel must render.
+   *
+   * `provenance` and `estimateUsd` between them cannot answer it: a stage the
+   * plan records as done is skipped whatever its cache says, and the panel used
+   * to infer "to run" from a null estimate — so `vitasilk`'s analysis read "to
+   * run" in the cost block and "skipped — already on the plan" in the run
+   * beneath it. Saying it here rather than leaving the panel to work it out is
+   * what stops the two disagreeing.
+   */
+  action: 'skip' | 'reuse' | 'run';
   note: string;
 }
 
@@ -195,6 +207,11 @@ export async function dryRun(reelLabel: string, modeId: string): Promise<DryRunP
       provenance,
       entryId,
       estimateUsd,
+      action: skipped
+        ? 'skip'
+        : provenance === 'exact' || provenance === 'compatible'
+          ? 'reuse'
+          : 'run',
       note: skipped ? `${note.replace(/\.$/, '')}. Already on the plan, so a run skips it` : note,
     });
   };

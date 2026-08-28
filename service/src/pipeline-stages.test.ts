@@ -101,3 +101,50 @@ describe('the dry run and the runner', () => {
     expect(runner).not.toContain('appendCost');
   });
 });
+
+/**
+ * The six tests above pinned two service functions against each other: same
+ * ids, same order, same labels, same billable set. **Every one passed while the
+ * panel showed "to run" for a stage the runner skipped**, because none of them
+ * looked at what a stage *will do* — the panel inferred that from `provenance`
+ * and `estimateUsd`, and those two cannot express "the plan already has it".
+ *
+ * So the service now says it, and this pins the service half. The rendered half
+ * is pinned in `panel/src/render.browser.test.ts`, against the built bundle,
+ * which is where the divergence actually reached the user.
+ */
+describe('what a run will do with each stage', () => {
+  it('is stated by the dry run rather than inferred from cost and cache', async () => {
+    const plan = await dryRun('vitasilk', 'k2-syndicalia');
+    for (const stage of plan.stages) {
+      expect(['skip', 'reuse', 'run'], stage.id).toContain(stage.action);
+    }
+  });
+
+  it('marks a stage the plan already carries as skipped, whatever its cache says', async () => {
+    const plan = await dryRun('vitasilk', 'k2-syndicalia');
+    const analysis = plan.stages.find((s) => s.id === 'analysis');
+    // The keyword entry misses at the active analysis prompt version, so the
+    // cache says "would bill" and the plan says "already done". This is the
+    // exact pair that disagreed on screen.
+    expect(analysis?.provenance).toBe('none');
+    expect(analysis?.action).toBe('skip');
+    expect(analysis?.estimateUsd).toBeNull();
+  });
+
+  it('agrees with the runner, stage for stage, on what happens to vitasilk', async () => {
+    const plan = await dryRun('vitasilk', 'k2-syndicalia');
+    const progress = await runPipeline({
+      reel: 'vitasilk',
+      modeId: 'k2-syndicalia',
+      stages: { zones: vi.fn(async () => ({ skipped: 'already on the plan' })) },
+    });
+
+    for (const predicted of plan.stages) {
+      const actual = progress.stages.find((s) => s.id === predicted.id);
+      const ranOrSkipped = actual?.state === 'skipped' ? 'skip' : 'ran';
+      const expected = predicted.action === 'skip' ? 'skip' : 'ran';
+      expect(ranOrSkipped, `${predicted.id}: dry run said "${predicted.action}"`).toBe(expected);
+    }
+  });
+});

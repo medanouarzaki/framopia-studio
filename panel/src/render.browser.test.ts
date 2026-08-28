@@ -658,7 +658,7 @@ async function loadFlow(upTo: string, resumeAt: string, width = 420): Promise<Lo
 }
 
 /** A pipeline job the stub serves, in whatever state the test wants. */
-function stubJob(state: 'running' | 'done' | 'failed'): string {
+function stubJob(state: 'running' | 'done' | 'failed' | 'all-skipped'): string {
   const stage = (
     id: string,
     label: string,
@@ -669,8 +669,16 @@ function stubJob(state: 'running' | 'done' | 'failed'): string {
     cacheEntryId: null, cacheProvenance: null, startedAt: null, finishedAt: null,
     error: null, ...extra,
   });
+  const allSkipped = [
+    stage('transcription', 'Transcribe and correct', 'skipped', { reason: 'reusing an older guide' }),
+    stage('analysis', 'Keywords and image slots', 'skipped', { reason: 'already on the plan' }),
+    stage('images', 'Generate images', 'skipped', { reason: 'already on the plan' }),
+    stage('zones', 'Frame analysis (local, free)', 'skipped', { reason: 'already on the plan' }),
+  ];
   const stages =
-    state === 'running'
+    state === 'all-skipped'
+    ? allSkipped
+    : state === 'running'
       ? [
           stage('transcription', 'Transcribe and correct', 'skipped', {
             reason: 'reusing an older guide',
@@ -716,6 +724,134 @@ function stubJob(state: 'running' | 'done' | 'failed'): string {
     detail,
   })});`;
 }
+
+/**
+ * The exact pair that disagreed on the user's machine: `vitasilk`'s analysis
+ * stage, whose cache misses (`provenance: 'none'`, no estimate) while the plan
+ * already records it done. The cost block read "to run" and the run beneath it
+ * read "skipped".
+ */
+const VITASILK_DRY_STAGES = [
+  {
+    id: 'transcription',
+    label: 'Transcribe and correct',
+    status: 'done',
+    provenance: 'compatible',
+    entryId: 'transcription-758a3924d090d1b5',
+    estimateUsd: null,
+    action: 'skip',
+    note: 'reusing an older guide. Already on the plan, so a run skips it',
+  },
+  {
+    id: 'analysis',
+    label: 'Keywords and image slots',
+    status: 'done',
+    provenance: 'none',
+    entryId: null,
+    estimateUsd: null,
+    action: 'skip',
+    note: 'a run would call the model and bill. Already on the plan, so a run skips it',
+  },
+  {
+    id: 'images',
+    label: 'Generate images',
+    status: 'done',
+    provenance: 'exact',
+    entryId: null,
+    estimateUsd: null,
+    action: 'skip',
+    note: '10 of 10 candidate images are cached. Already on the plan, so a run skips it',
+  },
+  {
+    id: 'zones',
+    label: 'Frame analysis (local, free)',
+    status: 'done',
+    provenance: null,
+    entryId: null,
+    estimateUsd: null,
+    action: 'skip',
+    note: 'local computer vision. Already on the plan, so a run skips it',
+  },
+];
+
+describe.skipIf(!built)('the cost block and the run', () => {
+  async function loadBoth(): Promise<Loaded | null> {
+    if (browser === undefined) return null;
+    const page = await browser.newPage({ viewport: { width: 420, height: 900 } });
+    const uncaught: string[] = [];
+    page.on('pageerror', (error: Error) => uncaught.push(error.message));
+    await page.addInitScript(stubHost(HANDSHAKE));
+    await page.addInitScript(stubRoutes(stepsThrough('build'), 'build'));
+    await page.addInitScript(
+      `window.__payload.dry.stages = ${JSON.stringify(VITASILK_DRY_STAGES)};`,
+    );
+    await page.addInitScript(stubJob('all-skipped'));
+    await page.goto(`file://${INDEX}`);
+    await page.waitForSelector('nav.rail', { timeout: 10_000 });
+    await page.selectOption('select[aria-label="Reel"]', 'vitasilk');
+    await page.selectOption('select[aria-label="Client mode"]', 'k2-syndicalia');
+    await page.waitForFunction(
+      () =>
+        (document.querySelector('main') as HTMLElement).textContent?.includes(
+          'Keywords and image slots',
+        ) === true,
+      undefined,
+      { timeout: 5000 },
+    );
+    return { page, uncaught };
+  }
+
+  /*
+   * The regression. Nothing in the six service tests looked at this string, so
+   * all six passed while the panel said "to run" for a stage a run skips.
+   */
+  it('never says a stage will run when the plan already carries it', async () => {
+    const loaded = await loadBoth();
+    if (loaded === null) return;
+    const text = (await loaded.page.textContent('main')) ?? '';
+    expect(text).not.toContain('to run');
+    expect(text).toContain('skipped, already on the plan');
+    await loaded.page.close();
+  });
+
+  /*
+   * The stronger form: for every stage, what the cost block says and what the
+   * run reports must agree as rendered text — not as two service values that
+   * happen to line up.
+   */
+  it('renders the same verdict in the cost block and in the run', async () => {
+    const loaded = await loadBoth();
+    if (loaded === null) return;
+    await loaded.page.click('button.run');
+    await loaded.page.waitForFunction(
+      () => document.querySelectorAll('section.build ul.facts').length >= 2,
+      undefined,
+      { timeout: 5000 },
+    );
+    const rows = await loaded.page.evaluate(() => {
+      const lists = [...document.querySelectorAll('section.build ul.facts')];
+      const read = (ul: Element): Record<string, string> =>
+        Object.fromEntries(
+          [...ul.querySelectorAll('li')].map((li) => [
+            li.querySelector('.k')?.textContent ?? '',
+            li.querySelector('.v')?.textContent ?? '',
+          ]),
+        );
+      return { estimate: read(lists[0] as Element), run: read(lists[1] as Element) };
+    });
+
+    for (const [label, estimate] of Object.entries(rows.estimate)) {
+      const ran = rows.run[label];
+      expect(ran, `no run row for "${label}"`).toBeDefined();
+      const estimateSkips = estimate.includes('skipped');
+      const runSkips = (ran ?? '').includes('skipped');
+      expect(runSkips, `"${label}": estimate said "${estimate}", run said "${ran}"`).toBe(
+        estimateSkips,
+      );
+    }
+    await loaded.page.close();
+  });
+});
 
 describe.skipIf(!built)('a pipeline run', () => {
   async function loadRun(state: 'running' | 'done' | 'failed'): Promise<Loaded | null> {

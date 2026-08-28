@@ -59,6 +59,8 @@ export interface DryRunStage {
   provenance: EntryProvenance | null;
   entryId: string | null;
   estimateUsd: number | null;
+  /** What a run will do with this stage; the panel renders this, not a guess. */
+  action: 'skip' | 'reuse' | 'run';
   note: string;
 }
 

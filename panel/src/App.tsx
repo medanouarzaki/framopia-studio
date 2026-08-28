@@ -618,14 +618,26 @@ function FontsNote({ mode }: { mode: ClientMode }): JSX.Element | null {
  * and `provenance` is what the cache answers now. The panel said "cached" from
  * `status` for four blocks while a run would have re-transcribed and billed.
  */
+/**
+ * What the cost block says a stage will do.
+ *
+ * It reads `action`, which the service computes, and **not** `provenance` and
+ * `estimateUsd`, which it used to infer from. Those two cannot express "the
+ * plan already has this, so a run skips it": `vitasilk`'s analysis has a cache
+ * miss and no estimate, and the old inference turned that into "to run" while
+ * the run beneath reported "skipped — already on the plan". Six tests pinned
+ * the two service functions against each other and none of them looked at this
+ * string.
+ */
 function stageWord(stage: DryRunStage): string {
-  if (stage.provenance === 'exact') return 'cached';
+  if (stage.action === 'skip') return 'skipped, already on the plan';
   if (stage.provenance === 'compatible') return 'cached, older guide';
-  if (stage.provenance === null) return stage.status === 'done' ? 'done' : 'to run';
+  if (stage.action === 'reuse') return 'cached';
   return stage.estimateUsd === null ? 'to run' : `to run, about $${stage.estimateUsd.toFixed(2)}`;
 }
 
 function stageTone(stage: DryRunStage): string {
+  if (stage.action === 'skip') return 'warn';
   if (stage.provenance === 'exact') return 'good';
   if (stage.provenance === 'compatible') return 'warn';
   return '';
