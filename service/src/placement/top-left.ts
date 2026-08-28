@@ -3,7 +3,16 @@ import { fitInsideFrame, type Rect } from './geometry.js';
 import { unitStream } from './solve.js';
 
 /**
- * Images sit in the top-left corner, on every reel.
+ * Images sat in the top-left corner, on every reel.
+ *
+ * **Superseded by `image-placement.ts`** (user ruling, Block 8 session 33):
+ * images now take the largest free band around the face, which is worth about
+ * 1.14x on the corpus. **This is kept, and is not dead code**: it is what
+ * `npm run place:images` compares the new placement against, and a comparison
+ * against a rule nobody runs is a comparison against nothing. Nothing in a
+ * build reads it.
+ *
+ * The ruling it came from, for the record:
  *
  * **A user ruling from Block 7 session 9**, and a deliberate departure from
  * PROJECT_SPEC §4 and ARCHITECTURE §5.5, both of which place images in

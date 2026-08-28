@@ -23,7 +23,6 @@
     "segment": "tsx src/frames/segment-cli.ts",
     "zones": "tsx src/frames/zones-cli.ts",
     "components": "tsx src/frames/components-cli.ts",
-    "top-left": "tsx src/placement/top-left-cli.ts",
     "image-ceiling": "tsx src/placement/image-ceiling-cli.ts",
     "image-fill": "tsx src/placement/image-fill-cli.ts",
     "image-size": "tsx src/placement/image-size-cli.ts",
@@ -44,7 +43,8 @@
     "retiming": "tsx src/analysis/retiming-cli.ts",
     "timing-budget": "tsx src/analysis/timing-budget-cli.ts",
     "probe:audio-start": "tsx src/build/audio-start-probe-cli.ts",
-    "migrate:client-mode": "tsx src/editplan/migrate-client-mode-cli.ts"
+    "migrate:client-mode": "tsx src/editplan/migrate-client-mode-cli.ts",
+    "place:images": "tsx src/placement/place-images-cli.ts"
   },
   "dependencies": {
     "@framopia/core": "*",

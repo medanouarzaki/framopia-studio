@@ -4,16 +4,18 @@ import path from 'node:path';
 import { REPO_ROOT, loadMode } from '@framopia/core';
 import { readEditPlan } from '../editplan/io.js';
 import type { EditPlan, ImageSlot } from '../editplan/types.js';
-import { FRAME_ASPECT, FRAME_WIDTH, HEAD_CLEARANCE, TOP_LEFT_MARGIN } from './constants.js';
-import { insideFrame, type Rect } from './geometry.js';
+import { FRAME_HEIGHT, FRAME_WIDTH, HEAD_CLEARANCE, TOP_LEFT_MARGIN } from './constants.js';
+import { type Rect } from './geometry.js';
+import { placeImageDetail, placementIsSafe } from './image-placement.js';
 import { topLeftPlacementDetail } from './top-left.js';
 
 /**
- * Where the top-left rule puts each image slot, per reel.
+ * Where each image slot goes, per reel, and what the change from the corner is
+ * worth.
  *
- * Free and local: it reads masks already on disk and runs no model. Written to
- * `.local/build/` because it is a run artefact — the plans keep their solved
- * zone placements, which stay valid for a manual zone and for a future format.
+ * Free and local: it reads masks already on disk and runs no model. The builder
+ * derives the same placement itself, so this is a report rather than an input —
+ * a side file the build depended on is a side file that can go stale.
  */
 const FOOTAGE_DIR = path.join(REPO_ROOT, 'my files', 'test videos');
 const PY = path.join(REPO_ROOT, 'tools', 'cv', '.venv', 'bin', 'python');
@@ -28,19 +30,11 @@ function maskBoxes(reel: string, kind: 'face' | 'head'): MaskFrame[] | null {
   return (JSON.parse(raw) as { frames: MaskFrame[] }).frames;
 }
 
-const grown = (b: Rect): Rect => ({
-  x: b.x - HEAD_CLEARANCE,
-  y: b.y - HEAD_CLEARANCE * FRAME_ASPECT,
-  w: b.w + 2 * HEAD_CLEARANCE,
-  h: b.h + 2 * HEAD_CLEARANCE * FRAME_ASPECT,
-});
-const overlaps = (a: Rect, b: Rect): boolean =>
-  a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
-
 let placedTotal = 0;
 let escapes = 0;
 let faceHits = 0;
 let clamped = 0;
+const gains: number[] = [];
 
 /*
  * How large the client wants its images, as a multiple of the largest square
@@ -80,34 +74,51 @@ for (const file of readdirSync(FOOTAGE_DIR).filter((f) => f.endsWith('.editplan.
   const out: Record<string, Rect> = {};
   for (const slot of plan.images.slots as ImageSlot[]) {
     const faceBox = spanBox(slot);
-    const detail = topLeftPlacementDetail({
-      faceBox,
-      seed: `${plan.meta.id}:${slot.id}`,
-      scale: imageScale,
-    });
+    const seed = `${plan.meta.id}:${slot.id}`;
+    // The corner rule, kept only to report what moving off it is worth.
+    const was = topLeftPlacementDetail({ faceBox, seed, scale: imageScale }).rect;
+    const detail = placeImageDetail({ faceBox, seed, scale: imageScale });
     const rect = detail.rect;
     if (detail.clamped) clamped += 1;
     out[slot.id] = rect;
     placedTotal += 1;
-    if (!insideFrame(rect, 1e-9)) escapes += 1;
-    if (faceBox !== null && overlaps(rect, grown(faceBox))) faceHits += 1;
+
+    const safe = placementIsSafe(rect, faceBox);
+    if (!safe.insideFrame) escapes += 1;
+    if (!safe.clearsFace) faceHits += 1;
+    const px = (v: number): string => (v * FRAME_WIDTH).toFixed(0);
+    const py = (v: number): string => (v * FRAME_HEIGHT).toFixed(0);
+    const gain = was.w === 0 ? 1 : rect.w / was.w;
+    gains.push(gain);
     console.log(
-      `${reel.padEnd(14)} ${slot.id}: ${(rect.w * FRAME_WIDTH).toFixed(0)} px at ` +
-        `(${(rect.x * FRAME_WIDTH).toFixed(0)}, ${(rect.y * FRAME_WIDTH * FRAME_ASPECT).toFixed(0)})` +
-        `${detail.clamped ? `  CLAMPED from ${(detail.wantedSide * FRAME_WIDTH).toFixed(0)} px` : ''}` +
+      `${reel.padEnd(14)} ${slot.id}: was ${px(was.w)}px at (${px(was.x)}, ${py(was.y)})` +
+        ` -> now ${px(rect.w)}px at (${px(rect.x)}, ${py(rect.y)})` +
+        `  ${gain.toFixed(2)}x  ${detail.band}` +
+        `  clears face ${safe.clearsFace ? 'yes' : 'NO'}, in frame ${safe.insideFrame ? 'yes' : 'NO'}` +
+        `${detail.clamped ? `  (asked ${detail.wantedSidePx.toFixed(0)}px, band holds ${detail.bandSidePx.toFixed(0)})` : ''}` +
         `${faceBox === null ? '  [no face mask; frame-bounded only]' : ''}`,
     );
   }
   mkdirSync(path.join(REPO_ROOT, '.local', 'build'), { recursive: true });
   writeFileSync(
-    path.join(REPO_ROOT, '.local', 'build', `topleft-${reel}.json`),
+    path.join(REPO_ROOT, '.local', 'build', `image-placement-${reel}.json`),
     `${JSON.stringify(out, null, 2)}\n`,
     'utf8',
   );
 }
 
+const mean = gains.length === 0 ? 1 : gains.reduce((a, b) => a + b, 0) / gains.length;
 console.log(
-  `\n${placedTotal} slots placed top-left, margin ${TOP_LEFT_MARGIN}; ` +
-    `imageScale ${imageScale}; ${escapes} outside the frame, ${faceHits} ` +
-    `overlapping the face, ${clamped} clamped by the corner. $0.00 — no model call.`,
+  `\n${placedTotal} slots placed, margin ${(TOP_LEFT_MARGIN * FRAME_WIDTH).toFixed(0)}px, ` +
+    `clearance ${(HEAD_CLEARANCE * FRAME_WIDTH).toFixed(0)}px, imageScale ${imageScale}. ` +
+    `Mean ${mean.toFixed(2)}x the corner rule, best ${Math.max(...gains).toFixed(2)}x, ` +
+    `worst ${Math.min(...gains).toFixed(2)}x.`,
 );
+console.log(
+  `${escapes} outside the frame, ${faceHits} overlapping the face, ` +
+    `${clamped} smaller than the mode asked for. $0.00 — no model call.`,
+);
+if (escapes > 0 || faceHits > 0) {
+  console.error('a placement left the frame or touched the face');
+  process.exit(1);
+}

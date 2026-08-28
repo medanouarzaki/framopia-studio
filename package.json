@@ -34,7 +34,6 @@
     "image-size": "npm run build:core && npm run image-size --workspace framopia-service --",
     "image-fill": "npm run build:core && npm run image-fill --workspace framopia-service --",
     "image-ceiling": "npm run build:core && npm run image-ceiling --workspace framopia-service --",
-    "top-left": "npm run build:core && npm run top-left --workspace framopia-service --",
     "timing-budget": "npm run build:core && npm run timing-budget --workspace framopia-service --",
     "retiming": "npm run build:core && npm run retiming --workspace framopia-service --",
     "diagnose:timing": "npm run build:core && npm run diagnose:timing --workspace framopia-service --",
@@ -63,6 +62,7 @@
     "panel:dev": "npm run build:core && npm run dev --workspace framopia-panel",
     "panel:install": "npm run install:cep --workspace framopia-panel",
     "probe:audio-start": "npm run build:core && npm run probe:audio-start --workspace framopia-service --",
-    "migrate:client-mode": "npm run build:core && npm run migrate:client-mode --workspace framopia-service --"
+    "migrate:client-mode": "npm run build:core && npm run migrate:client-mode --workspace framopia-service --",
+    "place:images": "npm run build:core && npm run place:images --workspace framopia-service --"
   }
 }

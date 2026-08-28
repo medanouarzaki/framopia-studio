@@ -28,6 +28,7 @@ import {
   WATERMARK_DURATION_S,
 } from '../placement/constants.js';
 import { assertBeepsFitWatermark, placeWatermark, watermarkEnabled } from '../placement/watermark.js';
+import { placeImageDetail, placementIsSafe } from '../placement/image-placement.js';
 import {
   buildReel,
   auditedSolid,
@@ -136,15 +137,85 @@ const watermarkFacts: WatermarkFacts | null = existsSync(watermarkFactsPath)
   ? (JSON.parse(readFileSync(watermarkFactsPath, 'utf8')) as WatermarkFacts)
   : null;
 
-const faceBoxesPath = path.join(REPO_ROOT, '.local', 'build', `topleft-${path.basename(planPath).replace('.editplan.json', '')}.json`);
-const topLeft: Record<string, { x: number; y: number; w: number; h: number }> = existsSync(faceBoxesPath)
-  ? (JSON.parse(readFileSync(faceBoxesPath, 'utf8')) as Record<string, { x: number; y: number; w: number; h: number }>)
-  : {};
+/**
+ * The face mask over a window, as one box. Read from masks already on disk;
+ * runs no model.
+ */
+const MASK_PY = path.join(REPO_ROOT, 'tools', 'cv', '.venv', 'bin', 'python');
+const MASK_SCRIPT = path.join(REPO_ROOT, 'tools', 'cv', 'head_boxes.py');
+interface MaskFrame { index: string; box: [number, number, number, number] | null }
+// The CV directory is named after the reel as it appears on disk, spaces and
+// all; `reel` has had them replaced for comp naming.
+const maskDir = path.join(REPO_ROOT, '.local', 'cv', path.basename(planPath).replace('.editplan.json', ''), 'masks-2fps');
+const faceFrames: MaskFrame[] = existsSync(maskDir) && existsSync(MASK_PY)
+  ? (JSON.parse(
+      execFileSync(MASK_PY, [MASK_SCRIPT, maskDir, 'face'], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }),
+    ) as { frames: MaskFrame[] }).frames
+  : [];
+
+function faceSpan(startS: number, endS: number): { x: number; y: number; w: number; h: number } | null {
+  const fps = plan.zones.sampleFps || 2;
+  const boxes = faceFrames
+    .filter((f) => {
+      const t = Number(f.index) / fps;
+      return f.box !== null && t >= startS - 1 / fps && t <= endS + 1 / fps;
+    })
+    .map((f) => f.box as [number, number, number, number]);
+  if (boxes.length === 0) return null;
+  const x0 = Math.min(...boxes.map((b) => b[0]));
+  const y0 = Math.min(...boxes.map((b) => b[1]));
+  return {
+    x: x0,
+    y: y0,
+    w: Math.max(...boxes.map((b) => b[2])) - x0,
+    h: Math.max(...boxes.map((b) => b[3])) - y0,
+  };
+}
+
+/*
+ * Where each image goes: the largest square in the free band around the
+ * speaker's face, preferring the one above it. Derived here from the reel's own
+ * masks — it used to be read from `.local/build/topleft-<reel>.json`, which the
+ * build then depended on someone having regenerated.
+ *
+ * Both hard bounds are asserted rather than assumed. A picture over the
+ * speaker's face, or off the edge of the frame, is not something to discover in
+ * a built comp.
+ */
+const placementModeId = flag('mode') ?? plan.clientMode?.id;
+const imageScale =
+  placementModeId === undefined ? 1 : (loadMode(placementModeId).imageScale ?? 1);
+const imagePlacements: Record<string, { x: number; y: number; w: number; h: number }> = {};
+for (const slot of plan.images.slots) {
+  const faceBox = faceSpan(slot.start, slot.end);
+  const detail = placeImageDetail({
+    faceBox,
+    seed: `${plan.meta.id}:${slot.id}`,
+    scale: imageScale,
+  });
+  const safe = placementIsSafe(detail.rect, faceBox);
+  if (!safe.insideFrame || !safe.clearsFace) {
+    console.error(
+      `${slot.id}: placement ${safe.insideFrame ? '' : 'leaves the frame'}` +
+        `${safe.clearsFace ? '' : 'overlaps the speaker’s face'}`,
+    );
+    process.exit(1);
+  }
+  imagePlacements[slot.id] = detail.rect;
+  console.log(
+    `${slot.id}: ${(detail.rect.w * plan.source.width).toFixed(0)}px ${detail.band}` +
+      (detail.clamped
+        ? `, smaller than the ${imageScale}x asked for (the band holds ${detail.bandSidePx.toFixed(0)}px)`
+        : ''),
+  );
+}
 
 const built = buildReel({
   plan,
   audit,
-  topLeftFor: (slotId: string) => topLeft[slotId],
+  // Derived here from the reel's own face masks rather than read from a side
+  // file the build would otherwise depend on being regenerated.
+  topLeftFor: (slotId: string) => imagePlacements[slotId],
   cardTemplateId: CARD_TEMPLATE,
   introFor: (id) => entries.get(id)?.introS ?? 0,
   minHoldFor: (id) => entries.get(id)?.minHoldS ?? 0,
@@ -261,41 +332,6 @@ const onFloor = built.shortened.filter((s) => s.onFloor).length;
 console.log(
   `short-card entrances: ${built.shortened.length} shortened, ${onFloor} on the two-frame floor`,
 );
-
-/**
- * The face mask over a window, as one box. Read from masks already on disk;
- * runs no model.
- */
-const MASK_PY = path.join(REPO_ROOT, 'tools', 'cv', '.venv', 'bin', 'python');
-const MASK_SCRIPT = path.join(REPO_ROOT, 'tools', 'cv', 'head_boxes.py');
-interface MaskFrame { index: string; box: [number, number, number, number] | null }
-// The CV directory is named after the reel as it appears on disk, spaces and
-// all; `reel` has had them replaced for comp naming.
-const maskDir = path.join(REPO_ROOT, '.local', 'cv', path.basename(planPath).replace('.editplan.json', ''), 'masks-2fps');
-const faceFrames: MaskFrame[] = existsSync(maskDir) && existsSync(MASK_PY)
-  ? (JSON.parse(
-      execFileSync(MASK_PY, [MASK_SCRIPT, maskDir, 'face'], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }),
-    ) as { frames: MaskFrame[] }).frames
-  : [];
-
-function faceSpan(startS: number, endS: number): { x: number; y: number; w: number; h: number } | null {
-  const fps = plan.zones.sampleFps || 2;
-  const boxes = faceFrames
-    .filter((f) => {
-      const t = Number(f.index) / fps;
-      return f.box !== null && t >= startS - 1 / fps && t <= endS + 1 / fps;
-    })
-    .map((f) => f.box as [number, number, number, number]);
-  if (boxes.length === 0) return null;
-  const x0 = Math.min(...boxes.map((b) => b[0]));
-  const y0 = Math.min(...boxes.map((b) => b[1]));
-  return {
-    x: x0,
-    y: y0,
-    w: Math.max(...boxes.map((b) => b[2])) - x0,
-    h: Math.max(...boxes.map((b) => b[3])) - y0,
-  };
-}
 
 /*
  * Placed against the face over its own window and against whatever else is on

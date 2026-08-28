@@ -16,7 +16,16 @@ const grown = (b: Rect): Rect => ({
 // vitasilk's face over a slot span: the tightest real case in the corpus.
 const vitasilkFace: Rect = { x: 0.4213, y: 0.2385, w: 0.30, h: 0.29 };
 
-describe('topLeftPlacement', () => {
+/**
+ * **The corner rule is superseded** (Block 8 session 33): images go in the
+ * largest free band around the face now, which `image-placement.ts` decides and
+ * `image-placement.test.ts` pins. These tests are kept because the corner rule
+ * is kept — the reporting tool prints what moving off it is worth, and a
+ * comparison against a rule nobody exercises is a comparison against nothing.
+ *
+ * Nothing here describes how an image is placed today.
+ */
+describe('the superseded corner rule', () => {
   it('anchors at the margin', () => {
     const r = topLeftPlacement({ faceBox: null, seed: 'a' });
     expect(r.x).toBeCloseTo(TOP_LEFT_MARGIN, 10);
