@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { estimateImageRunCost, loadMode, type EntryProvenance } from '@framopia/core';
 import { listReels } from './catalogue.js';
 import { resolveKeywordEntry, resolveSlotEntry } from './analysis/resolve-entry.js';
+import { imageSlotCountFor } from './analysis/count.js';
 import { resolveTranscriptionEntry } from './transcription/resolve-entry.js';
 import { IMAGE_CACHE_STAGE } from './images/cache.js';
 import { imageFingerprintInputs, imageFingerprintOf } from './images/fingerprint.js';
@@ -109,6 +110,16 @@ const STAGE_LABELS: Record<string, string> = {
   zones: 'Frame analysis (local, free)',
 };
 
+/** The gate's per-image budget: published rate x IMAGE_COST_MULTIPLIER. */
+function perImageCeilingUsd(): number {
+  return estimateImageRunCost({
+    modelId: DEFAULT_IMAGE_CONFIG.modelId,
+    resolution: DEFAULT_IMAGE_CONFIG.resolution,
+    slots: 1,
+    candidatesPerSlot: 1,
+  }).perImageUsd;
+}
+
 export async function dryRun(reelLabel: string, modeId: string): Promise<DryRunPlan> {
   const reel = listReels().find((r) => r.label === reelLabel);
   if (reel === undefined) {
@@ -197,7 +208,30 @@ export async function dryRun(reelLabel: string, modeId: string): Promise<DryRunP
   }
 
   if (slots.length === 0) {
-    add('images', null, null, 'no image slots planned yet; nothing to look up');
+    /*
+     * **A stage that has never run still costs money**, and reading zero for it
+     * was the same defect session 14 fixed one stage earlier: a cost screen
+     * honest only about work someone already did. `ground-truth`, `test-2` and
+     * `test-3` have no slots planned, so the uncached-candidate count is zero
+     * and they read about $0.18 — while a real Run would plan slots *and*
+     * generate ten or twelve images.
+     *
+     * The count comes from ARCHITECTURE §5.3's density, through the same
+     * `imageSlotCountFor` the planner uses, so the estimate and the planner
+     * cannot drift. It is labelled as a **planned** count rather than a known
+     * one, because nothing has decided these slots yet.
+     */
+    const planned = imageSlotCountFor(durationS);
+    const images = planned * DEFAULT_IMAGE_CONFIG.candidatesPerSlot;
+    imagesCeilingUsd = images * perImageCeilingUsd();
+    add(
+      'images',
+      'none',
+      null,
+      `no image slots planned yet; a run would plan about ${planned} for a ` +
+        `${durationS.toFixed(1)}s reel and generate ${images} candidates, ` +
+        `budgeted at most $${imagesCeilingUsd.toFixed(2)}`,
+    );
   } else {
     let hit = 0;
     let total = 0;
@@ -230,14 +264,7 @@ export async function dryRun(reelLabel: string, modeId: string): Promise<DryRunP
      * rather than leaving the user to guess whether it is a forecast.
      */
     const missing = total - hit;
-    const perImage =
-      estimateImageRunCost({
-        modelId: DEFAULT_IMAGE_CONFIG.modelId,
-        resolution: DEFAULT_IMAGE_CONFIG.resolution,
-        slots: 1,
-        candidatesPerSlot: 1,
-      }).perImageUsd;
-    imagesCeilingUsd = missing * perImage;
+    imagesCeilingUsd = missing * perImageCeilingUsd();
     add(
       'images',
       hit === total ? 'exact' : 'none',

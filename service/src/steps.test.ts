@@ -123,3 +123,49 @@ describe('Build availability', () => {
     expect(build?.issues?.[0]).toContain('short by');
   });
 });
+
+/**
+ * A stage that has never run still costs money. Reading zero for it is the
+ * defect session 14 fixed one stage earlier, in a second place.
+ */
+describe('the estimate for a reel with nothing planned', () => {
+  it('prices the image slots a run would plan, not the zero it has today', async () => {
+    const { dryRun } = await import('./dry-run.js');
+    const { imageSlotCountFor } = await import('./analysis/count.js');
+    const { DEFAULT_IMAGE_CONFIG } = await import('./images/config.js');
+    const { estimateImageRunCost } = await import('@framopia/core');
+
+    const plan = await dryRun('ground-truth', 'k2-syndicalia');
+    const images = plan.stages.find((s) => s.id === 'images');
+    const expected = estimateImageRunCost({
+      modelId: DEFAULT_IMAGE_CONFIG.modelId,
+      resolution: DEFAULT_IMAGE_CONFIG.resolution,
+      slots: imageSlotCountFor(23.256567),
+      candidatesPerSlot: DEFAULT_IMAGE_CONFIG.candidatesPerSlot,
+    }).usd;
+
+    expect(images?.estimateUsd).toBeCloseTo(expected, 4);
+    expect(plan.estimateUsd).toBeGreaterThan(1);
+  });
+
+  it('says the slot count is one a run would plan, not one that exists', async () => {
+    const { dryRun } = await import('./dry-run.js');
+    const note = (await dryRun('test-3', 'k2-syndicalia')).stages.find((s) => s.id === 'images')
+      ?.note;
+    expect(note).toContain('no image slots planned yet');
+    expect(note).toContain('a run would plan about');
+    expect(note).toContain('budgeted at most');
+  });
+
+  /* The density rule has one home; the estimate must not carry a second. */
+  it('takes its slot count from the planner’s own rule', async () => {
+    const { readFileSync } = await import('node:fs');
+    const { fileURLToPath } = await import('node:url');
+    const source = readFileSync(
+      fileURLToPath(new URL('./dry-run.ts', import.meta.url)),
+      'utf8',
+    );
+    expect(source).toContain('imageSlotCountFor');
+    expect(source).not.toContain('5.5');
+  });
+});
