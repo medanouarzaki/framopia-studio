@@ -5891,3 +5891,75 @@ with the peak on time. Very likely the better fix, and **not made because
 verifying it means driving After Effects**, which this session may not do — and
 a build where AE silently clamped a negative `startTime` back to zero would
 reintroduce the defect inaudibly.
+
+
+## Block 8 session 29 — the first image has its sound back
+
+**Spent $0.00.** Ledger 108 entries / sha `50ec3f57…` at both ends. After
+Effects: **1 instance before and after, 0 `aerender`, no stray `-r`.**
+
+### After Effects honours a negative startTime — observed, not assumed
+
+`npm run probe:audio-start`, run in this session: asked for **−0.4671 s** it
+reports **−0.4671 s**; asked for −1.5 s it reports −1.5 s. **`startTime` and
+`inPoint` move independently**, which is the mechanism — the layer's own time
+zero can sit before the composition while the portion that plays begins at frame
+zero. The builder now sets both.
+
+**So `placeSfx` no longer clamps.** The peak lands on the impact frame for every
+sound whatever its lead-in; `SfxPlacement.clamped`/`clampedByS` and
+`SfxEvent.clamped`/`clampedByS` are gone (no plan carried them), and session
+27's `unplaceable` refusal path is **retired** rather than left guarding a case
+that cannot arise. `checkBuildability` no longer calls a negative in-point an
+issue — that rule was true while the placement clamped and false once it
+stopped.
+
+**The corpus went 7 events to 9 and not one of the 7 moved**, which was the
+session's hard constraint: `test-1` and `vitasilk` each gain `img001` at
+**−0.467 s**, and every other in-point is byte-identical.
+
+### What the lead-in outside the composition costs
+
+`benchmarks/RESULTS-block8-lead-in-cost.md`. **0.4671 s of `whoosh_01` falls
+before frame zero**, of which 0.3493 s is the file's own inaudible head and
+**0.1178 s (3.53 frames) is past its first audible sample** — so this is not the
+clean case where the whole lead-in is silence.
+
+**Measured at the cut point: −31.19 dBFS peak, −37.17 dBFS RMS**, against the
+file's own peak of 0.00 dBFS. The whoosh begins **31.2 dB below its own peak**,
+about 26 dB under the dialogue at that instant. **No transient is lost.**
+
+**The peak lands 0.31 frames early**, reproducing the probe exactly: the ideal
+in-point falls between two frames and `snapToFrame` rounds early by design.
+10.2 ms, **below what the frame grid can express**; every other event carries
+the same kind of residue, −0.32 to +0.44 frames.
+
+### The build is checked against the plan
+
+`npm run build:reel` now reads every audio layer's `startTime` back out of the
+built project and compares it against what it asked for, printing the worst
+disagreement and **failing the build** on a real one. A build that silently
+disagrees with its plan is the defect this whole thread was about.
+
+**Tolerance 0.01 frames, and the figure is measured.** After Effects re-derives
+a layer's start onto its own grid using a **float32** frame rate
+(29.9700317382812, not the exact 30000/1001), so a start snapped with the
+rational lands a fraction off: the residue across this corpus is at most
+**5.8e-4 frames** and grows with time, exactly as a frame-rate difference does.
+A real disagreement is a whole frame or more.
+
+Verified on `vitasilk`: **5 checked, 0 disagreeing**, `img001` starting 0.4671 s
+before the composition with its in-point at 0.
+
+### A probe must not leave the machine unusable
+
+`audio-start-probe.jsx` created a project and never saved it, so the next tool
+to run — including the probe itself — refused on "unsaved changes" and could not
+tell a leftover from someone's morning. **It saves to its own `savePath` now.**
+
+The session began blocked by exactly that: a never-written, dirty project
+holding two items, both the probe's (`audio_start_probe` and `whoosh_01.wav`),
+established by a **read-only** query before anything was touched. It was
+**saved, never discarded** — the distinction between a project that was never
+written and unsaved work is the one that matters, and a measurement settled it
+rather than an assumption.
