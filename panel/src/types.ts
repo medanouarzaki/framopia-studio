@@ -275,6 +275,8 @@ export interface KeywordSfxView {
   fileExists: boolean;
   gainDb: number;
   offsetS: number;
+  /** Measured peak, from `npm run sfx:measure`. Null when unmeasured. */
+  peakOffsetS: number | null;
   timeS: number;
 }
 

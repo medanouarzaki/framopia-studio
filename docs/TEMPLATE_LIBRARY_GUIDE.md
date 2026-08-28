@@ -89,3 +89,63 @@ Sound is not decided at runtime by any AI. Your manifest entry declares it: whic
 6. Run validation. Green → commit AEP + manifest together in one commit.
 
 First set to build in Block 6: `sub_pop` (subtitle), one keyword style, two image styles (one for cutouts, one card-framed for the fallback presentation).
+
+## SFX placement — measured, 2026-08-28
+
+**A sound's impact is not at its first sample, and nothing had ever measured
+where it is.** SFX placement put the file's start at the card's start plus
+0.13 s — an offset chosen in Block 5 and never measured — which assumes the
+transient is at sample zero. `npm run sfx:measure` reads every file and writes
+what it finds into `assets/sfx/sfx.json`; the numbers are emitted by the tool,
+never typed in.
+
+| id | codec | container | rate | duration | peak offset | peak | head delay | first audible | shape |
+|---|---|---|---:|---:|---:|---:|---:|---:|---|
+| `hit_01` | mp3 | mp3 | 48000 | 5.856 s / 175.5 f | **2.0525 s / 61.51 f** | −0.72 dBFS | 0.000000 s | 0.0478 s | middle |
+| `hit_02` | pcm_s24le | wav | 96000 | 6.000 s / 179.8 f | 0.5433 s / 16.28 f | −0.03 dBFS | 0.000000 s | 0.5007 s | head |
+| `whoosh_01` | pcm_s16le | wav | 96000 | 1.951 s / 58.5 f | 0.6913 s / 20.72 f | −1.23 dBFS | 0.000000 s | 0.3493 s | middle |
+| `whoosh_02` | mp3 | mp3 | 44100 | 1.202 s / 36.0 f | 0.5581 s / 16.73 f | −8.39 dBFS | 0.000000 s | 0.1275 s | middle |
+
+**`hit_01` is the file bound to every keyword, and its peak is 61.5 frames into
+it.** Against a 0.13 s (3.9 frame) offset, every hit's impact has been landing
+about **2.05 s after the card it belongs to** — on a corpus whose median card is
+0.30 s long, that is not late, it is unrelated.
+
+**The mp3 padding hypothesis is not what is wrong.** Container delay measures
+**0.000000 s** on both mp3s, so the head padding the user reasoned about is
+either absent or already compensated by the demuxer. Head delay and the sound's
+own quiet opening are recorded separately for that reason: adding them would put
+an error back rather than remove one. `hit_01` is audible from 47.8 ms and peaks
+at 2.05 s — a long file whose loudest point is in its middle.
+
+**Every file is the container its name claims.** 24-bit PCM inside a `.wav` is a
+wav; the extension names the container, not the codec.
+
+### The placement rule
+
+`placeSfx` in `core/src/sfx-placement.ts`: **the file's measured peak lands on
+the template's measured impact frame**, and the layer's in-point is derived from
+those two — never authored.
+
+- **Snapped to the frame grid at 29.97, ties rounding down** (earlier). A sound
+  a fraction early reads as part of the impact; a fraction late reads as a
+  separate event. Half a frame is 16.7 ms, so the direction only matters at the
+  tie and it is spent on being early.
+- **A peak later than the impact needs a negative in-point**, which a
+  composition cannot have. The layer is clamped to the comp's start and
+  `clamped` / `clampedByS` say how late the peak then lands. Reported, never
+  absorbed: a hit late by a known amount is a decision, and one late invisibly
+  is the defect this replaces.
+- Whooshes stay bound to images, hits to keywords, subtitles silent. Gains stay
+  −20 dB and −24 dB.
+
+### What is still unmeasured
+
+**The template's impact frame.** `impactFrameOf` derives it from the last
+entrance keyframe among Position, Scale and Opacity — and the audit on disk
+records keyframe **counts without times**, so it returns null with a reason for
+all six comps. `audit.jsx` now emits every key's time and value; the audit has
+**not been re-run**, because it closes the open After Effects project without
+saving and the user's instance is open. **Until `npm run audit:templates` is
+re-run, the placement rule has one measured input and one missing one, and the
+0.13 s offset stays in force.**

@@ -207,6 +207,20 @@ export interface KeywordItem {
 export interface Keywords {
   mode: 'auto' | 'propose';
   items: KeywordItem[];
+  /**
+   * Word ids a human took off the keyword list.
+   *
+   * `edited` protects a keyword a human *added*, because there is an item to
+   * flag. A removal leaves nothing behind, so a transcript change cleared the
+   * block and the analysis put the keyword straight back — the user's deletion
+   * undone silently, which is the one thing ARCHITECTURE §3's rule exists to
+   * prevent. This is the durable trace of that decision.
+   *
+   * **Schema addition, optional with a default**: absent means no keyword has
+   * been removed by hand, which every plan written before Block 8 session 21
+   * is true of. Validated only when present.
+   */
+  removedWordIds?: string[];
 }
 
 /**

@@ -34,6 +34,13 @@ export interface KeywordSfxView {
   gainDb: number;
   /** Seconds after the card's start. */
   offsetS: number;
+  /**
+   * Where the file's loudest point is, measured by `npm run sfx:measure`. The
+   * preview seeks here so the user hears the impact rather than the run-up —
+   * `hit_01`'s peak is 2.05 s in, so playing from the start is two seconds of
+   * lead before the sound he is judging.
+   */
+  peakOffsetS: number | null;
   /** Absolute time on the reel. */
   timeS: number;
 }
@@ -123,12 +130,14 @@ function sfxViewOf(
     entry === undefined
       ? ''
       : path.join(REPO_ROOT, 'assets', 'sfx', entry.file);
+  const measured = (entry as { measured?: { peakOffsetS?: number } } | undefined)?.measured;
   return {
     sfxId: event.sfxId,
     file,
     fileExists: file !== '' && existsSync(file),
     gainDb: event.gainDb,
     offsetS: Number((event.timeS - keyword.start).toFixed(3)),
+    peakOffsetS: typeof measured?.peakOffsetS === 'number' ? measured.peakOffsetS : null,
     timeS: event.timeS,
   };
 }
@@ -259,9 +268,16 @@ export async function removeKeyword(options: {
   for (const group of plan.subtitles.groups) {
     if (group.supersededBy === keyword.id) group.supersededBy = null;
   }
-  plan.keywords.items = plan.keywords.items.filter(
-    (k) => k.id !== options.keywordId,
-  );
+  plan.keywords.items = plan.keywords.items.filter((k) => k.id !== options.keywordId);
+  /*
+   * The durable trace of the decision. `edited` protects a keyword a human
+   * added, because there is an item to flag; a removal leaves nothing, so a
+   * transcript change cleared the block and the analysis put the keyword
+   * straight back — the deletion undone silently.
+   */
+  const removed = new Set(plan.keywords.removedWordIds ?? []);
+  for (const wordId of keyword.wordIds) removed.add(wordId);
+  plan.keywords.removedWordIds = [...removed].sort();
   rederiveSfx(plan);
   plan.meta.updatedAt = new Date().toISOString();
   await writeEditPlan(options.planPath, plan);
@@ -294,6 +310,14 @@ export async function addKeyword(options: {
   }
   if (plan.keywords.items.some((k) => k.wordIds.includes(options.wordId))) {
     throw new KeywordViewError(`${options.wordId} is already a keyword`);
+  }
+
+  // Promoting a word the user had removed is them changing their mind, so the
+  // marker goes with it rather than outliving the decision it recorded.
+  if (plan.keywords.removedWordIds !== undefined) {
+    plan.keywords.removedWordIds = plan.keywords.removedWordIds.filter(
+      (id) => id !== options.wordId,
+    );
   }
 
   const cards = cardsCovered(plan, [options.wordId]);

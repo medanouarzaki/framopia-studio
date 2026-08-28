@@ -54,6 +54,14 @@ export function humanFlaggedItems(plan: EditPlan): HumanFlag[] {
       flags.push({ block: 'keywords', itemId: item.id, detail: 'edited by a human' });
     }
   }
+  /*
+   * A deletion has no item to carry a flag, so the block carries it instead.
+   * Without this a transcript change cleared `keywords` and the analysis put
+   * back the very keyword the user had removed.
+   */
+  for (const wordId of plan.keywords.removedWordIds ?? []) {
+    flags.push({ block: 'keywords', itemId: wordId, detail: 'removed by a human' });
+  }
   for (const slot of plan.images.slots) {
     if (slot.chosenCandidateId !== null) {
       flags.push({
@@ -98,7 +106,15 @@ export interface MergePlanResult {
 function clearBlocks(plan: EditPlan, now: string): TranscriptDependentBlock[] {
   const cleared: TranscriptDependentBlock[] = [];
   if (plan.keywords.items.length > 0) {
-    plan.keywords = { mode: plan.keywords.mode, items: [] };
+    // The removals survive the clear: they are the human's decisions, and the
+    // items are the machine's.
+    plan.keywords = {
+      mode: plan.keywords.mode,
+      items: [],
+      ...(plan.keywords.removedWordIds === undefined
+        ? {}
+        : { removedWordIds: plan.keywords.removedWordIds }),
+    };
     cleared.push('keywords');
   }
   if (plan.images.slots.length > 0) {

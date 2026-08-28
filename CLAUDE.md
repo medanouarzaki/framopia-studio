@@ -550,6 +550,48 @@ edits a template's keyframes**, so the scale is set on the instance, not the
 comp. It also depends on the K2 fonts Block 9 collects: a different face changes
 every width.
 
+### A sound's impact is not at its first sample
+
+`npm run sfx:measure` — free, local, **read-only on the audio** — measures every
+file in `assets/sfx/sfx.json` and writes the result back into it. Nothing about
+a sound's timing is typed by hand.
+
+**`hit_01`'s peak is 2.0525 s — 61.5 frames — into the file.** It is bound to
+every keyword, and the placement rule put the file's *start* at the card's start
+plus 0.13 s, so its impact has been landing about **2.05 s after the card**, on
+every reel and every build. The median card is 0.30 s.
+
+The mp3 padding the defect was reasoned from is **not** what is wrong: container
+delay measures 0.000000 s on both mp3s. Head delay and the sound's own quiet
+opening are recorded separately, because adding them would put an error back.
+
+`placeSfx` in `core/src/sfx-placement.ts` is the replacement rule: **peak lands
+on the template's impact frame**, snapped to 29.97 with ties rounding **down**
+(early reads as part of the impact, late reads as a separate event), and a peak
+later than the impact clamps at the comp start reporting how late it then is.
+
+**It is not in force yet, and the reason is a measurement that could not be
+taken.** The impact frame comes from the template's own keyframes, and
+`templates/library.audit.json` records keyframe **counts without times**.
+`audit.jsx` now emits every key's time and value, but **the audit has not been
+re-run: it closes the open After Effects project without saving**
+(`audit.jsx:122`), and the user's instance is open. Until
+`npm run audit:templates` runs, `impactFrameOf` returns null with a reason for
+all six comps and the 0.13 s offset stays.
+
+### A removed keyword stays removed
+
+`keywords.removedWordIds` — **schema addition, optional with a default** —
+records the words a human took off the keyword list. `edited: true` protects a
+keyword a human *added*, because there is an item to flag; a removal left
+nothing, so a transcript change cleared the block and the analysis proposed the
+same keyword again. Three things honour it now: `humanFlaggedItems` reports it
+so `PlanMergeBlockedError` refuses the clear, `clearBlocks` carries it through a
+clear that discards the items, and the analysis stage filters a removed word out
+of its proposals and logs that it did. Promoting the word again clears the
+marker — that is the user changing their mind, not the marker outliving its
+decision.
+
 ### Step 3 is the keyword picker, and SFX is re-derived rather than patched
 
 `GET /keywords?reel=`, `POST /keywords/add`, `POST /keywords/remove`;
@@ -5406,6 +5448,23 @@ and the shrink rule needs a width only After Effects can measure and the fonts
 Block 9 collects.
 
 Step 3 is built; the convention above is what it rests on.
+
+## Block 8 part 2, session 21 — the SFX peak measured, the impact frame not
+
+**Spent $0.00; no API was called, the pipeline was not run, After Effects was
+not driven.** Ledger 108 entries / sha `50ec3f57…` at both ends.
+
+The two conventions above are the session. The user reasoned his way to a defect
+without seeing it, and the measurement is worse than he guessed: not encoder
+padding of a few milliseconds but **a peak 61.5 frames into the file bound to
+every keyword**.
+
+**The session could not finish the fix.** Aligning peak to impact needs the
+template's impact frame, and reading it needs an audit re-run that would close
+the user's open After Effects project without saving. The audit is extended to
+emit keyframe times; running it is his to trigger.
+
+`npm run sfx:measure` is the new command.
 
 See `docs/BLOCKS.md` for the full block plan and `handoffs/` for prior
 session context.

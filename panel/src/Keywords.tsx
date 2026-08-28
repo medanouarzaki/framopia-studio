@@ -211,8 +211,15 @@ export function sourceLine(view: KeywordsView): string {
 
 /** The binding, in words, whether or not the sound can be played. */
 export function sfxLine(sfx: KeywordSfxView): string {
-  return `${sfx.sfxId} at +${sfx.offsetS.toFixed(2)}s, ${sfx.gainDb} dB`;
+  const peak =
+    sfx.peakOffsetS === null
+      ? ', peak unmeasured'
+      : `, peak ${sfx.peakOffsetS.toFixed(3)}s into the file`;
+  return `${sfx.sfxId} at +${sfx.offsetS.toFixed(2)}s, ${sfx.gainDb} dB${peak}`;
 }
+
+/** How much of the run-up to keep before the peak. Chosen, not measured. */
+const PREVIEW_LEAD_S = 0.2;
 
 /**
  * Plays the bound sound at its own gain.
@@ -228,6 +235,16 @@ function play(sfx: KeywordSfxView, onError: (message: string | null) => void): v
     const audio = new Audio(`file://${sfx.file}`);
     // -20 dB is a tenth of full scale; the same figure the build applies.
     audio.volume = Math.min(1, Math.max(0, 10 ** (sfx.gainDb / 20)));
+    /*
+     * Seeks to just before the measured peak rather than playing from the
+     * file's start. `hit_01`'s loudest point is 2.05 s in, so playing from zero
+     * is two seconds of run-up before the sound being judged.
+     */
+    if (sfx.peakOffsetS !== null && sfx.peakOffsetS > PREVIEW_LEAD_S) {
+      audio.addEventListener('loadedmetadata', () => {
+        audio.currentTime = (sfx.peakOffsetS as number) - PREVIEW_LEAD_S;
+      });
+    }
     audio.addEventListener('error', () =>
       onError(`Could not play ${sfx.file}. The build still uses it at ${sfx.gainDb} dB.`),
     );

@@ -267,6 +267,24 @@ function checkKeywords(c: Checker, value: unknown, words: Map<string, Rec>): voi
   const keywords = c.object('keywords', value);
   if (keywords === null) return;
   c.oneOf('keywords.mode', keywords.mode, new Set(['auto', 'propose']));
+  /*
+   * Optional with a default: absent means nothing has been removed by hand.
+   * Each id must name a real word, so a stale marker cannot outlive the word it
+   * refers to and quietly suppress a different one.
+   */
+  if (keywords.removedWordIds !== undefined) {
+    const removed = c.array('keywords.removedWordIds', keywords.removedWordIds);
+    if (removed !== null) {
+      removed.forEach((raw, i) => {
+        const p = `keywords.removedWordIds[${i}]`;
+        if (typeof raw !== 'string') {
+          c.string(p, raw);
+          return;
+        }
+        if (!words.has(raw)) c.fail(p, `names no word in the transcript: "${raw}"`);
+      });
+    }
+  }
   const items = c.array('keywords.items', keywords.items);
   if (items === null) return;
 

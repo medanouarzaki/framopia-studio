@@ -219,3 +219,95 @@ describe('adding a keyword', () => {
     expect(readFileSync(LEDGER, 'utf8')).toBe(ledger);
   });
 });
+
+/**
+ * Session 20 found removal unprotected: `edited: true` guards a keyword a human
+ * added because there is an item to flag, and a deletion leaves nothing — so a
+ * transcript change cleared the block and the analysis put the keyword straight
+ * back. `keywords.removedWordIds` is the durable trace of that decision.
+ */
+describe('a removed keyword stays removed', () => {
+  it('records the words it took off the list', async () => {
+    const planPath = scratch();
+    const keyword = (await readEditPlan(planPath)).keywords.items[0];
+    if (keyword === undefined) throw new Error('fixture has no keywords');
+
+    await removeKeyword({ planPath, keywordId: keyword.id });
+    const plan = await readEditPlan(planPath);
+    for (const wordId of keyword.wordIds) {
+      expect(plan.keywords.removedWordIds).toContain(wordId);
+    }
+  });
+
+  it('is named by humanFlaggedItems, so the merge refuses to discard it', async () => {
+    const planPath = scratch();
+    const keyword = (await readEditPlan(planPath)).keywords.items[0];
+    if (keyword === undefined) throw new Error('fixture has no keywords');
+
+    await removeKeyword({ planPath, keywordId: keyword.id });
+    const flags = humanFlaggedItems(await readEditPlan(planPath));
+    expect(flags.some((f) => f.detail === 'removed by a human')).toBe(true);
+    expect(flags.map((f) => f.itemId)).toEqual(expect.arrayContaining(keyword.wordIds));
+  });
+
+  /*
+   * The clear takes the machine's items and leaves the human's decisions. This
+   * is the case that was silently losing work.
+   */
+  it('survives a transcript change clearing the keyword block', async () => {
+    const planPath = scratch();
+    const keyword = (await readEditPlan(planPath)).keywords.items[0];
+    if (keyword === undefined) throw new Error('fixture has no keywords');
+    await removeKeyword({ planPath, keywordId: keyword.id });
+
+    const { mergeIntoExistingPlan } = await import('./editplan/merge.js');
+    const existing = await readEditPlan(planPath);
+    const fresh = await readEditPlan(planPath);
+    // A transcript that has moved: enough to clear the dependent blocks.
+    const firstWord = fresh.transcript.words[0];
+    if (firstWord === undefined) throw new Error('fixture has no words');
+    firstWord.start += 0.5;
+
+    const merged = mergeIntoExistingPlan({ existing, fresh, force: true });
+    expect(merged.cleared).toContain('keywords');
+    expect(merged.plan.keywords.items).toHaveLength(0);
+    for (const wordId of keyword.wordIds) {
+      expect(merged.plan.keywords.removedWordIds).toContain(wordId);
+    }
+  });
+
+  /*
+   * The stage that would put it back is the one that has to honour it. Asserted
+   * on the source rather than by running a billable analysis: the filter is one
+   * line and a test that cannot run it should say which it is checking.
+   */
+  it('is filtered out by the analysis stage before it can be proposed again', async () => {
+    const { readFileSync } = await import('node:fs');
+    const { fileURLToPath } = await import('node:url');
+    const source = readFileSync(
+      fileURLToPath(new URL('./analysis/job.ts', import.meta.url)),
+      'utf8',
+    );
+    expect(source).toContain('removedWordIds');
+    expect(source).toContain('removed by hand and is not proposed again');
+  });
+
+  /* Promoting it back is the user changing their mind; the marker goes too. */
+  it('clears the marker when the word is emphasised again', async () => {
+    const planPath = scratch();
+    const keyword = (await readEditPlan(planPath)).keywords.items[0];
+    if (keyword === undefined) throw new Error('fixture has no keywords');
+    const wordId = keyword.wordIds[0] as string;
+
+    await removeKeyword({ planPath, keywordId: keyword.id });
+    expect((await readEditPlan(planPath)).keywords.removedWordIds).toContain(wordId);
+
+    await addKeyword({ planPath, wordId });
+    expect((await readEditPlan(planPath)).keywords.removedWordIds ?? []).not.toContain(wordId);
+  });
+
+  it('opens a plan that has never had a removal, with the field absent', async () => {
+    const plan = await readEditPlan(path.join(FOOTAGE, 'test 2.editplan.json'));
+    expect(plan.keywords.removedWordIds).toBeUndefined();
+  });
+});

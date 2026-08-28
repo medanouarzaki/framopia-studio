@@ -149,11 +149,31 @@ export async function analyseKeywordsForPlan(
     log(`analysis: dropped keyword ${drop.keywordId} (${drop.reason})`);
   }
   const kept = new Set(regrouped.keptKeywordIds);
-  const items = proposed.filter((item) => kept.has(item.id));
+  /*
+   * A word the user took off the keyword list stays off it. Without this the
+   * analysis re-proposed it on the next run and the deletion was undone
+   * silently — ARCHITECTURE §3 says an automated re-run never overwrites a
+   * human-flagged item, and a removal is one.
+   */
+  const removedByHand = new Set(plan.keywords.removedWordIds ?? []);
+  const items = proposed.filter(
+    (item) => kept.has(item.id) && !item.wordIds.some((id) => removedByHand.has(id)),
+  );
+  for (const item of proposed) {
+    if (item.wordIds.some((id) => removedByHand.has(id))) {
+      log(`analysis: "${item.text}" was removed by hand and is not proposed again`);
+    }
+  }
 
   const timestamp = now();
   plan.subtitles.groups = regrouped.groups;
-  plan.keywords = { mode: keywordMode, items };
+  plan.keywords = {
+    mode: keywordMode,
+    items,
+    ...(plan.keywords.removedWordIds === undefined
+      ? {}
+      : { removedWordIds: plan.keywords.removedWordIds }),
+  };
 
   /*
    * Assignment used to live only in the slot stage, so this stage wrote every

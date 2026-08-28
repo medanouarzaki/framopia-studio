@@ -1194,13 +1194,13 @@ const KEYWORDS = {
       start: 6.98, end: 7.579, reason: 'names the specific product being promoted',
       score: 0.95, kind: 'label', script: 'latin', templateId: 'kw_slam',
       fontSize: 425, edited: false,
-      sfx: { sfxId: 'hit_01', file: '/repo/assets/sfx/hit_01.mp3', fileExists: true, gainDb: -20, offsetS: 0.13, timeS: 7.11 },
+      sfx: { sfxId: 'hit_01', file: '/repo/assets/sfx/hit_01.mp3', fileExists: true, gainDb: -20, offsetS: 0.13, peakOffsetS: 2.0525, timeS: 7.11 },
     },
     {
       id: 'k002', wordIds: ['w0030'], text: 'ترطيب', cardId: 'g031',
       start: 9.1, end: 9.6, reason: '', score: 1, kind: null, script: 'arabic',
       templateId: 'kw_slam_ar', fontSize: 425, edited: true,
-      sfx: { sfxId: 'hit_01', file: '/repo/assets/sfx/hit_01.mp3', fileExists: true, gainDb: -20, offsetS: 0.13, timeS: 9.23 },
+      sfx: { sfxId: 'hit_01', file: '/repo/assets/sfx/hit_01.mp3', fileExists: true, gainDb: -20, offsetS: 0.13, peakOffsetS: 2.0525, timeS: 9.23 },
     },
   ],
   promotable: [
@@ -1236,7 +1236,7 @@ describe.skipIf(!built)('the keyword picker', () => {
             id: 'k900', wordIds: [word.wordId], text: word.text, cardId: word.cardId,
             start: word.start, end: word.end, reason: '', score: 1, kind: null,
             script: word.script, templateId: 'kw_slam', fontSize: 425, edited: true,
-            sfx: { sfxId: 'hit_01', file: '/repo/assets/sfx/hit_01.mp3', fileExists: true, gainDb: -20, offsetS: 0.13, timeS: word.start + 0.13 },
+            sfx: { sfxId: 'hit_01', file: '/repo/assets/sfx/hit_01.mp3', fileExists: true, gainDb: -20, offsetS: 0.13, peakOffsetS: 2.0525, timeS: word.start + 0.13 },
           };
           window.__keywords = Object.assign({}, window.__keywords, {
             keywords: window.__keywords.keywords.concat([added]),
@@ -1269,6 +1269,8 @@ describe.skipIf(!built)('the keyword picker', () => {
     expect(text).toContain('kw_slam');
     expect(text).toContain('425');
     expect(text).toContain('hit_01 at +0.13s, -20 dB');
+    // The measured peak, so it is visible that the file's impact is not at zero.
+    expect(text).toContain('peak 2.053s into the file');
     expect(text).toContain('names the specific product being promoted');
     await loaded.page.close();
   });
