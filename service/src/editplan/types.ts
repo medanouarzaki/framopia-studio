@@ -461,6 +461,15 @@ export interface Watermark {
   startS: number;
   /** Filled at Block 7 from the real file. */
   durationS: number | null;
+  /**
+   * Whether this reel gets a watermark. **Schema addition, optional with a
+   * default of true**, so no plan needs migrating and none loses its mark.
+   *
+   * Some reels are delivered marked and some are not, and which is which is
+   * the user's per-reel decision — not a property of the asset being on disk,
+   * which is what the builder used to decide it by.
+   */
+  enabled?: boolean;
 }
 
 export interface Costs {

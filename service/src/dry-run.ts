@@ -9,6 +9,7 @@ import { IMAGE_CACHE_STAGE } from './images/cache.js';
 import { imageFingerprintInputs, imageFingerprintOf } from './images/fingerprint.js';
 import { cacheEntryDir, CACHE_ROOT } from './transcription/cache.js';
 import { DEFAULT_IMAGE_CONFIG } from './images/config.js';
+import { watermarkEnabled } from './placement/watermark.js';
 
 /**
  * What a run *would* do, before any of it is paid for.
@@ -62,6 +63,8 @@ export interface DryRunPlan {
   /** Cumulative spend already on this reel. */
   spentUsd: number | null;
   stages: DryRunStage[];
+  /** Whether this reel is built with the intro watermark. */
+  watermark: boolean;
   /** Sum of the stages that would actually bill. */
   estimateUsd: number;
   /** True when any stage resolves `compatible`; the panel says so plainly. */
@@ -93,6 +96,7 @@ interface PlanLike {
   source?: { sha256?: string; durationS?: number };
   transcript?: { words?: PlanLikeWord[] };
   images?: { slots?: PlanLikeSlot[] };
+  watermark?: { enabled?: boolean } | null;
 }
 
 /**
@@ -153,6 +157,7 @@ export async function dryRun(reelLabel: string, modeId: string): Promise<DryRunP
   let durationS = 0;
   let words: PlanLikeWord[] = [];
   let slots: PlanLikeSlot[] = [];
+  let watermark = true;
   if (reel.planPath !== null && existsSync(reel.planPath)) {
     try {
       const plan = JSON.parse(readFileSync(reel.planPath, 'utf8')) as PlanLike;
@@ -162,6 +167,7 @@ export async function dryRun(reelLabel: string, modeId: string): Promise<DryRunP
       durationS = plan.source?.durationS ?? 0;
       words = plan.transcript?.words ?? [];
       slots = plan.images?.slots ?? [];
+      watermark = watermarkEnabled(plan.watermark ?? null);
     } catch (error) {
       throw new DryRunError(`${reel.planPath} did not parse: ${(error as Error).message}`);
     }
@@ -331,6 +337,7 @@ export async function dryRun(reelLabel: string, modeId: string): Promise<DryRunP
     planPath: reel.planPath,
     spentUsd,
     stages,
+    watermark,
     estimateUsd: stages.reduce((sum, s) => sum + (s.estimateUsd ?? 0), 0),
     reusesOlderGuide: stages.some((s) => s.provenance === 'compatible'),
   };

@@ -148,3 +148,14 @@ export function placeWatermark(input: WatermarkInput): WatermarkPlacement {
     outPointS: input.durationS ?? WATERMARK_DURATION_S,
   };
 }
+
+/**
+ * Whether a plan asks for a watermark.
+ *
+ * Absent means yes: `plan.watermark` is null on every plan written before this
+ * became a decision, and the reels those plans describe were built marked. A
+ * missing field is therefore "nobody has said otherwise", not "no".
+ */
+export function watermarkEnabled(watermark: { enabled?: boolean } | null): boolean {
+  return watermark?.enabled !== false;
+}

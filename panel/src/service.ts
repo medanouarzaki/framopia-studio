@@ -353,3 +353,17 @@ export async function removeKeyword(
 ): Promise<KeywordsView> {
   return await postJson(connection, '/keywords/remove', edit);
 }
+
+/**
+ * Turn this reel's watermark on or off.
+ *
+ * Per reel because some deliveries carry the mark and some do not, and the
+ * builder used to decide it from whether the asset was on disk — the same
+ * answer for every reel.
+ */
+export async function setWatermark(
+  connection: Connection,
+  edit: { planPath: string; enabled: boolean },
+): Promise<void> {
+  await postJson(connection, '/watermark', edit);
+}

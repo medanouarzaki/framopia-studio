@@ -3,9 +3,13 @@ import { readFileSync } from 'node:fs';
 import http, { type IncomingMessage, type ServerResponse } from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { REPO_ROOT } from '@framopia/core';
 import { createJob, getJob, UnknownJobTypeError } from './jobs.js';
 import { readEditPlan, writeEditPlan } from './editplan/io.js';
 import { clearManualZone, ManualZoneError, setManualZone } from './frames/plan-zones.js';
+
+/** The one intro overlay this agency has; Block 7 session 1 measured it. */
+const WATERMARK_ASSET = path.join(REPO_ROOT, 'assets', 'watermark', 'intro.mov');
 import type { Zone } from './editplan/types.js';
 import { listModes, listReels } from './catalogue.js';
 import { dryRun, DryRunError } from './dry-run.js';
@@ -367,6 +371,39 @@ export function createApp(token: string): http.Server {
         }
         await withPlan(res, body.planPath, (plan) => {
           plan.zones = setManualZone(plan.zones, body.zone as Zone);
+        });
+        return;
+      }
+
+      /*
+       * Some reels are delivered marked and some are not. The builder decided
+       * it from whether the asset was on disk, which is the same answer for
+       * every reel; the plan decides it now and this is what writes it.
+       */
+      if (req.method === 'POST' && url.pathname === '/watermark') {
+        let body: { planPath?: unknown; enabled?: unknown };
+        try {
+          body = JSON.parse((await readBody(req)) || '{}') as typeof body;
+        } catch {
+          sendJson(res, 400, { error: 'invalid JSON body' });
+          return;
+        }
+        if (typeof body.planPath !== 'string') {
+          sendJson(res, 400, { error: '"planPath" is required' });
+          return;
+        }
+        if (typeof body.enabled !== 'boolean') {
+          sendJson(res, 400, { error: '"enabled" must be true or false' });
+          return;
+        }
+        const enabled = body.enabled;
+        await withPlan(res, body.planPath, (plan) => {
+          plan.watermark = {
+            assetPath: plan.watermark?.assetPath ?? WATERMARK_ASSET,
+            startS: plan.watermark?.startS ?? 0,
+            durationS: plan.watermark?.durationS ?? null,
+            enabled,
+          };
         });
         return;
       }

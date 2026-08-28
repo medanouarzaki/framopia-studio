@@ -7,6 +7,7 @@ import {
   fetchModes,
   fetchReels,
   fetchSteps,
+  setWatermark,
   startPipeline,
   type Connection,
 } from './service.js';
@@ -414,6 +415,16 @@ function Panel({
         <section className="build">
           <h2>Build</h2>
           {mode === null ? null : <FontsNote mode={mode} />}
+          {dry === null || dry.planPath === null ? null : (
+            <WatermarkToggle
+              enabled={dry.watermark}
+              onChange={async (enabled) => {
+                if (connection === null || dry.planPath === null) return;
+                await setWatermark(connection, { planPath: dry.planPath, enabled });
+                setDry({ ...dry, watermark: enabled });
+              }}
+            />
+          )}
           {dry === null ? null : <DryRun plan={dry} />}
           {dryError === null ? null : (
             <p className="reason" role="status">
@@ -635,6 +646,33 @@ function HostUnavailable({
  * this block. Gating Run on them made Block 8's definition of done
  * unreachable.
  */
+/**
+ * Whether this reel is delivered with the intro watermark.
+ *
+ * Per reel, and on the plan, because some of this agency's deliveries carry the
+ * mark and some do not. Until this existed the builder placed one whenever the
+ * asset was on disk, which is the same answer for every reel — the user found
+ * a mark on a reel whose plan recorded nothing about it.
+ */
+function WatermarkToggle({
+  enabled,
+  onChange,
+}: {
+  enabled: boolean;
+  onChange: (enabled: boolean) => void | Promise<void>;
+}): JSX.Element {
+  return (
+    <label className="watermark">
+      <input
+        type="checkbox"
+        checked={enabled}
+        onChange={(event) => void onChange(event.target.checked)}
+      />
+      <span>Watermark this reel</span>
+    </label>
+  );
+}
+
 function FontsNote({ mode }: { mode: ClientMode }): JSX.Element | null {
   const fonts = buildFonts({
     name: mode.name,

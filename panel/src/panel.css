@@ -333,3 +333,11 @@ ol.keywords { list-style: none; margin: 14px 0 0; padding: 0; }
   padding: 7px 0; border-bottom: 1px solid var(--line); min-width: 0;
 }
 .ktext { font-size: 17px; color: var(--text); }
+
+/* The watermark decision sits at Build, beside the other build-time facts. */
+.watermark {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px;
+}

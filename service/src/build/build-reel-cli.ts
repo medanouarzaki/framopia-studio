@@ -23,7 +23,7 @@ import {
   WATERMARK_GAIN_DB,
   WATERMARK_DURATION_S,
 } from '../placement/constants.js';
-import { assertBeepsFitWatermark, placeWatermark } from '../placement/watermark.js';
+import { assertBeepsFitWatermark, placeWatermark, watermarkEnabled } from '../placement/watermark.js';
 import {
   buildReel,
   auditedSolid,
@@ -265,7 +265,14 @@ function faceSpan(startS: number, endS: number): { x: number; y: number; w: numb
  * screen then, so it never lands on the speaker or under an image.
  */
 let watermark: Record<string, unknown> | undefined;
-if (watermarkFacts !== null && existsSync(WATERMARK_PATH)) {
+/*
+ * The plan decides, not the disk. This asked only whether the measurement file
+ * and the asset existed, so every reel got a mark whether or not it was meant
+ * to — including one the plan recorded nothing about at all.
+ */
+if (!watermarkEnabled(plan.watermark)) {
+  console.log('\nwatermark: off for this reel');
+} else if (watermarkFacts !== null && existsSync(WATERMARK_PATH)) {
   // The duration is flat now, so the measured beeps have to be checked against
   // it rather than setting it.
   assertBeepsFitWatermark(watermarkFacts.lastBeepEndS);

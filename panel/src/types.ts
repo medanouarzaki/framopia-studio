@@ -73,6 +73,8 @@ export interface DryRunPlan {
   planPath: string | null;
   spentUsd: number | null;
   stages: DryRunStage[];
+  /** Whether this reel is built with the intro watermark. */
+  watermark: boolean;
   estimateUsd: number;
   /** True when a stage reuses a transcription made against an older guide. */
   reusesOlderGuide: boolean;

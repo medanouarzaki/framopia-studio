@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { assertBeepsFitWatermark, placeWatermark, WatermarkBeepsRunLongError } from './watermark.js';
+import { watermarkEnabled, assertBeepsFitWatermark, placeWatermark, WatermarkBeepsRunLongError } from './watermark.js';
 import { insideFrame, type Rect } from './geometry.js';
 import {
   FRAME_ASPECT,
@@ -113,5 +113,17 @@ describe('assertBeepsFitWatermark', () => {
       const nearRight = Math.abs(1 - (r.x + r.w) - WATERMARK_MARGIN) < 1e-9;
       expect(nearLeft || nearRight).toBe(true);
     }
+  });
+});
+
+describe('who decides whether a reel is marked', () => {
+  it('marks a plan that has never been asked, because its reels were marked', () => {
+    expect(watermarkEnabled(null)).toBe(true);
+    expect(watermarkEnabled({})).toBe(true);
+  });
+
+  it('honours an explicit yes and an explicit no', () => {
+    expect(watermarkEnabled({ enabled: true })).toBe(true);
+    expect(watermarkEnabled({ enabled: false })).toBe(false);
   });
 });
