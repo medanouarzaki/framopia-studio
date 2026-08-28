@@ -6059,3 +6059,70 @@ side, 204.8 px from the top**. Now `WATERMARK_MARGIN_X` and
 `WATERMARK_MARGIN_Y`, the second defined as exactly what the single constant
 produced — **nothing moved**. Candidates in
 `benchmarks/RESULTS-block8-watermark-inset.md`.
+
+
+## Block 8 session 31 — the gate advises, and the picker shows what gets built
+
+**Spent $0.00.** Ledger 108 entries / sha `50ec3f57…` at both ends. After
+Effects: 1 instance, 0 `aerender` — **AE was not contacted.**
+
+The user opened step 4 and could not use it: he did not know how to choose,
+could not tell which candidates were accepted, and asked why the build showed
+five images when the gate had passed two.
+
+### The gate advises; it never blocks
+
+**It never has, and now it cannot start.** A verdict answers one question — is
+this matte clean enough to render as a cutout — and ARCHITECTURE §5.4 makes its
+consequence a **presentation fallback**, not a refusal. `buildChoiceFor` in
+`service/src/build/choose-candidate.ts` is the one declaration, read by the
+builder and by the picker so the two cannot disagree, and pinned by a test
+asserting that all five of `vitasilk`'s slots build with **eight of ten
+candidates rejected**. Recorded in `docs/DECISION-image-config.md`.
+
+### The picker shows the picture the build will place
+
+It showed a cut-out on grey for **every** candidate. Four of `vitasilk`'s five
+slots render the whole picture inside a frame, so that was a version of the
+picture the user would never see. `CandidateView.renderedPath` is derived from
+the same `presentation` the builder reads — the cut-out on a cutout slot, the
+generated picture otherwise — and is the largest thing on each candidate. The
+raw picture is kept as a small second image **only on a cutout slot**, where it
+differs from what gets built.
+
+### Cutout metrics judge cutout slots only
+
+`edge_halo`, `hole_ratio` and `alpha_edge_noise` measure how cleanly a
+background came away. **All eight of the corpus's rejections are on slots that
+show the whole picture**, where the matte is never drawn:
+
+| | candidates | judged clean | judged poor |
+|---|---:|---:|---:|
+| before | 10 | 2 | **8** |
+| after | 10 | 2 | **0** |
+
+**The measurement still happens and still decides the presentation** — §5.4's
+fallback is what turns a slot into a whole-picture slot, so removing the metrics
+would remove the fallback. What is scoped is the **verdict**: `verdictFor` in
+`service/src/images/verdict.ts`. **"The `card` fallback has never fired on a
+generated image" is superseded** — it has fired on 8 of 10.
+
+### The real image defect, named and not fixed
+
+**Nothing compares a generated picture against the idea it came from.** Once the
+cutout metrics are scoped, that is plain: a whole-picture candidate carries no
+verdict because there is none to carry. `img001` asks for a clock showing five
+minutes and both candidates show quarter past; `img003` asks for capsules and
+molecular structures and both are a swirl; `img004` asks for a woman at a mirror
+and both show two women and no mirror. All pass every check that exists.
+Recorded in `docs/DECISION-image-config.md` with what it would take — a reworked
+prompt, a billable vision check, or a human pass — and that it is **Block 9**,
+which owns the prompts. Not attempted.
+
+### On language
+
+The user ruled the panel must read as a tool a person made. `alpha_edge_noise
+0.0897 > 0.02`, `gate rejected`, `cacheProvenance` and a slot header of
+`img003 11.62–13.96s card z_left_4 img_float` were all on his screen and he had
+to ask what several meant. The strings this session owns were rewritten for him;
+**a full pass over the panel is the last session of this block.**
