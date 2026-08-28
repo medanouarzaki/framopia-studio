@@ -46,8 +46,29 @@ function runAudit(aepPath: string, auditPath: string): void {
         'launching it with -r does not work on this machine.',
     );
   }
-  const raw = JSON.parse(readFileSync(tmp, 'utf8')) as Audit;
+  const raw = JSON.parse(readFileSync(tmp, 'utf8')) as Audit & {
+    refused?: boolean;
+    error?: string;
+    closedProject?: string;
+  };
   unlinkSync(tmp);
+
+  /*
+   * A refusal must not be written over a good audit. The script declines when
+   * the open project has unsaved changes, and writing that refusal into
+   * library.audit.json would replace a working measurement with an error
+   * message — losing the very thing the refusal exists to protect.
+   */
+  if (raw.refused === true || raw.ok !== true) {
+    throw new Error(
+      `After Effects did not audit: ${raw.error ?? 'no reason given'}\n` +
+        `${path.relative(REPO_ROOT, auditPath)} is unchanged.`,
+    );
+  }
+
+  if (raw.closedProject !== undefined) {
+    console.log(`closed the saved project that was open: ${raw.closedProject}`);
+  }
   raw.aepSha256 = sha256Of(aepPath);
   writeFileSync(auditPath, `${JSON.stringify(raw, null, 2)}\n`);
   console.log(`wrote ${path.relative(REPO_ROOT, auditPath)} (${raw.comps?.length ?? 0} comps)`);

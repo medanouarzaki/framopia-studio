@@ -144,10 +144,88 @@ function framopiaAudit(aepPath, outPath) {
         return null;
     }
 
-    try {
-        if (app.project) {
+    /*
+     * **Never close a project this script did not open, and never discard
+     * unsaved changes.**
+     *
+     * This used to call close(DO_NOT_SAVE_CHANGES) unconditionally, which
+     * destroys whatever the user has open. It is a diagnostic that mutated the
+     * host, which is the same class of mistake as a diagnostic that writes to
+     * the plan, and it cost Block 8 session 21 its second half: the impact
+     * frame could not be measured because running the audit would have thrown
+     * away his work.
+     *
+     * A project with unsaved changes is a refusal, not a prompt. `app.project.file`
+     * is null for a project that has never been saved, and `dirty` is true when
+     * it has edits AE has not written — either is enough to stop.
+     */
+    var refusal = refuseIfUnsafe(aepPath, result);
+    if (refusal !== null) {
+        writeResult(outPath, { ok: false, error: refusal, refused: true });
+        return 'error';
+    }
+
+    /*
+     * **Never close a project this script did not open, and never discard
+     * unsaved changes.**
+     *
+     * This used to call close(DO_NOT_SAVE_CHANGES) unconditionally, which
+     * destroys whatever the user has open. A diagnostic that mutates the host
+     * is the same class of mistake as a diagnostic that writes to the plan, and
+     * it cost Block 8 session 21 its second half: the impact frame could not be
+     * measured because taking the measurement would have thrown his work away.
+     *
+     * Returns a sentence when it refuses, or null when it is safe to proceed.
+     * `app.project.file` is null for a project never saved; `dirty` is true when
+     * it carries edits AE has not written. An unreadable `dirty` is treated as
+     * dirty: refusing costs a re-run, guessing costs the user's work.
+     */
+    function refuseIfUnsafe(aepPath, result) {
+        if (!app.project) return null;
+
+        var openFile = null;
+        try {
+            openFile = app.project.file;
+        } catch (eFile) {
+            openFile = null;
+        }
+
+        var isDirty = true;
+        try {
+            isDirty = app.project.dirty === true;
+        } catch (eDirty) {
+            isDirty = true;
+        }
+
+        if (isDirty) {
+            return 'the open After Effects project has unsaved changes' +
+                (openFile === null ? ' and has never been saved' : ': ' + openFile.fsName) +
+                '. The audit will not close it. Save or close it yourself, then run the audit again.';
+        }
+
+        var wanted = new File(aepPath);
+        var alreadyTheLibrary = openFile !== null && String(openFile.fsName) === String(wanted.fsName);
+        if (!alreadyTheLibrary && app.project.numItems > 0) {
+            /*
+             * Saved, so no work is at risk — but it is still not this script's
+             * project to close, and closing it loses the user's place. Announced
+             * in the output rather than done silently.
+             */
+            result.closedProject = openFile === null ? '(untitled)' : String(openFile.fsName);
             app.project.close(CloseOptions.DO_NOT_SAVE_CHANGES);
         }
+        return null;
+    }
+
+    function writeResult(outPath, value) {
+        var out = new File(outPath);
+        out.encoding = 'UTF-8';
+        out.open('w');
+        out.write(JSON.stringify(value));
+        out.close();
+    }
+
+    try {
         app.open(new File(aepPath));
 
         var comps = [];
@@ -258,10 +336,6 @@ function framopiaAudit(aepPath, outPath) {
         result = { ok: false, error: String(e) };
     }
 
-    var out = new File(outPath);
-    out.encoding = 'UTF-8';
-    out.open('w');
-    out.write(JSON.stringify(result));
-    out.close();
+    writeResult(outPath, result);
     return result.ok ? 'ok' : 'error';
 }
