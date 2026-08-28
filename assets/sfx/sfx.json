@@ -23,7 +23,13 @@
         "firstAudibleS": 0.047771,
         "shape": "middle",
         "peakFraction": 0.3505,
-        "measuredAt": "2026-08-28T14:37:02.614Z",
+        "anchor": "peak",
+        "anchorSource": "derived",
+        "anchorOffsetS": 2.052521,
+        "anchorOffsetFrames": 61.514,
+        "gainDb": -19.28,
+        "targetDbfs": -20,
+        "measuredAt": "2026-08-28T15:08:25.949Z",
         "measuredWith": "ffmpeg (homebrew)"
       }
     },
@@ -47,7 +53,13 @@
         "firstAudibleS": 0.500687,
         "shape": "head",
         "peakFraction": 0.0906,
-        "measuredAt": "2026-08-28T14:37:02.702Z",
+        "anchor": "onset",
+        "anchorSource": "derived",
+        "anchorOffsetS": 0.500687,
+        "anchorOffsetFrames": 15.006,
+        "gainDb": -19.97,
+        "targetDbfs": -20,
+        "measuredAt": "2026-08-28T15:08:26.046Z",
         "measuredWith": "ffmpeg (homebrew)"
       }
     },
@@ -71,7 +83,13 @@
         "firstAudibleS": 0.349313,
         "shape": "middle",
         "peakFraction": 0.3543,
-        "measuredAt": "2026-08-28T14:37:02.905Z",
+        "anchor": "peak",
+        "anchorSource": "derived",
+        "anchorOffsetS": 0.691281,
+        "anchorOffsetFrames": 20.718,
+        "gainDb": -22.77,
+        "targetDbfs": -24,
+        "measuredAt": "2026-08-28T15:08:26.216Z",
         "measuredWith": "ffmpeg (homebrew)"
       }
     },
@@ -95,7 +113,13 @@
         "firstAudibleS": 0.127506,
         "shape": "middle",
         "peakFraction": 0.4645,
-        "measuredAt": "2026-08-28T14:37:02.988Z",
+        "anchor": "peak",
+        "anchorSource": "derived",
+        "anchorOffsetS": 0.558118,
+        "anchorOffsetFrames": 16.727,
+        "gainDb": -15.61,
+        "targetDbfs": -24,
+        "measuredAt": "2026-08-28T15:08:26.300Z",
         "measuredWith": "ffmpeg (homebrew)"
       }
     }

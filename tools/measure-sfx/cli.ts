@@ -145,8 +145,42 @@ export interface SfxMeasurement {
   shape: 'head' | 'middle' | 'tail';
   /** The peak's position as a fraction of the duration. */
   peakFraction: number;
+  /**
+   * Which point in the file lands on the template's impact frame.
+   *
+   * A dry percussive hit is anchored on its first attack; a riser that sweeps
+   * into a slam is anchored on its peak. **Derived from the measured shape** —
+   * energy in the head means the attack is the event, energy later means the
+   * peak is — and `anchorSource` says whether it was derived or set by hand, so
+   * a deliberate choice is never mistaken for a default.
+   */
+  anchor: 'peak' | 'onset';
+  anchorSource: 'derived' | 'declared';
+  /** Where the anchor sits in the file, in seconds and frames. */
+  anchorOffsetS: number;
+  anchorOffsetFrames: number;
+  /**
+   * The gain that puts this file at its kind's target level, compensating its
+   * own measured peak. A flat figure per kind cannot do that: `whoosh_02`
+   * peaks 7 dB below `whoosh_01`, so the same −24 dB leaves them 7 dB apart.
+   */
+  gainDb: number;
+  /** The level a sound of this kind is aimed at, before compensation. */
+  targetDbfs: number;
   measuredAt: string;
   measuredWith: string;
+}
+
+/**
+ * What each kind of sound is aimed at, from the user's ruling: hits at −20 dB
+ * below full scale, whooshes at −24 dB. His figures, unchanged — what changes
+ * is that they are now reached rather than applied.
+ */
+export const TARGET_DBFS: Record<string, number> = { hit: -20, whoosh: -24 };
+
+/** A file's kind, from its id. The manifest has never had another naming. */
+export function kindOf(id: string): string {
+  return id.startsWith('hit') ? 'hit' : 'whoosh';
 }
 
 function shapeOf(profile: number[]): 'head' | 'middle' | 'tail' {
@@ -161,7 +195,7 @@ function shapeOf(profile: number[]): 'head' | 'middle' | 'tail' {
   return 'middle';
 }
 
-export function measureFile(file: string): SfxMeasurement {
+export function measureFile(file: string, id: string, declaredAnchor?: 'peak' | 'onset'): SfxMeasurement {
   const { stream, container, formatDurationS, formatStartS } = probe(file);
   const sampleRate = Number(stream.sample_rate ?? 48000);
   const scanned = scan(file, sampleRate);
@@ -169,6 +203,27 @@ export function measureFile(file: string): SfxMeasurement {
     ? formatDurationS
     : scanned.samples / sampleRate;
   const peakOffsetS = scanned.peakIndex / sampleRate;
+
+  const shape = shapeOf(scanned.energyProfile);
+  /*
+   * Energy in the head means the attack is the event, so the first audible
+   * sample is what has to land. Energy later means the file rises into its
+   * moment and the peak is what has to land.
+   */
+  const anchor = declaredAnchor ?? (shape === 'head' ? 'onset' : 'peak');
+  const firstAudibleS =
+    scanned.firstAudibleIndex === null ? null : scanned.firstAudibleIndex / sampleRate;
+  const anchorOffsetS = anchor === 'onset' ? (firstAudibleS ?? peakOffsetS) : peakOffsetS;
+
+  const peakDbfs =
+    scanned.peakAbs === 0 ? -Infinity : 20 * Math.log10(scanned.peakAbs / 32768);
+  const targetDbfs = TARGET_DBFS[kindOf(id)] ?? -20;
+  /*
+   * The gain that lands this file's peak on the target. A file already 8 dB
+   * down needs 8 dB less attenuation to arrive at the same place as one at full
+   * scale — which is the whole point of deriving it rather than typing it.
+   */
+  const gainDb = targetDbfs - peakDbfs;
 
   return {
     file: path.basename(file),
@@ -180,15 +235,17 @@ export function measureFile(file: string): SfxMeasurement {
     durationFrames: Number((durationS * FPS).toFixed(3)),
     peakOffsetS: Number(peakOffsetS.toFixed(6)),
     peakOffsetFrames: Number((peakOffsetS * FPS).toFixed(3)),
-    peakDbfs:
-      scanned.peakAbs === 0 ? -Infinity : Number((20 * Math.log10(scanned.peakAbs / 32768)).toFixed(2)),
+    peakDbfs: Number(peakDbfs.toFixed(2)),
     encoderDelayS: Number(formatStartS.toFixed(6)),
-    firstAudibleS:
-      scanned.firstAudibleIndex === null
-        ? null
-        : Number((scanned.firstAudibleIndex / sampleRate).toFixed(6)),
-    shape: shapeOf(scanned.energyProfile),
+    firstAudibleS: firstAudibleS === null ? null : Number(firstAudibleS.toFixed(6)),
+    shape,
     peakFraction: Number((peakOffsetS / durationS).toFixed(4)),
+    anchor,
+    anchorSource: declaredAnchor === undefined ? 'derived' : 'declared',
+    anchorOffsetS: Number(anchorOffsetS.toFixed(6)),
+    anchorOffsetFrames: Number((anchorOffsetS * FPS).toFixed(3)),
+    gainDb: Number(gainDb.toFixed(2)),
+    targetDbfs,
     measuredAt: new Date().toISOString(),
     measuredWith: `${path.basename(ffmpeg.path)} (${ffmpeg.source})`,
   };
@@ -199,6 +256,8 @@ interface SfxEntry {
   file: string;
   defaultGainDb: number;
   notes?: string;
+  /** Set by hand to override the shape-derived anchor. */
+  anchor?: 'peak' | 'onset';
   measured?: SfxMeasurement;
 }
 
@@ -210,7 +269,7 @@ const manifest = JSON.parse(readFileSync(MANIFEST, 'utf8')) as {
 const rows: (SfxMeasurement & { id: string; declared: string })[] = [];
 for (const entry of manifest.sfx) {
   const file = path.join(SFX_DIR, entry.file);
-  const measurement = measureFile(file);
+  const measurement = measureFile(file, entry.id, entry.anchor);
   entry.measured = measurement;
   rows.push({ ...measurement, id: entry.id, declared: entry.file });
 }
@@ -219,18 +278,32 @@ writeFileSync(MANIFEST, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
 
 const pad = (s: string | number, n: number): string => String(s).padStart(n);
 console.log(
-  `${'id'.padEnd(11)}${'codec'.padEnd(11)}${'container'.padEnd(11)}${pad('rate', 7)}${pad('dur s', 9)}${pad('dur f', 8)}` +
-    `${pad('peak s', 9)}${pad('peak f', 8)}${pad('dBFS', 8)}${pad('delay s', 9)}` +
-    `${pad('audible s', 11)}${'  shape'}`,
+  `${'id'.padEnd(11)}${'codec'.padEnd(11)}${pad('dur s', 8)}${pad('peak s', 9)}${pad('peak f', 8)}` +
+    `${pad('dBFS', 8)}${pad('delay s', 9)}${pad('audible s', 11)}${'  shape'}`,
 );
 for (const row of rows) {
   console.log(
-    `${row.id.padEnd(11)}${row.codec.padEnd(11)}${row.container.padEnd(11)}${pad(row.sampleRate, 7)}` +
-      `${pad(row.durationS.toFixed(3), 9)}${pad(row.durationFrames.toFixed(1), 8)}` +
+    `${row.id.padEnd(11)}${row.codec.padEnd(11)}` +
+      `${pad(row.durationS.toFixed(3), 8)}` +
       `${pad(row.peakOffsetS.toFixed(4), 9)}${pad(row.peakOffsetFrames.toFixed(2), 8)}` +
       `${pad(row.peakDbfs.toFixed(2), 8)}${pad(row.encoderDelayS.toFixed(6), 9)}` +
       `${pad(row.firstAudibleS === null ? 'silent' : row.firstAudibleS.toFixed(4), 11)}` +
       `  ${row.shape}`,
+  );
+}
+
+console.log('');
+console.log(
+  `${'id'.padEnd(11)}${'anchor'.padEnd(9)}${'from'.padEnd(10)}${pad('at s', 9)}${pad('at f', 8)}` +
+    `${pad('target', 8)}${pad('gain dB', 9)}${pad('was', 7)}${pad('moves', 8)}`,
+);
+for (const row of rows) {
+  const was = manifest.sfx.find((e) => e.id === row.id)?.defaultGainDb ?? 0;
+  console.log(
+    `${row.id.padEnd(11)}${row.anchor.padEnd(9)}${row.anchorSource.padEnd(10)}` +
+      `${pad(row.anchorOffsetS.toFixed(4), 9)}${pad(row.anchorOffsetFrames.toFixed(2), 8)}` +
+      `${pad(row.targetDbfs, 8)}${pad(row.gainDb.toFixed(2), 9)}${pad(was, 7)}` +
+      `${pad((row.gainDb - was).toFixed(2), 8)}`,
   );
 }
 

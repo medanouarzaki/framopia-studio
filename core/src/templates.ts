@@ -41,11 +41,38 @@ export interface TemplateManifest {
   templates: TemplateEntry[];
 }
 
+/**
+ * What `npm run sfx:measure` read out of the file. **Optional with a default**:
+ * an index written before Block 8 session 21 has none, and placement falls back
+ * to the manifest offset rather than inventing an anchor.
+ */
+export interface SfxMeasured {
+  codec: string;
+  container: string;
+  sampleRate: number;
+  durationS: number;
+  peakOffsetS: number;
+  peakDbfs: number;
+  encoderDelayS: number;
+  firstAudibleS: number | null;
+  shape: 'head' | 'middle' | 'tail';
+  /** Which point in the file lands on the impact frame. */
+  anchor: 'peak' | 'onset';
+  anchorSource: 'derived' | 'declared';
+  anchorOffsetS: number;
+  /** Derived so every sound of a kind lands at the same level. */
+  gainDb: number;
+  targetDbfs: number;
+}
+
 export interface SfxEntry {
   id: string;
   file: string;
   defaultGainDb: number;
   notes?: string;
+  /** Set by hand to override the shape-derived anchor. */
+  anchor?: 'peak' | 'onset';
+  measured?: SfxMeasured;
 }
 
 export interface SfxIndex {
