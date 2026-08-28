@@ -31,6 +31,7 @@ import type {
   Reel,
   ServiceState,
   StepId,
+  ToolState,
 } from './types.js';
 
 /**
@@ -712,12 +713,21 @@ function Attempt({ attempt, attemptedAt }: { attempt: number; attemptedAt: strin
   );
 }
 
-function Fact({ label, tool }: { label: string; tool: { present: boolean; detail: string } }): JSX.Element {
+/**
+ * A tool's state, and **which binary answered**. The panel reported
+ * `ffmpeg version 8.0.1` and `missing` eight minutes apart with nothing changed
+ * on the machine: the first came from a service started in a terminal, which
+ * inherits a shell PATH, and the second from one After Effects spawned, which
+ * does not. Showing the path makes that impossible to misread.
+ */
+function Fact({ label, tool }: { label: string; tool: ToolState }): JSX.Element {
+  const where = tool.path === undefined ? null : `${tool.path}${tool.source === undefined ? '' : ` (${tool.source})`}`;
   return (
     <li>
       <span className="k">{label}</span>
       <span className={`v ${tool.present ? 'good' : 'bad'}`} title={tool.detail}>
         {tool.present ? tool.detail : 'missing'}
+        {where === null ? null : <em className="where">{where}</em>}
       </span>
     </li>
   );

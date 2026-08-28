@@ -1,5 +1,10 @@
 {
   "elevenLabsApiKey": "sk_your_elevenlabs_key",
   "googleApiKey": "AIzaYourGoogleKey",
-  "machineLabel": "mohameds-macbook"
+  "machineLabel": "mohameds-macbook",
+
+  "_optional": "The three paths below are only needed when a binary is somewhere the resolvers do not look. Each is an absolute path to the executable. After Effects launches from the Finder and inherits no shell PATH, so a tool that works in a terminal can still be invisible to a panel-spawned service.",
+  "nodePath": "/Users/you/.nvm/versions/node/v24.14.1/bin/node",
+  "ffmpegPath": "/opt/homebrew/bin/ffmpeg",
+  "ffprobePath": "/opt/homebrew/bin/ffprobe"
 }

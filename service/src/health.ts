@@ -12,7 +12,14 @@ import {
 } from '@framopia/core';
 import { existsSync as fsExists, readFileSync as fsRead, readdirSync as fsReaddir } from 'node:fs';
 import { homedir } from 'node:os';
-import { NODE_NOT_FOUND_HELP, resolveNodePath, type ResolvedNode } from '@framopia/core';
+import {
+  describeFfmpegFailure,
+  NODE_NOT_FOUND_HELP,
+  resolveFfmpegPath,
+  resolveNodePath,
+  type ResolvedFfmpeg,
+  type ResolvedNode,
+} from '@framopia/core';
 import { SIDECAR_PYTHON } from './images/sidecar.js';
 
 /**
@@ -28,6 +35,15 @@ export interface ToolState {
   present: boolean;
   /** The first line of `--version`, or why the probe failed. */
   detail: string;
+  /**
+   * The absolute path the probe actually ran, and how it was found. Named for
+   * the same reason Node's is: `PATH` inside a Finder-launched After Effects
+   * holds no Homebrew, and a health line saying `present` without saying which
+   * binary answered is what let a terminal-started service mask a panel-spawned
+   * one that could not find ffmpeg at all. Optional so an older payload parses.
+   */
+  path?: string;
+  source?: string;
 }
 
 export interface HealthPayload {
@@ -87,9 +103,31 @@ function templateState(): HealthPayload['templates'] {
   }
 }
 
+/**
+ * Runs the resolved binary rather than the bare name, and reports which one it
+ * was. A failure carries the candidates the resolver tried, so the message says
+ * what to do instead of only what is absent.
+ */
+function probeTool(resolved: ResolvedFfmpeg): ToolState {
+  const state = probe(resolved.path, ['-version']);
+  if (state.present) {
+    return { ...state, path: resolved.path, source: resolved.source };
+  }
+  return {
+    present: false,
+    detail: resolved.verified
+      ? `${resolved.path}: ${state.detail}`
+      : describeFfmpegFailure(resolved),
+    path: resolved.path,
+    source: resolved.source,
+  };
+}
+
 export function health(serviceVersion: string): HealthPayload {
-  const ffmpeg = probe('ffmpeg', ['-version']);
-  const ffprobe = probe('ffprobe', ['-version']);
+  const ffmpegAt = resolveFfmpegPath('ffmpeg');
+  const ffprobeAt = resolveFfmpegPath('ffprobe');
+  const ffmpeg = probeTool(ffmpegAt);
+  const ffprobe = probeTool(ffprobeAt);
   const pythonPath = SIDECAR_PYTHON;
   const venv = existsSync(pythonPath)
     ? probe(pythonPath, ['--version'])

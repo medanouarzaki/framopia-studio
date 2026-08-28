@@ -6,6 +6,14 @@
 export interface ToolState {
   present: boolean;
   detail: string;
+  /**
+   * The absolute path the service actually ran, and how it found it. Optional
+   * so an older service's payload still parses. `PATH` inside a Finder-launched
+   * After Effects holds no Homebrew, so "present" without a path is a claim
+   * with no evidence behind it.
+   */
+  path?: string;
+  source?: string;
 }
 
 export interface HealthPayload {

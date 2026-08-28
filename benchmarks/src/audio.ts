@@ -2,12 +2,13 @@ import { execFile } from 'node:child_process';
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { promisify } from 'node:util';
+import { resolveFfmpegPath } from '@framopia/core';
 
 const execFileAsync = promisify(execFile);
 const WAV_EXTENSIONS = new Set(['.wav']);
 
 export async function getAudioDurationSeconds(audioPath: string): Promise<number> {
-  const { stdout } = await execFileAsync('ffprobe', [
+  const { stdout } = await execFileAsync(resolveFfmpegPath('ffprobe').path, [
     '-v',
     'error',
     '-show_entries',
@@ -34,7 +35,7 @@ export async function ensureWavAudio(inputPath: string, outputDir: string): Prom
 
   await mkdir(outputDir, { recursive: true });
   const outputPath = path.join(outputDir, `${path.basename(inputPath, ext)}.wav`);
-  await execFileAsync('ffmpeg', [
+  await execFileAsync(resolveFfmpegPath('ffmpeg').path, [
     '-y',
     '-i',
     inputPath,

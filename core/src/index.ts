@@ -147,6 +147,14 @@ export {
 export { renderSheet, type SheetInputs, type SheetRow } from './align-sheet.js';
 export { ACTIVE_PROMPT_VERSION, type PromptVersion } from './prompt-version.js';
 export {
+  resolveFfmpegPath,
+  describeFfmpegFailure,
+  FFMPEG_SEARCH_DIRS,
+  type FfmpegTool,
+  type FfmpegPathSource,
+  type ResolvedFfmpeg,
+} from './ffmpeg-path.js';
+export {
   CacheEntrySelectionError,
   describeSelection,
   listTranscriptionEntries,

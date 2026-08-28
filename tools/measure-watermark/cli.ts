@@ -17,6 +17,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { resolveFfmpegPath } from '@framopia/core';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, '..', '..');
@@ -70,7 +71,7 @@ interface Probe {
 
 function probe(file: string): Probe {
   const raw = execFileSync(
-    'ffprobe',
+    resolveFfmpegPath('ffprobe').path,
     ['-v', 'error', '-print_format', 'json', '-show_format', '-show_streams', file],
     { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 },
   );
@@ -100,7 +101,7 @@ interface PixelFormat {
 
 function pixelFormatHasAlpha(pixFmt: string): boolean {
   const raw = execFileSync(
-    'ffprobe',
+    resolveFfmpegPath('ffprobe').path,
     ['-v', 'error', '-show_pixel_formats', '-print_format', 'json'],
     { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 },
   );
@@ -128,7 +129,7 @@ interface AlphaFrameStats {
 function alphaPerFrame(file: string, width: number, height: number): AlphaFrameStats[] {
   const frameBytes = width * height;
   const res = spawnSync(
-    'ffmpeg',
+    resolveFfmpegPath('ffmpeg').path,
     ['-v', 'error', '-i', file, '-vf', 'alphaextract,format=gray',
       '-f', 'rawvideo', '-pix_fmt', 'gray', '-'],
     { maxBuffer: 2 * 1024 * 1024 * 1024, encoding: 'buffer' },
@@ -211,7 +212,7 @@ function colourAgainstAlpha(file: string, width: number, height: number, frames:
   const frameBytes = width * height * 4;
   const select = frames.map((n) => `eq(n\\,${n})`).join('+');
   const res = spawnSync(
-    'ffmpeg',
+    resolveFfmpegPath('ffmpeg').path,
     ['-v', 'error', '-i', file, '-vf', `select='${select}',format=rgba`,
       '-vsync', '0', '-f', 'rawvideo', '-pix_fmt', 'rgba', '-'],
     { maxBuffer: 2 * 1024 * 1024 * 1024, encoding: 'buffer' },
@@ -310,7 +311,7 @@ interface Burst { startS: number; endS: number; peak: number; peakAtS: number }
 
 function envelopeOf(file: string): { env: Float64Array; peak: number } {
   const res = spawnSync(
-    'ffmpeg',
+    resolveFfmpegPath('ffmpeg').path,
     ['-v', 'error', '-i', file, '-ac', '1', '-ar', String(ENVELOPE_SR),
       '-f', 'f32le', '-acodec', 'pcm_f32le', '-'],
     { maxBuffer: 512 * 1024 * 1024, encoding: 'buffer' },

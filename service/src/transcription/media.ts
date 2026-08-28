@@ -3,11 +3,12 @@ import { mkdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { promisify } from 'node:util';
+import { resolveFfmpegPath } from '@framopia/core';
 
 const execFileAsync = promisify(execFile);
 
 export async function probeDurationSeconds(mediaPath: string): Promise<number> {
-  const { stdout } = await execFileAsync('ffprobe', [
+  const { stdout } = await execFileAsync(resolveFfmpegPath('ffprobe').path, [
     '-v',
     'error',
     '-show_entries',
@@ -35,7 +36,7 @@ export interface MediaProbe {
  * a rational (30000/1001), which is how ffprobe reports drop-frame rates.
  */
 export async function probeVideo(mediaPath: string): Promise<MediaProbe> {
-  const { stdout } = await execFileAsync('ffprobe', [
+  const { stdout } = await execFileAsync(resolveFfmpegPath('ffprobe').path, [
     '-v',
     'error',
     '-select_streams',
@@ -89,7 +90,7 @@ export async function extractAudio(inputPath: string, outputDir: string): Promis
   if (existsSync(outputPath)) return outputPath;
 
   await mkdir(outputDir, { recursive: true });
-  await execFileAsync('ffmpeg', [
+  await execFileAsync(resolveFfmpegPath('ffmpeg').path, [
     '-y',
     '-i',
     inputPath,

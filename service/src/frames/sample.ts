@@ -4,7 +4,7 @@ import { mkdir, mkdtemp, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
-import { LOCAL_DIR } from '@framopia/core';
+import { LOCAL_DIR, resolveFfmpegPath } from '@framopia/core';
 import { probeVideo } from '../transcription/media.js';
 
 const execFileAsync = promisify(execFile);
@@ -145,7 +145,7 @@ export async function sampleFrames(
 
   options.onProgress?.(`${reelLabel}: sampling`);
   const { stderr } = await execFileAsync(
-    'ffmpeg',
+    resolveFfmpegPath('ffmpeg').path,
     [
       '-y',
       '-loglevel',
@@ -240,7 +240,7 @@ async function sampleFinalFrame(
   const scratch = await mkdtemp(path.join(tmpdir(), 'framopia-final-'));
   try {
     const { stderr } = await execFileAsync(
-      'ffmpeg',
+      resolveFfmpegPath('ffmpeg').path,
       [
         '-y',
         '-loglevel',

@@ -183,6 +183,12 @@ section > h2 {
 .facts .v.bad { color: var(--accent); }
 .facts .v.good { color: var(--ok); }
 .facts .v.warn { color: var(--warn); }
+/* Which binary answered, under the version it reported. Quiet by design. */
+.facts .v .where {
+  display: block; margin-top: 2px;
+  color: var(--faint); font-style: normal; font-size: 11px;
+  overflow-wrap: anywhere;
+}
 
 .card.note .detail { color: var(--muted); overflow-wrap: anywhere; }
 .issues { margin: 10px 0 0; padding-left: 18px; color: var(--accent); }
