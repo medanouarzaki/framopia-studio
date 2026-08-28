@@ -31,6 +31,28 @@ The output is **not a rendered video**. It is a fully built After Effects compos
 - **Budget:** ~$0.50–2.00 API cost per reel. Accuracy wins over cost within that envelope. Aggressive caching (transcriptions, images, analysis) so re-runs are near-free.
 - **Never** cut, retime, or grade the source footage.
 
+### Subtitle rulings (2026-08-28)
+
+Three questions the transcript editor put in front of the user, with the
+instances on screen. All three are **rulings, not proposals**, and all three are
+implemented in Block 9 — they change the subtitle builder, and the shrink rule
+depends on the client fonts Block 9 collects.
+
+1. **A multi-word §6 term occupies one card together.** One word per card
+   (`MAX_WORDS_PER_CARD` = 1) stands for ordinary speech; a term named by
+   ORTHOGRAPHY_GUIDE §6 is the case that overrides it, and §6c's rule that a
+   term is never broken in the subtitle track is what it serves. 13 runs across
+   the corpus are affected today.
+2. **A card stays tight to its word; the animation compresses.** A subtitle must
+   not outlive the word it transcribes. This **ratifies the behaviour already
+   shipped** — Block 7's short-card entrance stretching, which compresses the
+   entrance to `MIN_INTRO_S` and clips the hold rather than extending the card —
+   so the 23 clipped holds are a recorded decision and not an open defect.
+   **Nothing to build.**
+3. **An overlong word shrinks to fit.** It never clips at the safe width and
+   never wraps to a second line: the type scales down just enough for that word,
+   on its own card. 7 words across the corpus are affected today.
+
 ## 4. Input / output (locked)
 
 **Input:** one vertical 9:16 MP4, 4K (2160×3840), **29.97 fps (30000/1001)**, 30–90 s, one speaker, one angle, no cuts, audio embedded, already edited and graded. The "30 fps" this section carried until Block 7 predates anyone reading a file header: every reel the project has handled is 30000/1001, and Block 5's frame sampling reads real presentation timestamps that diverge from a nominal 30 fps grid from the second frame onward.
