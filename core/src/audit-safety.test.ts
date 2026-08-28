@@ -65,3 +65,64 @@ describe('the template audit', () => {
     expect(withoutComments).not.toMatch(/=>/);
   });
 });
+
+/**
+ * Every script the host evaluates had the audit's defect too, and nobody had
+ * looked: each closed the open project with DO_NOT_SAVE_CHANGES before starting
+ * its own. Nothing these produce is worth someone's unsaved work.
+ */
+describe('every script that opens its own project', () => {
+  const SCRIPTS = ['build.jsx', 'build-reel.jsx', 'measure-survey.jsx'];
+  const sourceOf = (name: string): string =>
+    readFileSync(path.join(REPO_ROOT, 'panel', 'jsx', name), 'utf8');
+
+  for (const name of SCRIPTS) {
+    it(`${name} refuses a project with unsaved changes`, () => {
+      const source = sourceOf(name);
+      expect(source).toContain('This will not close it');
+      const guard = source.indexOf('if (isDirty)');
+      const close = source.indexOf('app.project.close(');
+      expect(guard).toBeGreaterThan(-1);
+      expect(close).toBeGreaterThan(guard);
+    });
+
+    it(`${name} closes at most one project, and treats an unreadable flag as dirty`, () => {
+      const source = sourceOf(name);
+      expect([...source.matchAll(/app\.project\.close\(/g)]).toHaveLength(1);
+      expect(source).toContain('guessing costs the user');
+    });
+
+    it(`${name} is ES3, like every other script the host evaluates`, () => {
+      const withoutComments = sourceOf(name)
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .replace(/\/\/.*$/gm, '');
+      expect(withoutComments).not.toMatch(/\b(const|let)\s/);
+      expect(withoutComments).not.toMatch(/=>/);
+    });
+  }
+});
+
+/**
+ * The easing the impact derivation needs. Session 23 stopped because the audit
+ * recorded two endpoints and a duration, which cannot say when the value
+ * arrives — linear puts kw_slam's word at 95% on frame 11.4 and the user's eye
+ * puts it on frame 4.
+ */
+describe('the audit records easing', () => {
+  it('asks After Effects for interpolation type and temporal ease', () => {
+    expect(AUDIT).toContain('keyInTemporalEase');
+    expect(AUDIT).toContain('keyOutTemporalEase');
+    expect(AUDIT).toContain('keyInInterpolationType');
+    expect(AUDIT).toContain('keyOutInterpolationType');
+  });
+
+  it('emits influence and speed per dimension', () => {
+    expect(AUDIT).toContain('influence');
+    expect(AUDIT).toContain('speed');
+  });
+
+  /* A property AE refuses emits null, never a zero that reads as "no easing". */
+  it('emits null for an ease it cannot read', () => {
+    expect(AUDIT).toContain('if (!ease || !ease.length) return null;');
+  });
+});

@@ -42,7 +42,38 @@ function framopiaMeasureSurvey(optionsPath, outPath) {
         var o = readOptions(optionsPath);
 
         stage = 'new-project';
-        if (app.project) app.project.close(CloseOptions.DO_NOT_SAVE_CHANGES);
+        /*
+         * **Never discard unsaved work.**
+         *
+         * This closed whatever the user had open with DO_NOT_SAVE_CHANGES — the
+         * same defect session 22 removed from the template audit, and the same
+         * class as a diagnostic that writes to the plan. Nothing this script
+         * produces is worth someone's unsaved morning.
+         *
+         * An unreadable `dirty` is treated as dirty: refusing costs a re-run, guessing costs the user's work.
+         */
+        if (app.project) {
+            var openFile = null;
+            try {
+                openFile = app.project.file;
+            } catch (eFile) {
+                openFile = null;
+            }
+            var isDirty = true;
+            try {
+                isDirty = app.project.dirty === true;
+            } catch (eDirty) {
+                isDirty = true;
+            }
+            if (isDirty) {
+                throw new Error(
+                    'the open After Effects project has unsaved changes' +
+                        (openFile === null ? ' and has never been saved' : ': ' + openFile.fsName) +
+                        '. This will not close it. Save or close it yourself, then run it again.'
+                );
+            }
+            app.project.close(CloseOptions.DO_NOT_SAVE_CHANGES);
+        }
         app.newProject();
 
         stage = 'import-templates';
