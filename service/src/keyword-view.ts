@@ -11,6 +11,7 @@ import {
 import { listReels } from './catalogue.js';
 import { readEditPlan, writeEditPlan } from './editplan/io.js';
 import { deriveSfxEvents } from './analysis/sfx.js';
+import { templateImpacts } from './analysis/template-impacts.js';
 import { SCRIPT_VARIANT_SUFFIX } from './analysis/assign.js';
 import { ACTIVE_ANALYSIS_PROMPT_VERSION } from './analysis/keywords.js';
 import { scriptVariantOf } from './transcript-view.js';
@@ -241,6 +242,7 @@ function rederiveSfx(plan: EditPlan): void {
     plan,
     templatesById(loadTemplateManifest()),
     loadSfxIndex(),
+    templateImpacts(),
   );
 }
 

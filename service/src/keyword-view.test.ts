@@ -51,12 +51,21 @@ describe('keywordsView', () => {
     expect(view.keywords.every((k) => k.fontSize === KEYWORD_FONT_SIZE)).toBe(true);
   });
 
-  it('names the sound bound to each keyword, with its gain and offset', async () => {
+  /*
+   * Rewritten in session 22. The flat −20 dB and the +0.13 s offset are both
+   * retired: gain is derived per file from its measured peak, and the layer
+   * now starts **before** the keyword so `hit_01`'s anchor — 2.05 s into the
+   * file — lands on the template's impact.
+   */
+  it('names the sound bound to each keyword, with its derived gain and placement', async () => {
     const view = await keywordsView('vitasilk');
     for (const keyword of view.keywords) {
       expect(keyword.sfx?.sfxId, keyword.id).toBe('hit_01');
-      expect(keyword.sfx?.gainDb).toBe(-20);
-      expect(keyword.sfx?.offsetS).toBeCloseTo(0.13, 3);
+      // Derived from hit_01's −0.72 dBFS peak against the −20 dB target.
+      expect(keyword.sfx?.gainDb).toBeCloseTo(-19.28, 2);
+      // Negative: the file starts well before the word it belongs to.
+      expect(keyword.sfx?.offsetS, keyword.id).toBeLessThan(0);
+      expect(keyword.sfx?.peakOffsetS).toBeCloseTo(2.0525, 4);
       // The file has to be on disk or the build cannot use it either.
       expect(keyword.sfx?.fileExists, keyword.sfx?.file).toBe(true);
     }
@@ -144,8 +153,10 @@ describe('adding a keyword', () => {
     expect(added?.templateId).toBe('kw_slam');
     expect(added?.fontSize).toBe(KEYWORD_FONT_SIZE);
     expect(added?.sfx?.sfxId).toBe('hit_01');
-    expect(added?.sfx?.offsetS).toBeCloseTo(0.13, 3);
-    expect(added?.sfx?.gainDb).toBe(-20);
+    // Placed by measurement like every other event: before the word, at the
+    // gain derived from the file's own peak.
+    expect(added?.sfx?.offsetS).toBeLessThan(0);
+    expect(added?.sfx?.gainDb).toBeCloseTo(-19.28, 2);
   });
 
   /*

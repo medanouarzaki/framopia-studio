@@ -420,8 +420,25 @@ export interface SfxEvent {
   /** The element that triggered it. */
   sourceElementId: string;
   sfxId: string;
+  /**
+   * The audio layer's in-point, derived so the file's anchor lands on the
+   * template's impact frame. It used to be the element's start plus a fixed
+   * offset, which assumed the impact was at the file's first sample.
+   */
   timeS: number;
   gainDb: number;
+  /**
+   * Where the anchor actually lands. **Optional with a default**: absent on any
+   * plan written before Block 8 session 22, and on an event placed by the old
+   * rule because its file or its template is unmeasured.
+   */
+  anchorAtS?: number;
+  /**
+   * True when the layer had to start at the composition's start because the
+   * derived in-point was before it, so the anchor lands late by `clampedByS`.
+   */
+  clamped?: boolean;
+  clampedByS?: number;
 }
 
 /** Generated, never hand-authored: recomputed on every build (§3 rules). */

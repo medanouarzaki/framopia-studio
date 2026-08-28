@@ -13,6 +13,7 @@ import { regroupForKeywords } from './regroup.js';
 import { applyDisplayTiming } from './display-timing.js';
 import { assignTemplates } from './assign.js';
 import { deriveSfxEvents } from './sfx.js';
+import { templateImpacts } from './template-impacts.js';
 
 /**
  * Re-groups every existing plan to one word per card and re-derives everything
@@ -93,7 +94,7 @@ for (const file of readdirSync(FOOTAGE_DIR).filter((f) => f.endsWith('.editplan.
   // Deterministic, so re-running is free and guarantees a card that changed
   // identity is never left without a template.
   const assignment = assignTemplates(plan, mode, templates);
-  plan.sfx = { events: deriveSfxEvents(plan, templates, sfxIndex) };
+  plan.sfx = { events: deriveSfxEvents(plan, templates, sfxIndex, templateImpacts()) };
 
   const after = plan.subtitles.groups.length;
   const unbuildableAfter = timing.unbuildable.length;

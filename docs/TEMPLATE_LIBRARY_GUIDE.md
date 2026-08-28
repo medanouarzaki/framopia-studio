@@ -149,3 +149,88 @@ all six comps. `audit.jsx` now emits every key's time and value; the audit has
 saving and the user's instance is open. **Until `npm run audit:templates` is
 re-run, the placement rule has one measured input and one missing one, and the
 0.13 s offset stays in force.**
+
+### The rule in force — measured, 2026-08-28
+
+Session 21 measured the sounds and could not measure the templates. The user ran
+`npm run audit:templates`, and **every one of the six comps settles at
+0.4004 s = 12.00 frames**, from its last entrance keyframe:
+
+| comp | impact | derived from |
+|---|---:|---|
+| `sub_pop` | 0.4004 s / 12.00 f | Transform/Position |
+| `sub_pop_ar` | 0.4004 s / 12.00 f | Transform/Position |
+| `kw_slam` | 0.4004 s / 12.00 f | Transform/Position |
+| `kw_slam_ar` | 0.4004 s / 12.00 f | Transform/Position |
+| `img_slide_left` | 0.4004 s / 12.00 f | Transform/Position |
+| `img_float` | 0.4004 s / 12.00 f | Transform/Opacity |
+
+**What the 0.13 s offset turned out to be: wrong by 53.4 frames for a hit.** The
+old rule put the file's *start* at the element's start plus 0.13 s. The measured
+rule puts `hit_01`'s anchor — 2.0525 s into the file — on the impact at
+0.4004 s, so the layer starts **1.6521 s before** the element. For a whoosh the
+correction is smaller: `whoosh_01`'s anchor is 0.6913 s, the image binding's
+offset was 0, so the layer moves 0.2909 s earlier — **8.7 frames**.
+
+`introS` in the manifest is **0.13 s** while the comps animate over **0.4004 s**.
+Those are different claims about the same templates and only the second is
+measured. SFX placement uses the measured one. Buildability, display timing and
+the short-card rule still use `introS`; **nothing in this session changed
+them**, and the disagreement is recorded rather than resolved.
+
+### Each sound declares its anchor
+
+`anchor` is a field per file in `assets/sfx/sfx.json`, emitted by
+`npm run sfx:measure` and never hardcoded in the placement code.
+
+- **`onset`** — the first audible sample lands on the impact. A dry percussive
+  hit.
+- **`peak`** — the loudest sample lands on the impact. A riser that sweeps into
+  a slam.
+
+Defaulted from the measured shape — energy in the head means the attack is the
+event — and `anchorSource` records `derived` or `declared`, so a deliberate
+choice is never mistaken for a default. Setting `anchor` by hand in the manifest
+overrides it.
+
+### Gain is derived, not typed
+
+The user's ruling stands — hits at −20 dB, whooshes at −24 dB — but those are
+now **targets that are reached**, not attenuations that are applied.
+`whoosh_02` peaks 8.39 dB below full scale, so the same −24 dB left it 8 dB
+quieter than `whoosh_01`. Each file's gain is `target − measured peak`:
+
+| id | peak | target | derived gain | was | moves |
+|---|---:|---:|---:|---:|---:|
+| `hit_01` | −0.72 dBFS | −20 | **−19.28 dB** | −20 | +0.72 |
+| `hit_02` | −0.03 dBFS | −20 | **−19.97 dB** | −20 | +0.03 |
+| `whoosh_01` | −1.23 dBFS | −24 | **−22.77 dB** | −24 | +1.23 |
+| `whoosh_02` | −8.39 dBFS | −24 | **−15.61 dB** | −24 | **+8.39** |
+
+Three files move by about a decibel and `whoosh_02` by 8.4, which is the
+mismatch the flat figures could not express. `whoosh_02` is bound to nothing
+today, so no built comp changes because of it.
+
+### What the corpus did
+
+17 events across five plans, **all 17 moved**, re-derived by
+`npm run migrate:sfx-placement`:
+
+| reel | events | moved | clamped |
+|---|---:|---:|---:|
+| ground-truth | 0 | 0 | 0 |
+| test-1 | 6 | 6 | 2 |
+| test-2 | 3 | 3 | 0 |
+| test-3 | 0 | 0 | 0 |
+| vitasilk | 8 | 8 | 1 |
+
+Hits move about **53 frames earlier**, whooshes about **8.7**. Three events
+**clamp** at the composition start, because their derived in-point is negative:
+`test-1` `img001` (anchor 0.200 s late), `test-1` `k001` (**1.268 s late**), and
+`vitasilk` `img001` (0.200 s late). A clamped event carries `clamped` and
+`clampedByS` so the lateness is a stated figure rather than an invisible one.
+
+**`k001` on `test-1` is the case worth looking at**: a keyword 0.529 s into the
+reel, needing a layer that starts 1.27 s before the comp does. Its hit cannot
+land on the impact at any placement, and that is a property of a 5.9 s file
+whose anchor is 2 s in — not of this rule.

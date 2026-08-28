@@ -11,6 +11,7 @@ import { readEditPlan, writeEditPlan } from '../editplan/io.js';
 import type { SfxEvent } from '../editplan/types.js';
 import { assignTemplates } from './assign.js';
 import { deriveSfxEvents } from './sfx.js';
+import { templateImpacts } from './template-impacts.js';
 
 /**
  * Assigns template ids to every element on every existing plan and re-derives
@@ -48,7 +49,7 @@ for (const file of readdirSync(FOOTAGE_DIR).filter((f) => f.endsWith('.editplan.
   const keywordsBefore = plan.keywords.items.filter((k) => k.templateId !== null).length;
 
   const assignment = assignTemplates(plan, mode, templates);
-  const after = deriveSfxEvents(plan, templates, sfxIndex);
+  const after = deriveSfxEvents(plan, templates, sfxIndex, templateImpacts());
   const keywordsAfter = plan.keywords.items.filter((k) => k.templateId !== null).length;
 
   console.log(

@@ -1,5 +1,8 @@
-import type { SfxIndex, TemplateEntry } from '@framopia/core';
+import { placeSfx, type SfxIndex, type TemplateEntry } from '@framopia/core';
 import type { EditPlan, SfxEvent } from '../editplan/types.js';
+
+/** 30000/1001, the rate every comp and every reel is at. */
+const FPS = 30000 / 1001;
 
 export class UnknownSfxError extends Error {
   constructor(
@@ -18,18 +21,27 @@ export class UnknownSfxError extends Error {
  * ARCHITECTURE §3: sfx events are generated, never hand-authored, and
  * recomputed on every run. Nothing here reads the plan's existing events.
  *
- * An event fires at the element's start plus the manifest's offset. The
- * element's start is where its intro begins, so the offset is measured from
- * the first frame of the animation rather than from its settled hold.
+ * **`timeS` is the audio layer's in-point, derived so the file's anchor lands
+ * on the template's impact frame.** It used to be the element's start plus the
+ * manifest's offset, which assumed a sound's impact is at its first sample:
+ * `hit_01`'s is 2.05 s in, so every hit's impact was landing about two seconds
+ * after the card it belongs to.
  *
- * Gain comes from the binding rather than the sfx index default: the index
- * default is what a sound is worth on its own, the binding is what this
- * template wants of it.
+ * Both inputs are measurements — the anchor from `npm run sfx:measure`, the
+ * impact frame from the template audit. When either is missing the old rule
+ * still applies, because a placement derived from a number nobody measured is
+ * the defect this replaces.
+ *
+ * Gain is the file's measured `gainDb` when it has one: a flat figure per kind
+ * cannot land two files at the same level when their peaks are 7 dB apart. The
+ * binding's gain is the fallback.
  */
 export function deriveSfxEvents(
   plan: EditPlan,
   templates: Map<string, TemplateEntry>,
   sfxIndex: SfxIndex,
+  /** Each template's measured impact, in seconds from the element's start. */
+  impacts: Map<string, number> = new Map(),
 ): SfxEvent[] {
   const known = new Set(sfxIndex.sfx.map((s) => s.id));
   const events: SfxEvent[] = [];
@@ -46,12 +58,38 @@ export function deriveSfxEvents(
     if (template === undefined) continue;
     for (const binding of template.sfx) {
       if (!known.has(binding.sfxId)) throw new UnknownSfxError(binding.sfxId, template.id);
+      const entry = sfxIndex.sfx.find((s) => s.id === binding.sfxId);
+      const measured = entry?.measured;
+      const impactS = impacts.get(template.id);
+
+      if (measured === undefined || impactS === undefined) {
+        // Unmeasured: the old rule, unchanged, rather than a derived number
+        // resting on an assumption.
+        events.push({
+          id: 'pending',
+          sourceElementId: element.id,
+          sfxId: binding.sfxId,
+          timeS: element.start + binding.offsetS,
+          gainDb: binding.gainDb,
+        });
+        continue;
+      }
+
+      const placed = placeSfx({
+        elementStartS: element.start,
+        impactS,
+        peakOffsetS: measured.anchorOffsetS,
+        fps: FPS,
+        compStartS: 0,
+      });
       events.push({
         id: 'pending',
         sourceElementId: element.id,
         sfxId: binding.sfxId,
-        timeS: element.start + binding.offsetS,
-        gainDb: binding.gainDb,
+        timeS: placed.inPointS,
+        gainDb: measured.gainDb,
+        anchorAtS: Number(placed.peakAtS.toFixed(6)),
+        ...(placed.clamped ? { clamped: true, clampedByS: placed.clampedByS } : {}),
       });
     }
   }
