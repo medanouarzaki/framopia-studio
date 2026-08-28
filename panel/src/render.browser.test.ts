@@ -576,3 +576,209 @@ describe.skipIf(!built)('the responsive layout', () => {
     }
   }, 30_000);
 });
+
+/**
+ * A route-aware fetch stub. `stubFetch('healthy')` answers every URL with the
+ * health payload, which leaves the pickers empty — fine for the startup checks
+ * and useless for the flow, which needs a reel, a mode and a plan.
+ *
+ * `steps` is the service's own derivation from the Edit Plan. It is stubbed
+ * here rather than read off disk because this file drives the built bundle,
+ * not the service; `service/src/steps.ts` has its own tests against the real
+ * plans.
+ */
+function stubRoutes(steps: unknown, resumeAt: string): string {
+  const payload = {
+    health: HEALTHY_PAYLOAD,
+    reels: { reels: [{ label: 'vitasilk', present: true, durationS: 25.7, planPath: '/v/p.json', spentUsd: 1.550444 }] },
+    modes: { modes: [{ id: 'k2-syndicalia', name: 'K2 Syndicalia', version: 6, fontsStatus: 'tbd' }] },
+    dry: {
+      reel: 'vitasilk', videoPath: '/v/vitasilk.mov', modeId: 'k2-syndicalia',
+      modeName: 'K2 Syndicalia', modeVersion: 6, planPath: '/v/p.json', spentUsd: 1.550444,
+      stages: [], estimateUsd: 0, reusesOlderGuide: false,
+    },
+    steps: { reel: 'vitasilk', planPath: '/v/p.json', steps, resumeAt },
+  };
+  return `
+  window.__payload = ${JSON.stringify(payload)};
+  window.fetch = (url) => {
+    const p = window.__payload;
+    const body = String(url).indexOf('/health') !== -1 ? p.health
+      : String(url).indexOf('/reels') !== -1 ? p.reels
+      : String(url).indexOf('/modes') !== -1 ? p.modes
+      : String(url).indexOf('/steps') !== -1 ? p.steps
+      : p.dry;
+    return Promise.resolve({ ok: true, json: () => Promise.resolve(body) });
+  };`;
+}
+
+/** Five steps with everything through `upTo` available, the rest locked. */
+function stepsThrough(upTo: string): unknown[] {
+  const order = ['reel', 'transcript', 'keywords', 'images', 'build'];
+  const labels: Record<string, string> = {
+    reel: 'Reel', transcript: 'Transcript', keywords: 'Keywords', images: 'Images', build: 'Build',
+  };
+  const cut = order.indexOf(upTo);
+  return order.map((id, i) => ({
+    id,
+    label: labels[id],
+    available: i <= cut,
+    reason: i <= cut ? null : `${labels[id]} has not run for this reel.`,
+    summary: i <= cut ? `${labels[id]} summary from the plan` : null,
+  }));
+}
+
+/** Opens the panel with a reel and a mode chosen, as a user would. */
+async function loadFlow(upTo: string, resumeAt: string, width = 420): Promise<Loaded | null> {
+  if (browser === undefined) return null;
+  const page = await browser.newPage({ viewport: { width, height: 900 } });
+  const uncaught: string[] = [];
+  page.on('pageerror', (error: Error) => uncaught.push(error.message));
+  await page.addInitScript(stubHost(HANDSHAKE));
+  await page.addInitScript(stubRoutes(stepsThrough(upTo), resumeAt));
+  await page.goto(`file://${INDEX}`);
+  await page.waitForSelector('nav.rail', { timeout: 10_000 });
+  await page.selectOption('select[aria-label="Reel"]', 'vitasilk');
+  await page.selectOption('select[aria-label="Client mode"]', 'k2-syndicalia');
+  await page.waitForFunction(
+    () => document.querySelector('nav.rail .step.current .l') !== null,
+    undefined,
+    { timeout: 10_000 },
+  );
+  return { page, uncaught };
+}
+
+describe.skipIf(!built)('the step rail', () => {
+  it('shows all five steps before any reel is picked', async () => {
+    const loaded = await load({ fetch: 'healthy' });
+    if (loaded === null) return;
+    const labels = await loaded.page.$$eval('nav.rail li .l', (els) =>
+      els.map((e) => e.textContent),
+    );
+    expect(labels).toEqual(['Reel', 'Transcript', 'Keywords', 'Images', 'Build']);
+    await loaded.page.close();
+  });
+
+  it('locks every step past Reel with no reel chosen, and says why', async () => {
+    const loaded = await load({ fetch: 'healthy' });
+    if (loaded === null) return;
+    const state = await loaded.page.$$eval('nav.rail li button', (els) =>
+      els.map((e) => ({
+        disabled: (e as HTMLButtonElement).disabled,
+        title: e.getAttribute('title'),
+      })),
+    );
+    expect(state[0]?.disabled).toBe(false);
+    expect(state.slice(1).every((s) => s.disabled)).toBe(true);
+    expect(state[1]?.title).toContain('Pick a video');
+    await loaded.page.close();
+  });
+
+  it('opens where the plan says the reel actually is', async () => {
+    const loaded = await loadFlow('keywords', 'keywords');
+    if (loaded === null) return;
+    const current = await loaded.page.textContent('nav.rail .step.current .l');
+    expect(current).toBe('Keywords');
+    expect(await loaded.page.textContent('main h2')).toBe('Keywords');
+    await loaded.page.close();
+  });
+
+  it('leaves a step the plan does not support unreachable', async () => {
+    const loaded = await loadFlow('keywords', 'keywords');
+    if (loaded === null) return;
+    const disabled = await loaded.page.$$eval('nav.rail li button', (els) =>
+      els.map((e) => (e as HTMLButtonElement).disabled),
+    );
+    expect(disabled).toEqual([false, false, false, true, true]);
+    await loaded.page.close();
+  });
+
+  it('navigates back to a completed step, and Back returns one step', async () => {
+    const loaded = await loadFlow('keywords', 'keywords');
+    if (loaded === null) return;
+    await loaded.page.click('nav.rail li:nth-child(2) button');
+    expect(await loaded.page.textContent('main h2')).toBe('Transcript');
+    await loaded.page.click('button.back');
+    // Back from Transcript is step one, which is the original screen.
+    expect(await loaded.page.textContent('main section.video h2')).toBe('Video');
+    await loaded.page.close();
+  });
+
+  it('keeps step one intact, with Run pipeline still the one red control', async () => {
+    const loaded = await loadFlow('build', 'build');
+    if (loaded === null) return;
+    await loaded.page.click('nav.rail li:nth-child(1) button');
+    const red = await loaded.page.evaluate(() => {
+      const norm = (c: string): string => c.replace(/\s/g, '');
+      const target = 'rgb(237,28,36)';
+      return [...document.querySelectorAll('*')]
+        .filter((el) => {
+          const s = getComputedStyle(el);
+          return (
+            norm(s.backgroundColor) === target ||
+            norm(s.color) === target ||
+            norm(s.borderBottomColor) === target
+          );
+        })
+        .map((el) => el.tagName.toLowerCase() + '.' + el.className);
+    });
+    // Run is disabled here, so it is not painted red either; what matters is
+    // that the rail's current marker never is.
+    expect(red.filter((r) => r.includes('rail'))).toEqual([]);
+    expect(await loaded.page.textContent('button.run')).toBe('Run pipeline');
+    await loaded.page.close();
+  });
+
+  it('fits the rail on one row when docked at the manifest width', async () => {
+    const loaded = await loadFlow('build', 'build', 420);
+    if (loaded === null) return;
+    const rail = await loaded.page.evaluate(() => {
+      const nav = document.querySelector('nav.rail') as HTMLElement;
+      const items = [...nav.querySelectorAll('li')] as HTMLElement[];
+      const tops = new Set(items.map((li) => li.offsetTop));
+      return {
+        rows: tops.size,
+        overflows: nav.scrollWidth > nav.clientWidth,
+        labelsShown: [...nav.querySelectorAll('.l')].filter(
+          (l) => getComputedStyle(l).display !== 'none',
+        ).length,
+      };
+    });
+    expect(rail.rows).toBe(1);
+    expect(rail.overflows).toBe(false);
+    // Numbers plus the current step's name, as the brief requires at 420px.
+    expect(rail.labelsShown).toBe(1);
+    await loaded.page.close();
+  });
+
+  it('shows every label once there is room for two columns', async () => {
+    const loaded = await loadFlow('build', 'build', 1000);
+    if (loaded === null) return;
+    const shown = await loaded.page.evaluate(
+      () =>
+        [...document.querySelectorAll('nav.rail .l')].filter(
+          (l) => getComputedStyle(l).display !== 'none',
+        ).length,
+    );
+    expect(shown).toBe(5);
+    await loaded.page.close();
+  });
+
+  it('shows the plan summary on a step that is not built yet', async () => {
+    const loaded = await loadFlow('keywords', 'keywords');
+    if (loaded === null) return;
+    const text = (await loaded.page.textContent('main')) ?? '';
+    expect(text).toContain('Keywords summary from the plan');
+    expect(text).toContain('This step is not built yet.');
+    await loaded.page.close();
+  });
+
+  it('renders the whole flow with no uncaught errors', async () => {
+    const loaded = await loadFlow('build', 'build');
+    if (loaded === null) return;
+    await loaded.page.click('nav.rail li:nth-child(4) button');
+    await loaded.page.click('nav.rail li:nth-child(5) button');
+    expect(loaded.uncaught).toEqual([]);
+    await loaded.page.close();
+  });
+});

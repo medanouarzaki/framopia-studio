@@ -1,8 +1,22 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { buildFonts } from '@framopia/core/build-fonts';
-import { connect, fetchDryRun, fetchModes, fetchReels, type Connection } from './service.js';
+import {
+  connect,
+  fetchDryRun,
+  fetchModes,
+  fetchReels,
+  fetchSteps,
+  type Connection,
+} from './service.js';
 import { nodeMatch } from './node-match.js';
 import { isWide, observeWidth } from './panel-width.js';
+import {
+  reconcileStep,
+  stepViews,
+  STEP_ORDER,
+  STEP_PROMISE,
+  type StepView,
+} from './steps.js';
 
 /** How often to notice a service that has gone away. Chosen, not measured. */
 const HEARTBEAT_MS = 5000;
@@ -13,8 +27,10 @@ import type {
   DryRunPlan,
   DryRunStage,
   HostEnvironment,
+  PlanSteps,
   Reel,
   ServiceState,
+  StepId,
 } from './types.js';
 
 /**
@@ -88,6 +104,14 @@ function Panel({
   const [connection, setConnection] = useState<Connection | null>(null);
   const [dry, setDry] = useState<DryRunPlan | null>(null);
   const [dryError, setDryError] = useState<string | null>(null);
+  const [plan, setPlan] = useState<PlanSteps | null>(null);
+  const [step, setStep] = useState<StepId>('reel');
+  /*
+   * Whether the user has navigated. Until they have, the panel follows the
+   * plan and opens where the reel actually is; after they have, their choice
+   * stands unless the plan stops supporting it.
+   */
+  const [touched, setTouched] = useState(false);
 
   const check = useCallback(async () => {
     setService({ kind: 'starting' });
@@ -178,6 +202,46 @@ function Panel({
     };
   }, [connection, reel, mode]);
 
+  /*
+   * Step state comes from the plan on disk, never from this component. The
+   * panel is a view over the plan: closing it, restarting After Effects or
+   * reloading the extension must land the user where the reel actually is, and
+   * the plan is the only thing that survives all three.
+   */
+  useEffect(() => {
+    if (connection === null || reel === null || mode === null) {
+      setPlan(null);
+      return;
+    }
+    let current = true;
+    void fetchSteps(connection, reel.label, mode.id).then(
+      (next) => {
+        if (current) setPlan(next);
+      },
+      () => {
+        if (current) setPlan(null);
+      },
+    );
+    return () => {
+      current = false;
+    };
+  }, [connection, reel, mode]);
+
+  useEffect(() => {
+    setStep((current) => reconcileStep(plan, current, touched));
+  }, [plan, touched]);
+
+  /* A different reel is a different job: its progress is not this one's. */
+  useEffect(() => {
+    setTouched(false);
+  }, [reelLabel, modeId]);
+
+  const views = stepViews(plan, step);
+  const goTo = (id: StepId): void => {
+    setTouched(true);
+    setStep(id);
+  };
+
   return (
     <div className={wide ? 'app wide' : 'app'} ref={shell}>
       <header className="brand">
@@ -190,6 +254,9 @@ function Panel({
         ) : null}
       </header>
 
+      <StepRail views={views} onGo={goTo} />
+
+      {step === 'reel' ? (
       <main>
         <ServiceCard
           state={service}
@@ -268,7 +335,93 @@ function Panel({
           )}
         </section>
       </main>
+      ) : (
+        <StepPane
+          view={views.find((v) => v.id === step) as StepView}
+          onBack={() => goTo(previousStep(step))}
+        />
+      )}
     </div>
+  );
+}
+
+/**
+ * The rail. Five entries always, so the shape of the job is visible on an
+ * empty panel; a step the plan does not support is not a button, and its
+ * reason is on the element rather than hidden behind a hover only a mouse can
+ * reach.
+ *
+ * The current marker is deliberately **not** brand red. PROJECT_SPEC §6 spends
+ * `#ED1C24` on one thing, and the user ruled that thing is Run pipeline.
+ */
+function StepRail({
+  views,
+  onGo,
+}: {
+  views: StepView[];
+  onGo: (id: StepId) => void;
+}): JSX.Element {
+  return (
+    <nav className="rail" aria-label="Pipeline steps">
+      <ol>
+        {views.map((view, i) => {
+          const classes = ['step'];
+          if (view.current) classes.push('current');
+          if (!view.available) classes.push('locked');
+          return (
+            <li key={view.id} className={classes.join(' ')}>
+              <button
+                type="button"
+                disabled={!view.available}
+                aria-current={view.current ? 'step' : undefined}
+                title={view.available ? (view.summary ?? view.label) : (view.reason ?? view.label)}
+                onClick={() => onGo(view.id)}
+              >
+                <span className="n">{i + 1}</span>
+                <span className="l">{view.label}</span>
+              </button>
+            </li>
+          );
+        })}
+      </ol>
+    </nav>
+  );
+}
+
+function previousStep(step: StepId): StepId {
+  const i = STEP_ORDER.indexOf(step);
+  return STEP_ORDER[Math.max(0, i - 1)] as StepId;
+}
+
+/**
+ * A step that is not built yet. It says what will live there and shows the
+ * real figures the plan already carries — never a mock of the screen to come,
+ * which would read as a feature that exists and does nothing.
+ */
+function StepPane({ view, onBack }: { view: StepView; onBack: () => void }): JSX.Element {
+  return (
+    <main>
+      <section>
+        <h2>{view.label}</h2>
+        <div className="card">
+          <p className="promise">{STEP_PROMISE[view.id]}</p>
+          {view.summary === null ? null : (
+            <p className="detail" role="status">
+              {view.summary}
+            </p>
+          )}
+          {view.reason === null ? null : (
+            <p className="reason" role="status">
+              {view.reason}
+            </p>
+          )}
+          <p className="note">This step is not built yet.</p>
+        </div>
+        <button className="back" type="button" onClick={onBack}>
+          Back
+        </button>
+      </section>
+    </main>
   );
 }
 

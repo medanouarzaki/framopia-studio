@@ -543,7 +543,20 @@ describe('the dry run', () => {
             ? { reels }
             : url.includes('/modes')
               ? { modes }
-              : {
+              : url.includes('/steps')
+                ? {
+                    reel: 'vitasilk',
+                    planPath: '/v/p.json',
+                    resumeAt: 'reel',
+                    steps: [
+                      { id: 'reel', label: 'Reel', available: true, reason: null, summary: null },
+                      { id: 'transcript', label: 'Transcript', available: false, reason: 'not yet', summary: null },
+                      { id: 'keywords', label: 'Keywords', available: false, reason: 'not yet', summary: null },
+                      { id: 'images', label: 'Images', available: false, reason: 'not yet', summary: null },
+                      { id: 'build', label: 'Build', available: false, reason: 'not yet', summary: null },
+                    ],
+                  }
+                : {
                   reel: 'vitasilk',
                   videoPath: '/v/vitasilk.mov',
                   modeId: 'k2-syndicalia',
@@ -618,7 +631,20 @@ describe('the dry run', () => {
             ? { reels }
             : url.includes('/modes')
               ? { modes }
-              : {
+              : url.includes('/steps')
+                ? {
+                    reel: 'vitasilk',
+                    planPath: '/v/p.json',
+                    resumeAt: 'reel',
+                    steps: [
+                      { id: 'reel', label: 'Reel', available: true, reason: null, summary: null },
+                      { id: 'transcript', label: 'Transcript', available: false, reason: 'not yet', summary: null },
+                      { id: 'keywords', label: 'Keywords', available: false, reason: 'not yet', summary: null },
+                      { id: 'images', label: 'Images', available: false, reason: 'not yet', summary: null },
+                      { id: 'build', label: 'Build', available: false, reason: 'not yet', summary: null },
+                    ],
+                  }
+                : {
                   reel: 'vitasilk',
                   videoPath: '/v/vitasilk.mov',
                   modeId: 'k2-syndicalia',

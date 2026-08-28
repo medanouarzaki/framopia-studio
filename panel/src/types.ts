@@ -114,3 +114,28 @@ export type HostEnvironment =
       /** What the user cannot do as a result, in plain words. */
       prevents: string;
     };
+
+/** The five steps of the flow, in the order PROJECT_SPEC §6 lists them. */
+export type StepId = 'reel' | 'transcript' | 'keywords' | 'images' | 'build';
+
+export interface StepState {
+  id: StepId;
+  label: string;
+  /** Whether the plan on disk supports opening this step. */
+  available: boolean;
+  reason: string | null;
+  summary: string | null;
+}
+
+/**
+ * Step state as the service derived it from the Edit Plan. The panel renders
+ * this and decides none of it: closing the panel or restarting After Effects
+ * must land the user where the reel actually is, and only the plan survives
+ * both.
+ */
+export interface PlanSteps {
+  reel: string;
+  planPath: string | null;
+  steps: StepState[];
+  resumeAt: StepId;
+}

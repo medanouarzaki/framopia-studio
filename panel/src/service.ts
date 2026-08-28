@@ -1,5 +1,5 @@
 import { NODE_NOT_FOUND_HELP } from '@framopia/core/node-path';
-import type { ClientMode, DryRunPlan, HealthPayload, Reel, ServiceError } from './types.js';
+import type { ClientMode, DryRunPlan, HealthPayload, Reel, ServiceError, PlanSteps } from './types.js';
 
 /**
  * The panel's half of the ARCHITECTURE §1.3 handshake: the service binds
@@ -247,5 +247,16 @@ export async function fetchDryRun(
   return await getJson<DryRunPlan>(
     connection,
     `/dry-run?reel=${encodeURIComponent(reel)}&mode=${encodeURIComponent(mode)}`,
+  );
+}
+
+export async function fetchSteps(
+  connection: Connection,
+  reel: string,
+  mode: string,
+): Promise<PlanSteps> {
+  return await getJson<PlanSteps>(
+    connection,
+    `/steps?reel=${encodeURIComponent(reel)}&mode=${encodeURIComponent(mode)}`,
   );
 }

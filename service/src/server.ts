@@ -9,6 +9,7 @@ import { clearManualZone, ManualZoneError, setManualZone } from './frames/plan-z
 import type { Zone } from './editplan/types.js';
 import { listModes, listReels } from './catalogue.js';
 import { dryRun, DryRunError } from './dry-run.js';
+import { stepsFor, StepsError } from './steps.js';
 import { health } from './health.js';
 import { clearHandshake, inspectLock, SERVICE_JSON_PATH, writeHandshake } from './lock.js';
 
@@ -130,6 +131,22 @@ export function createApp(token: string): http.Server {
         } catch (error) {
           if (!(error instanceof DryRunError)) throw error;
           sendJson(res, 400, serviceError('dry-run', error.message, false));
+        }
+        return;
+      }
+
+      if (req.method === 'GET' && url.pathname === '/steps') {
+        const reel = url.searchParams.get('reel');
+        const mode = url.searchParams.get('mode');
+        if (reel === null || mode === null) {
+          sendJson(res, 400, serviceError('steps', 'reel and mode are both required', false));
+          return;
+        }
+        try {
+          sendJson(res, 200, stepsFor(reel, mode));
+        } catch (error) {
+          if (!(error instanceof StepsError)) throw error;
+          sendJson(res, 400, serviceError('steps', error.message, false));
         }
         return;
       }
