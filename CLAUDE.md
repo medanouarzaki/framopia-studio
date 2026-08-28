@@ -550,6 +550,41 @@ edits a template's keyframes**, so the scale is set on the instance, not the
 comp. It also depends on the K2 fonts Block 9 collects: a different face changes
 every width.
 
+### Step 3 is the keyword picker, and SFX is re-derived rather than patched
+
+`GET /keywords?reel=`, `POST /keywords/add`, `POST /keywords/remove`;
+`service/src/keyword-view.ts` derives it all from the plan.
+
+Each keyword shows its card, interval, the analysis's reason, its template
+variant (`kw_slam` or `kw_slam_ar` **by script**), its size — 425 against the
+subtitle's 343, both from `core/src/typography.ts` — and the hit bound to it at
++0.13 s, −20 dB.
+
+**Both edits re-derive `sfx` through `deriveSfxEvents` rather than patching an
+event.** ARCHITECTURE §3 calls SFX generated and never hand-authored, so a hit
+added by hand would drift from the binding the moment the manifest moved.
+
+**A promoted keyword is `edited: true`**, which `humanFlaggedItems` reports and
+`PlanMergeBlockedError` refuses to discard: a transcript change clears the
+keyword block, and the merge stops rather than losing a human's choice.
+**A removal has no such protection** — there is no item left to flag — so a
+transcript change followed by a re-run restores a keyword the user deleted.
+Known gap, not fixed.
+
+**An add appends; it never re-sorts the block.** The stored order is the
+selector's, by score, and re-sorting on an unrelated add would move every item
+as a side effect. The view sorts by start time, which is a rendering decision.
+
+**The SFX preview plays the bound file through the browser**, at the gain the
+build uses (−20 dB is `10 ** (-20/20)` = 0.1 volume). It works from a `file://`
+page because the manifest declares `allow-file-access-from-files`; verified in
+Playwright's Chromium, **not on CEP**, and a failure is reported rather than
+swallowed. `hit_01` is an mp3, not a wav.
+
+**A reel with no keywords says why** — analysis pending, or analysis ran and
+chose none — and every view names the analysis prompt version, the mode and the
+cache entry the plan recorded.
+
 ### A count names its scope, or it is the wrong number
 
 The transcript editor's three ruling counts read **1, 5 and 0** on `vitasilk`
@@ -5356,6 +5391,21 @@ own sentence, and a split term shown whole with the cards it is broken into.
 `تحفيز طبيعي للكولاجين` — the term ORTHOGRAPHY_GUIDE §6 names verbatim — now
 shows on `test-1` as three parts in three cards, which is the evidence the user
 was being asked to rule on and could not see.
+
+## Block 8 part 2, session 20 — the rulings recorded, and step 3
+
+**Spent $0.00; no API was called and the pipeline was not run.** Ledger 108
+entries / sha `50ec3f57…` at both ends. After Effects was not driven.
+
+**The user's three subtitle rulings are recorded in `docs/PROJECT_SPEC.md` §3
+and none is implemented.** Ruling 2 — a card stays tight to its word — ratifies
+Block 7's existing entrance compression, so **the 23 clipped holds are now a
+decision rather than an open defect and there is nothing to build**. Rulings 1
+and 3 are Block 9: the term rule needs a term source the project does not have,
+and the shrink rule needs a width only After Effects can measure and the fonts
+Block 9 collects.
+
+Step 3 is built; the convention above is what it rests on.
 
 See `docs/BLOCKS.md` for the full block plan and `handoffs/` for prior
 session context.
