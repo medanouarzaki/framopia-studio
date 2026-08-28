@@ -61,8 +61,11 @@ describe('keywordsView', () => {
     const view = await keywordsView('vitasilk');
     for (const keyword of view.keywords) {
       expect(keyword.sfx?.sfxId, keyword.id).toBe('hit_01');
-      // Derived from hit_01's −0.72 dBFS peak against the −20 dB target.
-      expect(keyword.sfx?.gainDb).toBeCloseTo(-19.28, 2);
+      // Derived from hit_01's −0.72 dBFS peak against the reel's own dialogue
+      // loudness, not against an absolute figure: −14.4 LUFS + 6 dB of accent.
+      // The −19.28 dB it read before was measured against nothing and could
+      // not be heard on the built reel.
+      expect(keyword.sfx?.gainDb).toBeCloseTo(-7.68, 2);
       // Negative: the file starts well before the word it belongs to.
       expect(keyword.sfx?.offsetS, keyword.id).toBeLessThan(0);
       expect(keyword.sfx?.peakOffsetS).toBeCloseTo(2.0525, 4);
@@ -154,9 +157,9 @@ describe('adding a keyword', () => {
     expect(added?.fontSize).toBe(KEYWORD_FONT_SIZE);
     expect(added?.sfx?.sfxId).toBe('hit_01');
     // Placed by measurement like every other event: before the word, at the
-    // gain derived from the file's own peak.
+    // gain derived from the file's own peak against the reel's dialogue.
     expect(added?.sfx?.offsetS).toBeLessThan(0);
-    expect(added?.sfx?.gainDb).toBeCloseTo(-19.28, 2);
+    expect(added?.sfx?.gainDb).toBeCloseTo(-7.68, 2);
   });
 
   /*
