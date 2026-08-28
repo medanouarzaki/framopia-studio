@@ -74,11 +74,39 @@
           "animated": [
             {
               "path": "Effects/Fast Box Blur/Blur Radius",
-              "keyframes": 2
+              "keyframes": 2,
+              "keys": [
+                {
+                  "index": 1,
+                  "time": 0,
+                  "value": 30,
+                  "unreadable": null
+                },
+                {
+                  "index": 2,
+                  "time": 0.4004004004004,
+                  "value": 0,
+                  "unreadable": null
+                }
+              ]
             },
             {
               "path": "Transform/Opacity",
-              "keyframes": 2
+              "keyframes": 2,
+              "keys": [
+                {
+                  "index": 1,
+                  "time": 0,
+                  "value": 0,
+                  "unreadable": null
+                },
+                {
+                  "index": 2,
+                  "time": 0.4004004004004,
+                  "value": 100,
+                  "unreadable": null
+                }
+              ]
             }
           ]
         },
@@ -147,15 +175,65 @@
           "animated": [
             {
               "path": "Effects/Fast Box Blur/Blur Radius",
-              "keyframes": 2
+              "keyframes": 2,
+              "keys": [
+                {
+                  "index": 1,
+                  "time": 0,
+                  "value": 30,
+                  "unreadable": null
+                },
+                {
+                  "index": 2,
+                  "time": 0.4004004004004,
+                  "value": 0,
+                  "unreadable": null
+                }
+              ]
             },
             {
               "path": "Transform/Scale",
-              "keyframes": 2
+              "keyframes": 2,
+              "keys": [
+                {
+                  "index": 1,
+                  "time": 0,
+                  "value": [
+                    85,
+                    85,
+                    100
+                  ],
+                  "unreadable": null
+                },
+                {
+                  "index": 2,
+                  "time": 0.4004004004004,
+                  "value": [
+                    100,
+                    100,
+                    100
+                  ],
+                  "unreadable": null
+                }
+              ]
             },
             {
               "path": "Transform/Opacity",
-              "keyframes": 2
+              "keyframes": 2,
+              "keys": [
+                {
+                  "index": 1,
+                  "time": 0,
+                  "value": 0,
+                  "unreadable": null
+                },
+                {
+                  "index": 2,
+                  "time": 0.4004004004004,
+                  "value": 100,
+                  "unreadable": null
+                }
+              ]
             }
           ]
         }
@@ -233,15 +311,65 @@
           "animated": [
             {
               "path": "Effects/Fast Box Blur/Blur Radius",
-              "keyframes": 2
+              "keyframes": 2,
+              "keys": [
+                {
+                  "index": 1,
+                  "time": 0,
+                  "value": 30,
+                  "unreadable": null
+                },
+                {
+                  "index": 2,
+                  "time": 0.4004004004004,
+                  "value": 0,
+                  "unreadable": null
+                }
+              ]
             },
             {
               "path": "Transform/Position",
-              "keyframes": 2
+              "keyframes": 2,
+              "keys": [
+                {
+                  "index": 1,
+                  "time": 0,
+                  "value": [
+                    750,
+                    600,
+                    0
+                  ],
+                  "unreadable": null
+                },
+                {
+                  "index": 2,
+                  "time": 0.4004004004004,
+                  "value": [
+                    600,
+                    600,
+                    0
+                  ],
+                  "unreadable": null
+                }
+              ]
             },
             {
               "path": "Transform/Opacity",
-              "keyframes": 2
+              "keyframes": 2,
+              "keys": [
+                {
+                  "index": 1,
+                  "time": 0,
+                  "value": 0,
+                  "unreadable": null
+                },
+                {
+                  "index": 2,
+                  "time": 0.4004004004004,
+                  "value": 100,
+                  "unreadable": null
+                }
+              ]
             }
           ]
         }
@@ -325,15 +453,65 @@
           "animated": [
             {
               "path": "Effects/Fast Box Blur/Blur Radius",
-              "keyframes": 2
+              "keyframes": 2,
+              "keys": [
+                {
+                  "index": 1,
+                  "time": 0,
+                  "value": 30,
+                  "unreadable": null
+                },
+                {
+                  "index": 2,
+                  "time": 0.4004004004004,
+                  "value": 0,
+                  "unreadable": null
+                }
+              ]
             },
             {
               "path": "Transform/Position",
-              "keyframes": 2
+              "keyframes": 2,
+              "keys": [
+                {
+                  "index": 1,
+                  "time": 0,
+                  "value": [
+                    1080,
+                    750,
+                    0
+                  ],
+                  "unreadable": null
+                },
+                {
+                  "index": 2,
+                  "time": 0.4004004004004,
+                  "value": [
+                    1080,
+                    700,
+                    0
+                  ],
+                  "unreadable": null
+                }
+              ]
             },
             {
               "path": "Transform/Opacity",
-              "keyframes": 2
+              "keyframes": 2,
+              "keys": [
+                {
+                  "index": 1,
+                  "time": 0,
+                  "value": 0,
+                  "unreadable": null
+                },
+                {
+                  "index": 2,
+                  "time": 0.4004004004004,
+                  "value": 100,
+                  "unreadable": null
+                }
+              ]
             }
           ]
         }
@@ -417,15 +595,65 @@
           "animated": [
             {
               "path": "Effects/Fast Box Blur/Blur Radius",
-              "keyframes": 2
+              "keyframes": 2,
+              "keys": [
+                {
+                  "index": 1,
+                  "time": 0,
+                  "value": 30,
+                  "unreadable": null
+                },
+                {
+                  "index": 2,
+                  "time": 0.4004004004004,
+                  "value": 0,
+                  "unreadable": null
+                }
+              ]
             },
             {
               "path": "Transform/Position",
-              "keyframes": 2
+              "keyframes": 2,
+              "keys": [
+                {
+                  "index": 1,
+                  "time": 0,
+                  "value": [
+                    1080,
+                    750,
+                    0
+                  ],
+                  "unreadable": null
+                },
+                {
+                  "index": 2,
+                  "time": 0.4004004004004,
+                  "value": [
+                    1080,
+                    700,
+                    0
+                  ],
+                  "unreadable": null
+                }
+              ]
             },
             {
               "path": "Transform/Opacity",
-              "keyframes": 2
+              "keyframes": 2,
+              "keys": [
+                {
+                  "index": 1,
+                  "time": 0,
+                  "value": 0,
+                  "unreadable": null
+                },
+                {
+                  "index": 2,
+                  "time": 0.4004004004004,
+                  "value": 100,
+                  "unreadable": null
+                }
+              ]
             }
           ]
         }
@@ -509,15 +737,65 @@
           "animated": [
             {
               "path": "Effects/Fast Box Blur/Blur Radius",
-              "keyframes": 2
+              "keyframes": 2,
+              "keys": [
+                {
+                  "index": 1,
+                  "time": 0,
+                  "value": 30,
+                  "unreadable": null
+                },
+                {
+                  "index": 2,
+                  "time": 0.4004004004004,
+                  "value": 0,
+                  "unreadable": null
+                }
+              ]
             },
             {
               "path": "Transform/Position",
-              "keyframes": 2
+              "keyframes": 2,
+              "keys": [
+                {
+                  "index": 1,
+                  "time": 0,
+                  "value": [
+                    1080,
+                    750,
+                    0
+                  ],
+                  "unreadable": null
+                },
+                {
+                  "index": 2,
+                  "time": 0.4004004004004,
+                  "value": [
+                    1080,
+                    700,
+                    0
+                  ],
+                  "unreadable": null
+                }
+              ]
             },
             {
               "path": "Transform/Opacity",
-              "keyframes": 2
+              "keyframes": 2,
+              "keys": [
+                {
+                  "index": 1,
+                  "time": 0,
+                  "value": 0,
+                  "unreadable": null
+                },
+                {
+                  "index": 2,
+                  "time": 0.4004004004004,
+                  "value": 100,
+                  "unreadable": null
+                }
+              ]
             }
           ]
         }
@@ -601,15 +879,65 @@
           "animated": [
             {
               "path": "Effects/Fast Box Blur/Blur Radius",
-              "keyframes": 2
+              "keyframes": 2,
+              "keys": [
+                {
+                  "index": 1,
+                  "time": 0,
+                  "value": 30,
+                  "unreadable": null
+                },
+                {
+                  "index": 2,
+                  "time": 0.4004004004004,
+                  "value": 0,
+                  "unreadable": null
+                }
+              ]
             },
             {
               "path": "Transform/Position",
-              "keyframes": 2
+              "keyframes": 2,
+              "keys": [
+                {
+                  "index": 1,
+                  "time": 0,
+                  "value": [
+                    1080,
+                    750,
+                    0
+                  ],
+                  "unreadable": null
+                },
+                {
+                  "index": 2,
+                  "time": 0.4004004004004,
+                  "value": [
+                    1080,
+                    700,
+                    0
+                  ],
+                  "unreadable": null
+                }
+              ]
             },
             {
               "path": "Transform/Opacity",
-              "keyframes": 2
+              "keyframes": 2,
+              "keys": [
+                {
+                  "index": 1,
+                  "time": 0,
+                  "value": 0,
+                  "unreadable": null
+                },
+                {
+                  "index": 2,
+                  "time": 0.4004004004004,
+                  "value": 100,
+                  "unreadable": null
+                }
+              ]
             }
           ]
         }
