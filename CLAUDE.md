@@ -487,6 +487,39 @@ Not available in Chromium 99, and on the denylist: CSS container queries
 **Available and used**: `ResizeObserver` (64), `AbortController` (66), grid and
 flex `gap` (84), `overflow-wrap: anywhere` (80), custom properties (49).
 
+### The panel is a five-step view over the plan, never a wizard
+
+`1 Reel · 2 Transcript · 3 Keywords · 4 Images · 5 Build`. **Step availability
+and where the panel opens are derived from the Edit Plan on disk**, by
+`stepsFor` in `service/src/steps.ts`, served at `GET /steps?reel=&mode=`. The
+panel renders what it is told and decides none of it: closing the panel,
+restarting After Effects or reloading the extension has to land the user where
+the reel actually is, and the plan is the only thing that survives all three.
+
+`resumeAt` is **the end of the unbroken run of available steps, not the furthest
+available one.** `build` is available whenever there are cards, so taking the
+last would open a reel with no keywords straight on Build and hide the gap that
+is the actual next thing to do. Today: ground-truth and test-3 resume at
+`transcript`, test-2 at `keywords`, test-1 and vitasilk at `build`.
+
+**Steps 2 to 5 are honest empty states.** Each names what will live there and
+shows figures already on the plan — words and cards, keyword count, slots and
+candidates *actually on disk*, the fonts a build would use. Nothing is mocked.
+
+**The rail's current marker is white, never brand red.** PROJECT_SPEC §6 spends
+`#ED1C24` on one thing and the user ruled that thing is Run pipeline; a red rail
+would put four more of them on screen. Pinned by a browser test that walks the
+computed styles.
+
+**Docked at the manifest's 420 px the rail shows the numbers and only the
+current step's name**, on one row, never wrapping and never scrolling
+sideways — asserted by measuring `offsetTop` and `scrollWidth` in a real engine.
+Labels return at the two-column width.
+
+**A malformed `/steps` payload degrades to a locked rail, never a throw.** The
+same rule that keeps the startup path from throwing, applied to the service's
+replies.
+
 ### The panel is laid out by a measured width, not a container query
 
 A docked CEP panel's **window** is the size of the screen while its **panel** is
@@ -615,6 +648,28 @@ human-flagged items — but **no plan carries one**: `chosenCandidateId` is null
 all nine slots and no keyword is `edited`. So the clear happens silently, without
 `--force`, and `vitasilk` loses the plan-side record of ten generated images.
 The files and the cache entries survive; the plan's pointers do not.
+
+### A cache entry a reference depends on is never evicted
+
+`MAX_ENTRIES_PER_VIDEO` is 3 and `vitasilk` holds 3, so a fresh transcription
+evicts the least recently written. The correction call is not reproducible, so
+evicting the entry a hand-made reference describes does not cost a
+re-transcription — it makes the reference a description of a transcript that no
+longer exists and **cannot be recreated at any price**.
+
+`protectedEntryDirs` in `service/src/transcription/protected-entries.ts` derives
+the protected set **from the reference files themselves**: the reference names
+its reel, the reel names its plan, the plan carries the video hash, and the
+entry is whichever one `selectTranscriptionEntry` picks. **No directory name is
+typed anywhere** — a list a human maintains is a list nobody checks, and it
+would silently stop protecting anything the day a reference was added for
+another reel.
+
+If everything over budget is protected, `evictStaleEntries` throws
+`ProtectedEvictionError` rather than evicting or quietly leaving the video over
+budget. The one thing a reference does not record is its entry id, so protection
+resolves through the pinned prompt version; that is exact while
+`ACTIVE_PROMPT_VERSION` is frozen, which it is for Block 8.
 
 ### The correction prompt version is frozen for the rest of Block 8
 
@@ -4975,6 +5030,25 @@ gained a real anchor where it had been a zero-duration interpolated point. The
 tail of that run is still displaced, because `il nourrit` needs a split and `26`
 a merge; before-and-after word by word in
 `docs/DEFECT-alignment-script-mismatch.md` §A.0.3.
+
+## Block 8 part 2, session 15 — the staged flow
+
+**Spent $0.00; no API was called.** Ledger 108 entries / sha `50ec3f57…` at both
+ends. After Effects was not driven.
+
+The panel is five steps now, and the two conventions above are what it rests on.
+Step 1 is the previous screen, moved in intact.
+
+**The image estimate was a flat constant and is computed per reel now.** The dry
+run reported **$1.55** for every reel's images — `vitasilk`'s five-slot actual —
+so `test-1`'s four slots read the five-slot number. For `test-1`'s 8 images:
+published **$1.072**, expected actual **$1.20–$1.24**, budgeted ceiling
+**$1.4472** at `IMAGE_COST_MULTIPLIER` 1.35. The dry run shows the **ceiling**
+and the panel now says so — "budgeted ceiling … not a forecast" — rather than
+leaving a number whose meaning the user had to guess. Session 14's "$1.73" was
+$0.18 analysis plus that flat $1.55, and its claim that this re-measured part
+1's ~$1.21 was wrong: **~$1.21 was and is right**, and matches
+`docs/DECISION-image-config.md`'s four-slot measured row of $1.203.
 
 See `docs/BLOCKS.md` for the full block plan and `handoffs/` for prior
 session context.
