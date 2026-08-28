@@ -2,7 +2,8 @@ import {
   FRAME_ASPECT,
   SUBTITLE_BAND,
   WATERMARK_DURATION_S,
-  WATERMARK_MARGIN,
+  WATERMARK_MARGIN_X,
+  WATERMARK_MARGIN_Y,
   WATERMARK_WIDTH_FRACTION,
 } from './constants.js';
 import { type Rect } from './geometry.js';
@@ -97,8 +98,8 @@ export function placeWatermark(input: WatermarkInput): WatermarkPlacement {
   const w = WATERMARK_WIDTH_FRACTION;
   // Height in frame-height fractions, from the artwork's own aspect ratio.
   const h = ((w * input.sourceHeight) / input.sourceWidth) / FRAME_ASPECT;
-  const m = WATERMARK_MARGIN;
-  const mY = m * FRAME_ASPECT;
+  const m = WATERMARK_MARGIN_X;
+  const mY = WATERMARK_MARGIN_Y;
 
   const candidates: { corner: string; rect: Rect }[] = [
     { corner: 'top-left', rect: { x: m, y: mY, w, h } },

@@ -136,8 +136,32 @@ export const WATERMARK_DURATION_S = 1;
 /** Audio level for the watermark layer. The user's own setting. */
 export const WATERMARK_GAIN_DB = -20;
 
-/** Clearance between the watermark and the frame edge. CHOSEN, NOT MEASURED. */
-export const WATERMARK_MARGIN = 0.03;
+/**
+ * Clearance between the watermark and the frame edge, **per axis**. CHOSEN,
+ * NOT MEASURED.
+ *
+ * One number could not express what the user wants. `WATERMARK_MARGIN_X` is a
+ * fraction of frame **width** and `WATERMARK_MARGIN_Y` of frame **height**, so
+ * they are only equal in pixels when the second is the first divided by the
+ * frame's aspect ratio — and the single constant this replaces was multiplied
+ * by it instead, putting the mark 65 px from the side and **205 px** from the
+ * top on a 2160x3840 frame.
+ *
+ * **Neither default is changed here.** `WATERMARK_MARGIN_Y` reproduces exactly
+ * what the one constant produced, so the mark sits where it sat; making the two
+ * settable independently is what lets the user rule on the number.
+ * `benchmarks/RESULTS-block8-watermark-inset.md` is what he rules from.
+ */
+export const WATERMARK_MARGIN_X = 0.03;
+export const WATERMARK_MARGIN_Y = 0.03 * FRAME_ASPECT;
+
+/** Both insets in source pixels, for reporting rather than for placement. */
+export function watermarkMarginPx(): { x: number; y: number } {
+  return {
+    x: WATERMARK_MARGIN_X * FRAME_WIDTH,
+    y: WATERMARK_MARGIN_Y * FRAME_HEIGHT,
+  };
+}
 
 /**
  * Mirrors MIN_ZONE_SHORT_EDGE in the same file, and is applied here to the

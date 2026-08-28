@@ -596,3 +596,13 @@ audible sample — but the sound is **31.2 dB below its own peak** there, roughl
 early**, which is the frame grid rounding early by design and below what the
 timeline can express.
 
+### The watermark inset is per axis — 2026-08-29
+
+`WATERMARK_MARGIN` was one number used for both axes, and the vertical
+placement **multiplied** it by the frame's aspect ratio where it should divide:
+the mark sits **64.8 px from the side and 204.8 px from the top**. It is now
+`WATERMARK_MARGIN_X` (a fraction of frame width) and `WATERMARK_MARGIN_Y` (of
+frame height), with the second defined as exactly what the single constant
+produced — **nothing moved.** The candidate insets the user rules from are in
+`benchmarks/RESULTS-block8-watermark-inset.md`.
+

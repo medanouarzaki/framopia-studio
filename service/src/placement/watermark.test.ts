@@ -3,10 +3,12 @@ import { watermarkEnabled, assertBeepsFitWatermark, placeWatermark, WatermarkBee
 import { insideFrame, type Rect } from './geometry.js';
 import {
   FRAME_ASPECT,
+  FRAME_HEIGHT,
   FRAME_WIDTH,
   SUBTITLE_BAND,
+  watermarkMarginPx,
   WATERMARK_DURATION_S,
-  WATERMARK_MARGIN,
+  WATERMARK_MARGIN_X,
   WATERMARK_WIDTH_FRACTION,
 } from './constants.js';
 
@@ -109,8 +111,8 @@ describe('assertBeepsFitWatermark', () => {
   it('keeps its margin from the edge it lands on', () => {
     for (let i = 0; i < 20; i += 1) {
       const r = placeWatermark({ ...base, seed: `m${i}` }).rect;
-      const nearLeft = Math.abs(r.x - WATERMARK_MARGIN) < 1e-9;
-      const nearRight = Math.abs(1 - (r.x + r.w) - WATERMARK_MARGIN) < 1e-9;
+      const nearLeft = Math.abs(r.x - WATERMARK_MARGIN_X) < 1e-9;
+      const nearRight = Math.abs(1 - (r.x + r.w) - WATERMARK_MARGIN_X) < 1e-9;
       expect(nearLeft || nearRight).toBe(true);
     }
   });
@@ -125,5 +127,24 @@ describe('who decides whether a reel is marked', () => {
   it('honours an explicit yes and an explicit no', () => {
     expect(watermarkEnabled({ enabled: true })).toBe(true);
     expect(watermarkEnabled({ enabled: false })).toBe(false);
+  });
+});
+
+/*
+ * The two insets are the same number in different units, so a single constant
+ * could not make them equal on screen: the mark sits 65 px from the side and
+ * 205 px from the top. Splitting them changes nothing today and is what lets
+ * the user rule on the figure.
+ */
+describe('the inset, per axis', () => {
+  it('reproduces exactly what the single constant produced', () => {
+    const px = watermarkMarginPx();
+    expect(px.x).toBeCloseTo(64.8, 1);
+    expect(px.y).toBeCloseTo(204.8, 1);
+  });
+
+  it('would be equal in pixels only when y is x divided by the aspect', () => {
+    const equal = (WATERMARK_MARGIN_X / FRAME_ASPECT) * FRAME_HEIGHT;
+    expect(equal).toBeCloseTo(WATERMARK_MARGIN_X * FRAME_WIDTH, 6);
   });
 });
