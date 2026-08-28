@@ -104,22 +104,24 @@ describe('deriveSfxEvents under the measured rule', () => {
   });
 
   /*
-   * A layer cannot start before the composition, and a sound that would
-   * therefore play late is **not placed at all** since Block 8 session 27 —
-   * `whoosh_01` on the first image was landing 14 frames behind the picture.
-   * `placeSfx` still reports the clamp; the derivation refuses it.
+   * A layer whose lead-in is longer than the reel in front of its element
+   * starts before the composition, which After Effects honours — observed in
+   * the session 28 probe and again in 29. It used to clamp at zero and play
+   * late, then be dropped for it; now it keeps the lead-in and the peak lands
+   * on the impact.
    */
-  it('places nothing whose anchor cannot reach the impact', async () => {
+  it('starts a layer before the composition rather than dropping the sound', async () => {
     const detail = deriveSfxDetail(
       await plan('vitasilk'),
       templates,
       sfxIndex,
       templateImpacts(),
     );
-    expect(detail.events.filter((e) => e.clamped === true)).toEqual([]);
-    expect(detail.unplaceable.length).toBeGreaterThan(0);
-    for (const refused of detail.unplaceable) {
-      expect(refused.lateByS, refused.elementId).toBeGreaterThan(0);
+    expect(detail.beforeComp.length).toBeGreaterThan(0);
+    for (const early of detail.beforeComp) {
+      const event = detail.events.find((e) => e.sourceElementId === early.elementId);
+      expect(event?.timeS, early.elementId).toBeLessThan(0);
+      expect(early.beforeCompS, early.elementId).toBeCloseTo(-(event?.timeS ?? 0), 6);
     }
   });
 

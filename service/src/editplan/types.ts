@@ -443,6 +443,10 @@ export interface SfxEvent {
    * The audio layer's in-point, derived so the file's anchor lands on the
    * template's impact frame. It used to be the element's start plus a fixed
    * offset, which assumed the impact was at the file's first sample.
+   *
+   * **May be negative.** A sound whose lead-in is longer than the reel in front
+   * of its element starts before the composition; After Effects honours that,
+   * and the part before frame zero is simply not heard.
    */
   timeS: number;
   gainDb: number;
@@ -452,12 +456,6 @@ export interface SfxEvent {
    * rule because its file or its template is unmeasured.
    */
   anchorAtS?: number;
-  /**
-   * True when the layer had to start at the composition's start because the
-   * derived in-point was before it, so the anchor lands late by `clampedByS`.
-   */
-  clamped?: boolean;
-  clampedByS?: number;
 }
 
 /** Generated, never hand-authored: recomputed on every build (§3 rules). */

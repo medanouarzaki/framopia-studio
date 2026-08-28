@@ -540,3 +540,50 @@ Effects**, which this session may not do — and a build where AE silently clamp
 a negative `startTime` back to zero would reintroduce exactly the defect being
 removed, inaudibly. It is the first thing to try if the user wants that first
 image to have sound.
+
+### A sound may start before the composition — observed, 2026-08-29
+
+**After Effects honours a negative `startTime`.** Asked for −0.4671 s it reports
+−0.4671 s; asked for −1.5 s it reports −1.5 s. Read back from the running
+application by `npm run probe:audio-start`, in sessions 28 and 29:
+
+| case | asked start | AE reports | in-point | out | peak lands |
+|---|---:|---:|---:|---:|---:|
+| control, positive | 1.0000 | 1.0000 | 1.0000 | 2.95 | 1.6913 |
+| **the case in question** | **−0.4671** | **−0.4671** | −0.4671 | 1.48 | **0.2241** |
+| same, in-point pinned to 0 | −0.4671 | −0.4671 | **0.0000** | 1.48 | 0.2241 |
+| deep negative | −1.5000 | −1.5000 | −1.5000 | 0.45 | −0.8087 |
+
+**`startTime` and `inPoint` move independently**, which is the mechanism: the
+layer's own time zero can sit before the composition while the portion that
+plays begins at frame zero. The builder sets both — `startTime` to the derived
+in-point, and `inPoint` to 0 when that is negative — so the active range is
+exactly the composition rather than inherited.
+
+**So `placeSfx` no longer clamps.** The peak lands on the impact frame for every
+sound, whatever its lead-in, and `beforeCompS` reports how much of the file
+falls outside the composition. `SfxPlacement.clamped` and `clampedByS` are gone,
+as are `SfxEvent.clamped` and `clampedByS` — no plan carried them — and the
+`unplaceable` refusal path session 27 added is **retired**, because no case can
+reach it any more.
+
+`checkBuildability` no longer reports a negative `sfx.events` time as an issue.
+That rule was true while the placement clamped and false the moment it stopped.
+
+**The corpus: 7 events → 9, and not one of the 7 moved.**
+
+| reel | element | before | after |
+|---|---|---:|---:|
+| test-1 | img001 | — | **−0.467** |
+| test-1 | img002 | 4.037 | 4.037 |
+| test-1 | img003 | 10.377 | 10.377 |
+| test-1 | img004 | 19.152 | 19.152 |
+| vitasilk | img001 | — | **−0.467** |
+| vitasilk | img002 | 5.706 | 5.706 |
+| vitasilk | img003 | 11.078 | 11.078 |
+| vitasilk | img004 | 16.383 | 16.383 |
+| vitasilk | img005 | 19.453 | 19.453 |
+
+**Every image in the corpus has a sound again**, and the guarantee is
+unconditional: `SilentImageSlotError` is unchanged for the case it was built
+for — a template that binds nothing.

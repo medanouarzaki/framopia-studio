@@ -8,6 +8,7 @@ import { checkBuildability } from './buildability.js';
 
 const FOOTAGE = path.join(REPO_ROOT, 'my files', 'test videos');
 const REELS = ['ground truth', 'test 1', 'test 2', 'test 3', 'vitasilk'];
+const FPS = 30000 / 1001;
 const templates = templatesById(loadTemplateManifest());
 const sfxIndex = loadSfxIndex();
 
@@ -26,14 +27,13 @@ const derive = async (reel: string) => {
   };
 };
 
-describe('every image gets a sound, or is reported as unreachable', () => {
-  it('holds on every reel in the corpus, one way or the other', async () => {
+describe('every image gets a sound', () => {
+  it('holds on every reel in the corpus, with no exception left', async () => {
     for (const reel of REELS) {
       const { plan, detail } = await derive(reel);
       const sounded = new Set(detail.events.map((e) => e.sourceElementId));
-      const refused = new Set(detail.unplaceable.map((u) => u.elementId));
       for (const slot of plan.images.slots) {
-        expect(sounded.has(slot.id) || refused.has(slot.id), `${reel} ${slot.id}`).toBe(true);
+        expect(sounded.has(slot.id), `${reel} ${slot.id}`).toBe(true);
       }
     }
   });
@@ -41,31 +41,39 @@ describe('every image gets a sound, or is reported as unreachable', () => {
   /*
    * `whoosh_01`'s anchor is 0.69 s into the file and the impact is 0.135 s
    * after the element, so it needs 0.556 s of reel in front of the image.
-   * `img001` sits at 0.099 s on both reels that have one, and the sound used to
-   * clamp to zero and play 14 frames behind the picture — which is what the
-   * user heard as "clearly separate".
+   * `img001` sits at 0.099 s on both reels that have one. It used to clamp to
+   * zero and play 14 frames behind the picture, then be dropped for it; After
+   * Effects honours a negative start, so it keeps its lead-in instead.
    */
-  it('refuses the sound on the first image rather than playing it late', async () => {
+  it('starts the first image’s sound before the composition', async () => {
     for (const reel of ['test 1', 'vitasilk']) {
       const { detail } = await derive(reel);
-      expect(detail.unplaceable.map((u) => u.elementId), reel).toEqual(['img001']);
-      expect(detail.unplaceable[0]?.lateByS, reel).toBeCloseTo(0.467, 3);
-      expect(detail.events.some((e) => e.sourceElementId === 'img001'), reel).toBe(false);
+      const first = detail.events.find((e) => e.sourceElementId === 'img001');
+      expect(first, reel).toBeDefined();
+      expect(first?.timeS, reel).toBeCloseTo(-0.4671, 4);
+      expect(detail.beforeComp.map((b) => b.elementId), reel).toEqual(['img001']);
+      expect(detail.beforeComp[0]?.beforeCompS, reel).toBeCloseTo(0.4671, 4);
     }
   });
 
-  it('leaves nothing clamped anywhere in the corpus', async () => {
+  /* Every sound lands its anchor on the impact, wherever its layer begins. */
+  it('lands every anchor on its element’s impact frame', async () => {
     for (const reel of REELS) {
-      const { detail } = await derive(reel);
-      expect(detail.events.filter((e) => e.clamped === true), reel).toEqual([]);
+      const { plan, detail } = await derive(reel);
+      for (const event of detail.events) {
+        const slot = plan.images.slots.find((s) => s.id === event.sourceElementId);
+        if (slot === undefined || event.anchorAtS === undefined) continue;
+        const impactAt = slot.start + 0.135446;
+        expect(Math.abs(event.anchorAtS - impactAt) * FPS, `${reel}/${event.id}`)
+          .toBeLessThanOrEqual(0.5);
+      }
     }
   });
 
-  /* An image far enough into the reel keeps its sound, exactly as before. */
-  it('places every image that has room in front of it', async () => {
+  it('places every image, including the ones nearest the reel’s start', async () => {
     const { detail } = await derive('vitasilk');
     expect(detail.events.map((e) => e.sourceElementId)).toEqual([
-      'img002', 'img003', 'img004', 'img005',
+      'img001', 'img002', 'img003', 'img004', 'img005',
     ]);
   });
 
@@ -127,8 +135,8 @@ describe('the corpus, with keywords silent', () => {
       total += detail.events.length;
       expect(detail.events.every((e) => e.sfxId.startsWith('whoosh')), reel).toBe(true);
     }
-    // Nine image slots, less the two first-in-reel ones no sound can reach.
-    expect(total).toBe(7);
+    // One per image slot, with nothing left unreachable.
+    expect(total).toBe(9);
   });
 
   it('is stable: deriving twice gives the same events', async () => {

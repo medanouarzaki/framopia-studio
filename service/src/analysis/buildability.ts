@@ -149,7 +149,13 @@ export function checkBuildability(
   });
 
   for (const event of plan.sfx.events) {
-    if (!Number.isFinite(event.timeS) || event.timeS < 0) {
+    /*
+     * A negative in-point is legitimate since Block 8 session 29: a sound whose
+     * lead-in is longer than the reel in front of its element starts before the
+     * composition, and After Effects honours that. What is still a defect is a
+     * time that is not a number at all.
+     */
+    if (!Number.isFinite(event.timeS)) {
       issues.push({ path: 'sfx.events', message: `${event.id} fires at ${event.timeS}s` });
     }
   }

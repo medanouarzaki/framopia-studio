@@ -153,7 +153,10 @@ describe('Build availability', () => {
   /* "5 buildability issue(s)" tells a user a number and nothing to act on. */
   it('names the buildability issues rather than counting them', () => {
     const build = stepsFor('vitasilk', 'k2-syndicalia').steps.find((s) => s.id === 'build');
+    // Five short subtitle cards, and nothing else: an sfx event starting
+    // before the composition stopped being an issue in session 29.
     expect(build?.issues).toHaveLength(5);
+    expect(build?.issues?.some((i) => i.includes('sfx.events'))).toBe(false);
     expect(build?.issues?.[0]).toContain('subtitles.groups[');
     expect(build?.issues?.[0]).toContain('short by');
   });

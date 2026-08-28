@@ -14,9 +14,10 @@ const FPS = 30000 / 1001;
 /**
  * An image slot that would be built silent.
  *
- * **Every image gets a sound** (user ruling, Block 8 session 26), unless no
- * sound can reach it in time — see `unplaceable`, which is the one exception
- * and is reported rather than thrown.
+ * **Every image gets a sound** (user ruling, Block 8 session 26), with no
+ * exception: since Block 8 session 29 a sound whose lead-in is longer than the
+ * reel in front of its element simply starts before the composition, so there
+ * is no longer a case where one cannot be placed.
  *
  * A slot with no template at all is a different thing and is not this error:
  * the builder drops it and `checkBuildability` names it, and the plan passes
@@ -35,11 +36,10 @@ export class SilentImageSlotError extends Error {
 export interface SfxDerivation {
   events: SfxEvent[];
   /**
-   * Sounds that were not placed, because the element starts too near the
-   * composition for the file's lead-in to fit in front of it. Reported per
-   * element with how late the sound would have been.
+   * Events whose layer begins before the composition, with how much of the file
+   * falls outside it and is therefore not heard.
    */
-  unplaceable: { elementId: string; sfxId: string; lateByS: number }[];
+  beforeComp: { elementId: string; sfxId: string; beforeCompS: number }[];
 }
 
 export class UnknownSfxError extends Error {
@@ -98,7 +98,7 @@ export function deriveSfxDetail(
         });
   const known = new Set(sfxIndex.sfx.map((s) => s.id));
   const events: SfxEvent[] = [];
-  const unplaceable: SfxDerivation['unplaceable'] = [];
+  const beforeComp: SfxDerivation['beforeComp'] = [];
 
   const elements: { id: string; start: number; templateId: string | null }[] = [
     ...plan.subtitles.groups.map((g) => ({ id: g.id, start: g.start, templateId: g.templateId })),
@@ -137,26 +137,13 @@ export function deriveSfxDetail(
         impactS,
         peakOffsetS: measured.anchorOffsetS,
         fps: FPS,
-        compStartS: 0,
       });
-
-      /*
-       * A sound whose anchor cannot reach the impact is not placed at all.
-       * It used to clamp to the composition start and play late: `whoosh_01`'s
-       * anchor is 0.69 s into the file, so on an image at 0.099 s the peak
-       * landed 14 frames behind the picture, which is what the user heard as
-       * "clearly separate". No file in the index is short enough for that slot
-       * — `whoosh_02` would still be 9.7 frames late — so there is nothing to
-       * substitute, and **a sound that is audibly wrong is worse than no
-       * sound**. That is the ruling that removed the hits and it applies here.
-       */
-      if (placed.clamped) {
-        unplaceable.push({
+      if (placed.beforeCompS > 0) {
+        beforeComp.push({
           elementId: element.id,
           sfxId: binding.sfxId,
-          lateByS: placed.clampedByS ?? 0,
+          beforeCompS: placed.beforeCompS,
         });
-        continue;
       }
 
       sounded.add(element.id);
@@ -180,21 +167,20 @@ export function deriveSfxDetail(
   }
 
   /*
-   * Only slots that have a template, and only where a sound was not refused for
-   * being unplaceable: a slot with no template is not a silent image but an
-   * absent one — the builder drops it and `checkBuildability` names it — and an
-   * unplaceable sound is a decision this function has just made and reported.
+   * Only slots that have a template: one without is not a silent image, it is
+   * an absent one — the builder drops it and `checkBuildability` names it — and
+   * the plan passes through that state legitimately before templates are
+   * assigned.
    */
-  const refused = new Set(unplaceable.map((u) => u.elementId));
   const silent = plan.images.slots
-    .filter((s) => s.templateId !== null && !sounded.has(s.id) && !refused.has(s.id))
+    .filter((s) => s.templateId !== null && !sounded.has(s.id))
     .map((s) => s.id);
   if (silent.length > 0) throw new SilentImageSlotError(silent);
 
   events.sort((a, b) => a.timeS - b.timeS || (a.sourceElementId < b.sourceElementId ? -1 : 1));
   return {
     events: events.map((e, i) => ({ ...e, id: `sfx${String(i + 1).padStart(3, '0')}` })),
-    unplaceable,
+    beforeComp,
   };
 }
 

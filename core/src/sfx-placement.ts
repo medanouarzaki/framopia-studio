@@ -20,23 +20,21 @@ export interface SfxPlacementInput {
   /** The file's peak, in seconds from its first sample. */
   peakOffsetS: number;
   fps: number;
-  /** The composition's start, before which a layer cannot begin. */
-  compStartS?: number;
 }
 
 export interface SfxPlacement {
-  /** When the audio layer starts, snapped to the frame grid. */
+  /**
+   * When the audio layer starts, snapped to the frame grid. **May be negative:
+   * a layer whose lead-in is longer than the reel in front of its element
+   * begins before the composition.**
+   */
   inPointS: number;
-  /** Where the peak actually lands after snapping. */
+  /** Where the peak actually lands after snapping. Always the impact. */
   peakAtS: number;
   /** Frames the peak sits from the impact after snapping; 0 when exact. */
   snapErrorFrames: number;
-  /**
-   * True when the ideal in-point was before the composition's start and had to
-   * be clamped, so the peak lands late by `clampedByS`.
-   */
-  clamped: boolean;
-  clampedByS: number;
+  /** Seconds of the file that fall before the composition and are not heard. */
+  beforeCompS: number;
 }
 
 /**
@@ -54,32 +52,34 @@ export function snapToFrame(seconds: number, fps: number): number {
   return rounded / fps;
 }
 
+/**
+ * The peak lands on the impact, always — including when that puts the layer's
+ * start before the composition.
+ *
+ * **After Effects honours a negative `startTime`**, observed in Block 8
+ * session 28's probe and again in session 29: asked for −0.4671 s it reports
+ * −0.4671 s, and for −1.5 s it reports −1.5 s. The portion of the file before
+ * frame zero simply is not heard, which is what `beforeCompS` reports.
+ *
+ * This used to clamp at the composition start, so a sound whose lead-in did not
+ * fit played late by the difference — `whoosh_01`'s anchor is 0.6913 s into the
+ * file and the first image of a reel sits 0.0990 s in, which put its peak 14
+ * frames behind the picture. Session 27 dropped those sounds rather than play
+ * them late; nothing is dropped now, because nothing has to be.
+ */
 export function placeSfx(input: SfxPlacementInput): SfxPlacement {
-  const { elementStartS, impactS, peakOffsetS, fps, compStartS = 0 } = input;
+  const { elementStartS, impactS, peakOffsetS, fps } = input;
 
   // The peak must land here; the layer therefore starts its own peak offset
   // earlier, and that is the whole derivation.
   const impactAtS = elementStartS + impactS;
-  const ideal = impactAtS - peakOffsetS;
-  const snapped = snapToFrame(ideal, fps);
-
-  /*
-   * A file whose peak sits later than the impact needs a negative in-point.
-   * Inside a composition that is impossible: a layer cannot begin before the
-   * comp does, so the sound is clamped to the start and its peak lands late by
-   * the difference. Reported rather than silently absorbed — a hit that is late
-   * by a known amount is a decision to make, and one that is late invisibly is
-   * the defect this replaces.
-   */
-  const clamped = snapped < compStartS;
-  const inPointS = clamped ? compStartS : snapped;
+  const inPointS = snapToFrame(impactAtS - peakOffsetS, fps);
   const peakAtS = inPointS + peakOffsetS;
 
   return {
     inPointS,
     peakAtS,
     snapErrorFrames: Number(((peakAtS - impactAtS) * fps).toFixed(4)),
-    clamped,
-    clampedByS: clamped ? Number((compStartS - snapped).toFixed(6)) : 0,
+    beforeCompS: inPointS < 0 ? Number((-inPointS).toFixed(6)) : 0,
   };
 }

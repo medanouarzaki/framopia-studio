@@ -25,11 +25,8 @@ const peakOffsetS = WHOOSH.measured.anchorOffsetS;
 /*
  * The real case, read from the plan and the audit rather than typed: the probe
  * has to ask After Effects about the number the placement rule would actually
- * produce, or its answer is about a different question.
- *
- * `placeSfx` with the composition start far below zero gives the unclamped
- * ideal, snapped to the frame grid exactly as a real placement would be — one
- * implementation of the rule rather than a second copy of its arithmetic.
+ * produce, or its answer is about a different question. `placeSfx` is that
+ * rule, so it is called rather than restated.
  */
 const plan = await readEditPlan(
   path.join(REPO_ROOT, 'my files', 'test videos', 'vitasilk.editplan.json'),
@@ -44,13 +41,7 @@ if (impactS === undefined) {
   console.error(`no measured impact for ${slot.templateId}; run npm run audit:templates`);
   process.exit(1);
 }
-const ideal = placeSfx({
-  elementStartS: slot.start,
-  impactS,
-  peakOffsetS,
-  fps: FPS,
-  compStartS: Number.NEGATIVE_INFINITY,
-});
+const ideal = placeSfx({ elementStartS: slot.start, impactS, peakOffsetS, fps: FPS });
 const NEEDED_START_S = ideal.inPointS;
 const IMPACT_AT_S = slot.start + impactS;
 
@@ -99,7 +90,8 @@ const cases = result['cases'] as {
 }[];
 
 console.log(`AE ${String(result['aeVersion'])}, source ${String(result['sourceDurationS'])}s`);
-console.log(`closed the project that was open: ${String(result['closedProject'] ?? 'none')}\n`);
+console.log(`closed the project that was open: ${String(result['closedProject'] ?? 'none')}`);
+console.log(`saved this probe's own project to: ${String(result['savedTo'] ?? 'not saved')}\n`);
 console.log(
   `${'case'.padEnd(22)}${'asked start'.padStart(12)}${'got start'.padStart(11)}` +
     `${'in-point'.padStart(10)}${'out'.padStart(8)}${'peak at'.padStart(10)}  audio`,

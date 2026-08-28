@@ -114,9 +114,19 @@ function framopiaAudioStartProbe(optionsPath, outPath) {
             });
         }
 
+        /*
+         * Save before reporting. A probe that leaves a never-written, dirty
+         * project open blocks every tool that runs after it — including itself,
+         * since the guard above cannot tell a leftover from someone's morning.
+         * Saving discards nothing and leaves the machine usable.
+         */
+        stage = 'save';
+        app.project.save(new File(o.savePath));
+
         result = {
             ok: true,
             aeVersion: app.version,
+            savedTo: app.project.file === null ? null : app.project.file.fsName,
             closedProject: closedProject,
             compDurationS: comp.duration,
             compFrameRate: comp.frameRate,

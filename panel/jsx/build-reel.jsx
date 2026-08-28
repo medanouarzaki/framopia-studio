@@ -264,18 +264,35 @@ function framopiaBuildReel(optionsPath, outPath) {
                 };
             }
 
+            var audioPlaced = [];
             for (j = 0; j < spec.audio.length; j++) {
                 var a = spec.audio[j];
                 var sound = importOnce(a.filePath, imports);
                 var al = master.layers.add(sound);
+                // May be negative: a sound whose lead-in is longer than the reel
+                // in front of its element begins before the composition, so its
+                // peak can still land on the impact frame. AE honours that.
                 al.startTime = a.timeS;
+                // The in-point is stated rather than inherited, so the portion
+                // that plays is exactly the composition even when the layer's
+                // own time zero is outside it.
+                if (a.timeS < 0) al.inPoint = 0;
                 // Audio Levels is in dB and takes a two-channel array.
                 al.property('Audio').property('Audio Levels').setValue([a.gainDb, a.gainDb]);
+                audioPlaced.push({
+                    sourceElementId: a.sourceElementId,
+                    askedStartTimeS: a.timeS,
+                    startTimeS: al.startTime,
+                    inPointS: al.inPoint,
+                    outPointS: al.outPoint,
+                    gainDb: a.gainDb
+                });
                 counts.audio = counts.audio + 1;
             }
 
             comps.push({
                 name: master.name,
+                audio: audioPlaced,
                 frameRate: master.frameRate,
                 duration: master.duration,
                 numLayers: master.numLayers,

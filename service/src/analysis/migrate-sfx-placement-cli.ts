@@ -89,8 +89,8 @@ console.log('');
 
 let moved = 0;
 let total = 0;
-let clamped = 0;
-let unplaceableTotal = 0;
+let startsBeforeComp = 0;
+let beforeCompTotal = 0;
 
 for (const file of readdirSync(dir).filter((f) => f.endsWith('.editplan.json')).sort()) {
   const reel = file.replace('.editplan.json', '');
@@ -121,23 +121,22 @@ for (const file of readdirSync(dir).filter((f) => f.endsWith('.editplan.json')).
   const after = detail.events;
 
   let reelMoved = 0;
-  const lines: string[] = detail.unplaceable.map(
-    (u) =>
-      `    NO SOUND ${u.elementId.padEnd(6)} ${u.sfxId.padEnd(10)} would have been ` +
-      `${u.lateByS.toFixed(3)}s late; the element starts too near the reel`,
+  const lines: string[] = detail.beforeComp.map(
+    (b) =>
+      `    BEFORE 0 ${b.elementId.padEnd(6)} ${b.sfxId.padEnd(10)} starts ` +
+      `${b.beforeCompS.toFixed(4)}s before the composition; that much of the file is not heard`,
   );
-  unplaceableTotal += detail.unplaceable.length;
+  beforeCompTotal += detail.beforeComp.length;
   for (const event of after) {
     total += 1;
     const was = before.get(event.sourceElementId + event.sfxId);
     const deltaFrames = was === undefined ? null : (event.timeS - was.timeS) * FPS;
     if (deltaFrames !== null && Math.abs(deltaFrames) > 0.001) reelMoved += 1;
-    if (event.clamped === true) clamped += 1;
+    if (event.timeS < 0) startsBeforeComp += 1;
     lines.push(
       `    ${event.id} ${event.sourceElementId.padEnd(6)} ${event.sfxId.padEnd(10)} ` +
         `${was === undefined ? '   new' : was.timeS.toFixed(3)} -> ${event.timeS.toFixed(3)}s` +
         `${deltaFrames === null ? '' : ` (${deltaFrames >= 0 ? '+' : ''}${deltaFrames.toFixed(2)}f)`}` +
-        `${event.clamped === true ? `  CLAMPED, anchor late by ${(event.clampedByS ?? 0).toFixed(3)}s` : ''}` +
         `  gain ${event.gainDb.toFixed(2)}dB`,
     );
   }
@@ -164,8 +163,8 @@ for (const file of readdirSync(dir).filter((f) => f.endsWith('.editplan.json')).
 
 console.log('');
 console.log(
-  `${moved} of ${total} events moved; ${clamped} clamped at the composition start; ` +
-    `${unplaceableTotal} not placed for want of room before the element. ` +
+  `${moved} of ${total} events moved; ${startsBeforeComp} starting before frame zero; ` +
+    `${beforeCompTotal} reported with a lead-in outside the composition. ` +
     '$0.00 — this migration makes no model call.',
 );
 if (!apply) console.log('dry run — pass --apply to write');

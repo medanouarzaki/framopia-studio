@@ -27,7 +27,7 @@ describe('placeSfx', () => {
     const placed = placeSfx({ elementStartS: 5, impactS: 0.2, peakOffsetS: 0.05, fps: FPS });
     expect(placed.inPointS).toBeCloseTo(snapToFrame(5.15, FPS), 9);
     expect(Math.abs(placed.snapErrorFrames)).toBeLessThanOrEqual(0.5);
-    expect(placed.clamped).toBe(false);
+    expect(placed.beforeCompS).toBe(0);
   });
 
   /*
@@ -47,23 +47,33 @@ describe('placeSfx', () => {
   });
 
   /*
-   * A layer cannot begin before the composition does. The sound is clamped and
-   * lands late by a stated amount, rather than being silently absorbed.
+   * **After Effects honours a negative `startTime`** — observed in the session
+   * 28 probe and again in 29 — so a lead-in longer than the reel in front of
+   * the element is kept rather than clamped away. This used to pin the layer at
+   * zero and let the peak land late, which is the defect the whole thread was
+   * about.
    */
-  it('clamps at the composition start and says by how much it is late', () => {
+  it('starts before the composition rather than letting the peak land late', () => {
     const placed = placeSfx({
       elementStartS: 0.5,
       impactS: 0.13,
       peakOffsetS: 2.0525,
       fps: FPS,
-      compStartS: 0,
     });
-    expect(placed.clamped).toBe(true);
-    expect(placed.inPointS).toBe(0);
-    expect(placed.clampedByS).toBeGreaterThan(1.4);
-    expect(placed.peakAtS).toBeCloseTo(2.0525, 6);
-    // Late, and the caller can see exactly how late.
-    expect(placed.snapErrorFrames).toBeGreaterThan(0);
+    expect(placed.inPointS).toBeLessThan(0);
+    // The peak still lands on the impact, which is the whole point.
+    expect(placed.peakAtS).toBeCloseTo(0.63, 1);
+    expect(Math.abs(placed.snapErrorFrames)).toBeLessThanOrEqual(0.5);
+    // And the caller can see how much of the file is outside the comp.
+    expect(placed.beforeCompS).toBeCloseTo(-placed.inPointS, 6);
+  });
+
+  /* The peak lands on the impact whatever the file's lead-in, by construction. */
+  it('lands the peak on the impact for any anchor', () => {
+    for (const peakOffsetS of [0, 0.05, 0.5581, 0.6913, 2.0525, 5]) {
+      const placed = placeSfx({ elementStartS: 0.099, impactS: 0.135446, peakOffsetS, fps: FPS });
+      expect(Math.abs(placed.peakAtS - 0.234446) * FPS, `${peakOffsetS}`).toBeLessThanOrEqual(0.5);
+    }
   });
 
   it('reports zero snap error when the ideal already sits on a frame', () => {
@@ -125,31 +135,21 @@ describe('impactFrameOf', () => {
 });
 
 /*
- * The probe that asks After Effects about a negative start has to ask about the
- * number a real placement would produce, so it calls `placeSfx` with the
- * composition start far below zero rather than restating the arithmetic.
+ * `whoosh_01` on the first image of a reel: the case the whole thread was
+ * about, pinned with the figures After Effects itself reported.
  */
-describe('the unclamped ideal', () => {
-  it('returns the negative in-point a sound would need, snapped like any other', () => {
-    const unbounded = placeSfx({
+describe('the first image of a reel', () => {
+  it('reproduces the in-point the probe asked After Effects for', () => {
+    const placed = placeSfx({
       elementStartS: 0.099,
       impactS: 0.135446,
       peakOffsetS: 0.691281,
-      fps: 30000 / 1001,
-      compStartS: Number.NEGATIVE_INFINITY,
+      fps: FPS,
     });
-    expect(unbounded.clamped).toBe(false);
-    expect(unbounded.inPointS).toBeCloseTo(-0.4671, 4);
-    // It is what the clamped placement reports as its shortfall, from the other
-    // side: clamping to zero costs exactly the negative start it wanted.
-    const clamped = placeSfx({
-      elementStartS: 0.099,
-      impactS: 0.135446,
-      peakOffsetS: 0.691281,
-      fps: 30000 / 1001,
-      compStartS: 0,
-    });
-    expect(clamped.clamped).toBe(true);
-    expect(clamped.clampedByS).toBeCloseTo(-unbounded.inPointS, 6);
+    expect(placed.inPointS).toBeCloseTo(-0.4671, 4);
+    expect(placed.beforeCompS).toBeCloseTo(0.4671, 4);
+    // 0.31 frames early, which is the frame grid and not a placement error:
+    // the ideal in-point falls between two frames and the snap rounds early.
+    expect(placed.snapErrorFrames).toBeCloseTo(-0.31, 2);
   });
 });
