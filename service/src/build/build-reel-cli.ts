@@ -21,6 +21,7 @@ import { runBuildReel } from './drive.js';
 import { imageSize } from './image-size.js';
 import { canvasScalePercent, contentBoxes } from './content-box.js';
 import { assertAllPlaced, assertPathsPresent, type PathRef } from './preflight.js';
+import { buildChoiceFor } from './choose-candidate.js';
 import {
   COMP_SIDE_PX,
   WATERMARK_GAIN_DB,
@@ -74,14 +75,11 @@ const chosenIds: string[] = [];
 function candidateFileFor(slotId: string): { path: string; id: string } | null {
   const slot = plan.images.slots.find((s) => s.id === slotId);
   if (slot === undefined) return null;
-  const chosen =
-    slot.chosenCandidateId === null
-      ? undefined
-      : slot.candidates.find((c) => c.id === slot.chosenCandidateId);
-  const c = chosen ?? slot.candidates[0];
+  const choice = buildChoiceFor(slot);
+  const c = slot.candidates.find((x) => x.id === choice.candidateId);
   if (c === undefined) return null;
   const file = slot.presentation === 'cutout' ? (c.cutoutPath ?? c.path) : c.path;
-  const how = chosen === undefined ? 'first, unchosen' : 'chosen';
+  const how = choice.reason;
   const override =
     (slot.overriddenGateFailures ?? []).length > 0
       ? ` overriding ${(slot.overriddenGateFailures ?? []).join('; ')}`

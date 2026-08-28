@@ -3,6 +3,7 @@ import { REPO_ROOT } from '@framopia/core';
 import { listReels } from './catalogue.js';
 import { readEditPlan, writeEditPlan } from './editplan/io.js';
 import { dryRun } from './dry-run.js';
+import { buildChoiceFor } from './build/choose-candidate.js';
 import type { EditPlan, ImageCandidate, ImageSlot } from './editplan/types.js';
 
 /**
@@ -127,8 +128,7 @@ function candidateViewOf(candidate: ImageCandidate, slot: ImageSlot): CandidateV
 }
 
 function slotViewOf(slot: ImageSlot): ImageSlotView {
-  const chosen = slot.chosenCandidateId;
-  const first = slot.candidates[0];
+  const choice = buildChoiceFor(slot);
   return {
     id: slot.id,
     start: slot.start,
@@ -138,15 +138,10 @@ function slotViewOf(slot: ImageSlot): ImageSlotView {
     templateId: slot.templateId,
     zoneId: slot.zoneId,
     candidates: slot.candidates.map((c) => candidateViewOf(c, slot)),
-    chosenCandidateId: chosen,
+    chosenCandidateId: slot.chosenCandidateId,
     overriddenFailures: slot.overriddenGateFailures ?? [],
-    buildsWith: chosen ?? first?.id ?? null,
-    buildsWithReason:
-      chosen !== null
-        ? 'chosen'
-        : first === undefined
-          ? 'no candidates'
-          : 'first candidate, nothing chosen',
+    buildsWith: choice.candidateId,
+    buildsWithReason: choice.reason,
   };
 }
 

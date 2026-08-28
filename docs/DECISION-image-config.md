@@ -121,6 +121,32 @@ These bound what the freeze can be quoted for.
   and by deliberate degradation of a real cutout, not by a model producing a
   bad matte.
 
+## Amendment (2026-08-29) — the gate advises, it never blocks
+
+**Ruled by the user after opening the picker on `vitasilk`.** He asked why the
+build showed five images when the gate had passed two.
+
+**Because a verdict has never blocked anything, and must not start.** A gate
+verdict answers one question — *is this matte clean enough to render as a
+cutout* — and §5.4 makes its consequence a **presentation fallback**: below
+threshold the slot renders as a card instead. It is not a judgement that the
+picture is unusable, and nothing in the pipeline has ever treated it as one.
+
+So, explicitly:
+
+- The chosen candidate is built. With none chosen the **first** is built,
+  whatever its verdict — a documented placeholder from Block 7, when the picker
+  did not exist, not a judgement that the first is best.
+- The plan and the build both **say which of the two happened**, so a build
+  nobody chose for is never mistaken for a choice.
+- A candidate the user chooses over the gate's advice is built, and the plan
+  records the verdict it overrode in `overriddenGateFailures`.
+
+`buildChoiceFor` in `service/src/build/choose-candidate.ts` is the one
+declaration of this, read by the builder and by the picker so the two cannot
+disagree, and pinned by `choose-candidate.test.ts` — including that all five of
+`vitasilk`'s slots build with eight of ten candidates rejected.
+
 ## References
 
 - `benchmarks/RESULTS-block4-imagebakeoff.md` — the six-image comparison.
