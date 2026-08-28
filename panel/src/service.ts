@@ -315,7 +315,13 @@ async function postJson<T>(connection: Connection, route: string, body: unknown)
 /** Edits one word. Ids and order never change; `edited` is set by the service. */
 export async function saveWord(
   connection: Connection,
-  edit: { planPath: string; wordId: string; text?: string; restore?: boolean },
+  edit: {
+    planPath: string;
+    wordId: string;
+    text?: string;
+    restore?: boolean;
+    script?: 'latin' | 'arabic';
+  },
 ): Promise<{ word: TranscriptWordView; hash: string }> {
   return await postJson(connection, '/transcript/word', edit);
 }

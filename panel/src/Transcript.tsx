@@ -94,6 +94,26 @@ export function Transcript({
     );
   };
 
+  /*
+   * Flips how the word is written. Neither `hashTranscript` nor
+   * `transcriptContentHash` covers `script`, so this costs nothing on a re-run
+   * — unlike a text edit. It does move the card to the other script's template,
+   * which is what decides the font.
+   */
+  const flipScript = (word: TranscriptWordView): void => {
+    if (connection === null) return;
+    const script = word.script === 'arabic' ? 'latin' : 'arabic';
+    void saveWord(connection, { planPath: view.planPath, wordId: word.id, script }).then(
+      (result) =>
+        setView({
+          ...view,
+          transcriptHash: result.hash,
+          words: view.words.map((w) => (w.id === word.id ? result.word : w)),
+        }),
+      (failure: Error) => setError(failure.message),
+    );
+  };
+
   const restore = (word: TranscriptWordView): void => {
     if (connection === null) return;
     void saveWord(connection, { planPath: view.planPath, wordId: word.id, restore: true }).then(
@@ -129,6 +149,12 @@ export function Transcript({
         </p>
         {/* Said before he types, not after he has paid for it. */}
         <p className="note">{view.editCost}</p>
+        <p className="reason">
+          The <strong>la</strong>/<strong>ar</strong> control changes how a word is written:
+          its direction, and the font the builder uses — Inter Semi-Bold for Latin, Almarai
+          Bold at 1.07× for Arabic. It also moves the card to that script&apos;s template.
+          It costs nothing on a re-run.
+        </p>
       </div>
 
       <div className="card" style={{ marginTop: 12 }}>
@@ -246,6 +272,19 @@ export function Transcript({
                     Restore
                   </button>
                 ) : null}
+                <button
+                  type="button"
+                  className="chip"
+                  aria-label={`Script of ${word.id}`}
+                  title={
+                    word.script === 'arabic'
+                      ? 'Written in Arabic script: reads right to left, drawn in Almarai Bold at 1.07x. Click for Latin.'
+                      : 'Written in Latin script: reads left to right, drawn in Inter Semi-Bold. Click for Arabic.'
+                  }
+                  onClick={() => flipScript(word)}
+                >
+                  {word.script === 'arabic' ? 'ar' : 'la'}
+                </button>
                 {card === undefined || card === null ? null : (
                   <>
                     <button

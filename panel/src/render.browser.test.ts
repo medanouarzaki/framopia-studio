@@ -942,6 +942,7 @@ describe.skipIf(!built)('the transcript editor', () => {
           const word = window.__transcript.words.find((w) => w.id === body.wordId);
           const next = Object.assign({}, word, { edited: true },
             body.text === undefined ? {} : { text: body.text },
+            body.script === undefined ? {} : { script: body.script },
             body.restore ? { removed: false, removedReason: null } : {});
           return Promise.resolve({ ok: true, json: () => Promise.resolve({ word: next, hash: 'def456' }) });
         }
@@ -1121,6 +1122,37 @@ describe.skipIf(!built)('the transcript editor', () => {
     expect((await loaded.page.textContent('ol.words')) ?? '').toContain('ترطيب');
     // The question is asked, not answered.
     expect((await loaded.page.textContent('ul.questions')) ?? '').toContain('?');
+    await loaded.page.close();
+  });
+
+  /*
+   * The script toggle. Neither hash covers `script`, so this edit is free where
+   * a text edit costs — and the pane says which is which, because a free edit
+   * and a paid one must not look alike.
+   */
+  it('flips a word’s script and its direction with it', async () => {
+    const loaded = await loadTranscript();
+    if (loaded === null) return;
+    const before = await loaded.page.getAttribute('ol.words li:nth-child(1) .wtext', 'dir');
+    expect(before).toBe('ltr');
+
+    await loaded.page.click('ol.words li:nth-child(1) button[aria-label="Script of w0000"]');
+    await loaded.page.waitForFunction(
+      () =>
+        document.querySelector('ol.words li:nth-child(1) .wtext')?.getAttribute('dir') === 'rtl',
+      undefined,
+      { timeout: 5000 },
+    );
+    await loaded.page.close();
+  });
+
+  it('says what flipping the script does, and that it is free', async () => {
+    const loaded = await loadTranscript();
+    if (loaded === null) return;
+    const text = (await loaded.page.textContent('main')) ?? '';
+    expect(text).toContain('Inter Semi-Bold for Latin');
+    expect(text).toContain('Almarai Bold at 1.07');
+    expect(text).toContain('costs nothing on a re-run');
     await loaded.page.close();
   });
 

@@ -175,7 +175,13 @@ export function createApp(token: string): http.Server {
       }
 
       if (req.method === 'POST' && url.pathname === '/transcript/word') {
-        let body: { planPath?: unknown; wordId?: unknown; text?: unknown; restore?: unknown };
+        let body: {
+          planPath?: unknown;
+          wordId?: unknown;
+          text?: unknown;
+          restore?: unknown;
+          script?: unknown;
+        };
         try {
           body = JSON.parse((await readBody(req)) || '{}') as typeof body;
         } catch {
@@ -195,6 +201,9 @@ export function createApp(token: string): http.Server {
               wordId: body.wordId,
               ...(typeof body.text === 'string' ? { text: body.text } : {}),
               ...(body.restore === true ? { restore: true } : {}),
+              ...(body.script === 'latin' || body.script === 'arabic'
+                ? { script: body.script }
+                : {}),
             }),
           );
         } catch (error) {

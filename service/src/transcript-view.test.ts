@@ -7,7 +7,9 @@ import {
   editCard,
   editWord,
   OVERLONG_WORD_CHARS,
+  scriptVariantOf,
   transcriptView,
+  transcriptViewForPlan,
   TranscriptViewError,
 } from './transcript-view.js';
 import { readEditPlan } from './editplan/io.js';
@@ -336,5 +338,94 @@ describe('editing', () => {
     if (card === undefined) throw new Error('fixture has no cards');
     await editCard({ planPath, cardId: card.id, displayStart: 0.1, displayEnd: 0.9 });
     expect((await transcriptViewForPlan(planPath)).transcriptHash).toBe(hash);
+  });
+});
+
+/**
+ * The script toggle. It changes one field, and that field decides the word's
+ * direction and the template variant the builder draws it with.
+ */
+describe('the script toggle', () => {
+  function scratch(): string {
+    const dir = mkdtempSync(path.join(tmpdir(), 'framopia-script-'));
+    const to = path.join(dir, 'vitasilk.editplan.json');
+    copyFileSync(path.join(FOOTAGE, 'vitasilk.editplan.json'), to);
+    return to;
+  }
+
+  it('flips the script and marks the word edited', async () => {
+    const planPath = scratch();
+    const { word } = await editWord({ planPath, wordId: 'w0000', script: 'arabic' });
+    expect(word.script).toBe('arabic');
+    expect(word.edited).toBe(true);
+  });
+
+  /*
+   * The font follows the template variant, not the word: leaving `sub_pop` on
+   * an Arabic word would have the builder draw it in Inter.
+   */
+  it('moves the card to the other script’s template', async () => {
+    const planPath = scratch();
+    const before = await readEditPlan(planPath);
+    const card = before.subtitles.groups.find((g) => g.wordIds.includes('w0000'));
+    expect(card?.templateId).toBe('sub_pop');
+
+    await editWord({ planPath, wordId: 'w0000', script: 'arabic' });
+    const after = await readEditPlan(planPath);
+    expect(after.subtitles.groups.find((g) => g.wordIds.includes('w0000'))?.templateId).toBe(
+      'sub_pop_ar',
+    );
+
+    await editWord({ planPath, wordId: 'w0000', script: 'latin' });
+    const back = await readEditPlan(planPath);
+    expect(back.subtitles.groups.find((g) => g.wordIds.includes('w0000'))?.templateId).toBe(
+      'sub_pop',
+    );
+  });
+
+  /*
+   * **Neither hash covers `script`**, so this edit is free where a text edit
+   * costs about $0.24 on a re-run. A free edit and a paid one must not look
+   * alike, and the panel says which is which.
+   */
+  it('does not change the transcript hash, so a re-run still hits the cache', async () => {
+    const planPath = scratch();
+    const before = await transcriptViewForPlan(planPath);
+    const { hash } = await editWord({ planPath, wordId: 'w0000', script: 'arabic' });
+    expect(hash).toBe(before.transcriptHash);
+  });
+
+  it('does not change the content hash either, so a re-run clears nothing', async () => {
+    const planPath = scratch();
+    const { transcriptContentHash } = await import('./editplan/merge.js');
+    const before = transcriptContentHash(await readEditPlan(planPath));
+    await editWord({ planPath, wordId: 'w0000', script: 'arabic' });
+    expect(transcriptContentHash(await readEditPlan(planPath))).toBe(before);
+  });
+
+  it('says on screen that a script edit is free where a text edit is not', async () => {
+    const view = await transcriptView('vitasilk');
+    expect(view.editCost).toContain('script edits do not');
+  });
+
+  it('leaves a template with no counterpart alone rather than inventing one', () => {
+    expect(scriptVariantOf('img_float', 'arabic')).toBe('img_float');
+    expect(scriptVariantOf('sub_pop', 'arabic')).toBe('sub_pop_ar');
+    expect(scriptVariantOf('sub_pop_ar', 'latin')).toBe('sub_pop');
+  });
+
+  /*
+   * `vitasilk` draft token 5 is `五`, CJK for five, classified Latin. The toggle
+   * cannot correct it: `五` is in `sourceText`, the raw Scribe draft, which is
+   * cache data the panel never writes. What the toggle changes is the displayed
+   * word, which is `5` and is correctly Latin.
+   */
+  it('cannot reach the CJK draft token, because it is not a displayed word', async () => {
+    const view = await transcriptView('vitasilk');
+    const word = view.words.find((w) => w.id === 'w0005');
+    expect(word?.text).toBe('5');
+    expect(word?.sourceText).toBe('五');
+    expect(word?.script).toBe('latin');
+    expect(view.words.every((w) => !/[一-鿿]/.test(w.text))).toBe(true);
   });
 });

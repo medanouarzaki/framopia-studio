@@ -3,6 +3,7 @@ import { loadTemplateManifest, templatesById } from '@framopia/core';
 import { listReels } from './catalogue.js';
 import { readEditPlan, writeEditPlan } from './editplan/io.js';
 import { checkBuildability } from './analysis/buildability.js';
+import { SCRIPT_VARIANT_SUFFIX } from './analysis/assign.js';
 import { hashTranscript } from './analysis/fingerprint.js';
 import type { EditPlan, PlanWord } from './editplan/types.js';
 
@@ -356,7 +357,8 @@ function viewOf(
     questions,
     editCost:
       'Editing a word changes the transcript hash, so the keyword and image-slot caches will ' +
-      'miss and a later run bills for them again. Timing and restore edits do not.',
+      'miss and a later run bills for them again. Timing, restore and script edits do not: ' +
+      'neither hash covers a word\'s script.',
     transcriptHash: hashTranscript(plan.transcript.words),
   };
 }
@@ -368,6 +370,8 @@ export interface WordEdit {
   text?: string;
   /** Bring a removed word back. */
   restore?: boolean;
+  /** Flip how the word is written, which decides its direction and its font. */
+  script?: 'latin' | 'arabic';
 }
 
 /**
@@ -393,6 +397,21 @@ export async function editWord(edit: WordEdit): Promise<{ word: TranscriptWordVi
     word.removed = false;
     word.removedReason = null;
   }
+  if (edit.script !== undefined && edit.script !== word.script) {
+    word.script = edit.script;
+    /*
+     * The template variant follows the script — `sub_pop` for Latin,
+     * `sub_pop_ar` for Arabic — and that is what decides the font the builder
+     * uses. Flipping the script without moving the card would leave Arabic to
+     * be drawn in Inter, so the pairing is applied here rather than left for a
+     * re-run that may never happen.
+     */
+    for (const group of plan.subtitles.groups) {
+      if (!group.wordIds.includes(word.id) || group.templateId === null) continue;
+      group.templateId = scriptVariantOf(group.templateId, edit.script);
+      group.edited = true;
+    }
+  }
   word.edited = true;
   plan.meta.updatedAt = new Date().toISOString();
   await writeEditPlan(edit.planPath, plan);
@@ -400,6 +419,19 @@ export async function editWord(edit: WordEdit): Promise<{ word: TranscriptWordVi
   const view = await transcriptViewForPlan(edit.planPath);
   const updated = view.words.find((w) => w.id === edit.wordId) as TranscriptWordView;
   return { word: updated, hash: view.transcriptHash };
+}
+
+/**
+ * The same template in the other script, by the `_ar` suffix the assigner uses.
+ * Unknown pairings are left alone: a template with no counterpart is a template
+ * the builder still knows how to draw, and inventing an id would not be.
+ */
+export function scriptVariantOf(templateId: string, script: 'latin' | 'arabic'): string {
+  const base = templateId.endsWith(SCRIPT_VARIANT_SUFFIX)
+    ? templateId.slice(0, -SCRIPT_VARIANT_SUFFIX.length)
+    : templateId;
+  const wanted = script === 'arabic' ? `${base}${SCRIPT_VARIANT_SUFFIX}` : base;
+  return templatesById(loadTemplateManifest()).has(wanted) ? wanted : templateId;
 }
 
 export interface CardEdit {
