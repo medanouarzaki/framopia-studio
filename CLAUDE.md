@@ -550,6 +550,47 @@ edits a template's keyframes**, so the scale is set on the instance, not the
 comp. It also depends on the K2 fonts Block 9 collects: a different face changes
 every width.
 
+### The impact frame is not the settle frame, and it is still unmeasured
+
+Session 22 placed every sound on **12 frames**, the last entrance keyframe. The
+user built these templates and has settled what that figure is: **the easing
+front-loads the motion, so the word has landed by frame 4 and frames 4 to 12 are
+the tail settling.** The animation is not changing.
+
+`introS = 0.13 s` (4 frames) describes the **arrival**; the last key (12 frames)
+describes the **settle**. Both are right about different things and neither is
+what SFX placement needed. **The 17 events session 22 moved are therefore 8
+frames late** — down from about two seconds, and not corrected, because the
+correction cannot be measured yet.
+
+The impact is where a property first reaches `IMPACT_THRESHOLD` = **0.95** of its
+final value (`core/src/impact-frame.ts`, **CHOSEN NOT MEASURED**). That needs the
+interpolated curve, and the audit recorded only `index`, `time`, `value` — two
+endpoints and a duration, which cannot say when the value arrives between them.
+On `kw_slam` the same two keys give **11.40 frames if linear** against the user's
+**4**; the whole difference is easing.
+
+`audit.jsx` now records `keyIn/OutInterpolationType` and
+`keyIn/OutTemporalEase` (influence and speed per dimension), optional with a
+default so an older audit reads as *not recorded* rather than as linear.
+**One more `npm run audit:templates` run supplies it.** `impactFrameOf` is
+documented as measuring the settle so nothing reads it as the impact again.
+
+### No script the host evaluates may discard unsaved work
+
+Session 22 fixed this in the audit. **Three more scripts had it and nobody had
+looked**: `panel/jsx/build.jsx`, `panel/jsx/build-reel.jsx` and
+`panel/jsx/measure-survey.jsx` each called
+`app.project.close(CloseOptions.DO_NOT_SAVE_CHANGES)` before starting their own
+project. All three refuse now, with the same sentence and the same rule — an
+unreadable `dirty` counts as dirty, because refusing costs a re-run and guessing
+costs the user's work. Pinned for all three by
+`core/src/audit-safety.test.ts`.
+
+**This is why `vitasilk` was not rebuilt in session 23**: building drives the
+user's open instance, and until he has run the guarded build himself nothing in
+this project has been heard.
+
 ### The audit never closes a project it did not open
 
 `tools/validate-templates/audit.jsx` called
@@ -5533,6 +5574,21 @@ audio, and the placement rule is in force on all five plans.
 All 17 events are corrected.
 
 New commands: `npm run sfx:measure`, `npm run migrate:sfx-placement`.
+
+## Block 8 part 2, session 23 — stopped twice, both times correctly
+
+**Spent $0.00; no API was called, the pipeline was not run, After Effects was
+not driven.** Ledger 108 entries / sha `50ec3f57…` at both ends.
+
+Both hard stops fired. **The impact frame could not be measured**: the audit
+records two endpoints and a duration, and the answer is entirely in the easing —
+linear gives 11.40 frames where the user's eye gives 4. The audit now records
+easing; one more run supplies it. **`vitasilk` was not rebuilt**: every build
+script closed the user's open project without saving, which is the defect
+session 22 fixed in the audit and never checked for elsewhere.
+
+The 17 SFX events remain **8 frames late** and are not corrected, because the
+correction rests on a number nobody has measured.
 
 See `docs/BLOCKS.md` for the full block plan and `handoffs/` for prior
 session context.
