@@ -437,6 +437,12 @@ function checkImages(c: Checker, value: unknown, words: Map<string, Rec>): void 
       }
     });
     c.nullableString(`${p}.chosenCandidateId`, slot.chosenCandidateId);
+    // Optional with a default: absent on every plan written before Block 8
+    // session 30, and on any slot whose choice did not override the gate.
+    if (slot.overriddenGateFailures !== undefined) {
+      const overridden = c.array(`${p}.overriddenGateFailures`, slot.overriddenGateFailures);
+      (overridden ?? []).forEach((f, k) => c.string(`${p}.overriddenGateFailures[${k}]`, f));
+    }
     c.nullableString(`${p}.zoneId`, slot.zoneId);
     c.nullableString(`${p}.templateId`, slot.templateId);
     c.oneOf(`${p}.status`, slot.status, SLOT_STATUSES);

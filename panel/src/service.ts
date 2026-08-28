@@ -1,5 +1,6 @@
 import { NODE_NOT_FOUND_HELP } from '@framopia/core/node-path';
-import type { ClientMode, DryRunPlan, HealthPayload, Reel, ServiceError, PlanSteps , ServiceOrigin , PipelineJob , TranscriptView, TranscriptWordView, TranscriptCardView , KeywordsView } from './types.js';
+import type {
+  ImagesView, ClientMode, DryRunPlan, HealthPayload, Reel, ServiceError, PlanSteps , ServiceOrigin , PipelineJob , TranscriptView, TranscriptWordView, TranscriptCardView , KeywordsView } from './types.js';
 
 /**
  * The panel's half of the ARCHITECTURE §1.3 handshake: the service binds
@@ -361,6 +362,19 @@ export async function removeKeyword(
  * builder used to decide it from whether the asset was on disk — the same
  * answer for every reel.
  */
+/** Step 4: every slot with every candidate, rejected ones included. */
+export async function fetchImages(connection: Connection, reel: string): Promise<ImagesView> {
+  return await getJson<ImagesView>(connection, `/images?reel=${encodeURIComponent(reel)}`);
+}
+
+/** Choose a candidate for a slot, or pass null to clear the choice. */
+export async function chooseImage(
+  connection: Connection,
+  edit: { planPath: string; slotId: string; candidateId: string | null },
+): Promise<ImagesView> {
+  return await postJson(connection, '/images/choose', edit);
+}
+
 export async function setWatermark(
   connection: Connection,
   edit: { planPath: string; enabled: boolean },

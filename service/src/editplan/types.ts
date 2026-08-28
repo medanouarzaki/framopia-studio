@@ -368,6 +368,16 @@ export interface ImageSlot {
   candidates: ImageCandidate[];
   chosenCandidateId: string | null;
   /**
+   * The gate failures a deliberate choice overrode.
+   *
+   * **Schema addition, optional with a default.** The gate advises and the user
+   * decides, but a plan that simply recorded the choice would not say the
+   * verdict had been disagreed with — and on this corpus the gate rejects 8 of
+   * 10 candidates, so overriding is the normal case rather than the exception.
+   * Absent means either nothing was chosen or what was chosen passed.
+   */
+  overriddenGateFailures?: string[];
+  /**
    * The `version` of the mode whose fragments composed `prompt` and
    * `negativePrompt`. Optional under the schema fragility rule: a required
    * field here would make every plan written before Block 4 session 3

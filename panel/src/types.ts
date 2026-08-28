@@ -319,3 +319,59 @@ export interface KeywordsView {
   subtitleFontSize: number;
   keywordFontSize: number;
 }
+
+export interface CandidateView {
+  id: string;
+  imagePath: string;
+  imageExists: boolean;
+  cutoutPath: string | null;
+  cutoutExists: boolean;
+  modelId: string | null;
+  resolution: string | null;
+  generatedAt: string | null;
+  costUsd: number | null;
+  metrics: {
+    alphaEdgeNoise: number;
+    holeRatio: number;
+    foregroundArea: number;
+    edgeHalo: number;
+  } | null;
+  cutoutQuality: number | null;
+  gatePassed: boolean | null;
+  gatePresentation: string | null;
+  gateFailures: string[];
+  unexpectedText: string[];
+  chosen: boolean;
+}
+
+export interface ImageSlotView {
+  id: string;
+  start: number;
+  end: number;
+  idea: string;
+  presentation: 'cutout' | 'card' | null;
+  templateId: string | null;
+  zoneId: string | null;
+  candidates: CandidateView[];
+  chosenCandidateId: string | null;
+  overriddenFailures: string[];
+  buildsWith: string | null;
+  buildsWithReason: string;
+}
+
+export interface ImagesView {
+  reel: string;
+  planPath: string;
+  slots: ImageSlotView[];
+  generationEstimateUsd: number | null;
+  generationNote: string | null;
+  reelSpentUsd: number | null;
+  source: {
+    clientMode: string | null;
+    clientModeVersion: number | null;
+    stageStatus: string;
+    cacheEntryId: string | null;
+    cacheProvenance: string | null;
+  };
+  cardFrameForced: boolean;
+}

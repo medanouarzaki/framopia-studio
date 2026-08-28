@@ -60,17 +60,33 @@ const sfxDir = resolveSfxDir(REPO_ROOT);
 const sfxFiles = new Map(loadSfxIndex().sfx.map((s) => [s.id, path.join(sfxDir, s.file)]));
 
 /**
- * No slot carries a `chosenCandidateId` — the editor picks in Block 8 — so the
- * probe takes the first candidate and the report names it. A `cutout`
- * presentation uses the cut-out PNG; a `card` uses the generated image itself.
+ * The slot's chosen candidate, or the first one when nothing has been chosen.
+ *
+ * **Taking the first is a documented placeholder, not a decision**: it dates
+ * from Block 7, when the picker did not exist and every slot's
+ * `chosenCandidateId` was null. Step 4 sets it now, and a slot that carries a
+ * choice is built with it. The report names which of the two happened.
+ *
+ * A `cutout` presentation uses the cut-out PNG; a `card` uses the generated
+ * image itself.
  */
 const chosenIds: string[] = [];
 function candidateFileFor(slotId: string): { path: string; id: string } | null {
   const slot = plan.images.slots.find((s) => s.id === slotId);
-  const c = slot?.candidates[0];
-  if (slot === undefined || c === undefined) return null;
+  if (slot === undefined) return null;
+  const chosen =
+    slot.chosenCandidateId === null
+      ? undefined
+      : slot.candidates.find((c) => c.id === slot.chosenCandidateId);
+  const c = chosen ?? slot.candidates[0];
+  if (c === undefined) return null;
   const file = slot.presentation === 'cutout' ? (c.cutoutPath ?? c.path) : c.path;
-  chosenIds.push(`${slotId}:${c.id}:${slot.presentation ?? 'null'}`);
+  const how = chosen === undefined ? 'first, unchosen' : 'chosen';
+  const override =
+    (slot.overriddenGateFailures ?? []).length > 0
+      ? ` overriding ${(slot.overriddenGateFailures ?? []).join('; ')}`
+      : '';
+  chosenIds.push(`${slotId}:${c.id}:${slot.presentation ?? 'null'} (${how}${override})`);
   return { path: file, id: c.id };
 }
 

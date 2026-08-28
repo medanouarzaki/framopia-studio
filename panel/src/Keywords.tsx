@@ -92,7 +92,7 @@ export function Keywords({
         <p className="promise">
           {view.keywords.length} emphasised {view.keywords.length === 1 ? 'word' : 'words'}. A
           keyword replaces its subtitle card, renders at {view.keywordFontSize} against the
-          subtitle&apos;s {view.subtitleFontSize}, and fires a hit.
+          subtitle&apos;s {view.subtitleFontSize}, and is silent.
         </p>
         {/* Where the choice came from, per guidelines §3. */}
         <p className="reason">

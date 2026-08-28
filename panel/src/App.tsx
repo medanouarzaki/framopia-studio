@@ -14,6 +14,7 @@ import {
 import { nodeMatch } from './node-match.js';
 import { isWide, observeWidth } from './panel-width.js';
 import { Transcript } from './Transcript.js';
+import { Images } from './Images.js';
 import { Keywords } from './Keywords.js';
 import {
   openingStep,
@@ -510,6 +511,7 @@ function stepContent(
 ): JSX.Element | null {
   if (step === 'transcript') return <Transcript connection={connection} reel={reel} />;
   if (step === 'keywords') return <Keywords connection={connection} reel={reel} />;
+  if (step === 'images') return <Images connection={connection} reel={reel} />;
   return null;
 }
 

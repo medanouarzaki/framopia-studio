@@ -341,3 +341,73 @@ ol.keywords { list-style: none; margin: 14px 0 0; padding: 0; }
   gap: 8px;
   margin: 0 0 12px;
 }
+
+/* Step 4, the image candidate picker. */
+.slots {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.slothead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 4px;
+}
+
+.candidates {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.candidate {
+  flex: 1 1 260px;
+  min-width: 240px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 10px;
+}
+
+/* The chosen one is marked by weight, not by the brand accent: PROJECT_SPEC §6
+   spends #ED1C24 on Run pipeline alone. */
+.candidate.chosen {
+  border-color: var(--text);
+  border-width: 2px;
+  padding: 9px;
+}
+
+.shots {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+
+.shot {
+  width: 108px;
+  height: 108px;
+  object-fit: contain;
+  background: var(--panel-2);
+  border-radius: 4px;
+}
+
+/* A cutout is transparent, so it needs a ground to be visible against. */
+.shot.cut {
+  background: var(--muted);
+}
+
+.tag.pass {
+  border-color: var(--ok);
+  color: var(--ok);
+}
+
+.tag.reject {
+  border-color: var(--warn);
+  color: var(--warn);
+}

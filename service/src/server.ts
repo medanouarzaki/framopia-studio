@@ -7,6 +7,7 @@ import { REPO_ROOT } from '@framopia/core';
 import { createJob, getJob, UnknownJobTypeError } from './jobs.js';
 import { readEditPlan, writeEditPlan } from './editplan/io.js';
 import { clearManualZone, ManualZoneError, setManualZone } from './frames/plan-zones.js';
+import { chooseCandidate, imagesView, ImageViewError } from './image-view.js';
 
 /** The one intro overlay this agency has; Block 7 session 1 measured it. */
 const WATERMARK_ASSET = path.join(REPO_ROOT, 'assets', 'watermark', 'intro.mov');
@@ -372,6 +373,57 @@ export function createApp(token: string): http.Server {
         await withPlan(res, body.planPath, (plan) => {
           plan.zones = setManualZone(plan.zones, body.zone as Zone);
         });
+        return;
+      }
+
+      // Step 4, the image candidate picker.
+      if (req.method === 'GET' && url.pathname === '/images') {
+        const reel = url.searchParams.get('reel');
+        if (reel === null) {
+          sendJson(res, 400, { error: '"reel" is required' });
+          return;
+        }
+        try {
+          sendJson(res, 200, await imagesView(reel));
+        } catch (error) {
+          sendJson(res, error instanceof ImageViewError ? 404 : 500, {
+            error: (error as Error).message,
+          });
+        }
+        return;
+      }
+
+      if (req.method === 'POST' && url.pathname === '/images/choose') {
+        let body: { planPath?: unknown; slotId?: unknown; candidateId?: unknown };
+        try {
+          body = JSON.parse((await readBody(req)) || '{}') as typeof body;
+        } catch {
+          sendJson(res, 400, { error: 'invalid JSON body' });
+          return;
+        }
+        if (typeof body.planPath !== 'string' || typeof body.slotId !== 'string') {
+          sendJson(res, 400, { error: '"planPath" and "slotId" are required' });
+          return;
+        }
+        if (body.candidateId !== null && typeof body.candidateId !== 'string') {
+          sendJson(res, 400, { error: '"candidateId" must be a string or null' });
+          return;
+        }
+        try {
+          sendJson(
+            res,
+            200,
+            await chooseCandidate({
+              planPath: body.planPath,
+              slotId: body.slotId,
+              candidateId: body.candidateId,
+            }),
+          );
+        } catch (error) {
+          sendJson(res, error instanceof ImageViewError ? 400 : 500, {
+            error: (error as Error).message,
+          });
+        }
         return;
       }
 

@@ -1803,16 +1803,18 @@ describe.skipIf(!built)('the step rail', () => {
   });
 
   /*
-   * Keywords was the example until session 20 built it. Images is the step that
-   * is still an empty state, and the assertion follows the thing it is about.
+   * Keywords was the example until session 20 built it, then Images until
+   * session 30. **Every step is built now**, so the empty state has no step
+   * left to demonstrate — what is asserted instead is that a step which is
+   * built renders its own content rather than the placeholder, which is the
+   * property the old test was really protecting.
    */
-  it('shows the plan summary on a step that is not built yet', async () => {
+  it('renders a built step rather than the not-built-yet placeholder', async () => {
     const loaded = await loadFlow('build', 'build');
     if (loaded === null) return;
     await loaded.page.click('nav.rail li:nth-child(4) button');
     const text = (await loaded.page.textContent('main')) ?? '';
-    expect(text).toContain('Images summary from the plan');
-    expect(text).toContain('This step is not built yet.');
+    expect(text).not.toContain('This step is not built yet.');
     await loaded.page.close();
   });
 
@@ -1836,6 +1838,241 @@ describe.skipIf(!built)('the step rail', () => {
     if (loaded === null) return;
     await loaded.page.click('nav.rail li:nth-child(4) button');
     await loaded.page.click('nav.rail li:nth-child(5) button');
+    expect(loaded.uncaught).toEqual([]);
+    await loaded.page.close();
+  });
+});
+
+/*
+ * Step 4, the image candidate picker. The fixture mirrors `vitasilk` as the
+ * service reports it: one slot whose two candidates the gate rejected, one it
+ * passed, and one with nothing generated. The rejections are the point — the
+ * gate's yield on the real reel is 2 of 10.
+ */
+const IMAGES = {
+  reel: 'vitasilk',
+  planPath: '/v/vitasilk.editplan.json',
+  generationEstimateUsd: 1.45,
+  generationNote: 'a run would generate 8, budgeted at most $1.45',
+  reelSpentUsd: 1.550444,
+  cardFrameForced: true,
+  source: {
+    clientMode: 'k2-syndicalia',
+    clientModeVersion: 5,
+    stageStatus: 'done',
+    cacheEntryId: 'images-699c0a38a9c512ff',
+    cacheProvenance: 'exact',
+  },
+  slots: [
+    {
+      id: 'img001',
+      start: 0.099,
+      end: 1.599,
+      idea: 'A single cosmetic bottle on a dark podium',
+      presentation: 'card',
+      templateId: 'img_float',
+      zoneId: 'z_left_4',
+      chosenCandidateId: null,
+      overriddenFailures: [],
+      buildsWith: 'img001-c1',
+      buildsWithReason: 'first candidate, nothing chosen',
+      candidates: [
+        {
+          id: 'img001-c1',
+          imagePath: '/v/img001-c1.jpg',
+          imageExists: true,
+          cutoutPath: '/v/img001-c1.cutout.png',
+          cutoutExists: true,
+          modelId: 'gemini-3-pro-image',
+          resolution: '2K',
+          generatedAt: '2026-08-25T17:43:32.870Z',
+          costUsd: 0,
+          metrics: { alphaEdgeNoise: 0, holeRatio: 0, foregroundArea: 0.3178, edgeHalo: 0.1004 },
+          cutoutQuality: 0,
+          gatePassed: false,
+          gatePresentation: 'card',
+          gateFailures: ['edge_halo 0.1004 > 0.1'],
+          unexpectedText: [],
+          chosen: false,
+        },
+        {
+          id: 'img001-c2',
+          imagePath: '/v/img001-c2.jpg',
+          imageExists: true,
+          cutoutPath: null,
+          cutoutExists: false,
+          modelId: 'gemini-3-pro-image',
+          resolution: '2K',
+          generatedAt: '2026-08-25T17:44:02.870Z',
+          costUsd: 0,
+          metrics: { alphaEdgeNoise: 0, holeRatio: 0, foregroundArea: 0.31, edgeHalo: 0.1187 },
+          cutoutQuality: 0,
+          gatePassed: false,
+          gatePresentation: 'card',
+          gateFailures: ['edge_halo 0.1187 > 0.1'],
+          unexpectedText: ['SERUM'],
+          chosen: false,
+        },
+      ],
+    },
+    {
+      id: 'img002',
+      start: 6.259,
+      end: 8.859,
+      idea: 'A salon interior',
+      presentation: 'cutout',
+      templateId: 'img_slide_left',
+      zoneId: 'z_left_2',
+      chosenCandidateId: null,
+      overriddenFailures: [],
+      buildsWith: 'img002-c1',
+      buildsWithReason: 'first candidate, nothing chosen',
+      candidates: [
+        {
+          id: 'img002-c1',
+          imagePath: '/v/img002-c1.jpg',
+          imageExists: true,
+          cutoutPath: '/v/img002-c1.cutout.png',
+          cutoutExists: true,
+          modelId: 'gemini-3-pro-image',
+          resolution: '2K',
+          generatedAt: '2026-08-25T17:45:02.870Z',
+          costUsd: 0,
+          metrics: { alphaEdgeNoise: 0, holeRatio: 0, foregroundArea: 0.2, edgeHalo: 0.08 },
+          cutoutQuality: 0.174,
+          gatePassed: true,
+          gatePresentation: 'cutout',
+          gateFailures: [],
+          unexpectedText: [],
+          chosen: false,
+        },
+      ],
+    },
+    {
+      id: 'img003',
+      start: 11.6,
+      end: 13.9,
+      idea: 'A close-up of hair',
+      presentation: null,
+      templateId: null,
+      zoneId: null,
+      chosenCandidateId: null,
+      overriddenFailures: [],
+      buildsWith: null,
+      buildsWithReason: 'no candidates',
+      candidates: [],
+    },
+  ],
+};
+
+async function loadImages(payload: unknown = IMAGES): Promise<Loaded | null> {
+  if (browser === undefined) return null;
+  const page = await browser.newPage({ viewport: { width: 1000, height: 900 } });
+  const uncaught: string[] = [];
+  page.on('pageerror', (error: Error) => uncaught.push(error.message));
+  await page.addInitScript(stubHost(HANDSHAKE));
+  await page.addInitScript(stubRoutes(stepsThrough('build'), 'build'));
+  await page.addInitScript(`
+    window.__images = ${JSON.stringify(payload)};
+    const realFetch = window.fetch;
+    window.fetch = (url, init) => {
+      const u = String(url);
+      if (u.indexOf('/images/choose') !== -1) {
+        const body = JSON.parse(init.body);
+        window.__images = Object.assign({}, window.__images, {
+          slots: window.__images.slots.map((s) => {
+            if (s.id !== body.slotId) return s;
+            const picked = s.candidates.find((c) => c.id === body.candidateId) || null;
+            return Object.assign({}, s, {
+              chosenCandidateId: body.candidateId,
+              buildsWith: body.candidateId || (s.candidates[0] && s.candidates[0].id) || null,
+              buildsWithReason: body.candidateId ? 'chosen' : 'first candidate, nothing chosen',
+              overriddenFailures:
+                picked && picked.gatePassed === false ? picked.gateFailures : [],
+              candidates: s.candidates.map((c) =>
+                Object.assign({}, c, { chosen: c.id === body.candidateId }),
+              ),
+            });
+          }),
+        });
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(window.__images) });
+      }
+      if (u.indexOf('/images') !== -1) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(window.__images) });
+      }
+      return realFetch(url, init);
+    };
+  `);
+  await page.goto(`file://${INDEX}`);
+  await page.waitForSelector('nav.rail', { timeout: 10_000 });
+  await page.selectOption('select[aria-label="Reel"]', 'vitasilk');
+  await page.selectOption('select[aria-label="Client mode"]', 'k2-syndicalia');
+  await page.click('nav.rail li:nth-child(4) button');
+  await page.waitForSelector('main h2', { timeout: 5000 });
+  return { page, uncaught };
+}
+
+describe('the image candidate picker', () => {
+  it('shows every candidate, rejected ones included, with the reason', async () => {
+    const loaded = await loadImages();
+    if (loaded === null) return;
+    await loaded.page.waitForSelector('ol.slots li', { timeout: 5000 });
+    const text = (await loaded.page.textContent('ol.slots')) ?? '';
+    expect(text).toContain('img001-c1');
+    expect(text).toContain('img001-c2');
+    // The verdict and the reason, not just a pass/fail flag.
+    expect(text).toContain('gate rejected');
+    expect(text).toContain('edge_halo 0.1004 > 0.1');
+    expect(text).toContain('gate passed');
+    // The metrics behind the verdict.
+    expect(text).toContain('halo 0.1004');
+    expect(await loaded.page.$$('ol.slots li.candidate')).toHaveLength(3);
+    await loaded.page.close();
+  });
+
+  it('says what the builder would use, and that nothing is chosen yet', async () => {
+    const loaded = await loadImages();
+    if (loaded === null) return;
+    await loaded.page.waitForSelector('ol.slots li', { timeout: 5000 });
+    const text = (await loaded.page.textContent('ol.slots')) ?? '';
+    expect(text).toContain('first candidate, nothing chosen');
+    await loaded.page.close();
+  });
+
+  it('records choosing a rejected candidate as an override', async () => {
+    const loaded = await loadImages();
+    if (loaded === null) return;
+    await loaded.page.waitForSelector('ol.slots li', { timeout: 5000 });
+    await loaded.page.click('button[aria-label="Choose img001-c1"]');
+    await loaded.page.waitForSelector('li.candidate.chosen', { timeout: 5000 });
+    const text = (await loaded.page.textContent('ol.slots')) ?? '';
+    expect(text).toContain('Overrides the gate: edge_halo 0.1004 > 0.1');
+    expect(text).toContain('img001-c1 — chosen');
+    await loaded.page.close();
+  });
+
+  it('says what a slot with nothing generated would cost', async () => {
+    const loaded = await loadImages();
+    if (loaded === null) return;
+    await loaded.page.waitForSelector('ol.slots li', { timeout: 5000 });
+    const text = (await loaded.page.textContent('ol.slots')) ?? '';
+    expect(text).toContain('Nothing generated for this slot');
+    expect(text).toContain('$1.45');
+    await loaded.page.close();
+  });
+
+  /* PROJECT_SPEC §6 spends the brand red on Run pipeline alone. */
+  it('marks the chosen candidate without the brand accent', async () => {
+    const loaded = await loadImages();
+    if (loaded === null) return;
+    await loaded.page.waitForSelector('ol.slots li', { timeout: 5000 });
+    await loaded.page.click('button[aria-label="Choose img001-c1"]');
+    await loaded.page.waitForSelector('li.candidate.chosen', { timeout: 5000 });
+    const colour = await loaded.page.$eval(
+      'li.candidate.chosen',
+      (el) => getComputedStyle(el).borderColor,
+    );
+    expect(colour).not.toContain('237, 28, 36');
     expect(loaded.uncaught).toEqual([]);
     await loaded.page.close();
   });

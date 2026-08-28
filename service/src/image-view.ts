@@ -1,0 +1,255 @@
+import { existsSync } from 'node:fs';
+import { REPO_ROOT } from '@framopia/core';
+import { listReels } from './catalogue.js';
+import { readEditPlan, writeEditPlan } from './editplan/io.js';
+import { dryRun } from './dry-run.js';
+import type { EditPlan, ImageCandidate, ImageSlot } from './editplan/types.js';
+
+/**
+ * Step 4, the image candidate picker: every slot, every candidate, and the
+ * choice.
+ *
+ * **Rejected candidates are shown.** The gate's yield on the only reel with
+ * images is 2 of 10, and four of the failures are genuine halo — a picker that
+ * hid them would hide the reason a slot looks the way it does, and would leave
+ * the user unable to override a verdict he disagrees with. The gate advises;
+ * he decides.
+ */
+export class ImageViewError extends Error {}
+
+export interface CandidateView {
+  id: string;
+  /** Absolute paths; the panel loads them over `file://`, as it does audio. */
+  imagePath: string;
+  imageExists: boolean;
+  cutoutPath: string | null;
+  cutoutExists: boolean;
+  modelId: string | null;
+  resolution: string | null;
+  generatedAt: string | null;
+  /** What the plan records for this image. See `reelSpentUsd` for the caveat. */
+  costUsd: number | null;
+  metrics: {
+    alphaEdgeNoise: number;
+    holeRatio: number;
+    foregroundArea: number;
+    edgeHalo: number;
+  } | null;
+  /** The §5.4 gate: the worst headroom across the metrics, 0 when it failed. */
+  cutoutQuality: number | null;
+  gatePassed: boolean | null;
+  gatePresentation: string | null;
+  /** Why it failed, verbatim, so a verdict can be argued with. */
+  gateFailures: string[];
+  /** Words the OCR pass found that the slot's idea did not ask for. */
+  unexpectedText: string[];
+  chosen: boolean;
+}
+
+export interface ImageSlotView {
+  id: string;
+  start: number;
+  end: number;
+  idea: string;
+  /** What the gate settled on, when every candidate agreed. */
+  presentation: 'cutout' | 'card' | null;
+  templateId: string | null;
+  zoneId: string | null;
+  candidates: CandidateView[];
+  chosenCandidateId: string | null;
+  /** The gate failures a deliberate choice overrode, when it overrode any. */
+  overriddenFailures: string[];
+  /**
+   * The candidate the builder would use right now. With nothing chosen it is
+   * the first, which is a documented placeholder rather than a decision.
+   */
+  buildsWith: string | null;
+  buildsWithReason: 'chosen' | 'first candidate, nothing chosen' | 'no candidates';
+}
+
+export interface ImagesView {
+  reel: string;
+  planPath: string;
+  slots: ImageSlotView[];
+  /** Present when the reel has slots but no candidates on any of them. */
+  generationEstimateUsd: number | null;
+  generationNote: string | null;
+  /**
+   * Cumulative money actually spent on this reel's images. The per-candidate
+   * figures read 0 across the corpus because the plan was last written from a
+   * cached run, and a cached run costs nothing; this is where the money is.
+   */
+  reelSpentUsd: number | null;
+  source: {
+    clientMode: string | null;
+    clientModeVersion: number | null;
+    stageStatus: string;
+    cacheEntryId: string | null;
+    cacheProvenance: string | null;
+  };
+  /** Every image is drawn in a card frame, whatever the gate said. */
+  cardFrameForced: boolean;
+}
+
+function planFor(reelLabel: string): { planPath: string } {
+  const reel = listReels().find((r) => r.label === reelLabel);
+  if (reel === undefined) {
+    throw new ImageViewError(`no reel labelled "${reelLabel}" in benchmarks/footage.json`);
+  }
+  if (reel.planPath === null || !existsSync(reel.planPath)) {
+    throw new ImageViewError(
+      `${reelLabel} has no edit plan yet. Run the pipeline before picking images.`,
+    );
+  }
+  return { planPath: reel.planPath };
+}
+
+function candidateViewOf(candidate: ImageCandidate, slot: ImageSlot): CandidateView {
+  const cutoutPath = candidate.cutoutPath ?? null;
+  return {
+    id: candidate.id,
+    imagePath: candidate.path,
+    imageExists: existsSync(candidate.path),
+    cutoutPath,
+    cutoutExists: cutoutPath !== null && existsSync(cutoutPath),
+    modelId: candidate.modelId ?? null,
+    resolution: candidate.resolution ?? null,
+    generatedAt: candidate.generatedAt ?? null,
+    costUsd: candidate.costUsd ?? null,
+    metrics: candidate.metrics ?? null,
+    cutoutQuality: candidate.cutoutQuality ?? null,
+    gatePassed: candidate.gate?.passed ?? null,
+    gatePresentation: candidate.gate?.presentation ?? null,
+    gateFailures: candidate.gate?.failures ?? [],
+    unexpectedText: candidate.textVerdict?.unexpected ?? [],
+    chosen: slot.chosenCandidateId === candidate.id,
+  };
+}
+
+function slotViewOf(slot: ImageSlot): ImageSlotView {
+  const chosen = slot.chosenCandidateId;
+  const first = slot.candidates[0];
+  return {
+    id: slot.id,
+    start: slot.start,
+    end: slot.end,
+    idea: slot.idea,
+    presentation: slot.presentation,
+    templateId: slot.templateId,
+    zoneId: slot.zoneId,
+    candidates: slot.candidates.map((c) => candidateViewOf(c, slot)),
+    chosenCandidateId: chosen,
+    overriddenFailures: slot.overriddenGateFailures ?? [],
+    buildsWith: chosen ?? first?.id ?? null,
+    buildsWithReason:
+      chosen !== null
+        ? 'chosen'
+        : first === undefined
+          ? 'no candidates'
+          : 'first candidate, nothing chosen',
+  };
+}
+
+async function viewOf(plan: EditPlan, planPath: string, reelLabel: string): Promise<ImagesView> {
+  const slots = plan.images.slots.map(slotViewOf);
+  const noCandidates = slots.length > 0 && slots.every((s) => s.candidates.length === 0);
+
+  /*
+   * The estimate comes from the dry run rather than being computed again here.
+   * Two implementations of what a stage costs is how the dry run and the runner
+   * came to disagree on screen in the first place.
+   */
+  let generationEstimateUsd: number | null = null;
+  let generationNote: string | null = null;
+  if (noCandidates) {
+    const modeId = plan.clientMode?.id;
+    if (modeId === undefined) {
+      generationNote = 'no client on the plan, so the cost of generating cannot be read';
+    } else {
+      try {
+        const dry = await dryRun(reelLabel, modeId);
+        const stage = dry.stages.find((s) => s.id === 'images');
+        generationEstimateUsd = stage?.estimateUsd ?? null;
+        generationNote = stage?.note ?? null;
+      } catch (error) {
+        generationNote = `the dry run could not price it: ${(error as Error).message}`;
+      }
+    }
+  }
+
+  return {
+    reel: reelLabel,
+    planPath,
+    slots,
+    generationEstimateUsd,
+    generationNote,
+    reelSpentUsd: plan.costs.spentByStage?.['images'] ?? null,
+    source: {
+      clientMode: plan.clientMode?.id ?? null,
+      clientModeVersion: plan.clientMode?.version ?? null,
+      stageStatus: plan.pipeline.images.status,
+      cacheEntryId: plan.pipeline.images.cacheEntryId ?? null,
+      cacheProvenance: plan.pipeline.images.cacheProvenance ?? null,
+    },
+    // Block 7 session 9: `img_float` is forced on every slot, so every image is
+    // framed whatever the gate settled on. `presentation` still selects which
+    // file goes inside the frame — the cutout PNG or the generated image.
+    cardFrameForced: true,
+  };
+}
+
+export async function imagesView(reelLabel: string): Promise<ImagesView> {
+  const { planPath } = planFor(reelLabel);
+  return viewOf(await readEditPlan(planPath), planPath, reelLabel);
+}
+
+export async function imagesViewForPlan(planPath: string): Promise<ImagesView> {
+  const label = listReels().find((r) => r.planPath === planPath)?.label ?? planPath;
+  return viewOf(await readEditPlan(planPath), planPath, label);
+}
+
+/**
+ * Choose a candidate for a slot, or clear the choice.
+ *
+ * `chosenCandidateId` is itself the human-flagged marker: `humanFlaggedItems`
+ * reads it, and `PlanMergeBlockedError` refuses to discard a slot that carries
+ * one. So a re-run cannot quietly lose the choice.
+ *
+ * **Choosing a rejected candidate is allowed and is recorded as an override**,
+ * with the verdict it overrode, so the plan says the gate was disagreed with
+ * rather than that it passed.
+ */
+export async function chooseCandidate(edit: {
+  planPath: string;
+  slotId: string;
+  candidateId: string | null;
+}): Promise<ImagesView> {
+  const plan = await readEditPlan(edit.planPath);
+  const slot = plan.images.slots.find((s) => s.id === edit.slotId);
+  if (slot === undefined) {
+    throw new ImageViewError(`${edit.planPath} has no image slot ${edit.slotId}`);
+  }
+
+  if (edit.candidateId === null) {
+    slot.chosenCandidateId = null;
+    delete slot.overriddenGateFailures;
+  } else {
+    const candidate = slot.candidates.find((c) => c.id === edit.candidateId);
+    if (candidate === undefined) {
+      throw new ImageViewError(`${edit.slotId} has no candidate ${edit.candidateId}`);
+    }
+    slot.chosenCandidateId = candidate.id;
+    const failures = candidate.gate?.failures ?? [];
+    if (candidate.gate?.passed === false && failures.length > 0) {
+      slot.overriddenGateFailures = [...failures];
+    } else {
+      delete slot.overriddenGateFailures;
+    }
+  }
+
+  plan.meta.updatedAt = new Date().toISOString();
+  await writeEditPlan(edit.planPath, plan);
+  return imagesViewForPlan(edit.planPath);
+}
+
+void REPO_ROOT;
