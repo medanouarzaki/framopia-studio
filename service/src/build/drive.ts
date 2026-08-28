@@ -80,6 +80,14 @@ export function runBuildReel(options: Record<string, unknown>): BuildResult {
   return runJsx('build-reel.jsx', 'framopiaBuildReel', options);
 }
 
+/**
+ * Asks After Effects what it does with an audio layer starting before the
+ * composition. Builds one throwaway comp and reports what AE stored.
+ */
+export function runAudioStartProbe(options: Record<string, unknown>): BuildResult {
+  return runJsx('audio-start-probe.jsx', 'framopiaAudioStartProbe', options);
+}
+
 /** Measures every card in the corpus. Reads the library; writes no comp. */
 export function runMeasureSurvey(options: Record<string, unknown>): BuildResult {
   return runJsx('measure-survey.jsx', 'framopiaMeasureSurvey', options);

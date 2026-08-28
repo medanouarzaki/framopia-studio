@@ -252,6 +252,15 @@ AI-generated contextual images, SFX, and a watermark. Full spec in
   running** After Effects over AppleScript `DoScript`, and reports what AE
   actually did. Starts a new project every time; never opens or writes
   `templates/library.aep`. Saves to `.local/build/`.
+- `npm run probe:audio-start` — free, local. **Drives the already-running After
+  Effects.** Asks one question and reports what AE answers: does a layer whose
+  `startTime` is before the composition keep it? Four cases — a positive
+  control, the negative start `vitasilk`'s first image actually needs, the same
+  with the in-point pinned to zero, and a deep negative — with `startTime`,
+  `inPoint`, `outPoint` and where the file's own time zero lands read back per
+  case. The needed figure is derived from the plan and the audit through
+  `placeSfx`, never typed. Starts a new project and **refuses if the open one
+  has unsaved changes**, naming it.
 - `npm run probe:image -- --image <abs path> --master <comp name>` — free,
   local. Runs on the project `build:comp` left open: duplicates an image
   template, replaces `IMG_MAIN`'s source and reports whether it took.

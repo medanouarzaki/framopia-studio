@@ -123,3 +123,33 @@ describe('impactFrameOf', () => {
     expect(result.impactS).toBeCloseTo(0.2, 6);
   });
 });
+
+/*
+ * The probe that asks After Effects about a negative start has to ask about the
+ * number a real placement would produce, so it calls `placeSfx` with the
+ * composition start far below zero rather than restating the arithmetic.
+ */
+describe('the unclamped ideal', () => {
+  it('returns the negative in-point a sound would need, snapped like any other', () => {
+    const unbounded = placeSfx({
+      elementStartS: 0.099,
+      impactS: 0.135446,
+      peakOffsetS: 0.691281,
+      fps: 30000 / 1001,
+      compStartS: Number.NEGATIVE_INFINITY,
+    });
+    expect(unbounded.clamped).toBe(false);
+    expect(unbounded.inPointS).toBeCloseTo(-0.4671, 4);
+    // It is what the clamped placement reports as its shortfall, from the other
+    // side: clamping to zero costs exactly the negative start it wanted.
+    const clamped = placeSfx({
+      elementStartS: 0.099,
+      impactS: 0.135446,
+      peakOffsetS: 0.691281,
+      fps: 30000 / 1001,
+      compStartS: 0,
+    });
+    expect(clamped.clamped).toBe(true);
+    expect(clamped.clampedByS).toBeCloseTo(-unbounded.inPointS, 6);
+  });
+});
