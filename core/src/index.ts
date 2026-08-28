@@ -148,6 +148,12 @@ export { renderSheet, type SheetInputs, type SheetRow } from './align-sheet.js';
 export { ACTIVE_PROMPT_VERSION, type PromptVersion } from './prompt-version.js';
 export { impactFrameOf, IMPACT_THRESHOLD, type ImpactFrame } from './impact-frame.js';
 export {
+  crossingsOf,
+  crossingTime,
+  impactCrossingOf,
+  type Crossing,
+} from './impact-crossing.js';
+export {
   placeSfx,
   snapToFrame,
   type SfxPlacement,

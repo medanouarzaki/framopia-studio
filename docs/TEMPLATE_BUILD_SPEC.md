@@ -427,3 +427,67 @@ before this session parses and reads as *not recorded* rather than as linear.
 **`impactFrameOf` is renamed in its documentation, not its behaviour.** It
 measures the settle, it says so, and nothing may read it as the impact again.
 The corrected derivation waits on one more audit run.
+
+### The impact frame, computed from the curve — 2026-08-28
+
+Session 23 added keyframe easing to the audit and could not use it. The user
+re-ran the audit; every key now carries its interpolation type and temporal
+ease, and the crossing is computable.
+
+**After Effects' convention, and why this matches it.** Between two keys
+spanning `d` seconds with a value delta `Δ`, the timing is a cubic bezier in
+(time, value) space. `influence` is the fraction of `d` a handle spans
+horizontally; `speed` is the value rate at the key, so the handle's vertical
+extent is `speed × (influence/100 × d)`:
+
+    P0 = (0, 0)
+    P1 = (i_out·d,        s_out · i_out·d)
+    P2 = (d − i_in·d,  Δ − s_in  · i_in·d)
+    P3 = (d, Δ)
+
+That is exactly how the graph editor parameterises a handle. It checks out on
+these templates: every property's out-handle has `speed × influence × d` equal
+to the **whole** delta — `hit`-side numbers like Position's 891.964 × 0.14 ×
+0.4004 = 50.0, Opacity's 1783.929 × 0.056056 = 100.0 — which is what a handle
+drawn to the top of the graph means.
+
+**A spatial property reports one ease for all three dimensions** (AE eases along
+the path, so the value axis is the magnitude); **a non-spatial multi-dimensional
+property reports one per dimension**. Comparing a 3-D magnitude against
+dimension zero's speed is a units error and put `img_float`'s Scale at 7.27
+frames where everything else gave 5.25.
+
+**Every comp and every entrance property crosses at the same frame**, which is
+what one shared easing preset should produce:
+
+| comp | property | 95% crossing | last key (settle) | linear, for comparison |
+|---|---|---:|---:|---:|
+| `sub_pop` | Position, Opacity | **5.25 f** | 12.00 f | 11.40 f |
+| `sub_pop_ar` | Position, Opacity | **5.25 f** | 12.00 f | 11.40 f |
+| `kw_slam` | Position, Opacity | **5.25 f** | 12.00 f | 11.40 f |
+| `kw_slam_ar` | Position, Opacity | **5.25 f** | 12.00 f | 11.40 f |
+| `img_slide_left` | Position, Opacity | **5.25 f** | 12.00 f | 11.40 f |
+| `img_float` | Scale, Opacity | **5.25 f** | 12.00 f | 11.40 f |
+
+**The check against the user's eye does not pass, and the number was not
+shipped.** He built these templates and says `kw_slam`'s word lands at **frame
+4**. The curve says **5.25** — 1.25 frames, 42 ms, later.
+
+**The convention is not what is wrong.** Six comps agree exactly; the figure is
+nowhere near linear's 11.40 or the settle's 12.00; and the threshold-to-frame
+mapping is smooth and well behaved:
+
+| threshold | crossing |
+|---:|---:|
+| 0.85 | 3.33 f |
+| **0.8966** | **4.00 f** — the user's eye |
+| 0.90 | 4.06 f |
+| 0.92 | 4.45 f |
+| **0.95** | **5.25 f** — `IMPACT_THRESHOLD` as chosen |
+| 0.98 | 6.67 f |
+
+**`IMPACT_THRESHOLD` is what disagrees.** It was recorded CHOSEN, NOT MEASURED,
+and the user's frame 4 corresponds to **0.8966** — in round terms, 90% rather
+than 95%. That is a judgement about when a motion reads as arrived, and it
+belongs to the person who drew the curve. **Nothing was migrated onto 5.25**,
+and the 17 SFX events remain where session 22 left them.
