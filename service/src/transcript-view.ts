@@ -50,6 +50,18 @@ export interface TranscriptCardView {
   shortByS: number | null;
 }
 
+/** One thing to look at, with the evidence for it rather than a description. */
+export interface QuestionInstance {
+  /** Words to show, in reading order. */
+  wordIds: string[];
+  /** The thing itself: the word, or the term whole. */
+  text: string;
+  /** The measurement that put it here, in the units the user reads. */
+  detail: string;
+  /** For a split term: the cards it is broken into, in order. */
+  parts?: { cardId: string; text: string }[];
+}
+
 export interface OpenQuestion {
   id: 'overlong' | 'clipped' | 'split-term';
   label: string;
@@ -59,7 +71,19 @@ export interface OpenQuestion {
   basis: string;
   /** Word ids to look at, in reading order. */
   wordIds: string[];
+  /**
+   * **This reel.** The counts on screen read 1, 5 and 0 for `vitasilk` while
+   * the report said 7, 23 and 13 — both right, one per reel and one over the
+   * corpus, and nothing said which. A count with no scope is what put the wrong
+   * number in front of the user.
+   */
   count: number;
+  /** The same question across every reel that has a plan. */
+  corpusCount: number;
+  /** True when the figure stands in for a measurement it cannot take. */
+  proxy: boolean;
+  /** The instances, with what makes each one an instance. */
+  instances: QuestionInstance[];
 }
 
 export interface TranscriptView {
@@ -127,7 +151,7 @@ function splitArabicRuns(plan: EditPlan, cardOf: Map<string, string>): string[][
 
 export async function transcriptView(reelLabel: string): Promise<TranscriptView> {
   const { plan, planPath } = planFor(reelLabel);
-  return viewOf(await plan, planPath, reelLabel);
+  return viewOf(await plan, planPath, reelLabel, await corpusCounts());
 }
 
 /**
@@ -140,10 +164,63 @@ export async function transcriptView(reelLabel: string): Promise<TranscriptView>
  */
 export async function transcriptViewForPlan(planPath: string): Promise<TranscriptView> {
   const label = listReels().find((r) => r.planPath === planPath)?.label ?? planPath;
-  return viewOf(await readEditPlan(planPath), planPath, label);
+  return viewOf(await readEditPlan(planPath), planPath, label, await corpusCounts());
 }
 
-function viewOf(plan: EditPlan, planPath: string, reelLabel: string): TranscriptView {
+export interface CorpusCounts {
+  overlong: number;
+  clipped: number;
+  splitTerm: number;
+}
+
+/**
+ * The same three questions across every reel that has a plan.
+ *
+ * Both scopes are shown because only one of them was, and nothing said which:
+ * `vitasilk` read 1, 5 and 0 on screen while the record said 7, 23 and 13, and
+ * both were right. A count that does not name its scope is how the wrong number
+ * reaches a user who is being asked to rule on it.
+ */
+export async function corpusCounts(): Promise<CorpusCounts> {
+  const totals: CorpusCounts = { overlong: 0, clipped: 0, splitTerm: 0 };
+  for (const reel of listReels()) {
+    if (reel.planPath === null || !existsSync(reel.planPath)) continue;
+    let plan: EditPlan;
+    try {
+      plan = await readEditPlan(reel.planPath);
+    } catch {
+      continue;
+    }
+    const counts = questionCountsOf(plan);
+    totals.overlong += counts.overlong;
+    totals.clipped += counts.clipped;
+    totals.splitTerm += counts.splitTerm;
+  }
+  return totals;
+}
+
+/** The three counts for one plan, without building a whole view. */
+export function questionCountsOf(plan: EditPlan): CorpusCounts {
+  const cardOf = new Map<string, string>();
+  for (const group of plan.subtitles.groups) {
+    for (const id of group.wordIds) cardOf.set(id, group.id);
+  }
+  const report = checkBuildability(plan, templatesById(loadTemplateManifest()));
+  return {
+    overlong: plan.transcript.words.filter(
+      (w) => !w.removed && [...w.text.replace(/[.,?!؟،]$/u, '')].length >= OVERLONG_WORD_CHARS,
+    ).length,
+    clipped: report.issues.filter((i) => i.shortByS !== undefined).length,
+    splitTerm: splitArabicRuns(plan, cardOf).length,
+  };
+}
+
+function viewOf(
+  plan: EditPlan,
+  planPath: string,
+  reelLabel: string,
+  corpus: CorpusCounts,
+): TranscriptView {
 
   const cardOf = new Map<string, string>();
   for (const group of plan.subtitles.groups) {
@@ -152,11 +229,15 @@ function viewOf(plan: EditPlan, planPath: string, reelLabel: string): Transcript
 
   const report = checkBuildability(plan, templatesById(loadTemplateManifest()));
   const shortBy = new Map<string, number>();
+  /** The Build pane's own sentence, so the two screens read the same. */
+  const shortfallOf = new Map<string, string>();
   for (const issue of report.issues) {
     const match = /^subtitles\.groups\[(\d+)\]/.exec(issue.path);
     if (match === null || issue.shortByS === undefined) continue;
     const group = plan.subtitles.groups[Number(match[1])];
-    if (group !== undefined) shortBy.set(group.id, issue.shortByS);
+    if (group === undefined) continue;
+    shortBy.set(group.id, issue.shortByS);
+    shortfallOf.set(group.id, `${issue.message} (short by ${issue.shortByS.toFixed(2)}s)`);
   }
 
   const words: TranscriptWordView[] = plan.transcript.words.map((w) => ({
@@ -196,6 +277,9 @@ function viewOf(plan: EditPlan, planPath: string, reelLabel: string): Transcript
   const clippedCards = cards.filter((c) => c.holdClipped);
   const splitTerms = splitArabicRuns(plan, cardOf);
 
+  const textOf = (ids: string[]): string =>
+    ids.map((id) => words.find((w) => w.id === id)?.text ?? id).join(' ');
+
   const questions: OpenQuestion[] = [
     {
       id: 'overlong',
@@ -204,10 +288,21 @@ function viewOf(plan: EditPlan, planPath: string, reelLabel: string): Transcript
         'These render wider than the subtitle safe width, so they are emitted whole and clipped. ' +
         'Shrink them, break them mid-word, or let them overflow?',
       basis:
-        `Measured in After Effects for the corpus figure; flagged here by length ` +
-        `(${OVERLONG_WORD_CHARS}+ characters), which agrees with that measurement on this corpus.`,
+        `A proxy. The measurement is sourceRectAtTime in After Effects against the subtitle safe ` +
+        `width; the panel cannot run After Effects, so it counts characters at ` +
+        `${OVERLONG_WORD_CHARS} or more. The two agree exactly on this corpus.`,
+      proxy: true,
       wordIds: overlong.map((w) => w.id),
       count: overlong.length,
+      corpusCount: corpus.overlong,
+      instances: overlong.map((w) => ({
+        wordIds: [w.id],
+        text: w.text,
+        detail:
+          `${[...w.text.replace(/[.,?!؟،]$/u, '')].length} characters against a ` +
+          `${OVERLONG_WORD_CHARS}-character threshold, in card ${w.cardId ?? 'none'}. ` +
+          'Today it is emitted whole and clipped at the safe width.',
+      })),
     },
     {
       id: 'clipped',
@@ -216,8 +311,15 @@ function viewOf(plan: EditPlan, planPath: string, reelLabel: string): Transcript
         'The word is spoken too briefly to hold the card for its template floor, so the entrance ' +
         'is compressed to two frames and the hold is cut. Accept, lengthen, or merge?',
       basis: "From the plan's own timings against the template manifest; the builder's own rule.",
+      proxy: false,
       wordIds: clippedCards.flatMap((c) => c.wordIds),
       count: clippedCards.length,
+      corpusCount: corpus.clipped,
+      instances: clippedCards.map((c) => ({
+        wordIds: c.wordIds,
+        text: textOf(c.wordIds),
+        detail: shortfallOf.get(c.id) ?? `${c.id}: short by ${(c.shortByS ?? 0).toFixed(2)}s`,
+      })),
     },
     {
       id: 'split-term',
@@ -228,9 +330,21 @@ function viewOf(plan: EditPlan, planPath: string, reelLabel: string): Transcript
       basis:
         'Consecutive Arabic-script words landing in more than one card. The guide defines a term ' +
         'semantically and the plan carries no term ids, so this is every multi-word Arabic run, ' +
-        'which may be wider than the guide means.',
+        'which may be wider than the guide means. A reel whose words are all Arabizi has none by ' +
+        'construction — the Arabic is in the draft, not in what gets built.',
+      proxy: false,
       wordIds: splitTerms.flat(),
       count: splitTerms.length,
+      corpusCount: corpus.splitTerm,
+      instances: splitTerms.map((ids) => ({
+        wordIds: ids,
+        text: textOf(ids),
+        detail: `broken across ${new Set(ids.map((id) => cardOf.get(id))).size} cards`,
+        parts: ids.map((id) => ({
+          cardId: cardOf.get(id) ?? 'none',
+          text: words.find((w) => w.id === id)?.text ?? id,
+        })),
+      })),
     },
   ];
 

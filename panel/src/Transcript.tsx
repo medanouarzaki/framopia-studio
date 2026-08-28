@@ -132,7 +132,10 @@ export function Transcript({
       </div>
 
       <div className="card" style={{ marginTop: 12 }}>
-        <p className="promise">Three things to rule on. Pick one to see only those words.</p>
+        <p className="promise">
+          Three things to rule on. Pick one to see only those words. Counts are for this
+          reel, with the whole corpus beside them.
+        </p>
         <ul className="questions">
           {questions.map((q) => (
             <li key={q.id}>
@@ -142,12 +145,45 @@ export function Transcript({
                 aria-pressed={filter === q.id}
                 onClick={() => setFilter(filter === q.id ? null : q.id)}
               >
-                {q.label} · {q.count}
+                {/*
+                 * Both scopes, always. The screen showed 1, 5 and 0 for
+                 * vitasilk while the record said 7, 23 and 13; both were right
+                 * and nothing said which was which.
+                 */}
+                {q.label} · <strong>{q.count}</strong> this reel · {q.corpusCount} corpus
+                {q.proxy ? ' · proxy' : ''}
               </button>
               {filter === q.id ? (
                 <>
                   <p className="detail">{q.question}</p>
                   <p className="reason">{q.basis}</p>
+                  {q.count === 0 ? (
+                    <p className="reason">None on this reel.</p>
+                  ) : (
+                    <ul className="instances">
+                      {q.instances.map((instance) => (
+                        <li key={instance.wordIds.join('-')}>
+                          <span
+                            className="itext"
+                            dir={/[\u0600-\u06FF]/.test(instance.text) ? 'rtl' : 'ltr'}
+                          >
+                            {instance.text}
+                          </span>
+                          <span className="idetail">{instance.detail}</span>
+                          {instance.parts === undefined ? null : (
+                            <span className="iparts">
+                              {instance.parts.map((part) => (
+                                <em key={part.cardId}>
+                                  {part.cardId}
+                                  <span dir="rtl">{part.text}</span>
+                                </em>
+                              ))}
+                            </span>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </>
               ) : null}
             </li>

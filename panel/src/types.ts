@@ -237,13 +237,26 @@ export interface TranscriptCardView {
   shortByS: number | null;
 }
 
+export interface QuestionInstance {
+  wordIds: string[];
+  text: string;
+  detail: string;
+  parts?: { cardId: string; text: string }[];
+}
+
 export interface OpenQuestion {
   id: 'overlong' | 'clipped' | 'split-term';
   label: string;
   question: string;
   basis: string;
   wordIds: string[];
+  /** This reel. Never shown without saying so. */
   count: number;
+  /** Every reel that has a plan. */
+  corpusCount: number;
+  /** True when the count stands in for a measurement it cannot take. */
+  proxy: boolean;
+  instances: QuestionInstance[];
 }
 
 export interface TranscriptView {

@@ -904,9 +904,23 @@ const TRANSCRIPT = {
     { id: 'g003', wordIds: ['w0002'], start: 1.0, end: 1.0, displayStart: 1.0, displayEnd: 1.2, templateId: 'sub_pop', supersededBy: null, holdClipped: false, shortByS: null },
   ],
   questions: [
-    { id: 'overlong', label: 'Words too long for their card', question: 'Shrink, break, or overflow?', basis: 'Measured in After Effects.', wordIds: ['w0001'], count: 1 },
-    { id: 'clipped', label: 'Cards whose hold is clipped', question: 'Accept, lengthen, or merge?', basis: "From the plan's timings.", wordIds: ['w0001'], count: 1 },
-    { id: 'split-term', label: 'Arabic terms split across cards', question: 'Group whole, or accept?', basis: 'Consecutive Arabic words.', wordIds: [], count: 0 },
+    {
+      id: 'overlong', label: 'Words too long for their card',
+      question: 'Shrink, break, or overflow?', basis: 'A proxy for a width measured in After Effects.',
+      proxy: true, wordIds: ['w0001'], count: 1, corpusCount: 7,
+      instances: [{ wordIds: ['w0001'], text: 'ترطيب', detail: '11 characters against a 11-character threshold, in card g002.' }],
+    },
+    {
+      id: 'clipped', label: 'Cards whose hold is clipped',
+      question: 'Accept, lengthen, or merge?', basis: "From the plan's timings.",
+      proxy: false, wordIds: ['w0001'], count: 1, corpusCount: 23,
+      instances: [{ wordIds: ['w0001'], text: 'ترطيب', detail: '0.05s long but sub_pop needs 0.12s (intro 0.13 + hold 0.1 + outro 0) (short by 0.07s)' }],
+    },
+    {
+      id: 'split-term', label: 'Arabic terms split across cards',
+      question: 'Group whole, or accept?', basis: 'Consecutive Arabic words.',
+      proxy: false, wordIds: [], count: 0, corpusCount: 13, instances: [],
+    },
   ],
 };
 
@@ -1049,13 +1063,54 @@ describe.skipIf(!built)('the transcript editor', () => {
     await loaded.page.close();
   });
 
+  /*
+   * The screen read 1, 5 and 0 for vitasilk while the record said 7, 23 and 13.
+   * Both were right — one per reel, one over the corpus — and the button said
+   * neither. It says both now.
+   */
+  it('names the scope of every count, and marks a proxy as one', async () => {
+    const loaded = await loadTranscript();
+    if (loaded === null) return;
+    const text = (await loaded.page.textContent('ul.questions')) ?? '';
+    expect(text).toContain('1 this reel');
+    expect(text).toContain('7 corpus');
+    expect(text).toContain('23 corpus');
+    expect(text).toContain('13 corpus');
+    // Only the overlong count stands in for a measurement it cannot take.
+    expect((text.match(/proxy/g) ?? []).length).toBe(1);
+    await loaded.page.close();
+  });
+
+  it('shows the evidence behind an instance, not only its category', async () => {
+    const loaded = await loadTranscript();
+    if (loaded === null) return;
+    await loaded.page.click('ul.questions li:nth-child(2) button.chip');
+    await loaded.page.waitForSelector('ul.instances li', { timeout: 5000 });
+    const text = (await loaded.page.textContent('ul.instances')) ?? '';
+    expect(text).toContain('0.05s long but sub_pop needs 0.12s');
+    expect(text).toContain('short by 0.07s');
+    await loaded.page.close();
+  });
+
+  it('says plainly when a question has none on this reel', async () => {
+    const loaded = await loadTranscript();
+    if (loaded === null) return;
+    await loaded.page.click('ul.questions li:nth-child(3) button.chip');
+    await loaded.page.waitForFunction(
+      () => (document.querySelector('ul.questions') as HTMLElement).textContent?.includes('None on this reel') === true,
+      undefined,
+      { timeout: 5000 },
+    );
+    await loaded.page.close();
+  });
+
   it('shows the three questions with their counts, and filters to the words', async () => {
     const loaded = await loadTranscript();
     if (loaded === null) return;
     const text = (await loaded.page.textContent('ul.questions')) ?? '';
-    expect(text).toContain('Words too long for their card · 1');
-    expect(text).toContain('Cards whose hold is clipped · 1');
-    expect(text).toContain('Arabic terms split across cards · 0');
+    expect(text).toContain('Words too long for their card');
+    expect(text).toContain('Cards whose hold is clipped');
+    expect(text).toContain('Arabic terms split across cards');
 
     await loaded.page.click('ul.questions li:nth-child(1) button.chip');
     await loaded.page.waitForFunction(

@@ -118,6 +118,111 @@ describe('the open questions', () => {
   });
 });
 
+/**
+ * The counts on screen read 1, 5 and 0 for `vitasilk` while the record said 7,
+ * 23 and 13. Both were right: one per reel, one over the corpus, and nothing
+ * said which. These pin **both scopes for every reel**, so the two can never be
+ * read as each other again.
+ */
+describe('per-reel and corpus counts', () => {
+  const RECORDED: Record<string, { overlong: number; clipped: number; splitTerm: number }> = {
+    'ground-truth': { overlong: 2, clipped: 8, splitTerm: 2 },
+    'test-1': { overlong: 0, clipped: 5, splitTerm: 6 },
+    'test-2': { overlong: 1, clipped: 3, splitTerm: 1 },
+    'test-3': { overlong: 3, clipped: 2, splitTerm: 4 },
+    vitasilk: { overlong: 1, clipped: 5, splitTerm: 0 },
+  };
+
+  for (const [reel, expected] of Object.entries(RECORDED)) {
+    it(`counts ${reel} as ${expected.overlong}/${expected.clipped}/${expected.splitTerm}`, async () => {
+      const view = await transcriptView(reel);
+      const by = Object.fromEntries(view.questions.map((q) => [q.id, q.count]));
+      expect(by['overlong']).toBe(expected.overlong);
+      expect(by['clipped']).toBe(expected.clipped);
+      expect(by['split-term']).toBe(expected.splitTerm);
+    });
+  }
+
+  it('sums the per-reel figures to the corpus figures', async () => {
+    const view = await transcriptView('vitasilk');
+    const by = Object.fromEntries(view.questions.map((q) => [q.id, q.corpusCount]));
+    const sum = (k: 'overlong' | 'clipped' | 'splitTerm'): number =>
+      Object.values(RECORDED).reduce((n, r) => n + r[k], 0);
+    expect(by['overlong']).toBe(sum('overlong'));
+    expect(by['clipped']).toBe(sum('clipped'));
+    expect(by['split-term']).toBe(sum('splitTerm'));
+  });
+
+  it('reports both scopes, never one alone', async () => {
+    const view = await transcriptView('vitasilk');
+    for (const question of view.questions) {
+      expect(typeof question.count, question.id).toBe('number');
+      expect(typeof question.corpusCount, question.id).toBe('number');
+    }
+  });
+
+  /*
+   * The zero the user did not believe. It is real: every displayed word on
+   * `vitasilk` is Arabizi, so no Arabic run exists to be split. The Arabic on
+   * that reel lives in `sourceText`, which is the draft and never gets built.
+   */
+  it('finds no split term on a reel whose words are all Latin', async () => {
+    const view = await transcriptView('vitasilk');
+    expect(view.words.every((w) => w.script === 'latin')).toBe(true);
+    expect(view.words.filter((w) => /[\u0600-\u06FF]/.test(w.sourceText ?? '')).length).toBeGreaterThan(0);
+    expect(view.questions.find((q) => q.id === 'split-term')?.count).toBe(0);
+  });
+
+  it('marks the overlong count as a proxy and the other two as measurements', async () => {
+    const view = await transcriptView('vitasilk');
+    const by = Object.fromEntries(view.questions.map((q) => [q.id, q.proxy]));
+    expect(by['overlong']).toBe(true);
+    expect(by['clipped']).toBe(false);
+    expect(by['split-term']).toBe(false);
+  });
+});
+
+/**
+ * The user rules by looking, so each instance carries the measurement that put
+ * it there rather than a description of the category.
+ */
+describe('the evidence behind each question', () => {
+  it('gives an overlong word its length and the threshold', async () => {
+    const view = await transcriptView('vitasilk');
+    const instance = view.questions.find((q) => q.id === 'overlong')?.instances[0];
+    expect(instance?.text).toBe('matrddadich');
+    expect(instance?.detail).toContain('11 characters');
+    expect(instance?.detail).toContain('clipped');
+  });
+
+  it('gives a clipped card the Build pane’s own sentence', async () => {
+    const view = await transcriptView('vitasilk');
+    const instance = view.questions.find((q) => q.id === 'clipped')?.instances[0];
+    expect(instance?.detail).toMatch(/long but .* needs .*s \(intro/);
+    expect(instance?.detail).toContain('short by');
+  });
+
+  it('shows a split term whole, then the cards it is broken into', async () => {
+    const view = await transcriptView('test-1');
+    const instances = view.questions.find((q) => q.id === 'split-term')?.instances ?? [];
+    // The term ORTHOGRAPHY_GUIDE §6 names verbatim, broken across three cards.
+    const term = instances.find((i) => i.text === 'تحفيز طبيعي للكولاجين');
+    expect(term).toBeDefined();
+    expect(term?.parts).toHaveLength(3);
+    expect(term?.parts?.map((p) => p.text)).toEqual(['تحفيز', 'طبيعي', 'للكولاجين']);
+    expect(term?.detail).toContain('3 cards');
+  });
+
+  it('has an instance for every counted item', async () => {
+    for (const reel of ['ground-truth', 'test-1', 'test-2', 'test-3', 'vitasilk']) {
+      const view = await transcriptView(reel);
+      for (const question of view.questions) {
+        expect(question.instances.length, `${reel}/${question.id}`).toBe(question.count);
+      }
+    }
+  });
+});
+
 describe('editing', () => {
   function scratchPlan(): string {
     const dir = mkdtempSync(path.join(tmpdir(), 'framopia-transcript-'));

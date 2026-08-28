@@ -310,3 +310,18 @@ input.wtext {
 .wmeta .tag.edited { color: var(--warn); border-color: var(--warn); }
 
 .wactions { flex: 0 0 auto; display: flex; gap: 4px; }
+
+/* The instances behind a question: the evidence, not a description of it. */
+ul.instances { list-style: none; margin: 8px 0 0; padding: 0; }
+ul.instances > li {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px;
+  padding: 5px 0; border-top: 1px solid var(--line); min-width: 0;
+}
+.itext { font-size: 14px; color: var(--text); }
+.idetail { flex: 1 1 200px; min-width: 0; color: var(--faint); font-size: 11px; overflow-wrap: anywhere; }
+.iparts { display: flex; flex-wrap: wrap; gap: 6px; }
+.iparts em {
+  display: inline-flex; align-items: baseline; gap: 5px;
+  padding: 1px 6px; border: 1px solid var(--line); border-radius: 3px;
+  color: var(--muted); font-style: normal; font-size: 11px;
+}
