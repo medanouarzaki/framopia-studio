@@ -1,8 +1,14 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { loadSfxIndex, loadTemplateManifest, REPO_ROOT, templatesById } from '@framopia/core';
+import {
+  loadSfxIndex,
+  loadTemplateManifest,
+  MIN_SFX_SPACING_S,
+  REPO_ROOT,
+  templatesById,
+} from '@framopia/core';
 import { readEditPlan, writeEditPlan } from '../editplan/io.js';
-import { deriveSfxEvents } from './sfx.js';
+import { deriveSfxDetail } from './sfx.js';
 import { templateImpacts } from './template-impacts.js';
 
 /**
@@ -90,6 +96,8 @@ console.log('');
 let moved = 0;
 let total = 0;
 let clamped = 0;
+let droppedTotal = 0;
+let variedTotal = 0;
 
 for (const file of readdirSync(dir).filter((f) => f.endsWith('.editplan.json')).sort()) {
   const reel = file.replace('.editplan.json', '');
@@ -109,7 +117,7 @@ for (const file of readdirSync(dir).filter((f) => f.endsWith('.editplan.json')).
   }
 
   const before = new Map(plan.sfx.events.map((e) => [e.sourceElementId + e.sfxId, e]));
-  const after = deriveSfxEvents(
+  const detail = deriveSfxDetail(
     plan,
     templates,
     sfxIndex,
@@ -117,9 +125,19 @@ for (const file of readdirSync(dir).filter((f) => f.endsWith('.editplan.json')).
     plan.source.dialogueLufs,
     plan.source.dialoguePeakDbfs,
   );
+  const after = detail.events;
+  droppedTotal += detail.dropped.length;
+  variedTotal += detail.varied.length;
 
   let reelMoved = 0;
-  const lines: string[] = [];
+  const lines: string[] = [
+    ...detail.dropped.map(
+      (d) =>
+        `    DROPPED ${d.elementId.padEnd(6)} ${d.sfxId.padEnd(10)} ` +
+        `${d.sinceS.toFixed(3)}s after the previous, under the ${MIN_SFX_SPACING_S}s minimum`,
+    ),
+    ...detail.varied.map((v) => `    VARIED  ${v.elementId.padEnd(6)} ${v.bound} -> ${v.fired}`),
+  ];
   for (const event of after) {
     total += 1;
     const was = before.get(event.sourceElementId + event.sfxId);
@@ -157,7 +175,8 @@ for (const file of readdirSync(dir).filter((f) => f.endsWith('.editplan.json')).
 
 console.log('');
 console.log(
-  `${moved} of ${total} events moved; ${clamped} clamped at the composition start. ` +
+  `${moved} of ${total} events moved; ${clamped} clamped at the composition start; ` +
+    `${droppedTotal} dropped for spacing, ${variedTotal} varied. ` +
     '$0.00 — this migration makes no model call.',
 );
 if (!apply) console.log('dry run — pass --apply to write');
