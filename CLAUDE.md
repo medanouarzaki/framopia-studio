@@ -181,12 +181,11 @@ AI-generated contextual images, SFX, and a watermark. Full spec in
 - `npm run loudness:measure` — free, local, **read-only**. Measures every reel's
   integrated loudness, loudness range and true peak with ffmpeg's `ebur128` and
   writes `.local/build/loudness.json`. What the SFX levels are set against: the
-  corpus runs −13.9 to −14.6 LUFS at 0.0–0.2 dBFS true peak, so an absolute
-  −20 dBFS hit sat about 20 dB under the voice's peaks and could not be heard.
-  Hits target dialogue **+6 dB** and whooshes **+0 dB** (`core/src/sfx-level.ts`,
-  **CHOSEN NOT MEASURED**); the reel's figure lives on the plan as
-  `source.dialogueLufs`, and absent falls back to the file's absolute gain
-  rather than to a guessed loudness.
+  corpus runs −13.9 to −14.6 LUFS at **0.0–0.2 dBFS true peak**, so it has no
+  headroom at all and every sound added to it clipped. Both figures go on the
+  plan as `source.dialogueLufs` and `source.dialoguePeakDbfs`; absent means
+  unmeasured, and the build then attenuates nothing and falls back to each
+  file's absolute gain rather than to a guessed loudness.
 - `npm run watermark:measure` — free, local. Measures
   `assets/watermark/intro.mov` with ffprobe/ffmpeg and **emits** every claim
   into `benchmarks/RESULTS-block7-watermark.md`: duration in seconds and
@@ -5712,3 +5711,95 @@ cards can reach it from their own gap. Median card **0.300 s**, p10 0.139,
 ruling: overlap the next card (337 of 338 pairs stack), or pair words again
 (**173 cards, median 0.640 s, 22 under 0.40 s**).
 `benchmarks/RESULTS-block8-card-duration.md`.
+
+
+## Block 8 session 26 — the mix makes room, and the sound lands on the word
+
+**Spent $0.00.** Ledger 108 entries / sha `50ec3f57…` at both ends. One After
+Effects instance (pid 79146) and 0 `aerender` at session start.
+
+The user rebuilt `vitasilk` and listened. Four findings, four rules; full record
+in `reports/block-8-session-26.md`.
+
+### No SFX gain could have stopped the hits clipping
+
+Every reel is delivered at **0.0–0.2 dBFS true peak**. Measured per event
+against the dialogue under it, **all 17 events summed past 0 dBFS** somewhere in
+the window they played — 7 even on a tight window around their own peak — by up
+to **+2.91 dB**. With the voice already on full scale,
+`20·log10(1 + 10^(s/20))` exceeds 0 dBFS for **every finite** sfx peak: a hit at
+−40 dBFS still puts the sum over. Session 25's approach could not have worked at
+any offset.
+
+**So the mix makes room.** `MIX_CEILING_DBFS = -1.0` is **CHOSEN**;
+`dialogueAttenuationDb` is **derived** — the dialogue's peak and the sfx target
+both move with the attenuation, so the smallest one that works is exactly how
+far the un-attenuated sum overshoots the ceiling. It lands at **3.80–4.01 dB**
+across the corpus and the builder applies it to the reel's own audio layer
+(`o.dialogueGainDb` in `build-reel.jsx`), so **the balance the offsets describe
+is untouched: everything comes down together**. Re-measured after: **0 of 17
+over the ceiling, worst sum −1.00 dBFS**, the ceiling exactly — the attenuation
+is the minimum that works, not a padded guess.
+
+**Whooshes go from dialogue +0 to +3 dB.** `whoosh_01` moves −14.40 → −15.20
+dBFS absolute and is **3 dB louder against the voice**, which moved 3.8 dB
+further. There is room to go louder — whooshes sum to −1.7 to −3.0 dBFS — and
+what limits it is **the hit at +6**, which is what sets the attenuation for the
+whole reel. `benchmarks/RESULTS-block8-sfx-headroom.md`.
+
+### Consecutive hits are thinned, then varied
+
+`core/src/sfx-variation.ts`: `MIN_SFX_SPACING_S = 1.50` and
+`SFX_VARIATION_WINDOW_S = 3.00`, both **CHOSEN NOT MEASURED**. Spacing first —
+no point varying an event about to be dropped — then a repeat inside the window
+takes the next file of the same kind, cycling. **Deterministic with no seed**,
+and applied **in time order**, which has to be established rather than assumed:
+`plan.keywords.items` is in selection order and `vitasilk`'s k003 plays first.
+
+Corpus: **2 hits dropped** (`vitasilk` k002, `test-2` k003, each 1.259 s after
+the previous) and **1 varied** (`vitasilk` k001 → `hit_02`, previously bound to
+nothing). `vitasilk` goes from three identical hits to two different ones.
+**No whoosh is dropped or varied anywhere** — the closest two images in the
+corpus are 3.07 s apart, so neither rule fires on them.
+
+**A keyword can now legitimately have no sound**, so `KeywordView` carries
+`sfxDroppedSinceS` and the panel says *"no sfx: 1.26s after the previous hit"*
+rather than showing a bare absence that reads as a defect.
+
+### Every image slot carries a sound
+
+`SilentImageSlotError` refuses the derivation, naming the slots. It was already
+true of the corpus, but only because both image templates happen to bind a
+whoosh. An image's sound is also never the one the spacing rule drops
+(`droppable: false`). **A slot with no template at all is deliberately not this
+error** — the builder drops it and `checkBuildability` names it, and the plan
+passes through that state legitimately before templates are assigned.
+
+### IMPACT_THRESHOLD is 0.90, and placement reads the crossing
+
+`templateImpacts` calls `impactCrossingOf`, not `impactFrameOf` — the latter
+measures the **settle**, and sound placed there was the 8-frame error the user
+heard. All six comps cross at **4.06 frames** against the settle's 12.00 and a
+linear reading's 10.80. His own figure is frame 4, a threshold of 0.8966; 0.90
+is within a sixteenth of a frame of it and is a round number rather than one
+fitted to a single comp's curve. **Where a measurement and the author of the
+animation disagree by less than two frames, the author decides.**
+
+**12 of 15 events moved 8.00 frames earlier** (7.00 on `test-1` k002, where the
+snap falls the other way). **3 clamp** at the composition start and their
+anchors are *later* than before — a nearer impact needs an earlier start — which
+is reported rather than absorbed. All three placements side by side:
+`benchmarks/RESULTS-block8-sfx-placement.md`.
+
+**`npm run migrate:sfx-placement` now asserts its own change surface**: it
+compares the plan file before and after and throws rather than writing if
+anything but `meta`, `source` or `sfx` moved.
+
+### A build path resolves against the directory it was typed in
+
+The user's relative path failed, and **quoting was not the cause** — an argument
+with spaces survives both levels of `npm run … --` intact, verified. npm runs a
+workspace script with the **workspace** as its working directory, so
+`my files/…` typed at the repository root arrived at `service/`.
+`resolveUserPath` in `core/src/user-path.ts` resolves a relative path against
+`INIT_CWD`, npm's record of where the command was run.
