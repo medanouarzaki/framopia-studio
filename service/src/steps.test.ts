@@ -64,3 +64,38 @@ describe('stepsFor', () => {
     expect(() => stepsFor('vitasilk', 'nope')).toThrow(StepsError);
   });
 });
+
+
+/**
+ * The images figure used to be a flat $1.55 — `vitasilk`'s five-slot actual —
+ * reported for every reel whatever its slot count. It is computed per reel now,
+ * as a budgeted ceiling rather than a forecast.
+ */
+describe('the image estimate', () => {
+  it('scales with the reel\'s own slot count, and is the budgeted ceiling', async () => {
+    const { dryRun } = await import('./dry-run.js');
+    const { DEFAULT_IMAGE_CONFIG } = await import('./images/config.js');
+    const { estimateImageRunCost } = await import('@framopia/core');
+
+    const plan = await dryRun('test-1', 'k2-syndicalia');
+    const images = plan.stages.find((s) => s.id === 'images');
+    const expected = estimateImageRunCost({
+      modelId: DEFAULT_IMAGE_CONFIG.modelId,
+      resolution: DEFAULT_IMAGE_CONFIG.resolution,
+      slots: 4,
+      candidatesPerSlot: DEFAULT_IMAGE_CONFIG.candidatesPerSlot,
+    }).usd;
+
+    expect(images?.estimateUsd).toBeCloseTo(expected, 6);
+    expect(images?.estimateUsd).not.toBeCloseTo(1.55, 2);
+    expect(images?.note).toContain('budgeted at most');
+  });
+
+  it('charges nothing for a reel whose candidates are all cached', async () => {
+    const { dryRun } = await import('./dry-run.js');
+    const plan = await dryRun('vitasilk', 'k2-syndicalia');
+    const images = plan.stages.find((s) => s.id === 'images');
+    expect(images?.estimateUsd).toBeNull();
+    expect(images?.note).toContain('bill nothing');
+  });
+});

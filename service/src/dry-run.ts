@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs';
-import { loadMode, type EntryProvenance } from '@framopia/core';
+import { estimateImageRunCost, loadMode, type EntryProvenance } from '@framopia/core';
 import { listReels } from './catalogue.js';
 import { resolveKeywordEntry, resolveSlotEntry } from './analysis/resolve-entry.js';
 import { resolveTranscriptionEntry } from './transcription/resolve-entry.js';
@@ -92,8 +92,9 @@ interface PlanLike {
 const STAGE_ESTIMATES: Record<string, number> = {
   transcription: 0.17,
   analysis: 0.18,
-  images: 1.55,
   zones: 0,
+  // `images` is deliberately absent: it is computed per reel from that reel's
+  // own slot count, because a flat figure is wrong for every reel but one.
 };
 
 /**
@@ -151,6 +152,7 @@ export async function dryRun(reelLabel: string, modeId: string): Promise<DryRunP
   }
 
   const stages: DryRunStage[] = [];
+  let imagesCeilingUsd: number | null = null;
   const add = (
     id: string,
     provenance: EntryProvenance | null,
@@ -159,13 +161,18 @@ export async function dryRun(reelLabel: string, modeId: string): Promise<DryRunP
   ): void => {
     const done = pipeline[id]?.status === 'done';
     const bills = provenance === 'none';
+    const estimateUsd = !bills
+      ? null
+      : id === 'images' && imagesCeilingUsd !== null
+        ? imagesCeilingUsd
+        : (STAGE_ESTIMATES[id] ?? null);
     stages.push({
       id,
       label: STAGE_LABELS[id] as string,
       status: done ? 'done' : 'pending',
       provenance,
       entryId,
-      estimateUsd: bills ? (STAGE_ESTIMATES[id] ?? null) : null,
+      estimateUsd,
       note,
     });
   };
@@ -211,12 +218,34 @@ export async function dryRun(reelLabel: string, modeId: string): Promise<DryRunP
         if (existsSync(cacheEntryDir(sha, IMAGE_CACHE_STAGE, fingerprint, CACHE_ROOT))) hit += 1;
       }
     }
+    /*
+     * Computed from this reel's own slots, not a flat constant. It used to be
+     * a fixed $1.55 — `vitasilk`'s five-slot actual — reported for every reel
+     * whatever its slot count, so `test-1`'s four slots read $1.55 when the
+     * budget for eight images is $1.45 and the expected actual is $1.24.
+     *
+     * The figure is the **budgeted ceiling**: published rate times
+     * IMAGE_COST_MULTIPLIER, the same pessimistic gate the generation stage
+     * refuses to start above. It reads high on purpose, and the note says so
+     * rather than leaving the user to guess whether it is a forecast.
+     */
+    const missing = total - hit;
+    const perImage =
+      estimateImageRunCost({
+        modelId: DEFAULT_IMAGE_CONFIG.modelId,
+        resolution: DEFAULT_IMAGE_CONFIG.resolution,
+        slots: 1,
+        candidatesPerSlot: 1,
+      }).perImageUsd;
+    imagesCeilingUsd = missing * perImage;
     add(
       'images',
       hit === total ? 'exact' : 'none',
       null,
       `${hit} of ${total} candidate images are cached` +
-        (hit === total ? '; a run would bill nothing' : `; a run would generate ${total - hit}`),
+        (hit === total
+          ? '; a run would bill nothing'
+          : `; a run would generate ${missing}, budgeted at most $${imagesCeilingUsd.toFixed(2)}`),
     );
   }
 

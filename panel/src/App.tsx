@@ -551,7 +551,7 @@ function DryRun({ plan }: { plan: DryRunPlan }): JSX.Element {
           <div className="cap">
             {plan.estimateUsd === 0
               ? 'every stage is cached; a run would read from disk'
-              : 'estimated for the stages that would call the API'}
+              : 'budgeted ceiling for the stages that would call the API, not a forecast'}
           </div>
         </div>
       </div>

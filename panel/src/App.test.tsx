@@ -617,7 +617,7 @@ describe('the dry run', () => {
     expect(text()).toContain('to run, about $1.55');
     expect(text()).toContain('to run, about $0.18');
     expect(text()).toContain('about $1.73');
-    expect(text()).toContain('estimated for the stages that would call the API');
+    expect(text()).toContain('budgeted ceiling for the stages that would call the API');
     expect(text()).toContain('will not bill');
   });
 
