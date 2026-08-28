@@ -3,6 +3,7 @@ import { estimateImageRunCost, loadMode, type EntryProvenance } from '@framopia/
 import { listReels } from './catalogue.js';
 import { resolveKeywordEntry, resolveSlotEntry } from './analysis/resolve-entry.js';
 import { imageSlotCountFor } from './analysis/count.js';
+import { PIPELINE_STAGES } from './pipeline-stages.js';
 import { resolveTranscriptionEntry } from './transcription/resolve-entry.js';
 import { IMAGE_CACHE_STAGE } from './images/cache.js';
 import { imageFingerprintInputs, imageFingerprintOf } from './images/fingerprint.js';
@@ -99,16 +100,14 @@ const STAGE_ESTIMATES: Record<string, number> = {
 };
 
 /**
- * The keys are the plan's own `pipeline` keys, read from a real plan rather
- * than guessed: transcription, analysis, images, zones, build. A label that
- * named a stage the plan does not record would report every reel as unrun.
+ * The labels come from the shared stage declaration, not a second copy here.
+ * The dry run and the runner are two views of the same work, and a user who
+ * reads an estimate and then watches differently-named stages go past has been
+ * told two stories.
  */
-const STAGE_LABELS: Record<string, string> = {
-  transcription: 'Transcribe and correct',
-  analysis: 'Keywords and image slots',
-  images: 'Generate images',
-  zones: 'Frame analysis (local, free)',
-};
+const STAGE_LABELS: Record<string, string> = Object.fromEntries(
+  PIPELINE_STAGES.map((s) => [s.id, s.label]),
+);
 
 /** The gate's per-image budget: published rate x IMAGE_COST_MULTIPLIER. */
 function perImageCeilingUsd(): number {
@@ -171,7 +170,19 @@ export async function dryRun(reelLabel: string, modeId: string): Promise<DryRunP
     note: string,
   ): void => {
     const done = pipeline[id]?.status === 'done';
-    const bills = provenance === 'none';
+    /*
+     * **A stage the plan already records as done will be skipped by a run**, so
+     * it cannot bill however its cache resolves. Pricing it anyway was the
+     * mirror of the defect session 14 fixed: a screen that answers "what would
+     * this stage cost" when the user is asking "what will happen if I press
+     * Run". `vitasilk` read $0.18 for analysis — its keyword entry is at an
+     * older analysis prompt version — while a run skips the stage entirely.
+     *
+     * The cache state is still reported, because redoing the stage deliberately
+     * *would* bill and the note is where that is said.
+     */
+    const skipped = done;
+    const bills = provenance === 'none' && !skipped;
     const estimateUsd = !bills
       ? null
       : id === 'images' && imagesCeilingUsd !== null
@@ -184,7 +195,7 @@ export async function dryRun(reelLabel: string, modeId: string): Promise<DryRunP
       provenance,
       entryId,
       estimateUsd,
-      note,
+      note: skipped ? `${note}. Already on the plan, so a run skips it` : note,
     });
   };
 
@@ -221,17 +232,33 @@ export async function dryRun(reelLabel: string, modeId: string): Promise<DryRunP
      * cannot drift. It is labelled as a **planned** count rather than a known
      * one, because nothing has decided these slots yet.
      */
-    const planned = imageSlotCountFor(durationS);
-    const images = planned * DEFAULT_IMAGE_CONFIG.candidatesPerSlot;
-    imagesCeilingUsd = images * perImageCeilingUsd();
-    add(
-      'images',
-      'none',
-      null,
-      `no image slots planned yet; a run would plan about ${planned} for a ` +
-        `${durationS.toFixed(1)}s reel and generate ${images} candidates, ` +
-        `budgeted at most $${imagesCeilingUsd.toFixed(2)}`,
-    );
+    /*
+     * Images can only bill if there will be slots to fill. There are none on
+     * the plan, so the only way any appear is the analysis stage running and
+     * planning them — and if analysis is already done and planned none, a run
+     * will never reach an image call at all. `test-2` read $1.45 for images
+     * while a run skips both stages.
+     */
+    if (pipeline['analysis']?.status === 'done') {
+      add(
+        'images',
+        null,
+        null,
+        'no image slots on the plan, and analysis has already run without planning any',
+      );
+    } else {
+      const planned = imageSlotCountFor(durationS);
+      const images = planned * DEFAULT_IMAGE_CONFIG.candidatesPerSlot;
+      imagesCeilingUsd = images * perImageCeilingUsd();
+      add(
+        'images',
+        'none',
+        null,
+        `no image slots planned yet; a run would plan about ${planned} for a ` +
+          `${durationS.toFixed(1)}s reel and generate ${images} candidates, ` +
+          `budgeted at most $${imagesCeilingUsd.toFixed(2)}`,
+      );
+    }
   } else {
     let hit = 0;
     let total = 0;

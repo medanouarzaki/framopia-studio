@@ -61,23 +61,58 @@ describe('stepsFor', () => {
  * as a budgeted ceiling rather than a forecast.
  */
 describe('the image estimate', () => {
-  it('scales with the reel\'s own slot count, and is the budgeted ceiling', async () => {
+  /*
+   * Rewritten in session 17. It used to price `test-1`'s eight uncached
+   * candidates — but `test-1`'s plan records the images stage as done, so a run
+   * skips it and the estimate is now null. Pricing work a run will not do is
+   * the same defect as failing to price work it will; the rule that survives is
+   * that the figure is derived from the reel, never a constant.
+   */
+  it('derives the figure from the reel rather than a flat constant', async () => {
     const { dryRun } = await import('./dry-run.js');
+    const { imageSlotCountFor } = await import('./analysis/count.js');
     const { DEFAULT_IMAGE_CONFIG } = await import('./images/config.js');
     const { estimateImageRunCost } = await import('@framopia/core');
 
-    const plan = await dryRun('test-1', 'k2-syndicalia');
+    const plan = await dryRun('ground-truth', 'k2-syndicalia');
     const images = plan.stages.find((s) => s.id === 'images');
     const expected = estimateImageRunCost({
       modelId: DEFAULT_IMAGE_CONFIG.modelId,
       resolution: DEFAULT_IMAGE_CONFIG.resolution,
-      slots: 4,
+      slots: imageSlotCountFor(23.256567),
       candidatesPerSlot: DEFAULT_IMAGE_CONFIG.candidatesPerSlot,
     }).usd;
 
     expect(images?.estimateUsd).toBeCloseTo(expected, 6);
     expect(images?.estimateUsd).not.toBeCloseTo(1.55, 2);
     expect(images?.note).toContain('budgeted at most');
+  });
+
+  /*
+   * A stage the plan records as done will be skipped, so it cannot bill however
+   * its cache resolves. `vitasilk`'s keyword entry sits at an older analysis
+   * prompt version and the dry run priced it at $0.18 while a run skipped it.
+   */
+  it('prices nothing for a stage a run would skip', async () => {
+    const { dryRun } = await import('./dry-run.js');
+    const plan = await dryRun('vitasilk', 'k2-syndicalia');
+    expect(plan.estimateUsd).toBe(0);
+    const analysis = plan.stages.find((s) => s.id === 'analysis');
+    expect(analysis?.estimateUsd).toBeNull();
+    expect(analysis?.note).toContain('Already on the plan, so a run skips it');
+  });
+
+  /*
+   * And images cannot bill when nothing will ever plan a slot for them:
+   * `test-2`'s analysis has run and planned none, so a run reaches no image
+   * call at all. It read $1.45.
+   */
+  it('prices nothing for images when no slot will ever be planned', async () => {
+    const { dryRun } = await import('./dry-run.js');
+    const plan = await dryRun('test-2', 'k2-syndicalia');
+    const images = plan.stages.find((s) => s.id === 'images');
+    expect(images?.estimateUsd).toBeNull();
+    expect(images?.note).toContain('analysis has already run without planning any');
   });
 
   it('charges nothing for a reel whose candidates are all cached', async () => {

@@ -10,6 +10,8 @@ import type { Zone } from './editplan/types.js';
 import { listModes, listReels } from './catalogue.js';
 import { dryRun, DryRunError } from './dry-run.js';
 import { stepsFor, StepsError } from './steps.js';
+// Imported for its side effect: registering the pipeline job runner.
+import './pipeline.js';
 import { health } from './health.js';
 import { clearHandshake, inspectLock, SERVICE_JSON_PATH, writeHandshake } from './lock.js';
 

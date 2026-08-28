@@ -9,6 +9,12 @@ export interface Job {
   progress: number;
   result?: unknown;
   error?: string;
+  /**
+   * Whatever the runner wants the poller to see while it is still running.
+   * The pipeline puts its per-stage report here, so a panel that polls sees
+   * stages finish rather than a number creeping up with nothing behind it.
+   */
+  detail?: unknown;
 }
 
 type JobRunner = (params: Record<string, unknown> | undefined, job: Job) => Promise<unknown>;
