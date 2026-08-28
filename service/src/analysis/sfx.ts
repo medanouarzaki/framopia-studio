@@ -1,4 +1,4 @@
-import { placeSfx, type SfxIndex, type TemplateEntry } from '@framopia/core';
+import { placeSfx, sfxGainDb, type SfxIndex, type TemplateEntry } from '@framopia/core';
 import type { EditPlan, SfxEvent } from '../editplan/types.js';
 
 /** 30000/1001, the rate every comp and every reel is at. */
@@ -32,9 +32,13 @@ export class UnknownSfxError extends Error {
  * still applies, because a placement derived from a number nobody measured is
  * the defect this replaces.
  *
- * Gain is the file's measured `gainDb` when it has one: a flat figure per kind
- * cannot land two files at the same level when their peaks are 7 dB apart. The
- * binding's gain is the fallback.
+ * **Gain is measured against the reel's own dialogue**, not against full scale.
+ * The absolute −20/−24 dB figures were chosen in Block 5 against nothing and
+ * were inaudible when first heard: every reel here is mastered near −14 LUFS,
+ * so a −20 dBFS hit sits under the voice. When the plan carries
+ * `source.dialogueLufs` the gain puts the file's peak on its kind's offset from
+ * that loudness; without it, the file's absolute `gainDb` is the fallback,
+ * because a guessed loudness would be worse than a known-quiet one.
  */
 export function deriveSfxEvents(
   plan: EditPlan,
@@ -42,6 +46,8 @@ export function deriveSfxEvents(
   sfxIndex: SfxIndex,
   /** Each template's measured impact, in seconds from the element's start. */
   impacts: Map<string, number> = new Map(),
+  /** The reel's integrated dialogue loudness, when it has been measured. */
+  dialogueLufs: number | undefined = undefined,
 ): SfxEvent[] {
   const known = new Set(sfxIndex.sfx.map((s) => s.id));
   const events: SfxEvent[] = [];
@@ -75,6 +81,15 @@ export function deriveSfxEvents(
         continue;
       }
 
+      const gainDb =
+        dialogueLufs === undefined
+          ? measured.gainDb
+          : sfxGainDb({
+              sfxId: binding.sfxId,
+              filePeakDbfs: measured.peakDbfs,
+              dialogueLufs,
+            });
+
       const placed = placeSfx({
         elementStartS: element.start,
         impactS,
@@ -87,7 +102,7 @@ export function deriveSfxEvents(
         sourceElementId: element.id,
         sfxId: binding.sfxId,
         timeS: placed.inPointS,
-        gainDb: measured.gainDb,
+        gainDb,
         anchorAtS: Number(placed.peakAtS.toFixed(6)),
         ...(placed.clamped ? { clamped: true, clampedByS: placed.clampedByS } : {}),
       });

@@ -160,7 +160,7 @@ for (const file of readdirSync(dir).filter((f) => f.endsWith('.editplan.json')).
   plan.subtitles.groups = timing.groups;
 
   const sfxBefore = plan.sfx.events.length;
-  plan.sfx.events = deriveSfxEvents(plan, templates, sfxIndex);
+  plan.sfx.events = deriveSfxEvents(plan, templates, sfxIndex, undefined, plan.source.dialogueLufs);
   plan.transcript.contentHash = transcriptContentHash(plan);
 
   const cardsMoved = plan.subtitles.groups.filter((g, i) => {

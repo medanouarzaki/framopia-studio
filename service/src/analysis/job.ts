@@ -191,7 +191,7 @@ export async function analyseKeywordsForPlan(
   const templates = templatesById(loadTemplateManifest());
   const assignment = assignTemplates(plan, mode, templates);
   for (const issue of assignment.issues) log(`templates: ${issue.path}: ${issue.message}`);
-  plan.sfx = { events: deriveSfxEvents(plan, templates, loadSfxIndex(), templateImpacts()) };
+  plan.sfx = { events: deriveSfxEvents(plan, templates, loadSfxIndex(), templateImpacts(), plan.source.dialogueLufs) };
 
   plan.pipeline.analysis = {
     status: 'done',
@@ -372,7 +372,7 @@ export async function planImageSlotsForPlan(
 
   const assignment = assignTemplates(plan, mode, templates);
   for (const issue of assignment.issues) log(`templates: ${issue.path}: ${issue.message}`);
-  plan.sfx = { events: deriveSfxEvents(plan, templates, loadSfxIndex(), templateImpacts()) };
+  plan.sfx = { events: deriveSfxEvents(plan, templates, loadSfxIndex(), templateImpacts(), plan.source.dialogueLufs) };
   plan.pipeline.images = {
     status: 'done',
     config: slotConfigLabel(ACTIVE_SLOT_PROMPT_VERSION, mode),

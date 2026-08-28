@@ -55,6 +55,16 @@ export interface PlanSource {
   height: number;
   /** 16-bit PCM mono 16 kHz, extracted for ASR. */
   audioPath: string;
+  /**
+   * The reel's own integrated dialogue loudness, from `npm run
+   * loudness:measure`. Sound effect levels are set against it, so a quiet reel
+   * and a loud one both come out right without anyone listening.
+   *
+   * **Schema addition, optional with a default**: absent on any plan written
+   * before Block 8 session 25, and read as "not measured" — sfx then fall back
+   * to the absolute figures rather than to a guessed loudness.
+   */
+  dialogueLufs?: number;
 }
 
 export interface ClientMode {

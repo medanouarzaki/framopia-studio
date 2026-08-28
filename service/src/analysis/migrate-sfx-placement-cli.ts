@@ -1,4 +1,4 @@
-import { readdirSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { loadSfxIndex, loadTemplateManifest, REPO_ROOT, templatesById } from '@framopia/core';
 import { readEditPlan, writeEditPlan } from '../editplan/io.js';
@@ -27,6 +27,28 @@ const templates = templatesById(loadTemplateManifest());
 const sfxIndex = loadSfxIndex();
 const impacts = templateImpacts();
 
+/*
+ * The reels' measured dialogue loudness, so sound levels can be set against the
+ * voice. Written onto each plan as it is migrated, because the level rule needs
+ * it wherever sfx are derived — not only here.
+ */
+const loudnessPath = path.join(REPO_ROOT, '.local', 'build', 'loudness.json');
+const loudness = new Map<string, number>();
+if (existsSync(loudnessPath)) {
+  const measured = JSON.parse(readFileSync(loudnessPath, 'utf8')) as {
+    reels: { reel: string; integratedLufs: number }[];
+  };
+  for (const row of measured.reels) loudness.set(row.reel, row.integratedLufs);
+}
+/** The plan basename differs from the reel label on three reels. */
+const REEL_OF: Record<string, string> = {
+  'ground truth': 'ground-truth',
+  'test 1': 'test-1',
+  'test 2': 'test-2',
+  'test 3': 'test-3',
+  vitasilk: 'vitasilk',
+};
+
 console.log(
   `impact frames: ${
     impacts.size === 0
@@ -45,8 +67,13 @@ for (const file of readdirSync(dir).filter((f) => f.endsWith('.editplan.json')).
   const planPath = path.join(dir, file);
   const plan = await readEditPlan(planPath);
 
+  // The measured loudness goes on before the events are derived, so the level
+  // rule sees it on the very first pass rather than needing a second run.
+  const measuredLufs = loudness.get(REEL_OF[reel] ?? reel);
+  if (measuredLufs !== undefined) plan.source.dialogueLufs = measuredLufs;
+
   const before = new Map(plan.sfx.events.map((e) => [e.sourceElementId + e.sfxId, e]));
-  const after = deriveSfxEvents(plan, templates, sfxIndex, impacts);
+  const after = deriveSfxEvents(plan, templates, sfxIndex, impacts, plan.source.dialogueLufs);
 
   let reelMoved = 0;
   const lines: string[] = [];
@@ -69,13 +96,14 @@ for (const file of readdirSync(dir).filter((f) => f.endsWith('.editplan.json')).
   console.log(`${reel.padEnd(14)} ${after.length} events, ${reelMoved} moved`);
   for (const line of lines) console.log(line);
 
-  if (apply && after.length > 0) {
+  if (apply && (after.length > 0 || measuredLufs !== undefined)) {
     plan.sfx = { events: after };
     plan.meta.updatedAt = new Date().toISOString();
     await writeEditPlan(planPath, plan);
     const reread = await readEditPlan(planPath);
     console.log(
       `    written and reopened: ${reread.sfx.events.length} events, ` +
+        `dialogue ${reread.source.dialogueLufs ?? 'unmeasured'} LUFS, ` +
         `keywords ${reread.keywords.items.length}, ` +
         `removedWordIds ${(reread.keywords.removedWordIds ?? []).length}`,
     );

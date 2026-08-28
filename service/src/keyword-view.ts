@@ -243,6 +243,7 @@ function rederiveSfx(plan: EditPlan): void {
     templatesById(loadTemplateManifest()),
     loadSfxIndex(),
     templateImpacts(),
+    plan.source.dialogueLufs,
   );
 }
 

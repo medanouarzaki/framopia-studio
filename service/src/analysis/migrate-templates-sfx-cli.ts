@@ -49,7 +49,7 @@ for (const file of readdirSync(FOOTAGE_DIR).filter((f) => f.endsWith('.editplan.
   const keywordsBefore = plan.keywords.items.filter((k) => k.templateId !== null).length;
 
   const assignment = assignTemplates(plan, mode, templates);
-  const after = deriveSfxEvents(plan, templates, sfxIndex, templateImpacts());
+  const after = deriveSfxEvents(plan, templates, sfxIndex, templateImpacts(), plan.source.dialogueLufs);
   const keywordsAfter = plan.keywords.items.filter((k) => k.templateId !== null).length;
 
   console.log(

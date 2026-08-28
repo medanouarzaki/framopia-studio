@@ -491,3 +491,57 @@ and the user's frame 4 corresponds to **0.8966** — in round terms, 90% rather
 than 95%. That is a judgement about when a motion reads as arrived, and it
 belongs to the person who drew the curve. **Nothing was migrated onto 5.25**,
 and the 17 SFX events remain where session 22 left them.
+
+### SFX level is measured against the dialogue — 2026-08-28
+
+**The −20 dB and −24 dB figures are superseded.** They were chosen in Block 5
+before any composition existed, were never heard, and are **absolute**: a level
+below full scale says nothing about the voice it sits under. The user built
+`vitasilk`, played it with spacebar preview, and could not hear the hits at all.
+
+**Measured, `npm run loudness:measure`:**
+
+| reel | integrated | LRA | true peak |
+|---|---:|---:|---:|
+| ground-truth | −13.9 LUFS | 1.9 LU | 0.1 dBFS |
+| test-1 | −14.0 LUFS | 2.1 LU | 0.1 dBFS |
+| vitasilk | −14.4 LUFS | 1.2 LU | 0.0 dBFS |
+| test-2 | −14.6 LUFS | 1.3 LU | 0.2 dBFS |
+| test-3 | −14.6 LUFS | 1.5 LU | 0.1 dBFS |
+
+Every reel is mastered loud with no headroom. **A hit peaking at −20 dBFS sat
+5.6 dB below `vitasilk`'s *average* speech level and about 20 dB below its
+peaks**, which is why a short transient vanished under continuous speech.
+
+**The rule is now an offset from the reel's own integrated loudness**, so a
+quiet reel and a loud one both come out right without anyone listening:
+
+    target peak = reel integrated loudness + offset
+    layer gain  = target peak − the file's own measured peak
+
+`SFX_TARGET_OFFSET_DB` in `core/src/sfx-level.ts` — **CHOSEN, NOT MEASURED**,
+and to be judged by ear:
+
+- **hits +6 dB.** A transient accent must peak above the average speech level to
+  read as an accent, because a short transient is perceptually far quieter than
+  a continuous signal at the same peak.
+- **whooshes 0 dB.** A bed under a moving image, not an accent, so it sits at
+  the dialogue's own level and reads as texture.
+
+Integrated loudness is the anchor rather than true peak: these reels are all
+pinned at 0.0 dBFS peak and differ only in loudness.
+
+**On `vitasilk`:**
+
+| sound | gain was | gain now | peak now | against speech |
+|---|---:|---:|---:|---|
+| `hit_01` | −19.28 dB | **−7.68 dB** | −8.4 dBFS | 6 dB above −14.4 LUFS |
+| `whoosh_01` | −22.77 dB | **−13.17 dB** | −14.4 dBFS | level with the dialogue |
+
+**+11.6 dB on the hits and +9.6 dB on the whooshes.** Placement is untouched:
+`IMPACT_THRESHOLD` is unresolved and all 17 events keep their in-points, still
+8 frames late.
+
+The reel's loudness is stored on the plan as `source.dialogueLufs` — schema
+addition, optional with a default. Absent means unmeasured, and the sfx then
+fall back to the file's absolute gain rather than to a guessed loudness.
