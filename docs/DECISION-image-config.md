@@ -218,6 +218,100 @@ prompts that carry it, so the prompt option and the check option both belong to
 whoever settles what a K2 picture should look like. Nothing was attempted here;
 naming it correctly is the deliverable.
 
+## Amendment (2026-08-29) — the pictures are too dark to read
+
+**The user's ruling**, after watching a built reel: a generated picture should
+be clear at first sight, without the viewer working out what it is. The brighter
+end of the brand palette should lead. Not bright for its own sake — the dominant
+tone shifts up, and the palette is kept.
+
+**This is the other half of the fidelity defect above.** A picture that does not
+show what was asked for and a picture too dark to read are the same kind of
+problem, and both are solved in the prompt rather than in a threshold.
+
+### The sentence that causes it
+
+Two fragments of `imageStyle.stylePrompt` carry the palette, and the second is
+the one doing the damage:
+
+    dominant colour palette of {{palette.background}}, {{palette.primary}} and {{palette.accent}}
+    lit against {{palette.background}}, with {{palette.light}} reserved for highlights
+
+Composed, that reaches the model as *"dominant colour palette of #1A0000,
+#820000 and #C9A96E. lit against #1A0000, with #F8F6F2 reserved for
+highlights."* It names a near-black ground, leads the palette with it, and
+**confines the only light colour to highlights**. The model obeys.
+
+### What it produces, measured
+
+All ten candidates on `vitasilk`, over the whole frame:
+
+| candidate | mean | median | p90 | below 0.05 |
+|---|---:|---:|---:|---:|
+| img001-c1 | 0.0250 | 0.0019 | 0.0391 | 92.1% |
+| img001-c2 | 0.0247 | 0.0028 | 0.0196 | 92.5% |
+| img002-c1 | 0.0559 | 0.0028 | 0.1582 | 84.5% |
+| img002-c2 | 0.0365 | 0.0019 | 0.0416 | 91.5% |
+| img003-c1 | 0.0609 | 0.0242 | 0.1326 | 71.9% |
+| img003-c2 | 0.0345 | 0.0061 | 0.0696 | 87.9% |
+| img004-c1 | 0.0182 | 0.0030 | 0.0169 | 94.4% |
+| img004-c2 | 0.0141 | 0.0051 | 0.0136 | 97.0% |
+| img005-c1 | 0.0568 | 0.0022 | 0.2428 | 79.3% |
+| img005-c2 | 0.0324 | 0.0050 | 0.0983 | 82.6% |
+
+**Mean relative luminance 0.0359** across the ten, range 0.0141–0.0609.
+**87.4% of the average frame sits below 0.05**, from 71.9% to 97.0%. Mid-grey is
+0.216, so these pictures average about **a sixth of mid-grey**. Their medians —
+0.002 to 0.024 — are darker still than their means, which is a frame that is
+nearly all ground with a small lit subject in it.
+
+On a dark reel, at 1.5 to 2.6 seconds on screen, that is not something a viewer
+resolves. Session 25 measured the same thing at the outer ring (0.0019–0.0266)
+and recorded it as a fact about the frame colour without naming it as a defect.
+
+### The proposed change, not applied
+
+`imageStyle.stylePrompt`, replacing the two fragments above:
+
+    the brighter end of the palette leads: {{palette.accent}} and {{palette.light}}
+    carry the subject, with {{palette.primary}} for depth and {{palette.background}}
+    kept to the ground behind it
+
+    lit so the subject reads immediately at a glance, bright and clearly separated
+    from its ground, not sunk into it
+
+**What each half is for.** The first reorders the palette so the light and the
+accent lead and the near-black becomes the surround rather than the subject —
+the brand colours are all still named, in the same file, so nothing is invented
+and nothing is lost. The second replaces *"lit against #1A0000, with #F8F6F2
+reserved for highlights"*, which is the instruction that put 87% of the frame in
+shadow; *reserved for highlights* is the specific phrase to remove.
+
+The `lighting` variation axis stays as it is. Its two values — hard directional
+light and rim light — are about how the subject is modelled, not how bright the
+picture is, and one of them (rim light) already works towards separation.
+
+### What testing it costs
+
+**`test-1`: 4 slots × 2 candidates = 8 images.** Published $1.072; expected
+actual about **$1.24** at the measured +15.7% over published; **budgeted ceiling
+$1.4472** at `IMAGE_COST_MULTIPLIER` 1.35.
+
+`test-1` rather than `vitasilk` because `vitasilk`'s ten images are the corpus
+every measurement in this block rests on, and regenerating them would cost the
+comparison as well as the money.
+
+**No image is generated without the user's explicit go-ahead**, and none was
+generated for this amendment.
+
+### Why it is Block 9
+
+Block 9 owns the client's visual identity and the prompts that carry it. A
+brightness rule written before the K2 palette is settled would be written twice,
+and the fragments above are mode data — they belong to whoever decides what a K2
+picture looks like. What this session fixes is that the defect is now named,
+quantified, and has a prompt to try.
+
 ## References
 
 - `benchmarks/RESULTS-block4-imagebakeoff.md` — the six-image comparison.
