@@ -517,6 +517,42 @@ Python sidecar, which take minutes and have their own commands; the stage
 reports what the plan already has, or says which commands to run. Pretending to
 have run it would be worse.
 
+### Step 2 is the transcript editor, and every figure in it is the service's
+
+`GET /transcript?reel=` returns the words, the cards they become, and the three
+questions the user has to rule on; `POST /transcript/word` and
+`/transcript/card` write edits. `service/src/transcript-view.ts` derives all of
+it — a figure computed in the panel would be a second implementation of a rule
+the service already owns.
+
+**Direction is set per token, never on a container.** A word's own `script`
+decides its `dir`, so an Arabic word reads right to left inside an otherwise
+left-to-right row; a `dir` on the row or the list would reorder the Latin words
+around it. A browser test asserts the list and the row carry no `dir` at all.
+
+**Confidence is banded, and never red.** `conf-high` ≥ 0.9, `conf-mid` ≥ 0.7,
+`conf-low` below, and `conf-none` for an interpolated word the aligner never
+measured. The accent belongs to Run pipeline, and a low-confidence word is
+something to look at rather than an error.
+
+**Every edit sets `edited`**, which is what `PlanMergeBlockedError` refuses to
+discard on a re-run. Word ids and order never change, and a word cannot be
+emptied — it is marked removed instead, so the card can still be built.
+
+**An edit to a word's text changes `hashTranscript`**, so the keyword and
+image-slot caches miss and a later run bills for them again. **The panel says so
+before he types**, and a test pins that the sentence is true: a text edit moves
+the hash and a timing edit does not.
+
+**The three open questions carry their basis, not just a count.** Clipped holds
+(23) and split Arabic runs (13) are computed from the plan and reproduce the
+recorded corpus figures exactly. **Overlong words (7) are a proxy**: the real
+measurement is `sourceRectAtTime` in After Effects against
+`SUBTITLE_SAFE_WIDTH`, and the panel counts characters at
+`OVERLONG_WORD_CHARS = 11`. The two agree exactly on this corpus — the seven
+longest words are the seven measured overlong, with the boundary between 11 and
+10 characters — and the marker says which measurement it is.
+
 ### The dry run answers what pressing Run will do, not what a stage would cost
 
 `PIPELINE_STAGES` in `service/src/pipeline-stages.ts` is the one declaration of
@@ -5194,6 +5230,30 @@ stages are on its plan, so all four are skipped with their reasons on screen —
 which is also the first time `cacheProvenance` reaches the panel from real data.
 `ground-truth` and `test-3` are the reels with work left: about **$1.63** each,
 being analysis plus the images that analysis would plan.
+
+## Block 8 part 2, session 18 — three defects from the first real run, then step 2
+
+**Spent $0.00; no API was called and the pipeline was not run.** Ledger 108
+entries / sha `50ec3f57…` at both ends. After Effects was not driven.
+
+**The dry run and the runner disagreed on screen while six tests said they
+agreed.** With `vitasilk` picked the cost block read "to run" for a stage the
+run beneath it reported as "skipped — already on the plan". The six tests pinned
+two *service* functions against each other; **the divergence was in the panel**,
+which inferred its label from `provenance` and `estimateUsd` — and those two
+cannot express "the plan already has this". The service now states `action`
+(`skip` / `reuse` / `run`) and the panel renders it, and the pin is widened to
+assert the **rendered strings** in the built bundle.
+
+**Red was leaking into the focus ring.** `select:focus` used `--accent`, so the
+mode picker outlined itself in brand red. Focus now uses `--focus`, and a
+browser test focuses every interactive control in turn and asserts none paints
+`#ED1C24` except Run. Verified against the old style: it fails.
+
+**The rail does unlock after a run**, which session 17 claimed and never proved
+because the user's run skipped everything. A test now drives a run that
+completes a pending stage and asserts Keywords goes from locked to reachable
+with no manual reload.
 
 See `docs/BLOCKS.md` for the full block plan and `handoffs/` for prior
 session context.
