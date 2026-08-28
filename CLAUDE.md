@@ -5803,3 +5803,82 @@ workspace script with the **workspace** as its working directory, so
 `my files/…` typed at the repository root arrived at `service/`.
 `resolveUserPath` in `core/src/user-path.ts` resolves a relative path against
 `INIT_CWD`, npm's record of where the command was run.
+
+
+## Block 8 session 27 — the hits removed, the late whoosh found
+
+**Spent $0.00.** Ledger 108 entries / sha `50ec3f57…` at both ends. **After
+Effects was not contacted in any way.** One AE instance (pid 79146) and 0
+`aerender` at session start.
+
+### Keywords are silent, by the user's ruling
+
+He built `vitasilk`, heard the hits and ruled them out: **the sound fights the
+animation rather than supporting it.** `kw_slam` and `kw_slam_ar` declare
+`sfx: []`; `hit_01` and `hit_02` are bound to nothing. **The files and their
+measurements stay** in `assets/sfx/sfx.json` — they are measured facts and a
+later block may want them.
+
+The machinery that existed only for them is **gone, not flagged off**: the hit
+spacing rule, the hit variation rule (`core/src/sfx-variation.ts` is deleted),
+and the keyword picker's sound row along with the sentence it showed when a hit
+had been thinned out. A keyword now has no sound to have or to lack.
+
+**Events across the corpus: 15 → 7.** Six were hits; two more went with Goal 3
+below.
+
+| reel | before | after |
+|---|---:|---:|
+| ground-truth | 0 | 0 |
+| test-1 | 6 | **3** |
+| test-2 | 2 | **0** |
+| test-3 | 0 | 0 |
+| vitasilk | 7 | **4** |
+
+**The mix is attenuated less, because the loudest bound sound changed.**
+`dialogueAttenuationDb` computed against the hits' +6 dB while nothing binds a
+hit; `loudestBoundOffsetDb` reads the offsets the manifest actually binds, so it
+follows the whooshes' +3. `vitasilk` goes **3.80 → 3.07 dB** and the whoosh gain
+**−13.97 → −13.24 dB**. The balance is unchanged.
+
+### Why the whoosh was late — measured, not adjusted
+
+`benchmarks/RESULTS-block8-whoosh-late.md`. Three candidates, one true:
+
+- **The clamp — TRUE, and the cause.** **7 of 9 whooshes landed exactly on the
+  impact frame; 2 were 14 frames (0.467 s) late**, both `img001`, the first
+  image in the reel. `whoosh_01`'s anchor is 0.6913 s into the file and the
+  impact is 0.1354 s after the element, so the layer needs **0.5558 s of reel in
+  front of the image** and `img001` sits at 0.0990 s.
+- **The wrong impact frame — REFUTED.** Computed per comp from its own
+  keyframes: `img_slide_left`'s Position and `img_float`'s Opacity and Scale all
+  cross at **4.059 frames**, the same as a word's. Every entrance pair in the
+  library runs 0 → 0.4004 s on one shared easing preset.
+- **The layer starting before the picture — the opposite is true.** The builder
+  adds no fade and never time-stretches an image, so the comp's frame 0 is the
+  layer's in-point; opacity reaches **10% at 0.18 frames and 50% at 1.17**.
+  The peak is aimed at the 90% crossing, which is **135 ms after the picture
+  first appears**. Recorded and **not acted on** — that is a frame or two, not
+  the beat the user described, and `IMPACT_THRESHOLD` stays 0.90. It is where to
+  look next if the whooshes still read late.
+
+### A sound that cannot reach its impact is not placed
+
+**Neither file fits the first image**: `whoosh_02` would still be 9.7 frames
+late, so there is nothing to substitute. The sound is **dropped rather than
+played late** — *a sound that is audibly wrong is worse than no sound*, the same
+ruling that removed the hits. `deriveSfxDetail` returns `unplaceable` with the
+element, the file and how late it would have been, and
+`npm run migrate:sfx-placement` prints a `NO SOUND` line per refusal.
+
+**Nothing in the corpus clamps any more**; every surviving event lands its
+anchor on the impact frame. `SilentImageSlotError` is unchanged for the case it
+was built for — a template that binds nothing — and an image refused for want of
+room is a reported decision rather than a silent omission.
+
+**The alternative not taken:** After Effects allows a layer to start before the
+composition, so the whoosh could keep its lead-in and begin part-way through
+with the peak on time. Very likely the better fix, and **not made because
+verifying it means driving After Effects**, which this session may not do — and
+a build where AE silently clamped a negative `startTime` back to zero would
+reintroduce the defect inaudibly.
