@@ -517,6 +517,59 @@ Python sidecar, which take minutes and have their own commands; the stage
 reports what the plan already has, or says which commands to run. Pretending to
 have run it would be worse.
 
+### A count names its scope, or it is the wrong number
+
+The transcript editor's three ruling counts read **1, 5 and 0** on `vitasilk`
+while session 18's report said **7, 23 and 13**. Both were right — one per reel,
+one over the corpus — and nothing on the button or in the report said which. The
+user could not rule on any of them, correctly.
+
+Per reel, and pinned by a test for all five reels:
+
+| reel | overlong | clipped | split terms |
+|---|---:|---:|---:|
+| ground-truth | 2 | 8 | 2 |
+| test-1 | 0 | 5 | 6 |
+| test-2 | 1 | 3 | 1 |
+| test-3 | 3 | 2 | 4 |
+| vitasilk | 1 | 5 | 0 |
+| **corpus** | **7** | **23** | **13** |
+
+**`vitasilk`'s zero is real, not a broken detector.** All 73 of its words are
+`script: latin` — the correction pass transliterates Darija to Arabizi — so no
+Arabic run exists to be split. The Arabic on that reel is in `sourceText`, which
+is the raw Scribe draft and never gets built. 39 of its words have an Arabic
+`sourceText` and none has an Arabic `text`.
+
+**The clipped breakdown recorded in `handoffs/block-8-part-1.md` is 9/7/4/3/5 =
+28 and is pre-migration.** Block 8 session 14's alignment migration took the
+corpus from 28 to 23; the per-reel figures today are 8/5/3/2/5. `vitasilk` is 5
+either way, which is why the screen and the old record agreed by accident.
+
+Both scopes are now on the button, and **a proxy says it is one**: the overlong
+count is a character count at `OVERLONG_WORD_CHARS = 11` standing in for
+`sourceRectAtTime` in After Effects.
+
+### The script toggle is free; a text edit is not
+
+`hashTranscript` is `[id, text]` over non-removed words and
+`transcriptContentHash` is `[id, text, start, end, removed]`. **Neither covers
+`script`**, so flipping it misses no cache and clears no block — where editing a
+word's text changes both, missing the keyword and image-slot caches and costing
+about $0.24 on a re-run. The panel says which is which, because a free edit and
+a paid one must not look alike.
+
+What flipping it does change is the **template variant**: `assignTemplates`
+picks `sub_pop` or `sub_pop_ar` by script, and that decides the font — Inter
+Semi-Bold or Almarai Bold at 1.07x. `editWord` moves the card to the matching
+variant in the same write, because leaving it would have the builder draw Arabic
+in Inter. A template with no counterpart is left alone rather than given an
+invented id.
+
+**It cannot correct the CJK draft token.** `vitasilk` `w0005` displays `5`,
+correctly Latin; `五` is its `sourceText`, which is cache data the panel never
+writes.
+
 ### Step 2 is the transcript editor, and every figure in it is the service's
 
 `GET /transcript?reel=` returns the words, the cards they become, and the three
@@ -5254,6 +5307,22 @@ browser test focuses every interactive control in turn and asserts none paints
 because the user's run skipped everything. A test now drives a run that
 completes a pending stage and asserts Keywords goes from locked to reachable
 with no manual reload.
+
+## Block 8 part 2, session 19 — the counts, and the script toggle
+
+**Spent $0.00; no API was called and the pipeline was not run.** Ledger 108
+entries / sha `50ec3f57…` at both ends. After Effects was not driven.
+
+The two conventions above are the session. The counts were never wrong — they
+were unlabelled, which in front of someone being asked to rule is the same
+thing. Each ruling button now carries **this reel**, **corpus**, and **proxy**
+where it applies, and each instance carries the measurement that put it there:
+a word's length against the threshold, a card's shortfall in the Build pane's
+own sentence, and a split term shown whole with the cards it is broken into.
+
+`تحفيز طبيعي للكولاجين` — the term ORTHOGRAPHY_GUIDE §6 names verbatim — now
+shows on `test-1` as three parts in three cards, which is the evidence the user
+was being asked to rule on and could not see.
 
 See `docs/BLOCKS.md` for the full block plan and `handoffs/` for prior
 session context.
