@@ -396,3 +396,65 @@ pinned at 0.0 dBFS peak and differ only in loudness.
 The reel's loudness is stored on the plan as `source.dialogueLufs` — schema
 addition, optional with a default. Absent means unmeasured, and the sfx then
 fall back to the file's absolute gain rather than to a guessed loudness.
+
+### The mix has headroom now, and the sound is placed on the crossing — 2026-08-28
+
+The user rebuilt `vitasilk` and listened. **The hits clipped and the whooshes
+were inaudible** — the two offsets wrong in opposite directions — **three
+consecutive hits read as mechanical**, and the sounds did not land on the word.
+
+**Why the hits clipped, and why no gain could have fixed it.** Every reel is
+delivered with a true peak of 0.0–0.2 dBFS. Measured per event against the
+dialogue under it, **all 17 events summed past 0 dBFS** somewhere in the window
+they played, 7 of them even on a tight window around their own peak, by up to
++2.91 dB. With the voice already on full scale, `20·log10(1 + 10^(s/20))`
+exceeds 0 dBFS for **every** finite sfx peak: a hit at −40 dBFS still puts the
+sum over. The constraint cannot be met by choosing an sfx level.
+
+**So the mix makes room.** `MIX_CEILING_DBFS = -1.0` — **CHOSEN, NOT
+MEASURED** — and `dialogueAttenuationDb` is **derived**: the dialogue's peak and
+the sfx target both move with the attenuation, so the smallest one that works is
+exactly how far the un-attenuated sum overshoots the ceiling. The whole mix comes
+down together, so the balance the offsets describe is untouched. It lands at
+**3.80–4.01 dB** across the corpus, and the builder applies it to the reel's own
+audio layer. Re-measured after: **0 of 17 events over the ceiling, worst sum
+−1.00 dBFS**, which is the ceiling exactly.
+
+**The whooshes go from dialogue +0 to +3 dB.** CHOSEN, judged by ear: a bed
+belongs below the hit's +6 and above the voice it has to be heard through. In
+absolute terms `whoosh_01` moves −14.40 → −15.20 dBFS on `vitasilk` and is
+**3 dB louder against the voice**, which moved 3.8 dB further. There is room to
+go louder — the whooshes sum to −1.7 to −3.0 dBFS — and what limits it is the
+hit at +6, which is what sets the attenuation for the whole reel.
+
+**Consecutive hits are thinned and varied.** `MIN_SFX_SPACING_S = 1.50` and
+`SFX_VARIATION_WINDOW_S = 3.00`, both **CHOSEN, NOT MEASURED**, in
+`core/src/sfx-variation.ts`. Spacing first — there is no point varying an event
+about to be dropped — then a repeat inside the window takes the next file of the
+same kind, cycling. Both are applied to the events **in time order**, which has
+to be established rather than assumed: `plan.keywords.items` is in selection
+order, and on `vitasilk` k003 plays first. Deterministic with no seed.
+
+Across the corpus: **2 hits dropped** (`vitasilk` k002 and `test-2` k003, each
+1.259 s after the previous) and **1 varied** (`vitasilk` k001 to `hit_02`, which
+had been bound to nothing). `vitasilk` goes from three identical hits to two
+different ones. **No whoosh is dropped or varied anywhere** — the closest two
+images in the corpus are 3.07 s apart, so neither rule fires on them.
+
+**Every image slot carries a sound**, enforced rather than observed:
+`SilentImageSlotError` refuses the derivation naming the slots. It was already
+true of the corpus, but only because both image templates happen to bind a
+whoosh. An image's sound is also never the one the spacing rule drops.
+
+**`IMPACT_THRESHOLD` is 0.90, and placement reads the crossing.**
+`templateImpacts` now calls `impactCrossingOf`, not `impactFrameOf` — the latter
+measures the **settle**, and sound placed there was the 8-frame error the user
+heard. All six comps cross at **4.06 frames** against the settle's 12.00 and a
+linear reading's 10.80. The user puts `kw_slam`'s arrival at frame 4, which is a
+threshold of 0.8966; 0.90 is his figure to within a sixteenth of a frame and is a
+round number rather than one fitted to a single comp's curve. **Where a
+measurement and the author of the animation disagree by less than two frames,
+the author decides.** **12 of 15 events moved 8.00 frames earlier**; 3 clamp at
+the composition start and their anchors are later than before, because a nearer
+impact needs an earlier start. Full table:
+`benchmarks/RESULTS-block8-sfx-placement.md`.
