@@ -178,6 +178,15 @@ AI-generated contextual images, SFX, and a watermark. Full spec in
   analysis over every stored binary mask, plus the twelve frames with the
   largest dropped component rendered to `benchmarks/results/latest-components/`.
   Modifies no mask.
+- `npm run loudness:measure` — free, local, **read-only**. Measures every reel's
+  integrated loudness, loudness range and true peak with ffmpeg's `ebur128` and
+  writes `.local/build/loudness.json`. What the SFX levels are set against: the
+  corpus runs −13.9 to −14.6 LUFS at 0.0–0.2 dBFS true peak, so an absolute
+  −20 dBFS hit sat about 20 dB under the voice's peaks and could not be heard.
+  Hits target dialogue **+6 dB** and whooshes **+0 dB** (`core/src/sfx-level.ts`,
+  **CHOSEN NOT MEASURED**); the reel's figure lives on the plan as
+  `source.dialogueLufs`, and absent falls back to the file's absolute gain
+  rather than to a guessed loudness.
 - `npm run watermark:measure` — free, local. Measures
   `assets/watermark/intro.mov` with ffprobe/ffmpeg and **emits** every claim
   into `benchmarks/RESULTS-block7-watermark.md`: duration in seconds and
@@ -5643,3 +5652,63 @@ The 17 SFX events remain 8 frames late.
 
 See `docs/BLOCKS.md` for the full block plan and `handoffs/` for prior
 session context.
+
+
+## Block 8 session 25 — heard and seen for the first time
+
+**Spent $0.00.** Ledger 108 entries / sha `50ec3f57…` at both ends. After
+Effects was not driven.
+
+The user built `vitasilk` and watched it — the first time this system's output
+has been seen or heard. Four of his six findings became rules; two became
+questions. Full record in `reports/block-8-session-25.md`.
+
+**SFX level is relative to the dialogue now.** See `npm run loudness:measure`
+above. `vitasilk` hits **−19.28 → −7.68 dB**, whooshes **−22.77 → −13.17 dB**.
+The −20/−24 figures are recorded as superseded in `TEMPLATE_LIBRARY_GUIDE.md`
+and `TEMPLATE_BUILD_SPEC.md`. **Placement is untouched** — `IMPACT_THRESHOLD` is
+unresolved and the 17 events stay 8 frames late.
+
+**The card frame's colour is derived from the picture.** Every candidate in the
+corpus measures **0.0019–0.0266** relative luminance at its outermost 2% ring,
+because every prompt carries the mode's dark palette — **1.01:1 to 1.30:1**
+against a dark frame, which is why images disappeared. `cardFrameColour` in
+`core/src/image-border.ts` takes whichever palette role separates best, at
+**WCAG 2.1's 3:1 minimum for a non-text boundary** — adopted from the standard,
+not chosen here. The sidecar gained `edge_luminance`; the builder applies the
+colour as a **Fill effect on the duplicated instance's `CARD` layer**, so the
+shared solid the template draws from is untouched. **Never rendered** — the
+ExtendScript half cannot be tested outside a running AE.
+
+**`imageScale` is a mode field**, optional, default 1.0; `k2-syndicalia` is v7
+at **1.4**. The bump invalidates nothing. **Nine of nine slots clamp**: the
+top-left rule already takes the largest square that clears the face, so 749–837
+px are placed against 1048–1166 asked for, and `TOP_LEFT_MARGIN` plus
+`HEAD_CLEARANCE` are 151 px against the ~300 needed. Making the images bigger is
+a placement ruling, not a constant — `benchmarks/RESULTS-block8-image-scale.md`.
+A real defect was found doing it: at a clamped size the square sat exactly on
+the clearance boundary and touched the grown face box on four of nine slots.
+**Jitter is applied last now**, so it stays a shrink at any scale.
+
+**The watermark comes from the plan.** `build-reel-cli.ts` placed one whenever
+the measurement file and the asset existed — both properties of the repository,
+so every reel got a mark and none could refuse one. `Watermark.enabled` is
+optional with a default of **true**, `POST /watermark` writes it, the dry run
+reports it, and the Build step carries a per-reel checkbox. **Its inset is
+unchanged and asymmetric**: 216 × 242 px, **65 px from the side and 205 px from
+the top**, because the one `WATERMARK_MARGIN` 0.03 is carried into an axis 16:9
+taller. Everything else the builder decides without the plan is swept in
+`benchmarks/RESULTS-block8-builder-inputs.md`; **`plan.clientMode` is null on
+all five plans** and is the same defect, reported and not changed.
+
+**The flashing cards are a ruling, not a fix, and nothing was implemented.**
+The remedy asked for — a minimum on-screen duration taking time from the gap
+after the word — **is Block 7 session 9's hold rule and has been in force
+since**. 336 of 343 cards already hold past their word, all **22.039 s** of
+post-word silence is already on screen, and **one card and 0.080 s** are
+unclaimed corpus-wide; at every threshold from 0.20 s to 0.50 s, **zero** short
+cards can reach it from their own gap. Median card **0.300 s**, p10 0.139,
+236 of 343 under 0.40. The two remaining sources of time each reverse an earlier
+ruling: overlap the next card (337 of 338 pairs stack), or pair words again
+(**173 cards, median 0.640 s, 22 under 0.40 s**).
+`benchmarks/RESULTS-block8-card-duration.md`.
