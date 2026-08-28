@@ -33,6 +33,7 @@ export interface StepView {
   available: boolean;
   reason: string | null;
   summary: string | null;
+  issues: string[];
   current: boolean;
 }
 
@@ -43,7 +44,11 @@ export interface StepView {
  * vanishing: a step that disappears when it is not ready teaches nobody what
  * the tool does.
  */
-export function stepViews(plan: PlanSteps | null, current: StepId): StepView[] {
+export function stepViews(
+  plan: PlanSteps | null,
+  current: StepId,
+  selection: { reel: boolean; mode: boolean } = { reel: false, mode: false },
+): StepView[] {
   const fromService = planSteps(plan);
   return STEP_ORDER.map((id) => {
     const fromPlan: StepState | undefined = fromService.find((s) => s.id === id);
@@ -52,29 +57,67 @@ export function stepViews(plan: PlanSteps | null, current: StepId): StepView[] {
       id,
       label: STEP_LABELS[id],
       available,
-      reason:
-        fromPlan?.reason ??
-        (id === 'reel' ? null : 'Pick a video and a client mode first.'),
+      reason: fromPlan?.reason ?? (id === 'reel' ? null : fallbackReason(selection)),
       summary: fromPlan?.summary ?? null,
+      issues: fromPlan?.issues ?? [],
       current: id === current,
     };
   });
 }
 
 /**
- * Where to move when the plan changes. A step the plan no longer supports must
- * not stay current — selecting a different reel from Images would otherwise
- * leave the panel on a step that reel has never reached.
+ * Why a step is unreachable when the service has said nothing about it.
+ *
+ * It used to be "Pick a video and a client mode first." unconditionally, which
+ * the user saw **with both already picked** — the panel was talking to a
+ * service too old to have the route, so no plan ever arrived and every step
+ * fell back to a sentence about a choice he had already made. A message must
+ * describe the situation it is shown in.
  */
-export function reconcileStep(plan: PlanSteps | null, current: StepId, touched: boolean): StepId {
+function fallbackReason(selection: { reel: boolean; mode: boolean }): string {
+  if (!selection.reel && !selection.mode) return 'Pick a video and a client mode first.';
+  if (!selection.reel) return 'Pick a video first.';
+  if (!selection.mode) return 'Pick a client mode first.';
+  return 'Waiting for the service to report what this reel has been through.';
+}
+
+/**
+ * Where to be when the plan changes.
+ *
+ * **Selecting a reel or a mode never moves the user.** It used to jump straight
+ * to the furthest step the plan supported, which hid every step in between and
+ * was the opposite of what picking a video means. The rail updates
+ * availability; the user chooses where to go.
+ *
+ * The one automatic move is away from a step the plan no longer supports —
+ * switching from a reel with images to one without cannot leave the panel on
+ * Images. It falls back to the last step that reel *has* remembered being on,
+ * and to step one otherwise.
+ */
+export function reconcileStep(plan: PlanSteps | null, current: StepId, remembered: StepId | null): StepId {
   const steps = planSteps(plan);
   if (plan === null || steps.length === 0) return 'reel';
-  const resumeAt = STEP_ORDER.includes(plan.resumeAt) ? plan.resumeAt : 'reel';
-  // Until the user has navigated, follow the plan: the panel opens where the
-  // reel actually is, which is the whole point of deriving this from disk.
-  if (!touched) return resumeAt;
-  const step = steps.find((s) => s.id === current);
-  return step?.available === true ? current : resumeAt;
+
+  const available = (id: StepId | null): boolean =>
+    id !== null && steps.find((s) => s.id === id)?.available === true;
+
+  if (available(current)) return current;
+  if (available(remembered)) return remembered as StepId;
+  return 'reel';
+}
+
+/**
+ * The step to show when a reel is first selected: the one last viewed for that
+ * reel, if the plan still supports it.
+ *
+ * This is a **view preference, not a fact about the plan**, so it lives in the
+ * panel and never reaches the Edit Plan. Two people opening the same reel are
+ * entitled to be looking at different steps.
+ */
+export function openingStep(plan: PlanSteps | null, remembered: StepId | null): StepId {
+  const steps = planSteps(plan);
+  if (remembered === null) return 'reel';
+  return steps.find((s) => s.id === remembered)?.available === true ? remembered : 'reel';
 }
 
 /**
@@ -88,4 +131,45 @@ export function reconcileStep(plan: PlanSteps | null, current: StepId, touched: 
  */
 function planSteps(plan: PlanSteps | null): StepState[] {
   return Array.isArray(plan?.steps) ? plan.steps : [];
+}
+
+/**
+ * The step last viewed per reel, remembered across panel reloads.
+ *
+ * Closing a CEP panel unloads the page, so React state does not survive it and
+ * "reopening restores where you were" needs storage. `localStorage` is the
+ * panel's own state — a view preference, never a fact about the plan, so it
+ * does not belong in the Edit Plan: two people opening the same reel are
+ * entitled to be looking at different steps.
+ *
+ * Every access is guarded. The API exists in CEP's Chromium 99, but a page
+ * loaded from `file://` with site data disabled throws on the accessor itself
+ * rather than returning null, and a panel must not fail to render over a
+ * remembered tab.
+ */
+const LAST_STEP_KEY = 'framopia.panel.last-step';
+
+export function readLastSteps(): Record<string, StepId> {
+  try {
+    const raw = window.localStorage.getItem(LAST_STEP_KEY);
+    if (raw === null) return {};
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    const out: Record<string, StepId> = {};
+    for (const [reel, step] of Object.entries(parsed)) {
+      if (typeof step === 'string' && (STEP_ORDER as string[]).includes(step)) {
+        out[reel] = step as StepId;
+      }
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+export function writeLastSteps(value: Record<string, StepId>): void {
+  try {
+    window.localStorage.setItem(LAST_STEP_KEY, JSON.stringify(value));
+  } catch {
+    // A remembered step is a convenience; losing it is not worth a failure.
+  }
 }

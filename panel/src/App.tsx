@@ -11,10 +11,13 @@ import {
 import { nodeMatch } from './node-match.js';
 import { isWide, observeWidth } from './panel-width.js';
 import {
+  openingStep,
+  readLastSteps,
   reconcileStep,
   stepViews,
   STEP_ORDER,
   STEP_PROMISE,
+  writeLastSteps,
   type StepView,
 } from './steps.js';
 
@@ -108,11 +111,13 @@ function Panel({
   const [plan, setPlan] = useState<PlanSteps | null>(null);
   const [step, setStep] = useState<StepId>('reel');
   /*
-   * Whether the user has navigated. Until they have, the panel follows the
-   * plan and opens where the reel actually is; after they have, their choice
-   * stands unless the plan stops supporting it.
+   * The step last viewed per reel. A view preference, not a fact about the
+   * plan, so it lives here and never reaches the Edit Plan — two people opening
+   * the same reel are entitled to be looking at different steps.
    */
-  const [touched, setTouched] = useState(false);
+  const [lastStep, setLastStep] = useState<Record<string, StepId>>(() => readLastSteps());
+  /** Which reel `step` belongs to, so a new reel's plan can restore its own. */
+  const [stepReel, setStepReel] = useState<string | null>(null);
 
   const check = useCallback(async () => {
     setService({ kind: 'starting' });
@@ -122,7 +127,7 @@ function Panel({
       setConnection(null);
       return;
     }
-    setService({ kind: 'healthy', health: result.health });
+    setService({ kind: 'healthy', health: result.health, origin: result.origin });
     setConnection({ port: result.port, token: result.token });
   }, [host]);
 
@@ -228,19 +233,42 @@ function Panel({
     };
   }, [connection, reel, mode]);
 
+  /*
+   * Selecting a reel or a mode does **not** navigate. It used to jump to the
+   * furthest step the plan supported, which hid every step in between and left
+   * Build open on a reel that had no keywords.
+   *
+   * Two cases, and the distinction is which reel the current step belongs to.
+   * A plan for a *different* reel restores that reel's remembered step — done
+   * here rather than on the picker's change event, because the plan has not
+   * arrived yet at that moment and the remembered step cannot be checked
+   * against it. A plan for the *same* reel only ever moves the user off a step
+   * it no longer supports.
+   */
   useEffect(() => {
-    setStep((current) => reconcileStep(plan, current, touched));
-  }, [plan, touched]);
+    if (plan === null) {
+      setStep('reel');
+      setStepReel(null);
+      return;
+    }
+    const remembered = lastStep[plan.reel] ?? null;
+    setStep((current) =>
+      plan.reel === stepReel ? reconcileStep(plan, current, remembered) : openingStep(plan, remembered),
+    );
+    setStepReel(plan.reel);
+    // `lastStep` is read but deliberately not a dependency: recording a step
+    // must not feed back into choosing one.
+  }, [plan, stepReel]);
 
-  /* A different reel is a different job: its progress is not this one's. */
-  useEffect(() => {
-    setTouched(false);
-  }, [reelLabel, modeId]);
-
-  const views = stepViews(plan, step);
+  const views = stepViews(plan, step, { reel: reel !== null, mode: mode !== null });
   const goTo = (id: StepId): void => {
-    setTouched(true);
     setStep(id);
+    if (reelLabel === '') return;
+    setLastStep((prev) => {
+      const next = { ...prev, [reelLabel]: id };
+      writeLastSteps(next);
+      return next;
+    });
   };
 
   return (
@@ -415,6 +443,13 @@ function StepPane({ view, onBack }: { view: StepView; onBack: () => void }): JSX
             <p className="reason" role="status">
               {view.reason}
             </p>
+          )}
+          {view.issues.length === 0 ? null : (
+            <ul className="issues">
+              {view.issues.map((issue) => (
+                <li key={issue}>{issue}</li>
+              ))}
+            </ul>
           )}
           <p className="note">This step is not built yet.</p>
         </div>
@@ -652,6 +687,13 @@ function ServiceCard({
                 <div className="detail">
                   Service {state.health.serviceVersion} · correction prompt v{state.health.promptVersion}
                 </div>
+                {/*
+                 * Which process answered. A service started in a terminal
+                 * inherits a shell PATH and one this panel spawned does not, so
+                 * the two can disagree about what the machine has — and did,
+                 * over ffmpeg, invisibly, for a whole session.
+                 */}
+                <div className="detail">{serviceOriginLine(state)}</div>
               </div>
             </div>
             <ul className="facts">
@@ -705,6 +747,16 @@ function ServiceCard({
  * Retry was indistinguishable from a dead one. The user pressed it after
  * building the service and could not tell whether anything had happened.
  */
+/** One quiet, factual line: who started this service, its pid, and when. */
+function serviceOriginLine(state: Extract<ServiceState, { kind: 'healthy' }>): string {
+  const started = state.origin === 'spawned' ? 'Started by the panel' : 'Was already running';
+  const process = state.health.process;
+  if (process === undefined) return `${started} · pid unknown`;
+  const when = new Date(process.startedAt);
+  const at = Number.isNaN(when.getTime()) ? process.startedAt : when.toLocaleTimeString();
+  return `${started} · pid ${process.pid} · since ${at}`;
+}
+
 function Attempt({ attempt, attemptedAt }: { attempt: number; attemptedAt: string }): JSX.Element {
   return (
     <div className="attempt" data-attempt={attempt}>

@@ -674,14 +674,40 @@ describe.skipIf(!built)('the step rail', () => {
     await loaded.page.close();
   });
 
-  it('opens where the plan says the reel actually is', async () => {
+  /*
+   * Selecting a reel used to jump to the furthest step the plan supported,
+   * which hid every step in between and left Build open on a reel that had no
+   * keywords. The user ruled that picking a video must not navigate: the rail
+   * updates availability and he chooses where to go.
+   */
+  it('does not navigate when a reel and a mode are picked', async () => {
     const loaded = await loadFlow('keywords', 'keywords');
     if (loaded === null) return;
-    const current = await loaded.page.textContent('nav.rail .step.current .l');
-    expect(current).toBe('Keywords');
-    expect(await loaded.page.textContent('main h2')).toBe('Keywords');
+    expect(await loaded.page.textContent('nav.rail .step.current .l')).toBe('Reel');
+    expect(await loaded.page.textContent('main section.video h2')).toBe('Video');
     await loaded.page.close();
   });
+
+  it('restores the step last viewed for a reel after the panel is reopened', async () => {
+    const loaded = await loadFlow('keywords', 'keywords');
+    if (loaded === null) return;
+    await loaded.page.click('nav.rail li:nth-child(3) button');
+    expect(await loaded.page.textContent('main h2')).toBe('Keywords');
+
+    // Closing a CEP panel unloads the page, so this is what "reopen" is.
+    await loaded.page.reload();
+    await loaded.page.waitForSelector('nav.rail', { timeout: 10_000 });
+    await loaded.page.selectOption('select[aria-label="Reel"]', 'vitasilk');
+    await loaded.page.selectOption('select[aria-label="Client mode"]', 'k2-syndicalia');
+    await loaded.page.waitForFunction(
+      () => document.querySelector('main h2')?.textContent === 'Keywords',
+      undefined,
+      { timeout: 5000 },
+    );
+    await loaded.page.close();
+    // Two page loads: past vitest's 5s default because the journey is long,
+    // not because anything retries.
+  }, 20_000);
 
   it('leaves a step the plan does not support unreachable', async () => {
     const loaded = await loadFlow('keywords', 'keywords');
@@ -701,6 +727,62 @@ describe.skipIf(!built)('the step rail', () => {
     await loaded.page.click('button.back');
     // Back from Transcript is step one, which is the original screen.
     expect(await loaded.page.textContent('main section.video h2')).toBe('Video');
+    await loaded.page.close();
+  });
+
+  /*
+   * The user's ruling: Run pipeline is the one red thing on screen. It has
+   * never been *seen* enabled — the gate still reports "the pipeline runner is
+   * not built yet", and before this session ffmpeg was reported missing too —
+   * so the enabled paint had never been checked at all.
+   *
+   * The attribute is removed in the page rather than the gate being faked:
+   * that exercises the real `button.run` rule in the real engine, and the
+   * comment is here so nobody reads this as proof that Run works.
+   */
+  it('paints Run pipeline in the brand accent when it is enabled', async () => {
+    const loaded = await loadFlow('build', 'build');
+    if (loaded === null) return;
+    const run = await loaded.page.evaluate(() => {
+      const el = document.querySelector('button.run') as HTMLButtonElement;
+      const disabledPaint = getComputedStyle(el).backgroundColor.replace(/\s/g, '');
+      el.removeAttribute('disabled');
+      return { disabledPaint, enabledPaint: getComputedStyle(el).backgroundColor.replace(/\s/g, '') };
+    });
+    expect(run.enabledPaint).toBe('rgb(237,28,36)');
+    // And the disabled state is deliberately not red, so a control that cannot
+    // be pressed never claims the accent.
+    expect(run.disabledPaint).not.toBe('rgb(237,28,36)');
+    await loaded.page.close();
+  });
+
+  /*
+   * Scoped to the rail and the pane, not the whole page: the brand header is
+   * identity rather than flow, and PROJECT_SPEC §6 puts the accent in the
+   * wordmark and the logo by design. The ruling is about controls competing
+   * for attention inside the work area.
+   */
+  it('spends the accent on nothing else in the flow', async () => {
+    const loaded = await loadFlow('build', 'build');
+    if (loaded === null) return;
+    const painted = await loaded.page.evaluate(() => {
+      const norm = (c: string): string => c.replace(/\s/g, '');
+      const accent = 'rgb(237,28,36)';
+      const el = document.querySelector('button.run') as HTMLButtonElement;
+      el.removeAttribute('disabled');
+      return [...document.querySelectorAll('nav.rail *, main *')]
+        .filter((node) => {
+          const s = getComputedStyle(node);
+          return (
+            norm(s.backgroundColor) === accent ||
+            norm(s.color) === accent ||
+            norm(s.borderBottomColor) === accent ||
+            norm(s.borderTopColor) === accent
+          );
+        })
+        .map((node) => `${node.tagName.toLowerCase()}.${node.className}`);
+    });
+    expect(painted).toEqual(['button.run']);
     await loaded.page.close();
   });
 
@@ -767,9 +849,25 @@ describe.skipIf(!built)('the step rail', () => {
   it('shows the plan summary on a step that is not built yet', async () => {
     const loaded = await loadFlow('keywords', 'keywords');
     if (loaded === null) return;
+    await loaded.page.click('nav.rail li:nth-child(3) button');
     const text = (await loaded.page.textContent('main')) ?? '';
     expect(text).toContain('Keywords summary from the plan');
     expect(text).toContain('This step is not built yet.');
+    await loaded.page.close();
+  });
+
+  /*
+   * The user saw "Pick a video and a client mode first" with both already
+   * picked: the panel was talking to a service too old to have the /steps
+   * route, so no plan arrived and every step fell back to a sentence about a
+   * choice he had made.
+   */
+  it('never tells a user to pick a video they have already picked', async () => {
+    const loaded = await loadFlow('build', 'build');
+    if (loaded === null) return;
+    await loaded.page.click('nav.rail li:nth-child(5) button');
+    const text = (await loaded.page.textContent('main')) ?? '';
+    expect(text).not.toContain('Pick a video and a client mode first');
     await loaded.page.close();
   });
 

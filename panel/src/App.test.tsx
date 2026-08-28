@@ -257,6 +257,7 @@ describe('runGate', () => {
       ...base,
       service: {
         kind: 'healthy',
+        origin: 'spawned',
         health: { ...healthy, ok: false, ffmpeg: { present: false, detail: 'x' }, templates: { valid: false, issues: [], count: 0 } },
       },
     });
@@ -269,7 +270,7 @@ describe('runGate', () => {
    * `tbd` fonts reaches Run; the Build section says which fonts will be used.
    */
   it('lets a mode whose fonts are still tbd through to Run', () => {
-    const gate = runGate({ ...base, service: { kind: 'healthy', health: healthy } });
+    const gate = runGate({ ...base, service: { kind: 'healthy', health: healthy, origin: 'spawned' } });
     expect(gate.reason).not.toContain('fonts');
   });
 
@@ -282,7 +283,7 @@ describe('runGate', () => {
     const gate = runGate({
       reel: reels[0] as Reel,
       mode: { ...(modes[0] as ClientMode), fontsResolved: true },
-      service: { kind: 'healthy', health: healthy },
+      service: { kind: 'healthy', health: healthy, origin: 'spawned' },
     });
     expect(gate.enabled).toBe(false);
     expect(gate.reason).toBe('The pipeline runner is not built yet.');
@@ -547,7 +548,6 @@ describe('the dry run', () => {
                 ? {
                     reel: 'vitasilk',
                     planPath: '/v/p.json',
-                    resumeAt: 'reel',
                     steps: [
                       { id: 'reel', label: 'Reel', available: true, reason: null, summary: null },
                       { id: 'transcript', label: 'Transcript', available: false, reason: 'not yet', summary: null },
@@ -635,7 +635,6 @@ describe('the dry run', () => {
                 ? {
                     reel: 'vitasilk',
                     planPath: '/v/p.json',
-                    resumeAt: 'reel',
                     steps: [
                       { id: 'reel', label: 'Reel', available: true, reason: null, summary: null },
                       { id: 'transcript', label: 'Transcript', available: false, reason: 'not yet', summary: null },
@@ -790,7 +789,7 @@ describe('the fonts gate', () => {
 
   it('does not stop Run', () => {
     const gate = runGate({
-      service: { kind: 'healthy', health: healthy },
+      service: { kind: 'healthy', health: healthy, origin: 'spawned' },
       reel: reels[0] as Reel,
       mode: tbd,
     });

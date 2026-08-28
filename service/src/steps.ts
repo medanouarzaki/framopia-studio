@@ -28,14 +28,17 @@ export interface StepState {
   reason: string | null;
   /** Real figures already on the plan. Null when there are none yet. */
   summary: string | null;
+  /**
+   * Things the plan cannot build cleanly, named rather than counted. "5
+   * buildability issue(s)" tells a user a number and nothing they can act on.
+   */
+  issues?: string[];
 }
 
 export interface PlanSteps {
   reel: string;
   planPath: string | null;
   steps: StepState[];
-  /** The furthest available step: where the panel opens for this reel. */
-  resumeAt: StepId;
 }
 
 export class StepsError extends Error {}
@@ -84,8 +87,14 @@ export function stepsFor(reelLabel: string, modeId: string): PlanSteps {
   }
 
   const steps: StepState[] = [];
-  const push = (id: StepId, available: boolean, reason: string | null, summary: string | null): void => {
-    steps.push({ id, label: LABELS[id], available, reason, summary });
+  const push = (
+    id: StepId,
+    available: boolean,
+    reason: string | null,
+    summary: string | null,
+    issues: string[] = [],
+  ): void => {
+    steps.push({ id, label: LABELS[id], available, reason, summary, ...(issues.length > 0 ? { issues } : {}) });
   };
 
   push('reel', true, null, `${reel.label}${reel.durationS === null ? '' : ` — ${reel.durationS.toFixed(1)}s`}`);
@@ -96,7 +105,7 @@ export function stepsFor(reelLabel: string, modeId: string): PlanSteps {
     push('keywords', false, 'Nothing has been transcribed yet.', null);
     push('images', false, 'Nothing has been transcribed yet.', null);
     push('build', false, 'Nothing has been transcribed yet.', null);
-    return { reel: reel.label, planPath, steps, resumeAt: 'reel' };
+    return { reel: reel.label, planPath, steps };
   }
 
   const words = plan.transcript.words.length;
@@ -137,34 +146,57 @@ export function stepsFor(reelLabel: string, modeId: string): PlanSteps {
       : null,
   );
 
+  /*
+   * **A subtitles-only comp is a legitimate build, so Build opens on cards.**
+   * Session 15's brief said "the plan-completeness check passes" and the code
+   * shipped "there are cards" without declaring the difference; this states the
+   * rule rather than leaving a third one undeclared.
+   *
+   * The reason is that keywords and images are enrichments, not requirements:
+   * `buildReel` places whatever the plan carries and PROJECT_SPEC's deliverable
+   * is a comp for human review. `ground-truth` has no keywords and no images
+   * and still builds 76 subtitle cards, which is a useful thing to look at.
+   * What the pane must not do is imply the comp will contain more than it will
+   * — so the summary says what is in and what is missing.
+   *
+   * `checkBuildability`'s issues are clipped holds and short words, which the
+   * builder handles by compressing an entrance. They are reported, never a gate.
+   */
   let buildAvailable = false;
-  let buildReason: string | null = 'The plan is not complete enough to build.';
+  let buildReason: string | null = null;
   let buildSummary: string | null = null;
+  let buildIssues: string[] = [];
   const fonts = buildFonts(mode);
   try {
     const report = checkBuildability(plan, templatesById(loadTemplateManifest()));
-    // The step opens whenever there is something to build. Buildability issues
-    // are clipped holds and short words, which the builder handles by
-    // compressing an entrance — they are worth showing, not worth locking a
-    // step behind.
     buildAvailable = report.checked.subtitleGroups > 0;
     buildReason = buildAvailable ? null : 'There are no subtitle cards to build.';
-    buildSummary = `${fonts.latin} and ${fonts.arabic}${fonts.source === 'global' ? ' (global fallback)' : ''}. ${report.issues.length} buildability issue(s).`;
+
+    const willContain = [`${report.checked.subtitleGroups} subtitle cards`];
+    const willNot: string[] = [];
+    const part = (n: number, singular: string, plural: string): void => {
+      if (n > 0) willContain.push(`${n} ${n === 1 ? singular : plural}`);
+      else willNot.push(plural);
+    };
+    part(plan.keywords.items.length, 'emphasised keyword', 'emphasised keywords');
+    part(candidates.present > 0 ? slots : 0, 'image', 'images');
+    part(plan.sfx.events.length, 'sfx event', 'sfx events');
+
+    buildIssues = report.issues.map((i) =>
+      i.shortByS === undefined
+        ? `${i.path}: ${i.message}`
+        : `${i.path}: ${i.message} (short by ${i.shortByS.toFixed(2)}s)`,
+    );
+
+    buildSummary =
+      `Would contain ${willContain.join(', ')}` +
+      (willNot.length === 0 ? '' : `; no ${willNot.join(' and no ')}`) +
+      `. Fonts: ${fonts.latin} and ${fonts.arabic}` +
+      `${fonts.source === 'global' ? ' (global fallback)' : ''}.`;
   } catch (error) {
     buildReason = `The template manifest did not load: ${(error as Error).message}`;
   }
-  push('build', buildAvailable, buildReason, buildSummary);
+  push('build', buildAvailable, buildReason, buildSummary, buildIssues);
 
-  /*
-   * The end of the unbroken run of available steps, not the furthest available
-   * one. `build` is available whenever there are cards, so taking the last
-   * would open a reel with no keywords straight on Build and skip the gap that
-   * is the actual next thing to do.
-   */
-  let resumeAt: StepId = 'reel';
-  for (const step of steps) {
-    if (!step.available) break;
-    resumeAt = step.id;
-  }
-  return { reel: reel.label, planPath, steps, resumeAt };
+  return { reel: reel.label, planPath, steps };
 }

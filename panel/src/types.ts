@@ -16,6 +16,14 @@ export interface ToolState {
   source?: string;
 }
 
+/**
+ * How the panel reached this service: it started it, or it was already running.
+ * A terminal-started service inherits a shell PATH and a panel-spawned one does
+ * not, so the two can disagree about what this machine has — which is exactly
+ * what happened with ffmpeg, invisibly, for a whole session.
+ */
+export type ServiceOrigin = 'spawned' | 'existing';
+
 export interface HealthPayload {
   ok: boolean;
   serviceVersion: string;
@@ -24,6 +32,8 @@ export interface HealthPayload {
   ffmpeg: ToolState;
   ffprobe: ToolState;
   sidecar: { venv: ToolState; pythonPath: string };
+  /** The service process that answered. Optional so an older payload parses. */
+  process?: { pid: number; startedAt: string };
   templates: { valid: boolean; issues: string[]; count: number };
   /** Where the repo really is, so the panel need not derive it twice. */
   repoRoot: string;
@@ -96,7 +106,7 @@ export interface ClientMode {
 
 export type ServiceState =
   | { kind: 'starting' }
-  | { kind: 'healthy'; health: HealthPayload }
+  | { kind: 'healthy'; health: HealthPayload; origin: ServiceOrigin }
   | { kind: 'unreachable'; error: ServiceError };
 
 /**
@@ -133,6 +143,8 @@ export interface StepState {
   available: boolean;
   reason: string | null;
   summary: string | null;
+  /** Named, not counted: "5 buildability issue(s)" is not actionable. */
+  issues?: string[];
 }
 
 /**
@@ -145,5 +157,4 @@ export interface PlanSteps {
   reel: string;
   planPath: string | null;
   steps: StepState[];
-  resumeAt: StepId;
 }

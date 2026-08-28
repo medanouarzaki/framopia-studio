@@ -33,17 +33,6 @@ describe('stepsFor', () => {
     expect(keywords?.reason).toContain('Keyword analysis has not run');
   });
 
-  /*
-   * `build` is available whenever there are cards, so the furthest available
-   * step would open a reel with no keywords straight on Build and hide the gap
-   * that is the actual next thing to do.
-   */
-  it('resumes at the end of the unbroken run, not the furthest available step', () => {
-    expect(stepsFor('test-3', 'k2-syndicalia').resumeAt).toBe('transcript');
-    expect(stepsFor('test-2', 'k2-syndicalia').resumeAt).toBe('keywords');
-    expect(stepsFor('vitasilk', 'k2-syndicalia').resumeAt).toBe('build');
-  });
-
   it('counts image candidates that are really on disk', () => {
     const summary = stepsFor('vitasilk', 'k2-syndicalia').steps.find(
       (s) => s.id === 'images',
@@ -97,5 +86,40 @@ describe('the image estimate', () => {
     const images = plan.stages.find((s) => s.id === 'images');
     expect(images?.estimateUsd).toBeNull();
     expect(images?.note).toContain('bill nothing');
+  });
+});
+
+/**
+ * Build opens on cards, and that is a stated rule rather than an accident.
+ * Session 15's brief said "the plan-completeness check passes" and the code
+ * shipped "there are cards" without declaring the difference.
+ */
+describe('Build availability', () => {
+  it('opens for a reel with cards but no keywords, images or sfx', () => {
+    const build = stepsFor('ground-truth', 'k2-syndicalia').steps.find((s) => s.id === 'build');
+    expect(build?.available).toBe(true);
+  });
+
+  it('says what the comp would and would not contain', () => {
+    const build = stepsFor('ground-truth', 'k2-syndicalia').steps.find((s) => s.id === 'build');
+    expect(build?.summary).toContain('76 subtitle cards');
+    expect(build?.summary).toContain('no emphasised keywords');
+    expect(build?.summary).toContain('no images');
+  });
+
+  it('lists what is in the comp when the reel has been through every stage', () => {
+    const build = stepsFor('vitasilk', 'k2-syndicalia').steps.find((s) => s.id === 'build');
+    expect(build?.summary).toContain('73 subtitle cards');
+    expect(build?.summary).toContain('3 emphasised keywords');
+    expect(build?.summary).toContain('5 images');
+    expect(build?.summary).not.toContain('no ');
+  });
+
+  /* "5 buildability issue(s)" tells a user a number and nothing to act on. */
+  it('names the buildability issues rather than counting them', () => {
+    const build = stepsFor('vitasilk', 'k2-syndicalia').steps.find((s) => s.id === 'build');
+    expect(build?.issues).toHaveLength(5);
+    expect(build?.issues?.[0]).toContain('subtitles.groups[');
+    expect(build?.issues?.[0]).toContain('short by');
   });
 });
