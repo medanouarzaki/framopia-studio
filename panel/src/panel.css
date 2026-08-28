@@ -243,3 +243,70 @@ button.run:disabled { background: var(--panel-2); border-color: var(--line); col
 .spend .note { margin-top: 6px; color: var(--faint); }
 
 .empty { color: var(--faint); }
+
+/*
+ * Step 2, the transcript. Flex and grid with `gap` (Chrome 84) and nothing
+ * newer; CEP runs Chromium 99 and drops what it does not know without a word.
+ */
+.questions { list-style: none; margin: 10px 0 0; padding: 0; }
+.questions > li { margin-bottom: 8px; }
+
+button.chip {
+  width: auto; padding: 5px 9px; cursor: pointer;
+  background: var(--panel-2); border: 1px solid var(--line); border-radius: 999px;
+  color: var(--muted); font: inherit; font-size: 12px;
+}
+button.chip:hover:enabled { color: var(--text); border-color: #3a4049; }
+button.chip.on { color: var(--text); border-color: var(--focus); }
+
+ol.words { list-style: none; margin: 14px 0 0; padding: 0; }
+
+.word {
+  display: flex; align-items: baseline; gap: 10px;
+  padding: 7px 0; border-bottom: 1px solid var(--line); min-width: 0;
+}
+.word.removed .wtext { text-decoration: line-through; color: var(--faint); }
+
+.wid {
+  flex: 0 0 auto; width: 46px;
+  color: var(--faint); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px;
+}
+
+/*
+ * The word itself is a button so it can be edited by click and reached by
+ * keyboard. Its `dir` is set per token, never on the row: a whole-line
+ * direction would reorder the Latin words around an Arabic one.
+ */
+button.wtext {
+  width: auto; padding: 2px 4px; cursor: text;
+  background: none; border: 1px solid transparent; border-radius: 4px;
+  color: var(--text); font: inherit; font-size: 15px;
+}
+button.wtext:hover { border-color: var(--line); }
+input.wtext {
+  width: auto; padding: 2px 4px; font-size: 15px;
+  background: var(--panel-2); border: 1px solid var(--focus); border-radius: 4px; color: var(--text);
+}
+
+/*
+ * Confidence, from the aligner. Four bands, and deliberately no red: the accent
+ * belongs to Run pipeline, and a low-confidence word is something to look at
+ * rather than an error.
+ */
+.conf-high { border-bottom: 2px solid transparent; }
+.conf-mid { border-bottom: 2px solid #3d4b5c; }
+.conf-low { border-bottom: 2px solid var(--warn); }
+.conf-none { border-bottom: 2px dashed var(--faint); }
+
+.wmeta {
+  flex: 1 1 auto; min-width: 0;
+  color: var(--faint); font-size: 11px; overflow-wrap: anywhere;
+}
+.wmeta .src { display: inline-block; margin-left: 8px; color: var(--muted); font-style: normal; }
+.wmeta .tag {
+  display: inline-block; margin-left: 8px; padding: 0 5px;
+  border: 1px solid var(--line); border-radius: 3px; font-style: normal;
+}
+.wmeta .tag.edited { color: var(--warn); border-color: var(--warn); }
+
+.wactions { flex: 0 0 auto; display: flex; gap: 4px; }

@@ -598,6 +598,11 @@ function stubRoutes(steps: unknown, resumeAt: string): string {
       stages: [], estimateUsd: 0, reusesOlderGuide: false,
     },
     steps: { reel: 'vitasilk', planPath: '/v/p.json', steps, resumeAt },
+    transcript: {
+      reel: 'vitasilk', planPath: '/v/p.json', transcriptHash: 'h',
+      editCost: 'Editing a word changes the transcript hash.',
+      words: [], cards: [], questions: [],
+    },
   };
   return `
   window.__payload = ${JSON.stringify(payload)};
@@ -615,6 +620,7 @@ function stubRoutes(steps: unknown, resumeAt: string): string {
     const body = u.indexOf('/health') !== -1 ? p.health
       : u.indexOf('/reels') !== -1 ? p.reels
       : u.indexOf('/modes') !== -1 ? p.modes
+      : u.indexOf('/transcript') !== -1 ? p.transcript
       : u.indexOf('/steps') !== -1 ? p.steps
       : p.dry;
     return Promise.resolve({ ok: true, json: () => Promise.resolve(body) });
@@ -779,6 +785,298 @@ const VITASILK_DRY_STAGES = [
  * because tests do not tab through controls. The accent belongs to Run
  * pipeline; a focus ring is not exempt.
  */
+/*
+ * Session 17 claimed a completed run unlocks the steps the new plan supports.
+ * The user's run skipped every stage, so nothing changed and nothing was
+ * proven. This drives a run that **completes a stage that was pending** and
+ * asserts the rail follows the plan, with no manual reload.
+ */
+describe.skipIf(!built)('the rail after a run', () => {
+  it('unlocks a step the finished run made available', async () => {
+    if (browser === undefined) return;
+    const page = await browser.newPage({ viewport: { width: 1000, height: 900 } });
+    const uncaught: string[] = [];
+    page.on('pageerror', (error: Error) => uncaught.push(error.message));
+    await page.addInitScript(stubHost(HANDSHAKE));
+    // Before: transcribed and nothing else, so Keywords is locked.
+    await page.addInitScript(stubRoutes(stepsThrough('transcript'), 'transcript'));
+    await page.addInitScript(stubJob('done'));
+    /*
+     * The service answers /steps differently once the run has finished, which
+     * is what a real run does to the plan. The panel must re-ask rather than
+     * keep the answer it had when the reel was picked.
+     */
+    await page.addInitScript(`
+      window.__stepsAfterRun = ${JSON.stringify(
+        ['reel', 'transcript', 'keywords', 'images', 'build'].map((id, i) => ({
+          id,
+          label: `${id.charAt(0).toUpperCase()}${id.slice(1)}`,
+          available: i <= 2,
+          reason: i <= 2 ? null : 'not yet',
+          summary: i <= 2 ? `${id} summary from the plan` : null,
+          issues: [],
+        })),
+      )};
+      window.__runFinished = false;
+      const realFetch = window.fetch;
+      window.fetch = (url, init) => {
+        const u = String(url);
+        if (u.indexOf('/jobs/') !== -1) window.__runFinished = true;
+        if (u.indexOf('/steps') !== -1 && window.__runFinished) {
+          return Promise.resolve({
+            ok: true,
+            json: () =>
+              Promise.resolve({
+                reel: 'vitasilk',
+                planPath: '/v/p.json',
+                steps: window.__stepsAfterRun,
+              }),
+          });
+        }
+        return realFetch(url, init);
+      };
+    `);
+    await page.goto(`file://${INDEX}`);
+    await page.waitForSelector('nav.rail', { timeout: 10_000 });
+    await page.selectOption('select[aria-label="Reel"]', 'vitasilk');
+    await page.selectOption('select[aria-label="Client mode"]', 'k2-syndicalia');
+
+    const lockedBefore = await page.$$eval('nav.rail li button', (els) =>
+      els.map((e) => (e as HTMLButtonElement).disabled),
+    );
+    expect(lockedBefore).toEqual([false, false, true, true, true]);
+
+    await page.click('button.run');
+    await page.waitForFunction(
+      () =>
+        [...document.querySelectorAll('nav.rail li button')].map(
+          (e) => (e as HTMLButtonElement).disabled,
+        )[2] === false,
+      undefined,
+      { timeout: 8000 },
+    );
+
+    const lockedAfter = await page.$$eval('nav.rail li button', (els) =>
+      els.map((e) => (e as HTMLButtonElement).disabled),
+    );
+    expect(lockedAfter).toEqual([false, false, false, true, true]);
+    expect(uncaught).toEqual([]);
+    await page.close();
+  }, 20_000);
+});
+
+/**
+ * Step 2, driven in a real engine over the built bundle. The transcript is
+ * stubbed rather than read from disk — this file drives the panel, and
+ * `service/src/transcript-view.test.ts` covers the derivation against the real
+ * plans.
+ */
+const TRANSCRIPT = {
+  reel: 'vitasilk',
+  planPath: '/v/p.json',
+  transcriptHash: 'abc123',
+  editCost: 'Editing a word changes the transcript hash, so the caches will miss.',
+  words: [
+    {
+      id: 'w0000', text: 'filler', sourceText: 'filler', start: 0.1, end: 0.4,
+      script: 'latin', lang: 'fr', confidence: 0.95, removed: false, removedReason: null,
+      edited: false, cardId: 'g001', interpolated: false,
+    },
+    {
+      id: 'w0001', text: 'ترطيب', sourceText: 'ترطيب', start: 0.5, end: 0.8,
+      script: 'arabic', lang: 'msa', confidence: 0.62, removed: false, removedReason: null,
+      edited: false, cardId: 'g002', interpolated: false,
+    },
+    {
+      id: 'w0002', text: '26', sourceText: null, start: 1.0, end: 1.0,
+      script: 'latin', lang: 'darija', confidence: null, removed: false, removedReason: null,
+      edited: false, cardId: 'g003', interpolated: true,
+    },
+    {
+      id: 'w0003', text: 'euh', sourceText: 'euh', start: 1.2, end: 1.3,
+      script: 'latin', lang: 'fr', confidence: 0.4, removed: true, removedReason: 'filler',
+      edited: false, cardId: null, interpolated: false,
+    },
+  ],
+  cards: [
+    { id: 'g001', wordIds: ['w0000'], start: 0.1, end: 0.4, displayStart: 0.1, displayEnd: 0.5, templateId: 'sub_pop', supersededBy: null, holdClipped: false, shortByS: null },
+    { id: 'g002', wordIds: ['w0001'], start: 0.5, end: 0.8, displayStart: 0.5, displayEnd: 0.9, templateId: 'sub_pop_ar', supersededBy: null, holdClipped: true, shortByS: 0.07 },
+    { id: 'g003', wordIds: ['w0002'], start: 1.0, end: 1.0, displayStart: 1.0, displayEnd: 1.2, templateId: 'sub_pop', supersededBy: null, holdClipped: false, shortByS: null },
+  ],
+  questions: [
+    { id: 'overlong', label: 'Words too long for their card', question: 'Shrink, break, or overflow?', basis: 'Measured in After Effects.', wordIds: ['w0001'], count: 1 },
+    { id: 'clipped', label: 'Cards whose hold is clipped', question: 'Accept, lengthen, or merge?', basis: "From the plan's timings.", wordIds: ['w0001'], count: 1 },
+    { id: 'split-term', label: 'Arabic terms split across cards', question: 'Group whole, or accept?', basis: 'Consecutive Arabic words.', wordIds: [], count: 0 },
+  ],
+};
+
+describe.skipIf(!built)('the transcript editor', () => {
+  async function loadTranscript(): Promise<Loaded | null> {
+    if (browser === undefined) return null;
+    const page = await browser.newPage({ viewport: { width: 1000, height: 900 } });
+    const uncaught: string[] = [];
+    page.on('pageerror', (error: Error) => uncaught.push(error.message));
+    await page.addInitScript(stubHost(HANDSHAKE));
+    await page.addInitScript(stubRoutes(stepsThrough('build'), 'build'));
+    await page.addInitScript(`
+      window.__transcript = ${JSON.stringify(TRANSCRIPT)};
+      const realFetch = window.fetch;
+      window.fetch = (url, init) => {
+        const u = String(url);
+        if (u.indexOf('/transcript/word') !== -1) {
+          const body = JSON.parse(init.body);
+          const word = window.__transcript.words.find((w) => w.id === body.wordId);
+          const next = Object.assign({}, word, { edited: true },
+            body.text === undefined ? {} : { text: body.text },
+            body.restore ? { removed: false, removedReason: null } : {});
+          return Promise.resolve({ ok: true, json: () => Promise.resolve({ word: next, hash: 'def456' }) });
+        }
+        if (u.indexOf('/transcript') !== -1) {
+          return Promise.resolve({ ok: true, json: () => Promise.resolve(window.__transcript) });
+        }
+        return realFetch(url, init);
+      };
+    `);
+    await page.goto(`file://${INDEX}`);
+    await page.waitForSelector('nav.rail', { timeout: 10_000 });
+    await page.selectOption('select[aria-label="Reel"]', 'vitasilk');
+    await page.selectOption('select[aria-label="Client mode"]', 'k2-syndicalia');
+    await page.click('nav.rail li:nth-child(2) button');
+    await page.waitForSelector('ol.words li', { timeout: 5000 });
+    return { page, uncaught };
+  }
+
+  it('shows every word with its interval', async () => {
+    const loaded = await loadTranscript();
+    if (loaded === null) return;
+    expect(await loaded.page.$$eval('ol.words li', (els) => els.length)).toBe(4);
+    expect((await loaded.page.textContent('ol.words')) ?? '').toContain('0.100–0.400s');
+    await loaded.page.close();
+  });
+
+  /*
+   * The direction is set on the token, never the line. A container `dir` would
+   * reorder the Latin words around an Arabic one, which is the failure the
+   * per-token rule exists to prevent.
+   */
+  it('sets direction per token, not on the row or the list', async () => {
+    const loaded = await loadTranscript();
+    if (loaded === null) return;
+    const dirs = await loaded.page.evaluate(() => {
+      const read = (sel: string): string | null =>
+        document.querySelector(sel)?.getAttribute('dir') ?? null;
+      const words = [...document.querySelectorAll('ol.words li')];
+      return {
+        list: read('ol.words'),
+        row: words[0]?.getAttribute('dir') ?? null,
+        latin: words[0]?.querySelector('.wtext')?.getAttribute('dir') ?? null,
+        arabic: words[1]?.querySelector('.wtext')?.getAttribute('dir') ?? null,
+      };
+    });
+    expect(dirs.list).toBeNull();
+    expect(dirs.row).toBeNull();
+    expect(dirs.latin).toBe('ltr');
+    expect(dirs.arabic).toBe('rtl');
+    await loaded.page.close();
+  });
+
+  it('marks an interpolated word and shows the draft token for an anchored one', async () => {
+    const loaded = await loadTranscript();
+    if (loaded === null) return;
+    const text = (await loaded.page.textContent('ol.words')) ?? '';
+    expect(text).toContain('interpolated');
+    expect(text).toContain('ترطيب');
+    await loaded.page.close();
+  });
+
+  it('bands confidence without using the brand accent', async () => {
+    const loaded = await loadTranscript();
+    if (loaded === null) return;
+    const bands = await loaded.page.evaluate(() => {
+      const norm = (c: string): string => c.replace(/\s/g, '');
+      return [...document.querySelectorAll('ol.words .wtext')].map((el) => ({
+        cls: [...el.classList].find((c) => c.startsWith('conf-')) ?? null,
+        border: norm(getComputedStyle(el).borderBottomColor),
+      }));
+    });
+    expect(bands.map((b) => b.cls)).toEqual(['conf-high', 'conf-low', 'conf-none', 'conf-low']);
+    for (const band of bands) expect(band.border).not.toBe('rgb(237,28,36)');
+    await loaded.page.close();
+  });
+
+  it('shows a removed word struck through with its reason, and restores it', async () => {
+    const loaded = await loadTranscript();
+    if (loaded === null) return;
+    const struck = await loaded.page.evaluate(() => {
+      const li = document.querySelectorAll('ol.words li')[3] as HTMLElement;
+      const word = li.querySelector('.wtext') as HTMLElement;
+      return { text: li.textContent, decoration: getComputedStyle(word).textDecorationLine };
+    });
+    expect(struck.decoration).toContain('line-through');
+    expect(struck.text).toContain('filler');
+
+    await loaded.page.click('ol.words li:nth-child(4) button.chip');
+    await loaded.page.waitForFunction(
+      () => (document.querySelectorAll('ol.words li')[3] as HTMLElement).className.includes('removed') === false,
+      undefined,
+      { timeout: 5000 },
+    );
+    await loaded.page.close();
+  });
+
+  it('edits a word and marks it edited', async () => {
+    const loaded = await loadTranscript();
+    if (loaded === null) return;
+    await loaded.page.click('ol.words li:nth-child(1) button.wtext');
+    await loaded.page.fill('input.wtext', 'remplissage');
+    await loaded.page.keyboard.press('Enter');
+    await loaded.page.waitForFunction(
+      () => (document.querySelector('ol.words') as HTMLElement).textContent?.includes('remplissage') === true,
+      undefined,
+      { timeout: 5000 },
+    );
+    expect((await loaded.page.textContent('ol.words')) ?? '').toContain('edited');
+    await loaded.page.close();
+  });
+
+  /* Said before he types, not discovered on the next bill. */
+  it('warns what an edit costs before anything is edited', async () => {
+    const loaded = await loadTranscript();
+    if (loaded === null) return;
+    expect((await loaded.page.textContent('main')) ?? '').toContain(
+      'changes the transcript hash',
+    );
+    await loaded.page.close();
+  });
+
+  it('shows the three questions with their counts, and filters to the words', async () => {
+    const loaded = await loadTranscript();
+    if (loaded === null) return;
+    const text = (await loaded.page.textContent('ul.questions')) ?? '';
+    expect(text).toContain('Words too long for their card · 1');
+    expect(text).toContain('Cards whose hold is clipped · 1');
+    expect(text).toContain('Arabic terms split across cards · 0');
+
+    await loaded.page.click('ul.questions li:nth-child(1) button.chip');
+    await loaded.page.waitForFunction(
+      () => document.querySelectorAll('ol.words li').length === 1,
+      undefined,
+      { timeout: 5000 },
+    );
+    expect((await loaded.page.textContent('ol.words')) ?? '').toContain('ترطيب');
+    // The question is asked, not answered.
+    expect((await loaded.page.textContent('ul.questions')) ?? '').toContain('?');
+    await loaded.page.close();
+  });
+
+  it('renders with no uncaught errors', async () => {
+    const loaded = await loadTranscript();
+    if (loaded === null) return;
+    expect(loaded.uncaught).toEqual([]);
+    await loaded.page.close();
+  });
+});
+
 describe.skipIf(!built)('focus', () => {
   it('never paints the brand accent on any control it lands on', async () => {
     const loaded = await loadFlow('build', 'build');

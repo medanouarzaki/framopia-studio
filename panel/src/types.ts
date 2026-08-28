@@ -207,3 +207,51 @@ export interface PipelineJob {
   error?: string;
   detail?: PipelineProgress;
 }
+
+export interface TranscriptWordView {
+  id: string;
+  text: string;
+  sourceText: string | null;
+  start: number;
+  end: number;
+  script: 'latin' | 'arabic';
+  lang: string | null;
+  confidence: number | null;
+  removed: boolean;
+  removedReason: string | null;
+  edited: boolean;
+  cardId: string | null;
+  interpolated: boolean;
+}
+
+export interface TranscriptCardView {
+  id: string;
+  wordIds: string[];
+  start: number;
+  end: number;
+  displayStart: number | null;
+  displayEnd: number | null;
+  templateId: string | null;
+  supersededBy: string | null;
+  holdClipped: boolean;
+  shortByS: number | null;
+}
+
+export interface OpenQuestion {
+  id: 'overlong' | 'clipped' | 'split-term';
+  label: string;
+  question: string;
+  basis: string;
+  wordIds: string[];
+  count: number;
+}
+
+export interface TranscriptView {
+  reel: string;
+  planPath: string;
+  words: TranscriptWordView[];
+  cards: TranscriptCardView[];
+  questions: OpenQuestion[];
+  editCost: string;
+  transcriptHash: string;
+}

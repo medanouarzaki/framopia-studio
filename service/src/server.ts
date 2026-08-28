@@ -10,6 +10,12 @@ import type { Zone } from './editplan/types.js';
 import { listModes, listReels } from './catalogue.js';
 import { dryRun, DryRunError } from './dry-run.js';
 import { stepsFor, StepsError } from './steps.js';
+import {
+  editCard,
+  editWord,
+  transcriptView,
+  TranscriptViewError,
+} from './transcript-view.js';
 // Imported for its side effect: registering the pipeline job runner.
 import './pipeline.js';
 import { health } from './health.js';
@@ -149,6 +155,90 @@ export function createApp(token: string): http.Server {
         } catch (error) {
           if (!(error instanceof StepsError)) throw error;
           sendJson(res, 400, serviceError('steps', error.message, false));
+        }
+        return;
+      }
+
+      if (req.method === 'GET' && url.pathname === '/transcript') {
+        const reel = url.searchParams.get('reel');
+        if (reel === null) {
+          sendJson(res, 400, serviceError('transcript', 'reel is required', false));
+          return;
+        }
+        try {
+          sendJson(res, 200, await transcriptView(reel));
+        } catch (error) {
+          if (!(error instanceof TranscriptViewError)) throw error;
+          sendJson(res, 400, serviceError('transcript', error.message, false));
+        }
+        return;
+      }
+
+      if (req.method === 'POST' && url.pathname === '/transcript/word') {
+        let body: { planPath?: unknown; wordId?: unknown; text?: unknown; restore?: unknown };
+        try {
+          body = JSON.parse((await readBody(req)) || '{}') as typeof body;
+        } catch {
+          sendJson(res, 400, serviceError('transcript', 'invalid JSON body', false));
+          return;
+        }
+        if (typeof body.planPath !== 'string' || typeof body.wordId !== 'string') {
+          sendJson(res, 400, serviceError('transcript', 'planPath and wordId are required', false));
+          return;
+        }
+        try {
+          sendJson(
+            res,
+            200,
+            await editWord({
+              planPath: body.planPath,
+              wordId: body.wordId,
+              ...(typeof body.text === 'string' ? { text: body.text } : {}),
+              ...(body.restore === true ? { restore: true } : {}),
+            }),
+          );
+        } catch (error) {
+          if (!(error instanceof TranscriptViewError)) throw error;
+          sendJson(res, 400, serviceError('transcript', error.message, false));
+        }
+        return;
+      }
+
+      if (req.method === 'POST' && url.pathname === '/transcript/card') {
+        let body: { planPath?: unknown; cardId?: unknown; displayStart?: unknown; displayEnd?: unknown };
+        try {
+          body = JSON.parse((await readBody(req)) || '{}') as typeof body;
+        } catch {
+          sendJson(res, 400, serviceError('transcript', 'invalid JSON body', false));
+          return;
+        }
+        if (
+          typeof body.planPath !== 'string' ||
+          typeof body.cardId !== 'string' ||
+          typeof body.displayStart !== 'number' ||
+          typeof body.displayEnd !== 'number'
+        ) {
+          sendJson(
+            res,
+            400,
+            serviceError('transcript', 'planPath, cardId, displayStart and displayEnd are required', false),
+          );
+          return;
+        }
+        try {
+          sendJson(
+            res,
+            200,
+            await editCard({
+              planPath: body.planPath,
+              cardId: body.cardId,
+              displayStart: body.displayStart,
+              displayEnd: body.displayEnd,
+            }),
+          );
+        } catch (error) {
+          if (!(error instanceof TranscriptViewError)) throw error;
+          sendJson(res, 400, serviceError('transcript', error.message, false));
         }
         return;
       }

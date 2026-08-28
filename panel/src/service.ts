@@ -1,5 +1,5 @@
 import { NODE_NOT_FOUND_HELP } from '@framopia/core/node-path';
-import type { ClientMode, DryRunPlan, HealthPayload, Reel, ServiceError, PlanSteps , ServiceOrigin , PipelineJob } from './types.js';
+import type { ClientMode, DryRunPlan, HealthPayload, Reel, ServiceError, PlanSteps , ServiceOrigin , PipelineJob , TranscriptView, TranscriptWordView, TranscriptCardView } from './types.js';
 
 /**
  * The panel's half of the ARCHITECTURE §1.3 handshake: the service binds
@@ -287,4 +287,42 @@ export async function startPipeline(
 
 export async function fetchJob(connection: Connection, id: string): Promise<PipelineJob> {
   return await getJson<PipelineJob>(connection, `/jobs/${encodeURIComponent(id)}`);
+}
+
+export async function fetchTranscript(
+  connection: Connection,
+  reel: string,
+): Promise<TranscriptView> {
+  return await getJson<TranscriptView>(
+    connection,
+    `/transcript?reel=${encodeURIComponent(reel)}`,
+  );
+}
+
+async function postJson<T>(connection: Connection, route: string, body: unknown): Promise<T> {
+  const res = await fetch(`http://127.0.0.1:${connection.port}${route}`, {
+    method: 'POST',
+    headers: { 'x-service-token': connection.token, 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const failure = (await res.json().catch(() => ({}))) as Partial<ServiceError>;
+    throw new Error(failure.cause ?? failure.error ?? `HTTP ${res.status} from ${route}`);
+  }
+  return (await res.json()) as T;
+}
+
+/** Edits one word. Ids and order never change; `edited` is set by the service. */
+export async function saveWord(
+  connection: Connection,
+  edit: { planPath: string; wordId: string; text?: string; restore?: boolean },
+): Promise<{ word: TranscriptWordView; hash: string }> {
+  return await postJson(connection, '/transcript/word', edit);
+}
+
+export async function saveCard(
+  connection: Connection,
+  edit: { planPath: string; cardId: string; displayStart: number; displayEnd: number },
+): Promise<TranscriptCardView> {
+  return await postJson(connection, '/transcript/card', edit);
 }

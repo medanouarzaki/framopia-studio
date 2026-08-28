@@ -12,6 +12,7 @@ import {
 } from './service.js';
 import { nodeMatch } from './node-match.js';
 import { isWide, observeWidth } from './panel-width.js';
+import { Transcript } from './Transcript.js';
 import {
   openingStep,
   readLastSteps,
@@ -438,7 +439,11 @@ function Panel({
         <StepPane
           view={views.find((v) => v.id === step) as StepView}
           onBack={() => goTo(previousStep(step))}
-        />
+        >
+          {step === 'transcript' ? (
+            <Transcript connection={connection} reel={reel?.label ?? null} />
+          ) : null}
+        </StepPane>
       )}
     </div>
   );
@@ -497,7 +502,29 @@ function previousStep(step: StepId): StepId {
  * real figures the plan already carries — never a mock of the screen to come,
  * which would read as a feature that exists and does nothing.
  */
-function StepPane({ view, onBack }: { view: StepView; onBack: () => void }): JSX.Element {
+function StepPane({
+  view,
+  onBack,
+  children,
+}: {
+  view: StepView;
+  onBack: () => void;
+  children?: JSX.Element | null;
+}): JSX.Element {
+  /* A step that is built renders itself; the empty state is for the rest. */
+  if (children != null && view.available) {
+    return (
+      <main>
+        <section>
+          <h2>{view.label}</h2>
+          {children}
+          <button className="back" type="button" onClick={onBack}>
+            Back
+          </button>
+        </section>
+      </main>
+    );
+  }
   return (
     <main>
       <section>
