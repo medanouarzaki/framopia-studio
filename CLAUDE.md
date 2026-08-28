@@ -487,6 +487,53 @@ Not available in Chromium 99, and on the denylist: CSS container queries
 **Available and used**: `ResizeObserver` (64), `AbortController` (66), grid and
 flex `gap` (84), `overflow-wrap: anywhere` (80), custom properties (49).
 
+### The pipeline runner, and where the money is gated
+
+`POST /jobs {type:"pipeline", params:{reel, mode}}` returns a job id; the panel
+polls `GET /jobs/:id`, whose `detail` carries the runner's per-stage progress.
+**The job lives in the service**, so the user can leave step 1, or close the
+panel, without losing the run.
+
+`service/src/pipeline.ts` orchestrates four stages and **spends nothing itself**.
+Every billable call is made by the stage function, which writes its own ledger
+line at the point of spend; the ledger writer is deliberately not imported into
+the runner and a test asserts it stays that way.
+
+**The plan is the source of truth for resumption.** Each stage writes its result
+and its `cacheEntryId`/`cacheProvenance` into the plan, so a stage the plan
+records as `done` is skipped with its reason said out loud. `redo: [stageId]`
+runs one again deliberately.
+
+**Two ceilings, and they are different things.** `PIPELINE_CEILING_USD = 4` in
+`service/src/pipeline.ts` is the **hard gate**: a running check against the
+ledger before each billable request, so a run is aborted rather than truncated.
+ARCHITECTURE §6's **$2.00 is a soft alarm** the panel shows against a reel's
+cumulative `costs.spentUsd` — a warning, never a refusal. The hard gate sits
+above the alarm because a reel legitimately crossing $2.00 should warn, not
+fail. `PIPELINE_CEILING_USD` is CHOSEN, NOT MEASURED.
+
+**Frame analysis is reported, not driven.** Zones need sampled frames and the
+Python sidecar, which take minutes and have their own commands; the stage
+reports what the plan already has, or says which commands to run. Pretending to
+have run it would be worse.
+
+### The dry run answers what pressing Run will do, not what a stage would cost
+
+`PIPELINE_STAGES` in `service/src/pipeline-stages.ts` is the one declaration of
+the stage ids, their order, their labels and which of them can bill. The dry run
+and the runner both import it, and `pipeline-stages.test.ts` pins that they
+agree — guidelines §3, a rule shared by more than one tool.
+
+Two corrections that fell out of building the runner, both the mirror of the
+defect session 14 fixed:
+
+- **A stage the plan records as done is priced at nothing**, because a run skips
+  it. `vitasilk` read $0.18 for analysis — its keyword entry sits at an older
+  analysis prompt version — while a run skips the stage entirely.
+- **Images are priced only when a slot can exist**: on the plan already, or from
+  an analysis stage that will run and plan some. `test-2` read $1.45 while its
+  analysis had already run and planned none, so a run reaches no image call.
+
 ### The panel is a five-step view over the plan, never a wizard
 
 **Selecting a reel or a mode never navigates** (user ruling). It used to jump to
@@ -5131,6 +5178,22 @@ figure is labelled as a **planned** slot count rather than a known one.
 | test-2 | none planned; ~4 slots, 8 candidates | **$1.63** |
 | test-3 | none planned; ~4 slots, 8 candidates | **$1.63** |
 | vitasilk | 10 of 10 cached | $0.18 |
+
+## Block 8 part 2, session 17 — the pipeline runner
+
+**Spent $0.00; no API was called and the pipeline was not run.** Ledger 108
+entries / sha `50ec3f57…` at both ends. After Effects was not driven.
+
+**Run pipeline is enabled and red for the first time.** The two conventions
+above are what it rests on. Session 16's accent test could only assert the paint
+by removing the `disabled` attribute in the page; that cheat is gone and the
+test reads the real enabled control.
+
+**What pressing Run on `vitasilk` does today: nothing, for $0.00.** All four
+stages are on its plan, so all four are skipped with their reasons on screen —
+which is also the first time `cacheProvenance` reaches the panel from real data.
+`ground-truth` and `test-3` are the reels with work left: about **$1.63** each,
+being analysis plus the images that analysis would plan.
 
 See `docs/BLOCKS.md` for the full block plan and `handoffs/` for prior
 session context.

@@ -195,7 +195,7 @@ export async function dryRun(reelLabel: string, modeId: string): Promise<DryRunP
       provenance,
       entryId,
       estimateUsd,
-      note: skipped ? `${note}. Already on the plan, so a run skips it` : note,
+      note: skipped ? `${note.replace(/\.$/, '')}. Already on the plan, so a run skips it` : note,
     });
   };
 
