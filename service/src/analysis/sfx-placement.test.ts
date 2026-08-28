@@ -9,6 +9,8 @@ import { readEditPlan, writeEditPlan } from '../editplan/io.js';
 import { removeKeyword } from '../keyword-view.js';
 
 const FPS = 30000 / 1001;
+/** Every comp crosses here; asserted against the audit above rather than typed. */
+const IMPACT_S = 0.135446;
 const FOOTAGE = path.join(REPO_ROOT, 'my files', 'test videos');
 const templates = templatesById(loadTemplateManifest());
 const sfxIndex = loadSfxIndex();
@@ -26,14 +28,19 @@ describe('templateImpacts', () => {
     ]);
   });
 
-  /* Every template the user built settles at the same 12 frames. */
-  it('reads 0.4004s — twelve frames — for every one of them', () => {
+  /*
+   * Every template the user built crosses at the same frame, which is what one
+   * shared easing preset should produce. It is the **crossing**, not the last
+   * keyframe: those settle at 12 frames, and sound placed there was the 8-frame
+   * error the user heard.
+   */
+  it('reads 0.1354s — 4.06 frames — for every one of them', () => {
     for (const [id, impactS] of templateImpacts()) {
-      expect(impactS * FPS, id).toBeCloseTo(12, 2);
+      expect(impactS * FPS, id).toBeCloseTo(4.06, 1);
     }
   });
 
-  it('returns an empty map for an audit that records counts without times', () => {
+  it('returns an empty map for an audit that records counts without easing', () => {
     const dir = mkdtempSync(path.join(tmpdir(), 'framopia-audit-'));
     const file = path.join(dir, 'old.audit.json');
     const old = {
@@ -65,7 +72,7 @@ describe('deriveSfxEvents under the measured rule', () => {
 
   /*
    * The whole point. `hit_01`'s anchor is 2.0525 s into the file and the impact
-   * is 0.4004 s after the card, so the layer starts 1.6521 s *before* the card
+   * is 0.1354 s after the card, so the layer starts 1.9171 s *before* the card
    * — where the old rule started it 0.13 s after.
    */
   it('starts a hit before its keyword, so the anchor lands on the impact', async () => {
@@ -77,7 +84,7 @@ describe('deriveSfxEvents under the measured rule', () => {
       expect(event.timeS).toBeLessThan(keyword.start);
       // Within half a frame: the in-point is snapped to the 29.97 grid, so the
       // anchor cannot land exactly and the rule does not claim it does.
-      const errorFrames = Math.abs(((event.anchorAtS ?? 0) - (keyword.start + 0.4004)) * FPS);
+      const errorFrames = Math.abs(((event.anchorAtS ?? 0) - (keyword.start + IMPACT_S)) * FPS);
       expect(errorFrames, event.id).toBeLessThanOrEqual(0.5);
     }
   });
@@ -91,7 +98,7 @@ describe('deriveSfxEvents under the measured rule', () => {
         (e) => e.id === event.sourceElementId,
       );
       if (element === undefined) continue;
-      const error = Math.abs((event.anchorAtS - (element.start + 0.4004)) * FPS);
+      const error = Math.abs((event.anchorAtS - (element.start + IMPACT_S)) * FPS);
       expect(error, event.id).toBeLessThanOrEqual(0.5);
     }
   });
@@ -183,12 +190,21 @@ describe('the corpus', () => {
     }
   });
 
+  /*
+   * How far a hit moves from the old rule is the file's own anchor, so the
+   * bound cannot be one figure for every hit: `hit_01`'s anchor is 2.05 s in
+   * and `hit_02`'s is 0.54 s, and both are now in use. What every hit has in
+   * common is that it starts before its keyword, which the old rule never did.
+   */
   it('places no hit at its old card-plus-0.13s position', async () => {
     const p = await readEditPlan(path.join(FOOTAGE, 'vitasilk.editplan.json'));
-    for (const event of p.sfx.events.filter((e) => e.sfxId.startsWith('hit'))) {
+    const hits = p.sfx.events.filter((e) => e.sfxId.startsWith('hit'));
+    expect(hits.length).toBeGreaterThan(0);
+    for (const event of hits) {
       const keyword = p.keywords.items.find((k) => k.id === event.sourceElementId);
       if (keyword === undefined) continue;
-      expect(Math.abs(event.timeS - (keyword.start + 0.13)), event.id).toBeGreaterThan(1);
+      expect(event.timeS, event.id).toBeLessThan(keyword.start);
+      expect(Math.abs(event.timeS - (keyword.start + 0.13)) * FPS, event.id).toBeGreaterThan(1);
     }
   });
 });

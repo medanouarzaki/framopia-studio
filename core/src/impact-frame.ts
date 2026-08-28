@@ -25,12 +25,22 @@ import type { AuditAnimatedProperty, AuditComp } from './templates.js';
  * The share of its final value an animated property must reach for the motion
  * to read as arrived.
  *
- * **CHOSEN, NOT MEASURED.** 95% is far enough that the remaining travel is a
- * settle rather than a move, and near enough that it lands inside the
- * front-loaded part of an ease-out. It is the number the impact derivation will
- * use once the easing is recorded; nothing reads it yet.
+ * **CHOSEN, NOT MEASURED**, 0.90 — which puts every comp's crossing at 4.06
+ * frames.
+ *
+ * It was 0.95, giving 5.25 frames, and the user — who drew these curves — puts
+ * `kw_slam`'s arrival at frame 4, which corresponds to 0.8966. Nothing shipped
+ * on that disagreement while it was theoretical. He has now heard the sounds
+ * land late, so the choice is being made rather than deferred: **where a
+ * measurement and the author of the animation disagree by less than two frames,
+ * the author decides.** 0.90 is his figure to within a sixteenth of a frame,
+ * and it is a round number rather than one fitted to a single comp.
+ *
+ * The 8-frame error he is hearing is not this 1.25-frame difference — the
+ * sounds sat on the *settle* at frame 12. Either threshold fixes most of it;
+ * this one also matches the eye that made the animation.
  */
-export const IMPACT_THRESHOLD = 0.95;
+export const IMPACT_THRESHOLD = 0.9;
 
 export interface ImpactFrame {
   comp: string;

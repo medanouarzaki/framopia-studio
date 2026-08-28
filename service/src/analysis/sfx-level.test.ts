@@ -24,12 +24,50 @@ describe('sfx gain on a real plan', () => {
   it('derives a gain from the reel rather than a constant', async () => {
     const plan = await readEditPlan(path.join(FOOTAGE, 'vitasilk.editplan.json'));
     const events = deriveSfxEvents(
-      plan, templates, sfxIndex, templateImpacts(), plan.source.dialogueLufs,
+      plan,
+      templates,
+      sfxIndex,
+      templateImpacts(),
+      plan.source.dialogueLufs,
+      plan.source.dialoguePeakDbfs,
     );
+    // Per file, because the gain compensates each file's own peak to put them
+    // all on their kind's target.
+    const expected: Record<string, number> = {
+      hit_01: -11.48,
+      hit_02: -12.17,
+      whoosh_01: -13.97,
+    };
     for (const event of events) {
-      const expected = event.sfxId.startsWith('hit') ? -7.68 : -13.17;
-      expect(event.gainDb, event.id).toBeCloseTo(expected, 2);
+      expect(event.gainDb, `${event.id} ${event.sfxId}`).toBeCloseTo(
+        expected[event.sfxId] as number,
+        2,
+      );
     }
+  });
+
+  /*
+   * The gains differ per file and the peaks must not: that is what makes the
+   * balance a rule rather than four numbers.
+   */
+  it('lands every sound of a kind on the same peak', async () => {
+    const plan = await readEditPlan(path.join(FOOTAGE, 'vitasilk.editplan.json'));
+    const events = deriveSfxEvents(
+      plan,
+      templates,
+      sfxIndex,
+      templateImpacts(),
+      plan.source.dialogueLufs,
+      plan.source.dialoguePeakDbfs,
+    );
+    const peaks = new Map<string, number>();
+    for (const event of events) {
+      const file = sfxIndex.sfx.find((f) => f.id === event.sfxId);
+      const peak = (file?.measured?.peakDbfs as number) + event.gainDb;
+      peaks.set(event.sfxId, Number(peak.toFixed(1)));
+    }
+    expect(peaks.get('hit_01')).toBe(peaks.get('hit_02'));
+    expect(peaks.get('hit_01')).toBeGreaterThan(peaks.get('whoosh_01') as number);
   });
 
   /*
@@ -43,10 +81,15 @@ describe('sfx gain on a real plan', () => {
     expect(hit?.gainDb).toBeCloseTo(-19.28, 2);
   });
 
-  it('leaves the in-points alone: this session changed level, not placement', async () => {
+  it('reproduces the in-points stored on the plan', async () => {
     const plan = await readEditPlan(path.join(FOOTAGE, 'vitasilk.editplan.json'));
     const events = deriveSfxEvents(
-      plan, templates, sfxIndex, templateImpacts(), plan.source.dialogueLufs,
+      plan,
+      templates,
+      sfxIndex,
+      templateImpacts(),
+      plan.source.dialogueLufs,
+      plan.source.dialoguePeakDbfs,
     );
     expect(events.map((e) => e.timeS)).toEqual(plan.sfx.events.map((e) => e.timeS));
   });

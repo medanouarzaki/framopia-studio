@@ -68,10 +68,10 @@ describe('the templates, measured from their own curves', () => {
    * property crossing at the same frame is evidence the convention is being
    * read correctly rather than a coincidence.
    */
-  it('gives 5.25 frames on every entrance property of every comp', () => {
+  it('gives 4.06 frames on every entrance property of every comp', () => {
     for (const comp of AUDIT.comps) {
       for (const crossing of crossingsOf(comp, FPS)) {
-        expect(crossing.crossingFrames, `${comp.name} ${crossing.property}`).toBeCloseTo(5.25, 1);
+        expect(crossing.crossingFrames, `${comp.name} ${crossing.property}`).toBeCloseTo(4.06, 1);
       }
     }
   });
@@ -80,54 +80,66 @@ describe('the templates, measured from their own curves', () => {
     const position = crossingsOf(compOf('kw_slam'), FPS).find(
       (c) => c.property === 'Transform/Position',
     );
-    expect(position?.linearFrames).toBeCloseTo(11.4, 1);
+    expect(position?.linearFrames).toBeCloseTo(10.8, 1);
     expect(position?.lastKeyFrames).toBeCloseTo(12, 1);
-    expect(position?.crossingFrames).toBeLessThan(6);
+    expect(position?.crossingFrames).toBeLessThan(5);
   });
 
   /*
    * Scale reports one ease per dimension while Position reports one for the
    * path. Comparing a three-dimensional magnitude against dimension zero's
-   * speed is a units error, and it put Scale at 7.27 frames where everything
-   * else gave 5.25.
+   * speed is a units error, and it put Scale several frames out where every
+   * other property agreed.
    */
   it('reads a per-dimension ease per dimension, and a spatial ease along the path', () => {
     const scale = crossingsOf(compOf('img_float'), FPS).find(
       (c) => c.property === 'Transform/Scale',
     );
-    expect(scale?.crossingFrames).toBeCloseTo(5.25, 1);
+    expect(scale?.crossingFrames).toBeCloseTo(4.06, 1);
   });
 
   it('takes the latest crossing as the comp’s impact, so everything has arrived', () => {
     const impact = impactCrossingOf(compOf('kw_slam'), FPS);
     expect(impact.impactS).not.toBeNull();
-    expect((impact.impactS as number) * FPS).toBeCloseTo(5.25, 1);
+    expect((impact.impactS as number) * FPS).toBeCloseTo(4.06, 1);
     expect(impact.from).not.toBeNull();
   });
 
   /**
-   * **The check against the user's eye, and it does not pass.**
+   * **The check against the user's eye.**
    *
-   * He built these templates and says `kw_slam`'s word lands at frame 4. The
-   * curve at `IMPACT_THRESHOLD` = 0.95 crosses at 5.25, and frame 4 corresponds
-   * to a threshold of 0.8966. The convention is right — nothing else explains
-   * six comps agreeing, or the distance from linear's 11.40 — and **the
-   * threshold is what disagrees**. Nothing was migrated onto 5.25.
+   * He built these templates and says `kw_slam`'s word lands at frame 4. At
+   * `IMPACT_THRESHOLD` 0.95 the curve crossed at 5.25 and nothing shipped on
+   * that disagreement; at 0.90 it crosses at 4.06, a sixteenth of a frame from
+   * his figure. The convention was never in doubt — six comps agreeing, and a
+   * long way from the linear reading — and the threshold was what disagreed.
    *
-   * This test states the disagreement rather than asserting the number is
-   * correct, so it cannot quietly become the record.
+   * Frame 4 corresponds exactly to 0.8966. The threshold is the round number
+   * next to it rather than that, because a figure fitted to one comp's curve
+   * would be a measurement of this animation rather than a rule for the next.
    */
-  it('does not yet agree with the user’s frame 4, and the threshold is the reason', () => {
+  it('agrees with the user’s frame 4, which is why 0.90 was chosen', () => {
     const position = crossingsOf(compOf('kw_slam'), FPS).find(
       (c) => c.property === 'Transform/Position',
     ) as { crossingFrames: number };
-    expect(IMPACT_THRESHOLD).toBe(0.95);
-    expect(position.crossingFrames).toBeCloseTo(5.25, 1);
-    expect(Math.abs(position.crossingFrames - 4)).toBeGreaterThan(1);
+    expect(IMPACT_THRESHOLD).toBe(0.9);
+    expect(position.crossingFrames).toBeCloseTo(4.06, 1);
+    expect(Math.abs(position.crossingFrames - 4)).toBeLessThan(0.1);
 
+    // The threshold his frame 4 corresponds to exactly, kept as the record of
+    // how close the round number is to it.
     const atUsersFrame = crossingsOf(compOf('kw_slam'), FPS, 0.8966).find(
       (c) => c.property === 'Transform/Position',
     );
     expect(atUsersFrame?.crossingFrames).toBeCloseTo(4, 1);
+  });
+
+  /* The settle is a different measurement, and placing sound on it was the
+   * 8-frame error. Kept so the two cannot be conflated again. */
+  it('crosses about eight frames before the entrance settles', () => {
+    const position = crossingsOf(compOf('kw_slam'), FPS).find(
+      (c) => c.property === 'Transform/Position',
+    ) as { crossingFrames: number; lastKeyFrames: number };
+    expect(position.lastKeyFrames - position.crossingFrames).toBeCloseTo(7.94, 1);
   });
 });
