@@ -153,6 +153,16 @@ export {
   SFX_TARGET_OFFSET_DB,
   type SfxKind,
 } from './sfx-level.js';
+export {
+  cardFrameColour,
+  contrastRatio,
+  MIN_IMAGE_EDGE_CONTRAST,
+  parseHexColour,
+  relativeLuminance,
+  toAeColour,
+  type CardFrame,
+  type Rgb,
+} from './image-border.js';
 export { impactFrameOf, IMPACT_THRESHOLD, type ImpactFrame } from './impact-frame.js';
 export {
   crossingsOf,

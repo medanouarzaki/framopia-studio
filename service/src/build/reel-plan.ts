@@ -34,6 +34,8 @@ export interface ReelElement {
   placeholderScalePercent?: number;
   /** Anchor point, in source pixels, putting the content's centre on the layer's position. */
   contentAnchor?: { x: number; y: number };
+  /** The card frame's colour, as three floats in 0..1 for After Effects. */
+  cardColor?: [number, number, number];
 }
 
 export interface ReelPlacement {

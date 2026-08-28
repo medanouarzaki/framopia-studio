@@ -4,10 +4,15 @@ import path from 'node:path';
 import {
   REPO_ROOT,
   SUBTITLE_SAFE_WIDTH,
+  cardFrameColour,
+  loadMode,
   loadSfxIndex,
   loadTemplateManifest,
+  parseHexColour,
   templatesById,
+  toAeColour,
 } from '@framopia/core';
+import { edgeLuminance } from '../images/sidecar.js';
 import { readEditPlan } from '../editplan/io.js';
 import { runBuildReel } from './drive.js';
 import { imageSize } from './image-size.js';
@@ -179,6 +184,33 @@ for (const e of built.elements) {
       `${e.placeholderScalePercent.toFixed(4)}% -> renders ${rendered.toFixed(0)}px ` +
       `inside a ${solid.width}px solid and an 1080px frame`,
   );
+}
+
+/*
+ * The frame around a card is only a frame if it separates from the picture. The
+ * corpus is generated against the mode's own dark palette, so a dark frame is
+ * invisible on every candidate and the user reported exactly that: some images
+ * disappear. The colour is derived per image rather than set once, so a light
+ * picture on a future reel gets a dark frame without anyone deciding again.
+ */
+const modeId = plan.clientMode?.id ?? flag('mode');
+if (modeId === undefined) {
+  console.log('\nno client mode: the card frame keeps the template’s own colour');
+} else {
+  const palette = Object.fromEntries(
+    Object.entries(loadMode(modeId).palette).map(([role, hex]) => [role, parseHexColour(hex)]),
+  );
+  for (const e of built.elements) {
+    if (e.kind !== 'image' || e.imagePath === undefined) continue;
+    const edge = await edgeLuminance(e.imagePath);
+    const frame = cardFrameColour({ edgeLuminance: edge.meanLuminance, palette });
+    e.cardColor = toAeColour(frame.colour);
+    console.log(
+      `${e.id}: edge luminance ${edge.meanLuminance.toFixed(4)} -> frame ${frame.role} ` +
+        `at ${frame.contrast.toFixed(2)}:1` +
+        (frame.meetsMinimum ? '' : ' — BELOW the 3:1 minimum, best available'),
+    );
+  }
 }
 
 console.log(`\nchosen candidates: ${chosenIds.join(', ') || 'none'}`);

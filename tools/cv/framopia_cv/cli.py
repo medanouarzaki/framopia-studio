@@ -98,6 +98,14 @@ def _detect_text(request: dict) -> dict:
     }
 
 
+def _edge_luminance(request: dict) -> dict:
+    from .edge_luminance import edge_luminance
+
+    payload = edge_luminance(request["imagePath"])
+    payload.update({"ok": True, "task": "edge_luminance"})
+    return payload
+
+
 def _segment_person(request: dict) -> dict:
     from .segment_person import DEFAULT_THRESHOLD, MODEL_NAME, MODEL_PATH, segment_frames
 
@@ -356,6 +364,7 @@ def _torso_overlay(request: dict) -> dict:
 TASKS = {
     "remove_bg": _remove_bg,
     "detect_text": _detect_text,
+    "edge_luminance": _edge_luminance,
     "segment_person": _segment_person,
     "segment_overlay": _segment_overlay,
     "compute_zones": _compute_zones,

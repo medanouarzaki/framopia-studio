@@ -120,3 +120,24 @@ export function removeBackground(options: {
     modeVocabulary: options.modeVocabulary ?? [],
   });
 }
+
+export interface SidecarEdgeLuminance {
+  imagePath: string;
+  width: number;
+  height: number;
+  bandPx: number;
+  meanLuminance: number;
+  p90Luminance: number;
+}
+
+/**
+ * The mean relative luminance of an image's outermost ring.
+ *
+ * What the card frame's colour is derived from — see `cardFrameColour` in
+ * `@framopia/core`. Measured on the file the builder will actually place, so a
+ * card is measured on its canvas and never on a cutout, whose ring is
+ * transparent and reads as black whatever the picture is.
+ */
+export function edgeLuminance(imagePath: string): Promise<SidecarEdgeLuminance> {
+  return runSidecar<SidecarEdgeLuminance>({ task: 'edge_luminance', imagePath });
+}

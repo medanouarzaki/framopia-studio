@@ -139,6 +139,23 @@ function framopiaBuildReel(optionsPath, outPath) {
                 if (e.contentAnchor) {
                     ph.property('Anchor Point').setValue([e.contentAnchor.x, e.contentAnchor.y]);
                 }
+                // The frame is only a frame if it separates from the picture's
+                // own edge. The colour is derived by the caller from that edge;
+                // a Fill effect recolours this instance's own layer and leaves
+                // the shared solid the template draws from untouched.
+                if (e.cardColor) {
+                    var card = instance.layer('CARD');
+                    if (card === null) {
+                        return { ok: false, stage: 'card-frame',
+                                 message: 'no CARD layer in ' + e.templateId };
+                    }
+                    var fill = card.property('Effects').addProperty('ADBE Fill');
+                    fill.property('Color').setValue([
+                        e.cardColor[0], e.cardColor[1], e.cardColor[2], 1
+                    ]);
+                    e.cardColorApplied = card.property('Effects')
+                        .property('Fill').property('Color').value;
+                }
                 e.measured = {
                     sourceWidth: img.width,
                     sourceHeight: img.height,
