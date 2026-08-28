@@ -24,6 +24,14 @@ export interface TopLeftInput {
   marginW?: number;
   clearanceW?: number;
   jitter?: number;
+  /**
+   * The client mode's `imageScale`, default 1.0.
+   *
+   * Applied *before* the face and frame bounds rather than after, so asking for
+   * more than the corner holds is refused by the same constraint that shaped
+   * the square in the first place.
+   */
+  scale?: number;
 }
 
 /**
@@ -36,12 +44,27 @@ export interface TopLeftInput {
  * the result is still passed through `fitInsideFrame`.
  */
 export function topLeftPlacement(input: TopLeftInput): Rect {
+  return topLeftPlacementDetail(input).rect;
+}
+
+export interface TopLeftDetail {
+  rect: Rect;
+  /** The side the mode asked for, before the face and the frame had their say. */
+  wantedSide: number;
+  /** True when the corner could not hold what the mode asked for. */
+  clamped: boolean;
+}
+
+/** The same placement, with what the mode asked for beside what it got. */
+export function topLeftPlacementDetail(input: TopLeftInput): TopLeftDetail {
   const margin = input.marginW ?? TOP_LEFT_MARGIN;
   const clearance = input.clearanceW ?? HEAD_CLEARANCE;
   const jitter = input.jitter ?? TOP_LEFT_JITTER;
+  const scale = input.scale ?? 1;
 
   // Without a face to avoid, the corner is limited only by the frame.
-  let side = Math.min(1 - 2 * margin, FRAME_ASPECT - 2 * margin * FRAME_ASPECT);
+  const byFrame = Math.min(1 - 2 * margin, FRAME_ASPECT - 2 * margin * FRAME_ASPECT);
+  let side = byFrame;
 
   if (input.faceBox !== null) {
     const faceLeft = input.faceBox.x - clearance;
@@ -52,12 +75,24 @@ export function topLeftPlacement(input: TopLeftInput): Rect {
     const byTop = (faceTop - margin * FRAME_ASPECT) * FRAME_ASPECT;
     side = Math.min(side, Math.max(byLeft, byTop));
   }
-  side = Math.max(0, side);
-
+  const bound = Math.max(0, side);
   const shrink = 1 - jitter * unitStream(`${input.seed}:topleft`)();
-  return fitInsideFrame(
-    margin + (side * shrink) / 2,
-    margin * FRAME_ASPECT + (side * shrink) / (2 * FRAME_ASPECT),
-    side * shrink,
-  );
+  /*
+   * Jitter is applied last, so it stays a shrink whatever the mode asked for.
+   * Letting a clamped square keep the full bound would have it sit exactly on
+   * the clearance boundary — measurably touching the grown face box on four of
+   * the corpus's nine slots — which is the guarantee this function exists for.
+   */
+  const wantedSide = bound * scale;
+  const allowed = Math.min(wantedSide, bound) * shrink;
+
+  return {
+    rect: fitInsideFrame(
+      margin + allowed / 2,
+      margin * FRAME_ASPECT + allowed / (2 * FRAME_ASPECT),
+      allowed,
+    ),
+    wantedSide,
+    clamped: wantedSide > bound + 1e-9,
+  };
 }

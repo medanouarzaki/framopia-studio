@@ -20,6 +20,8 @@ import { REPO_ROOT } from './paths.js';
  *                    then { status: "set", latin, arabic }
  * imageStyle         { stylePrompt: string[], negativePrompt: string[] }
  * imageVariation     { note, axes: { <axis>: string[] } }
+ * imageScale         optional 0.5-2.0; how much larger than the largest
+ *                    face-clearing square an image is drawn. Default 1.0.
  * imageCandidates    optional 2-4; §5.4's mode override for how many
  *                    candidates a slot generates. Absent means the code
  *                    default.
@@ -112,6 +114,17 @@ export interface ClientMode {
    * every mode written before this stays valid.
    */
   imageCandidates?: number;
+  /**
+   * How large an image is drawn, as a multiple of the largest square that
+   * clears the speaker's face in the top-left corner.
+   *
+   * A client decision, not a geometric one: the solver's square is what fits,
+   * and how much of it a client wants filled is taste. Above 1.0 the square is
+   * bounded by the frame and by the face on the way out, so a value the reel
+   * cannot honour is **clamped and reported**, never rendered over a face.
+   * Absent means 1.0, so every existing mode keeps the size it had.
+   */
+  imageScale?: number;
   allowedTemplates: Record<TemplateKind, string[]>;
   vocabulary: string[];
   note?: string;
@@ -537,6 +550,12 @@ export function validateMode(value: unknown): ModeValidationIssue[] {
   if (mode.fonts !== undefined) validateFonts(c, mode.fonts);
   if (mode.imageStyle !== undefined) validateImageStyle(c, mode.imageStyle);
   if (mode.imageVariation !== undefined) validateImageVariation(c, mode.imageVariation);
+  if (mode.imageScale !== undefined) {
+    const s = mode.imageScale;
+    if (typeof s !== 'number' || !Number.isFinite(s) || s < 0.5 || s > 2) {
+      c.fail('imageScale', 'expected a number between 0.5 and 2.0');
+    }
+  }
   if (mode.imageCandidates !== undefined) {
     const n = mode.imageCandidates;
     if (typeof n !== 'number' || !Number.isInteger(n) || n < 2 || n > 4) {

@@ -1,12 +1,12 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { REPO_ROOT } from '@framopia/core';
+import { REPO_ROOT, loadMode } from '@framopia/core';
 import { readEditPlan } from '../editplan/io.js';
 import type { EditPlan, ImageSlot } from '../editplan/types.js';
 import { FRAME_ASPECT, FRAME_WIDTH, HEAD_CLEARANCE, TOP_LEFT_MARGIN } from './constants.js';
 import { insideFrame, type Rect } from './geometry.js';
-import { topLeftPlacement } from './top-left.js';
+import { topLeftPlacementDetail } from './top-left.js';
 
 /**
  * Where the top-left rule puts each image slot, per reel.
@@ -40,6 +40,16 @@ const overlaps = (a: Rect, b: Rect): boolean =>
 let placedTotal = 0;
 let escapes = 0;
 let faceHits = 0;
+let clamped = 0;
+
+/*
+ * How large the client wants its images, as a multiple of the largest square
+ * the corner holds. Read from the mode rather than a constant: it is taste, and
+ * the two clients this tool has will not agree about it.
+ */
+const modeArg = process.argv.indexOf('--mode');
+const imageScale =
+  modeArg === -1 ? 1 : (loadMode(process.argv[modeArg + 1] as string).imageScale ?? 1);
 
 for (const file of readdirSync(FOOTAGE_DIR).filter((f) => f.endsWith('.editplan.json')).sort()) {
   const reel = file.replace('.editplan.json', '');
@@ -70,7 +80,13 @@ for (const file of readdirSync(FOOTAGE_DIR).filter((f) => f.endsWith('.editplan.
   const out: Record<string, Rect> = {};
   for (const slot of plan.images.slots as ImageSlot[]) {
     const faceBox = spanBox(slot);
-    const rect = topLeftPlacement({ faceBox, seed: `${plan.meta.id}:${slot.id}` });
+    const detail = topLeftPlacementDetail({
+      faceBox,
+      seed: `${plan.meta.id}:${slot.id}`,
+      scale: imageScale,
+    });
+    const rect = detail.rect;
+    if (detail.clamped) clamped += 1;
     out[slot.id] = rect;
     placedTotal += 1;
     if (!insideFrame(rect, 1e-9)) escapes += 1;
@@ -78,6 +94,7 @@ for (const file of readdirSync(FOOTAGE_DIR).filter((f) => f.endsWith('.editplan.
     console.log(
       `${reel.padEnd(14)} ${slot.id}: ${(rect.w * FRAME_WIDTH).toFixed(0)} px at ` +
         `(${(rect.x * FRAME_WIDTH).toFixed(0)}, ${(rect.y * FRAME_WIDTH * FRAME_ASPECT).toFixed(0)})` +
+        `${detail.clamped ? `  CLAMPED from ${(detail.wantedSide * FRAME_WIDTH).toFixed(0)} px` : ''}` +
         `${faceBox === null ? '  [no face mask; frame-bounded only]' : ''}`,
     );
   }
@@ -91,5 +108,6 @@ for (const file of readdirSync(FOOTAGE_DIR).filter((f) => f.endsWith('.editplan.
 
 console.log(
   `\n${placedTotal} slots placed top-left, margin ${TOP_LEFT_MARGIN}; ` +
-    `${escapes} outside the frame, ${faceHits} overlapping the face. $0.00 — no model call.`,
+    `imageScale ${imageScale}; ${escapes} outside the frame, ${faceHits} ` +
+    `overlapping the face, ${clamped} clamped by the corner. $0.00 — no model call.`,
 );

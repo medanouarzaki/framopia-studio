@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { topLeftPlacement } from './top-left.js';
+import { topLeftPlacement, topLeftPlacementDetail } from './top-left.js';
 import { insideFrame, type Rect } from './geometry.js';
 import { FRAME_ASPECT, FRAME_WIDTH, HEAD_CLEARANCE, TOP_LEFT_JITTER, TOP_LEFT_MARGIN } from './constants.js';
 
@@ -71,5 +71,47 @@ describe('topLeftPlacement', () => {
     const r = topLeftPlacement({ faceBox: low, seed: 'low', jitter: 0 });
     expect(r.w * FRAME_WIDTH).toBeGreaterThan(0.1 * FRAME_WIDTH);
     expect(overlaps(r, grown(low))).toBe(false);
+  });
+});
+
+describe('imageScale', () => {
+  const faceBox = { x: 0.52, y: 0.18, w: 0.3, h: 0.24 };
+  const seed = 'plan:img001';
+
+  it('leaves a mode with no scale exactly where it was', () => {
+    expect(topLeftPlacement({ faceBox, seed })).toEqual(
+      topLeftPlacement({ faceBox, seed, scale: 1 }),
+    );
+  });
+
+  it('shrinks when the client asks for less', () => {
+    const small = topLeftPlacementDetail({ faceBox, seed, scale: 0.6 });
+    const full = topLeftPlacementDetail({ faceBox, seed });
+    expect(small.rect.w).toBeCloseTo(full.rect.w * 0.6, 9);
+    expect(small.clamped).toBe(false);
+  });
+
+  /*
+   * The corner is already the largest square that clears the face, so asking
+   * for more is refused rather than granted over the speaker.
+   */
+  it('clamps a request the corner cannot hold, and says it clamped', () => {
+    const asked = topLeftPlacementDetail({ faceBox, seed, scale: 1.4 });
+    const full = topLeftPlacementDetail({ faceBox, seed });
+    expect(asked.clamped).toBe(true);
+    expect(asked.wantedSide).toBeGreaterThan(asked.rect.w);
+    expect(asked.rect.w).toBeCloseTo(full.rect.w, 9);
+  });
+
+  it('keeps jitter a shrink at any scale, so nothing sits on the boundary', () => {
+    for (const scale of [0.7, 1, 1.4, 2]) {
+      const d = topLeftPlacementDetail({ faceBox, seed, scale });
+      expect(d.rect.x + d.rect.w).toBeLessThan(faceBox.x - HEAD_CLEARANCE);
+    }
+  });
+
+  it('grows into a frame-bounded corner, where there is room to grow', () => {
+    const grown = topLeftPlacementDetail({ faceBox: null, seed, scale: 1.4 });
+    expect(grown.clamped).toBe(true);
   });
 });

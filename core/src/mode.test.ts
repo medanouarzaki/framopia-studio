@@ -206,11 +206,11 @@ describe('the k2 stub on disk', () => {
     expect(mode.vocabulary).toEqual([]);
   });
 
-  // v6, Block 6 session 7: the two Arabic template variants were added to
-  // allowedTemplates once the comps existed. The bump invalidates the
-  // image-generation cache, which keys on modeVersion, and nothing else.
-  it('is at version 6', () => {
-    expect(mode.version).toBe(6);
+  // v7, Block 8 session 25: `imageScale`. The image cache stopped keying on
+  // modeVersion in Block 7 session 1 and the analysis stages key on content
+  // hashes of the fields their own call reads, so the bump invalidates nothing.
+  it('is at version 7', () => {
+    expect(mode.version).toBe(7);
   });
 
   it('allows both script variants of the text templates', () => {
@@ -558,5 +558,25 @@ describe('checkSlotIdea', () => {
     for (const marker of MULTI_SUBJECT_MARKERS) {
       expect(marker.why.length).toBeGreaterThan(10);
     }
+  });
+});
+
+describe('imageScale', () => {
+  it('is optional, and its absence is not a validation failure', () => {
+    const mode = loadMode('k2-syndicalia');
+    const { imageScale, ...without } = mode;
+    void imageScale;
+    expect(validateMode(without as unknown as Record<string, unknown>)).toEqual([]);
+  });
+
+  it('rejects a value outside the range, naming the field', () => {
+    for (const bad of [0.4, 2.1, 'big', null]) {
+      const issues = validateMode({ ...loadMode('k2-syndicalia'), imageScale: bad } as never);
+      expect(issues.map((i) => i.path)).toContain('imageScale');
+    }
+  });
+
+  it('carries the client’s own figure', () => {
+    expect(loadMode('k2-syndicalia').imageScale).toBe(1.4);
   });
 });
