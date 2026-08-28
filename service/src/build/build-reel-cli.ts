@@ -28,7 +28,7 @@ import {
   WATERMARK_DURATION_S,
 } from '../placement/constants.js';
 import { assertBeepsFitWatermark, placeWatermark, watermarkEnabled } from '../placement/watermark.js';
-import { placeImageDetail, placementIsSafe } from '../placement/image-placement.js';
+import { placementIsSafe, topLeftPlacementDetail } from '../placement/top-left.js';
 import {
   buildReel,
   auditedSolid,
@@ -188,11 +188,10 @@ const imageScale =
 const imagePlacements: Record<string, { x: number; y: number; w: number; h: number }> = {};
 for (const slot of plan.images.slots) {
   const faceBox = faceSpan(slot.start, slot.end);
-  const detail = placeImageDetail({
+  const detail = topLeftPlacementDetail({
     faceBox,
     seed: `${plan.meta.id}:${slot.id}`,
     scale: imageScale,
-    prefer: slot.placementBand,
   });
   const safe = placementIsSafe(detail.rect, faceBox);
   if (!safe.insideFrame || !safe.clearsFace) {
@@ -204,10 +203,10 @@ for (const slot of plan.images.slots) {
   }
   imagePlacements[slot.id] = detail.rect;
   console.log(
-    `${slot.id}: ${(detail.rect.w * plan.source.width).toFixed(0)}px ${detail.band}` +
-      (slot.placementBand === undefined ? '' : ' (your choice)') +
+    `${slot.id}: ${(detail.rect.w * plan.source.width).toFixed(0)}px in the top-left corner, ` +
+      `bounded by ${detail.boundBy}` +
       (detail.clamped
-        ? `, smaller than the ${imageScale}x asked for (the band holds ${detail.bandSidePx.toFixed(0)}px)`
+        ? `; smaller than the ${imageScale}x asked for, which the corner cannot hold`
         : ''),
   );
 }

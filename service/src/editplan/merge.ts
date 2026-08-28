@@ -70,13 +70,6 @@ export function humanFlaggedItems(plan: EditPlan): HumanFlag[] {
         detail: `a candidate was chosen (${slot.chosenCandidateId})`,
       });
     }
-    if (slot.placementBand !== undefined) {
-      flags.push({
-        block: 'images',
-        itemId: slot.id,
-        detail: `a human put this image ${slot.placementBand} the speaker`,
-      });
-    }
   }
   return flags;
 }

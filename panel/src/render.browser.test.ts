@@ -1876,14 +1876,8 @@ const IMAGES = {
       zoneId: 'z_left_4',
       chosenCandidateId: null,
       overriddenFailures: [],
-      placedWhere: 'above you',
-      placedSidePx: 925,
-      placementChosenByHuman: false,
-      placementOptions: [
-        { key: 'above', label: 'above you', sidePx: 937, usable: true },
-        { key: 'left', label: 'to your left', sidePx: 769, usable: true },
-        { key: 'right', label: 'to your right', sidePx: 205, usable: false },
-      ],
+      placedSidePx: 912,
+      placementLimit: 'the space above the speaker',
       buildsWith: 'img001-c1',
       buildsWithReason: 'first candidate, nothing chosen',
       candidates: [
@@ -2214,48 +2208,36 @@ describe('the image candidate picker', () => {
   });
 
   /*
-   * The zone editor, as it can honestly be: the stored zones have not been read
-   * by placement since Block 7 session 9, so what is offered is which side of
-   * the speaker, not which of twenty rectangles.
+   * Images sit in the top-left corner on every reel, so there is no position to
+   * choose. What the picker can honestly say is how big the picture is and what
+   * limits it — the number behind "make them bigger".
    */
-  it('says which side each picture sits on, and offers the others', async () => {
+  it('says how big the picture is and what limits it', async () => {
     const loaded = await loadImages();
     if (loaded === null) return;
     await loaded.page.waitForSelector('ol.slots li', { timeout: 5000 });
     const text = (await loaded.page.textContent('ol.slots')) ?? '';
-    expect(text).toContain('above you');
-    expect(text).toContain('the roomiest side, picked for you');
-    expect(await loaded.page.$('button[aria-label="Put img001 to your left"]')).toBeTruthy();
-    // No schema in sight.
+    expect(text).toContain('Sits in the top-left corner');
+    expect(text).toContain('912 px');
+    expect(text).toContain('the space above the speaker');
+    // No schema in sight, and no control over a choice nobody makes.
     expect(text).not.toContain('z_left');
-    expect(text).not.toContain('placementBand');
+    expect(await loaded.page.$$('button[aria-label^="Put img001"]')).toHaveLength(0);
     await loaded.page.close();
   });
 
-  it('offers no side that is too small to hold a picture', async () => {
-    const loaded = await loadImages();
-    if (loaded === null) return;
-    await loaded.page.waitForSelector('ol.slots li', { timeout: 5000 });
-    const disabled = await loaded.page.$eval(
-      'button[aria-label="Put img001 to your right"]',
-      (el) => (el as HTMLButtonElement).disabled,
-    );
-    expect(disabled).toBe(true);
-    await loaded.page.close();
-  });
-
-  /* A service too old to send these must not make the panel invent a control. */
-  it('shows no side control when the service does not offer one', async () => {
+  /* A service too old to send the size must not make the panel invent one. */
+  it('says nothing about size when the service does not offer it', async () => {
     const older = JSON.parse(JSON.stringify(IMAGES)) as typeof IMAGES;
     for (const slot of older.slots) {
-      for (const key of ['placedWhere', 'placedSidePx', 'placementChosenByHuman', 'placementOptions']) {
-        delete (slot as Record<string, unknown>)[key];
-      }
+      delete (slot as Record<string, unknown>)['placedSidePx'];
+      delete (slot as Record<string, unknown>)['placementLimit'];
     }
     const loaded = await loadImages(older);
     if (loaded === null) return;
     await loaded.page.waitForSelector('ol.slots li', { timeout: 5000 });
-    expect(await loaded.page.$$('.where')).toHaveLength(0);
+    const text = (await loaded.page.textContent('ol.slots')) ?? '';
+    expect(text).not.toContain('Sits in the top-left corner');
     expect(loaded.uncaught).toEqual([]);
     await loaded.page.close();
   });

@@ -6,8 +6,7 @@ import { readEditPlan } from '../editplan/io.js';
 import type { EditPlan, ImageSlot } from '../editplan/types.js';
 import { FRAME_HEIGHT, FRAME_WIDTH, HEAD_CLEARANCE, TOP_LEFT_MARGIN } from './constants.js';
 import { type Rect } from './geometry.js';
-import { placeImageDetail, placementIsSafe } from './image-placement.js';
-import { topLeftPlacementDetail } from './top-left.js';
+import { placementIsSafe, topLeftPlacementDetail } from './top-left.js';
 
 /**
  * Where each image slot goes, per reel, and what the change from the corner is
@@ -34,7 +33,7 @@ let placedTotal = 0;
 let escapes = 0;
 let faceHits = 0;
 let clamped = 0;
-const gains: number[] = [];
+const sides: number[] = [];
 
 /*
  * How large the client wants its images, as a multiple of the largest square
@@ -75,11 +74,7 @@ for (const file of readdirSync(FOOTAGE_DIR).filter((f) => f.endsWith('.editplan.
   for (const slot of plan.images.slots as ImageSlot[]) {
     const faceBox = spanBox(slot);
     const seed = `${plan.meta.id}:${slot.id}`;
-    // The corner rule, kept only to report what moving off it is worth.
-    const was = topLeftPlacementDetail({ faceBox, seed, scale: imageScale }).rect;
-    const detail = placeImageDetail({
-      faceBox, seed, scale: imageScale, prefer: slot.placementBand,
-    });
+    const detail = topLeftPlacementDetail({ faceBox, seed, scale: imageScale });
     const rect = detail.rect;
     if (detail.clamped) clamped += 1;
     out[slot.id] = rect;
@@ -90,16 +85,14 @@ for (const file of readdirSync(FOOTAGE_DIR).filter((f) => f.endsWith('.editplan.
     if (!safe.clearsFace) faceHits += 1;
     const px = (v: number): string => (v * FRAME_WIDTH).toFixed(0);
     const py = (v: number): string => (v * FRAME_HEIGHT).toFixed(0);
-    const gain = was.w === 0 ? 1 : rect.w / was.w;
-    gains.push(gain);
     console.log(
-      `${reel.padEnd(14)} ${slot.id}: was ${px(was.w)}px at (${px(was.x)}, ${py(was.y)})` +
-        ` -> now ${px(rect.w)}px at (${px(rect.x)}, ${py(rect.y)})` +
-        `  ${gain.toFixed(2)}x  ${detail.band}` +
+      `${reel.padEnd(14)} ${slot.id}: ${px(rect.w)}px at (${px(rect.x)}, ${py(rect.y)})` +
+        `  bounded by ${detail.boundBy}` +
         `  clears face ${safe.clearsFace ? 'yes' : 'NO'}, in frame ${safe.insideFrame ? 'yes' : 'NO'}` +
-        `${detail.clamped ? `  (asked ${detail.wantedSidePx.toFixed(0)}px, band holds ${detail.bandSidePx.toFixed(0)})` : ''}` +
+        `${detail.clamped ? `  (asked ${detail.wantedSidePx.toFixed(0)}px, corner holds ${detail.cornerSidePx.toFixed(0)})` : ''}` +
         `${faceBox === null ? '  [no face mask; frame-bounded only]' : ''}`,
     );
+    sides.push(rect.w * FRAME_WIDTH);
   }
   mkdirSync(path.join(REPO_ROOT, '.local', 'build'), { recursive: true });
   writeFileSync(
@@ -109,12 +102,10 @@ for (const file of readdirSync(FOOTAGE_DIR).filter((f) => f.endsWith('.editplan.
   );
 }
 
-const mean = gains.length === 0 ? 1 : gains.reduce((a, b) => a + b, 0) / gains.length;
 console.log(
-  `\n${placedTotal} slots placed, margin ${(TOP_LEFT_MARGIN * FRAME_WIDTH).toFixed(0)}px, ` +
+  `\n${placedTotal} slots placed top-left, margin ${(TOP_LEFT_MARGIN * FRAME_WIDTH).toFixed(0)}px, ` +
     `clearance ${(HEAD_CLEARANCE * FRAME_WIDTH).toFixed(0)}px, imageScale ${imageScale}. ` +
-    `Mean ${mean.toFixed(2)}x the corner rule, best ${Math.max(...gains).toFixed(2)}x, ` +
-    `worst ${Math.min(...gains).toFixed(2)}x.`,
+    `Sides ${Math.min(...sides).toFixed(0)}-${Math.max(...sides).toFixed(0)}px.`,
 );
 console.log(
   `${escapes} outside the frame, ${faceHits} overlapping the face, ` +

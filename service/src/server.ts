@@ -7,7 +7,7 @@ import { REPO_ROOT } from '@framopia/core';
 import { createJob, getJob, UnknownJobTypeError } from './jobs.js';
 import { readEditPlan, writeEditPlan } from './editplan/io.js';
 import { clearManualZone, ManualZoneError, setManualZone } from './frames/plan-zones.js';
-import { chooseCandidate, chooseImageSide, imagesView, ImageViewError } from './image-view.js';
+import { chooseCandidate, imagesView, ImageViewError } from './image-view.js';
 
 /** The one intro overlay this agency has; Block 7 session 1 measured it. */
 const WATERMARK_ASSET = path.join(REPO_ROOT, 'assets', 'watermark', 'intro.mov');
@@ -373,37 +373,6 @@ export function createApp(token: string): http.Server {
         await withPlan(res, body.planPath, (plan) => {
           plan.zones = setManualZone(plan.zones, body.zone as Zone);
         });
-        return;
-      }
-
-      if (req.method === 'POST' && url.pathname === '/images/side') {
-        let body: { planPath?: unknown; slotId?: unknown; band?: unknown };
-        try {
-          body = JSON.parse((await readBody(req)) || '{}') as typeof body;
-        } catch {
-          sendJson(res, 400, { error: 'invalid JSON body' });
-          return;
-        }
-        if (typeof body.planPath !== 'string' || typeof body.slotId !== 'string') {
-          sendJson(res, 400, { error: '"planPath" and "slotId" are required' });
-          return;
-        }
-        const band = body.band;
-        if (band !== null && band !== 'above' && band !== 'left' && band !== 'right') {
-          sendJson(res, 400, { error: '"band" must be above, left, right or null' });
-          return;
-        }
-        try {
-          sendJson(
-            res,
-            200,
-            await chooseImageSide({ planPath: body.planPath, slotId: body.slotId, band }),
-          );
-        } catch (error) {
-          sendJson(res, error instanceof ImageViewError ? 400 : 500, {
-            error: (error as Error).message,
-          });
-        }
         return;
       }
 

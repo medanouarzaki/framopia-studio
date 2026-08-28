@@ -1,42 +1,59 @@
 import { describe, expect, it } from 'vitest';
-import { topLeftPlacement, topLeftPlacementDetail } from './top-left.js';
+import { placementIsSafe, topLeftPlacement, topLeftPlacementDetail } from './top-left.js';
 import { insideFrame, type Rect } from './geometry.js';
-import { FRAME_ASPECT, FRAME_WIDTH, HEAD_CLEARANCE, TOP_LEFT_JITTER, TOP_LEFT_MARGIN } from './constants.js';
+import {
+  FRAME_HEIGHT, FRAME_WIDTH, HEAD_CLEARANCE, TOP_LEFT_JITTER, TOP_LEFT_MARGIN,
+} from './constants.js';
 
-const overlaps = (a: Rect, b: Rect): boolean =>
-  a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
-
-const grown = (b: Rect): Rect => ({
-  x: b.x - HEAD_CLEARANCE,
-  y: b.y - HEAD_CLEARANCE * FRAME_ASPECT,
-  w: b.w + 2 * HEAD_CLEARANCE,
-  h: b.h + 2 * HEAD_CLEARANCE * FRAME_ASPECT,
-});
+/*
+ * `placementIsSafe` is the one declaration of what "clears the face" means, so
+ * the test asks it rather than growing the box a second time — the copy here
+ * had the same aspect-ratio bug the placement did, and a wrong check cannot
+ * catch a wrong rule.
+ */
 
 // vitasilk's face over a slot span: the tightest real case in the corpus.
 const vitasilkFace: Rect = { x: 0.4213, y: 0.2385, w: 0.30, h: 0.29 };
 
 /**
- * **The corner rule is superseded** (Block 8 session 33): images go in the
- * largest free band around the face now, which `image-placement.ts` decides and
- * `image-placement.test.ts` pins. These tests are kept because the corner rule
- * is kept — the reporting tool prints what moving off it is worth, and a
- * comparison against a rule nobody exercises is a comparison against nothing.
- *
- * Nothing here describes how an image is placed today.
+ * **The corner rule is how images are placed** — the user's ruling in Block 7
+ * session 9 and again in session 34, after session 33 moved them off it and he
+ * saw the result.
  */
-describe('the superseded corner rule', () => {
-  it('anchors at the margin', () => {
+describe('topLeftPlacement', () => {
+  /*
+   * The margin is one number, so it has to be the same number of pixels on both
+   * axes. It was not: the y conversion multiplied by the frame's aspect ratio
+   * where a width fraction becomes a height fraction by dividing, putting the
+   * top inset at 205 px against the side's 65. Asserted in pixels, because that
+   * is the only form in which the two are comparable.
+   */
+  it('anchors the same distance from the top as from the side', () => {
     const r = topLeftPlacement({ faceBox: null, seed: 'a' });
-    expect(r.x).toBeCloseTo(TOP_LEFT_MARGIN, 10);
-    expect(r.y).toBeCloseTo(TOP_LEFT_MARGIN * FRAME_ASPECT, 10);
+    expect(r.x * FRAME_WIDTH).toBeCloseTo(TOP_LEFT_MARGIN * FRAME_WIDTH, 6);
+    expect(r.y * FRAME_HEIGHT).toBeCloseTo(TOP_LEFT_MARGIN * FRAME_WIDTH, 6);
   });
 
   it('never overlaps the face, with its clearance, on the tightest real case', () => {
     for (let i = 0; i < 50; i += 1) {
       const r = topLeftPlacement({ faceBox: vitasilkFace, seed: `slot-${i}` });
-      expect(overlaps(r, grown(vitasilkFace)), `seed ${i}`).toBe(false);
+      expect(placementIsSafe(r, vitasilkFace).clearsFace, `seed ${i}`).toBe(true);
     }
+  });
+
+  /*
+   * The corner is bounded by whichever leaves more room: the space beside the
+   * speaker or the space above his head. Correcting the units made the space
+   * above usable — it had been understated by 327 px — and it is what bounds
+   * eight of the corpus's nine slots.
+   */
+  it('is bounded by the space above the speaker when that is the larger', () => {
+    const detail = topLeftPlacementDetail({ faceBox: vitasilkFace, seed: 'a' });
+    expect(detail.boundBy).toBe('the space above the speaker');
+    expect(detail.cornerSidePx).toBeCloseTo(
+      vitasilkFace.y * FRAME_HEIGHT - HEAD_CLEARANCE * FRAME_WIDTH - TOP_LEFT_MARGIN * FRAME_WIDTH,
+      6,
+    );
   });
 
   it('never leaves the frame, for any seed or face position', () => {
@@ -75,11 +92,13 @@ describe('the superseded corner rule', () => {
   });
 
   it('takes the larger of going left of the face or above it', () => {
-    // A face low in the frame leaves room above it that beats the room beside.
-    const low: Rect = { x: 0.1, y: 0.7, w: 0.6, h: 0.2 };
-    const r = topLeftPlacement({ faceBox: low, seed: 'low', jitter: 0 });
-    expect(r.w * FRAME_WIDTH).toBeGreaterThan(0.1 * FRAME_WIDTH);
-    expect(overlaps(r, grown(low))).toBe(false);
+    // A face far to the left leaves almost nothing beside it and plenty above.
+    const low: Rect = { x: 0.1, y: 0.45, w: 0.6, h: 0.2 };
+    const detail = topLeftPlacementDetail({ faceBox: low, seed: 'low', jitter: 0 });
+    const beside = low.x * FRAME_WIDTH - HEAD_CLEARANCE * FRAME_WIDTH - TOP_LEFT_MARGIN * FRAME_WIDTH;
+    expect(detail.boundBy).toBe('the space above the speaker');
+    expect(detail.cornerSidePx).toBeGreaterThan(beside);
+    expect(placementIsSafe(detail.rect, low).clearsFace).toBe(true);
   });
 });
 
@@ -108,7 +127,7 @@ describe('imageScale', () => {
     const asked = topLeftPlacementDetail({ faceBox, seed, scale: 1.4 });
     const full = topLeftPlacementDetail({ faceBox, seed });
     expect(asked.clamped).toBe(true);
-    expect(asked.wantedSide).toBeGreaterThan(asked.rect.w);
+    expect(asked.wantedSidePx).toBeGreaterThan(asked.rect.w);
     expect(asked.rect.w).toBeCloseTo(full.rect.w, 9);
   });
 

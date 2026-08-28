@@ -368,18 +368,6 @@ export interface ImageSlot {
   candidates: ImageCandidate[];
   chosenCandidateId: string | null;
   /**
-   * Which side of the speaker this image sits on, when a human chose.
-   *
-   * **Schema addition, optional with a default.** Absent means the placement
-   * picks the largest free band itself, which is the normal case. Present, it
-   * is a human's decision and `humanFlaggedItems` protects it from a re-run.
-   *
-   * It is a *band*, not a zone id: since Block 8 session 33 the placement is
-   * derived from the face mask rather than chosen from the stored zone list, so
-   * the real choice is which side of the speaker to sit on.
-   */
-  placementBand?: 'above' | 'left' | 'right';
-  /**
    * The gate failures a deliberate choice overrode.
    *
    * **Schema addition, optional with a default.** The gate advises and the user

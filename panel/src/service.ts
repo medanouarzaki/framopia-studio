@@ -375,14 +375,6 @@ export async function chooseImage(
   return await postJson(connection, '/images/choose', edit);
 }
 
-/** Put a slot's image on a different side of the speaker; null hands it back. */
-export async function chooseImageSide(
-  connection: Connection,
-  edit: { planPath: string; slotId: string; band: 'above' | 'left' | 'right' | null },
-): Promise<ImagesView> {
-  return await postJson(connection, '/images/side', edit);
-}
-
 export async function setWatermark(
   connection: Connection,
   edit: { planPath: string; enabled: boolean },

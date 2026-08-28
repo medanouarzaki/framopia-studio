@@ -366,11 +366,9 @@ export interface ImageSlotView {
   candidates: CandidateView[];
   chosenCandidateId: string | null;
   overriddenFailures: string[];
-  /* Optional: a service older than this panel sends none of these. */
-  placedWhere?: string | null;
+  /* Optional: a service older than this panel sends neither. */
   placedSidePx?: number | null;
-  placementChosenByHuman?: boolean;
-  placementOptions?: { key: 'above' | 'left' | 'right'; label: string; sidePx: number; usable: boolean }[];
+  placementLimit?: string | null;
   buildsWith: string | null;
   buildsWithReason: string;
 }

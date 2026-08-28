@@ -4,18 +4,10 @@ import { listReels } from './catalogue.js';
 import { readEditPlan, writeEditPlan } from './editplan/io.js';
 import { dryRun } from './dry-run.js';
 import { buildChoiceFor } from './build/choose-candidate.js';
-import { bandChoices, placeImageDetail } from './placement/image-placement.js';
+import { topLeftPlacementDetail } from './placement/top-left.js';
 import { FRAME_WIDTH } from './placement/constants.js';
 import { faceBoxesFor } from './placement/face-boxes.js';
 import type { Rect } from './placement/geometry.js';
-
-/** Where an image sits, said to a person rather than to the schema. */
-const BAND_LABEL: Record<string, string> = {
-  'above the face': 'above you',
-  'left of the face': 'to your left',
-  'right of the face': 'to your right',
-  'the frame': 'in the frame',
-};
 import { nothingIsMeasured, rendersAsCutout, verdictFor } from './images/verdict.js';
 import type { EditPlan, ImageCandidate, ImageSlot } from './editplan/types.js';
 
@@ -107,19 +99,16 @@ export interface ImageSlotView {
   /** The gate failures a deliberate choice overrode, when it overrode any. */
   overriddenFailures: string[];
   /**
-   * Where this image sits, in words, and the other sides of the speaker it
-   * could sit on.
+   * How big this picture is on screen, and what limits it.
    *
-   * **Not the stored zones.** Twenty of those exist on `vitasilk`, derived from
-   * the person mask, and placement has not read them since Block 7 session 9.
-   * Since session 33 the placement is derived from the face mask, so the real
-   * choice is which side of the speaker — offering the rectangles would be a
-   * control pretending to a choice that no longer exists.
+   * **There is no choice of position to offer.** Images sit in the top-left
+   * corner on every reel (the user's ruling, Block 7 session 9 and again in
+   * session 34 after seeing them moved), so what the picker can honestly show
+   * is the size and the reason for it — not a control over a decision nobody
+   * makes per slot.
    */
-  placedWhere: string | null;
   placedSidePx: number | null;
-  placementChosenByHuman: boolean;
-  placementOptions: { key: 'above' | 'left' | 'right'; label: string; sidePx: number; usable: boolean }[];
+  placementLimit: string | null;
   /**
    * The candidate the builder would use right now. With nothing chosen it is
    * the first, which is a documented placeholder rather than a decision.
@@ -196,15 +185,11 @@ function candidateViewOf(candidate: ImageCandidate, slot: ImageSlot): CandidateV
 
 function slotViewOf(slot: ImageSlot, faceBox: Rect | null, planId: string): ImageSlotView {
   const choice = buildChoiceFor(slot);
-  const placement =
-    faceBox === null && slot.placementBand === undefined
-      ? null
-      : placeImageDetail({
-          faceBox,
-          seed: `${planId}:${slot.id}`,
-          scale: 1,
-          prefer: slot.placementBand,
-        });
+  const placement = topLeftPlacementDetail({
+    faceBox,
+    seed: `${planId}:${slot.id}`,
+    scale: 1,
+  });
   return {
     id: slot.id,
     start: slot.start,
@@ -218,10 +203,8 @@ function slotViewOf(slot: ImageSlot, faceBox: Rect | null, planId: string): Imag
     candidates: slot.candidates.map((c) => candidateViewOf(c, slot)),
     chosenCandidateId: slot.chosenCandidateId,
     overriddenFailures: slot.overriddenGateFailures ?? [],
-    placedWhere: placement === null ? null : (BAND_LABEL[placement.band] ?? null),
-    placedSidePx: placement === null ? null : Math.round(placement.rect.w * FRAME_WIDTH),
-    placementChosenByHuman: slot.placementBand !== undefined,
-    placementOptions: bandChoices(faceBox).map((b) => ({ ...b, sidePx: Math.round(b.sidePx) })),
+    placedSidePx: Math.round(placement.rect.w * FRAME_WIDTH),
+    placementLimit: placement.boundBy,
     buildsWith: choice.candidateId,
     buildsWithReason: choice.reason,
   };
@@ -334,44 +317,3 @@ export async function chooseCandidate(edit: {
 
 void REPO_ROOT;
 
-/**
- * Put a slot's image on a different side of the speaker, or hand it back to the
- * automatic choice with `null`.
- *
- * A side too small to hold a picture is **refused with a reason**, not clamped
- * to something else: a control that silently does something other than what was
- * asked is worse than one that says no.
- *
- * `placementBand` is the human-flagged marker. `humanFlaggedItems` reads it and
- * `PlanMergeBlockedError` refuses to discard it, so a re-run cannot lose the
- * decision.
- */
-export async function chooseImageSide(edit: {
-  planPath: string;
-  slotId: string;
-  band: 'above' | 'left' | 'right' | null;
-}): Promise<ImagesView> {
-  const plan = await readEditPlan(edit.planPath);
-  const slot = plan.images.slots.find((s) => s.id === edit.slotId);
-  if (slot === undefined) {
-    throw new ImageViewError(`${edit.planPath} has no image slot ${edit.slotId}`);
-  }
-
-  if (edit.band === null) {
-    delete slot.placementBand;
-  } else {
-    const faceBox = faceBoxesFor(plan).get(slot.id) ?? null;
-    const option = bandChoices(faceBox).find((b) => b.key === edit.band);
-    if (option === undefined || !option.usable) {
-      throw new ImageViewError(
-        `there is not enough room ${option?.label ?? edit.band} of the speaker for a picture` +
-          (option === undefined ? '' : ` — only ${Math.round(option.sidePx)} px`),
-      );
-    }
-    slot.placementBand = edit.band;
-  }
-
-  plan.meta.updatedAt = new Date().toISOString();
-  await writeEditPlan(edit.planPath, plan);
-  return imagesViewForPlan(edit.planPath);
-}
