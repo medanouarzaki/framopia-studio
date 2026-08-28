@@ -495,3 +495,48 @@ figure now follows the whooshes' +3: `vitasilk` goes **3.80 → 3.07 dB** and th
 whoosh gain **−13.97 → −13.24 dB**. The balance is unchanged — the whoosh still
 sits 3 dB above the dialogue as heard — and the whole reel is 0.73 dB louder
 than it needed to be turned down.
+
+### A sound that cannot reach its impact is not placed — 2026-08-29
+
+The user heard the whooshes arrive after the image, "clearly separate". Measured:
+**7 of 9 whooshes land exactly on the impact frame and 2 are 14 frames late** —
+both `img001`, the first image in the reel, on `test-1` and `vitasilk`. Full
+evidence, including the two candidates it ruled out, is in
+`benchmarks/RESULTS-block8-whoosh-late.md`.
+
+**The cause is the file's lead-in, not the placement rule.** `whoosh_01`'s
+anchor is 0.6913 s into the file and the impact is 0.1354 s after the element,
+so the layer must start **0.5558 s (16.66 frames) before** the image. `img001`
+sits at 0.0990 s. The in-point clamped to the composition start and the peak
+arrived half a second behind the picture.
+
+**Neither file in the index fits**, so there is nothing to substitute:
+
+| file | anchor | needs before the element | on an image at 0.099 s |
+|---|---:|---:|---|
+| `whoosh_01` | 0.6913 s | 0.5558 s | 13.69 f late |
+| `whoosh_02` | 0.5581 s | 0.4227 s | 9.70 f late |
+
+**So the sound is dropped rather than played late.** `deriveSfxDetail` reports
+it in `unplaceable` with the element, the file and how late it would have been,
+and `npm run migrate:sfx-placement` prints a `NO SOUND` line for each. **A sound
+that is audibly wrong is worse than no sound** — the ruling that removed the
+hits, applied here.
+
+**Nothing in the corpus clamps any more.** Every surviving event lands its
+anchor on the impact frame; `test-1` goes 4 whooshes to 3 and `vitasilk` 5 to 4,
+and the first image of each reel is silent.
+
+**Every image still gets a sound wherever one can reach it.**
+`SilentImageSlotError` is unchanged for the case it was built for — a template
+that binds nothing — and an image refused for want of room is a reported
+decision rather than a silent omission.
+
+**The alternative that was not taken, and why.** After Effects allows a layer to
+start before the composition, so the whoosh could keep its lead-in and simply
+begin part-way through, with the peak landing on time. That is very likely the
+better fix, and it was not made because **verifying it means driving After
+Effects**, which this session may not do — and a build where AE silently clamped
+a negative `startTime` back to zero would reintroduce exactly the defect being
+removed, inaudibly. It is the first thing to try if the user wants that first
+image to have sound.

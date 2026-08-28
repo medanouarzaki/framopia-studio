@@ -14,9 +14,9 @@ const FPS = 30000 / 1001;
 /**
  * An image slot that would be built silent.
  *
- * **Every image gets a sound** (user ruling, Block 8 session 26). It was true
- * of the corpus already, but only because both image templates happen to bind a
- * whoosh; a manifest edit would have made a silent image with nothing to say so.
+ * **Every image gets a sound** (user ruling, Block 8 session 26), unless no
+ * sound can reach it in time — see `unplaceable`, which is the one exception
+ * and is reported rather than thrown.
  *
  * A slot with no template at all is a different thing and is not this error:
  * the builder drops it and `checkBuildability` names it, and the plan passes
@@ -34,6 +34,12 @@ export class SilentImageSlotError extends Error {
 
 export interface SfxDerivation {
   events: SfxEvent[];
+  /**
+   * Sounds that were not placed, because the element starts too near the
+   * composition for the file's lead-in to fit in front of it. Reported per
+   * element with how late the sound would have been.
+   */
+  unplaceable: { elementId: string; sfxId: string; lateByS: number }[];
 }
 
 export class UnknownSfxError extends Error {
@@ -92,6 +98,7 @@ export function deriveSfxDetail(
         });
   const known = new Set(sfxIndex.sfx.map((s) => s.id));
   const events: SfxEvent[] = [];
+  const unplaceable: SfxDerivation['unplaceable'] = [];
 
   const elements: { id: string; start: number; templateId: string | null }[] = [
     ...plan.subtitles.groups.map((g) => ({ id: g.id, start: g.start, templateId: g.templateId })),
@@ -133,6 +140,25 @@ export function deriveSfxDetail(
         compStartS: 0,
       });
 
+      /*
+       * A sound whose anchor cannot reach the impact is not placed at all.
+       * It used to clamp to the composition start and play late: `whoosh_01`'s
+       * anchor is 0.69 s into the file, so on an image at 0.099 s the peak
+       * landed 14 frames behind the picture, which is what the user heard as
+       * "clearly separate". No file in the index is short enough for that slot
+       * — `whoosh_02` would still be 9.7 frames late — so there is nothing to
+       * substitute, and **a sound that is audibly wrong is worse than no
+       * sound**. That is the ruling that removed the hits and it applies here.
+       */
+      if (placed.clamped) {
+        unplaceable.push({
+          elementId: element.id,
+          sfxId: binding.sfxId,
+          lateByS: placed.clampedByS ?? 0,
+        });
+        continue;
+      }
+
       sounded.add(element.id);
       events.push({
         id: 'pending',
@@ -149,24 +175,26 @@ export function deriveSfxDetail(
                 attenuationDb,
               }),
         anchorAtS: Number(placed.peakAtS.toFixed(6)),
-        ...(placed.clamped ? { clamped: true, clampedByS: placed.clampedByS } : {}),
       });
     }
   }
 
   /*
-   * Only slots that have a template: one without is not a silent image, it is
-   * an absent one — the builder drops it and `checkBuildability` names it. The
-   * plan legitimately passes through that state before templates are assigned.
+   * Only slots that have a template, and only where a sound was not refused for
+   * being unplaceable: a slot with no template is not a silent image but an
+   * absent one — the builder drops it and `checkBuildability` names it — and an
+   * unplaceable sound is a decision this function has just made and reported.
    */
+  const refused = new Set(unplaceable.map((u) => u.elementId));
   const silent = plan.images.slots
-    .filter((s) => s.templateId !== null && !sounded.has(s.id))
+    .filter((s) => s.templateId !== null && !sounded.has(s.id) && !refused.has(s.id))
     .map((s) => s.id);
   if (silent.length > 0) throw new SilentImageSlotError(silent);
 
   events.sort((a, b) => a.timeS - b.timeS || (a.sourceElementId < b.sourceElementId ? -1 : 1));
   return {
     events: events.map((e, i) => ({ ...e, id: `sfx${String(i + 1).padStart(3, '0')}` })),
+    unplaceable,
   };
 }
 

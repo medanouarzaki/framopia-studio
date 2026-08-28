@@ -3,7 +3,7 @@ import { copyFileSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { loadSfxIndex, loadTemplateManifest, REPO_ROOT, templatesById } from '@framopia/core';
-import { deriveSfxEvents } from './sfx.js';
+import { deriveSfxDetail, deriveSfxEvents } from './sfx.js';
 import { templateImpacts } from './template-impacts.js';
 import { readEditPlan, writeEditPlan } from '../editplan/io.js';
 import { removeKeyword } from '../keyword-view.js';
@@ -104,16 +104,22 @@ describe('deriveSfxEvents under the measured rule', () => {
   });
 
   /*
-   * A layer cannot start before the composition. The event says how late its
-   * anchor then lands rather than absorbing it silently.
+   * A layer cannot start before the composition, and a sound that would
+   * therefore play late is **not placed at all** since Block 8 session 27 —
+   * `whoosh_01` on the first image was landing 14 frames behind the picture.
+   * `placeSfx` still reports the clamp; the derivation refuses it.
    */
-  it('clamps at zero and reports how late the anchor is', async () => {
-    const events = deriveSfxEvents(await plan('vitasilk'), templates, sfxIndex, templateImpacts());
-    const clampedEvents = events.filter((e) => e.clamped === true);
-    expect(clampedEvents.length).toBeGreaterThan(0);
-    for (const event of clampedEvents) {
-      expect(event.timeS).toBe(0);
-      expect(event.clampedByS).toBeGreaterThan(0);
+  it('places nothing whose anchor cannot reach the impact', async () => {
+    const detail = deriveSfxDetail(
+      await plan('vitasilk'),
+      templates,
+      sfxIndex,
+      templateImpacts(),
+    );
+    expect(detail.events.filter((e) => e.clamped === true)).toEqual([]);
+    expect(detail.unplaceable.length).toBeGreaterThan(0);
+    for (const refused of detail.unplaceable) {
+      expect(refused.lateByS, refused.elementId).toBeGreaterThan(0);
     }
   });
 

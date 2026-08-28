@@ -90,6 +90,7 @@ console.log('');
 let moved = 0;
 let total = 0;
 let clamped = 0;
+let unplaceableTotal = 0;
 
 for (const file of readdirSync(dir).filter((f) => f.endsWith('.editplan.json')).sort()) {
   const reel = file.replace('.editplan.json', '');
@@ -120,7 +121,12 @@ for (const file of readdirSync(dir).filter((f) => f.endsWith('.editplan.json')).
   const after = detail.events;
 
   let reelMoved = 0;
-  const lines: string[] = [];
+  const lines: string[] = detail.unplaceable.map(
+    (u) =>
+      `    NO SOUND ${u.elementId.padEnd(6)} ${u.sfxId.padEnd(10)} would have been ` +
+      `${u.lateByS.toFixed(3)}s late; the element starts too near the reel`,
+  );
+  unplaceableTotal += detail.unplaceable.length;
   for (const event of after) {
     total += 1;
     const was = before.get(event.sourceElementId + event.sfxId);
@@ -158,7 +164,8 @@ for (const file of readdirSync(dir).filter((f) => f.endsWith('.editplan.json')).
 
 console.log('');
 console.log(
-  `${moved} of ${total} events moved; ${clamped} clamped at the composition start. ` +
+  `${moved} of ${total} events moved; ${clamped} clamped at the composition start; ` +
+    `${unplaceableTotal} not placed for want of room before the element. ` +
     '$0.00 — this migration makes no model call.',
 );
 if (!apply) console.log('dry run — pass --apply to write');

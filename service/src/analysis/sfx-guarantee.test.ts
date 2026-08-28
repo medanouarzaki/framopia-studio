@@ -26,15 +26,47 @@ const derive = async (reel: string) => {
   };
 };
 
-describe('every image gets a sound', () => {
-  it('holds on every reel in the corpus', async () => {
+describe('every image gets a sound, or is reported as unreachable', () => {
+  it('holds on every reel in the corpus, one way or the other', async () => {
     for (const reel of REELS) {
       const { plan, detail } = await derive(reel);
       const sounded = new Set(detail.events.map((e) => e.sourceElementId));
+      const refused = new Set(detail.unplaceable.map((u) => u.elementId));
       for (const slot of plan.images.slots) {
-        expect(sounded.has(slot.id), `${reel} ${slot.id}`).toBe(true);
+        expect(sounded.has(slot.id) || refused.has(slot.id), `${reel} ${slot.id}`).toBe(true);
       }
     }
+  });
+
+  /*
+   * `whoosh_01`'s anchor is 0.69 s into the file and the impact is 0.135 s
+   * after the element, so it needs 0.556 s of reel in front of the image.
+   * `img001` sits at 0.099 s on both reels that have one, and the sound used to
+   * clamp to zero and play 14 frames behind the picture — which is what the
+   * user heard as "clearly separate".
+   */
+  it('refuses the sound on the first image rather than playing it late', async () => {
+    for (const reel of ['test 1', 'vitasilk']) {
+      const { detail } = await derive(reel);
+      expect(detail.unplaceable.map((u) => u.elementId), reel).toEqual(['img001']);
+      expect(detail.unplaceable[0]?.lateByS, reel).toBeCloseTo(0.467, 3);
+      expect(detail.events.some((e) => e.sourceElementId === 'img001'), reel).toBe(false);
+    }
+  });
+
+  it('leaves nothing clamped anywhere in the corpus', async () => {
+    for (const reel of REELS) {
+      const { detail } = await derive(reel);
+      expect(detail.events.filter((e) => e.clamped === true), reel).toEqual([]);
+    }
+  });
+
+  /* An image far enough into the reel keeps its sound, exactly as before. */
+  it('places every image that has room in front of it', async () => {
+    const { detail } = await derive('vitasilk');
+    expect(detail.events.map((e) => e.sourceElementId)).toEqual([
+      'img002', 'img003', 'img004', 'img005',
+    ]);
   });
 
   /*
@@ -42,7 +74,7 @@ describe('every image gets a sound', () => {
    * image templates happen to bind a whoosh. Removing the binding must fail the
    * build rather than produce a silent image nothing reports.
    */
-  it('refuses a build where a template stopped binding one', async () => {
+  it('still refuses a build where a template stopped binding one', async () => {
     const { plan } = await derive('vitasilk');
     const stripped = new Map(
       [...templates].map(([id, t]) => [id, t.type === 'image' ? { ...t, sfx: [] } : t]),
@@ -95,7 +127,8 @@ describe('the corpus, with keywords silent', () => {
       total += detail.events.length;
       expect(detail.events.every((e) => e.sfxId.startsWith('whoosh')), reel).toBe(true);
     }
-    expect(total).toBe(9);
+    // Nine image slots, less the two first-in-reel ones no sound can reach.
+    expect(total).toBe(7);
   });
 
   it('is stable: deriving twice gives the same events', async () => {
