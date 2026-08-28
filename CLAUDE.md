@@ -204,8 +204,14 @@ AI-generated contextual images, SFX, and a watermark. Full spec in
 - `npm run face-sheets` — free, local. Contact sheets of the face-only mask for
   all five reels into `benchmarks/results/latest-face/`, reusing the sidecar's
   `head_overlay` task rather than adding a renderer.
-- `npm run top-left` — free, local. Computes each image slot's top-left
-  placement from its face-mask span and writes `.local/build/topleft-<reel>.json`.
+- `npm run place:images [-- --mode <id>]` — free, local, **read-only on the
+  plan**. Reports where each image slot goes: the corner rule's size and
+  position beside the new one, the multiplier, which side of the speaker it took,
+  and — asserted, not eyeballed — that it clears the face and sits inside the
+  frame. Exits non-zero if either bound is broken. Writes
+  `.local/build/image-placement-<reel>.json` as a record; **the builder derives
+  the same placement itself**, so no build depends on this having been run.
+  Replaces `npm run top-left`.
 - `npm run image-ceiling` — free, local, **read-only**. Computes the largest
   placeable square per slot under each constraint relaxed one at a time, ranks
   what each is worth, and writes `benchmarks/RESULTS-block7-image-ceiling.md`
@@ -6180,3 +6186,73 @@ cannot see the filesystem.
 **The browser tests reproduce the defect too**: one drives a payload with
 session 31's fields stripped and asserts the pictures still appear, and it fails
 against the shipped code and passes against the fix.
+
+
+## Block 8 session 33 — images move off the corner, and the side is a choice
+
+**Spent $0.00.** Ledger 108 entries / sha `50ec3f57…` at both ends. After
+Effects: 1 instance, 0 `aerender` — **AE was not contacted.**
+
+### Images sit in the largest free band around the face
+
+**Supersedes Block 7 session 9's top-left corner** (user ruling). The corner was
+chosen before anyone had seen a build; `benchmarks/RESULTS-block8-image-placement.md`
+measured what it costs. `service/src/placement/image-placement.ts` takes the
+largest square in the band **above** the face, **left of** it or **right of**
+it, preferring above.
+
+| | |
+|---|---:|
+| mean gain over the corner | **1.14x** |
+| best | 1.23x (`vitasilk` img001, 749 → 925 px) |
+| worst | 1.03x (`vitasilk` img002) |
+| outside the frame | **0 of 9** |
+| overlapping the face | **0 of 9** |
+
+**Both bounds hold by construction and are asserted per slot** — every band is
+already bounded away from the face by `HEAD_CLEARANCE`, so wherever in a band
+the square sits it clears — and `npm run place:images` **exits non-zero** if
+either is ever broken. A 200-case sweep over synthetic faces asserts the same.
+
+**A rule that only looked above the face would have been worse.** `vitasilk`
+`img002`'s face reaches higher, so above holds 765 px where the corner placed
+801; the band beside him holds 837. Taking the largest is what earns the
+measured gain, and session 30's 1.17× was computed from exactly that.
+
+**All arithmetic is in source pixels, converted once at the end.** The x and y
+fractions have different denominators — 2160 and 3840 — and converting between
+them mid-calculation is how the watermark came to sit 65 px from the side and
+205 px from the top. The corner rule had the same bug: its top inset was 205 px.
+
+**`imageScale` 1.4 is still not reachable** and the shortfall is not the
+placement's: it asks 1076–1172 px and the largest face-clearing square anywhere
+is 765–937. Recorded in `docs/PROJECT_SPEC.md` with the corner ruling
+superseded rather than deleted — `top-left.ts` is kept as the comparison
+`place:images` reports against.
+
+**The builder derives the placement itself**, from the reel's own face masks.
+It read `.local/build/topleft-<reel>.json` before, which the build then
+depended on someone having regenerated. `faceBoxesFor` in
+`service/src/placement/face-boxes.ts` is the one mask walk, shared by the
+builder, the report and the picker.
+
+### The zone editor is a side, not a zone
+
+**What it can honestly offer, after the placement became derived.** The 20
+stored zones on `vitasilk` come from the person mask and **have not been read by
+placement since Block 7 session 9**; a list of them would be a control
+pretending to a choice that no longer exists. The real choice is which side of
+the speaker, and step 4 now shows it in those words: *"Sits above you, 925 px
+across — the roomiest side, picked for you"*, with the other sides as buttons
+carrying what each is worth.
+
+- `ImageSlot.placementBand` — `above | left | right`, **optional with a
+  default**; absent means the tool chooses. It is a **human-flagged marker**:
+  `humanFlaggedItems` reports it and `PlanMergeBlockedError` refuses to discard
+  it, so a re-run cannot lose the decision.
+- **A side with no room is refused with a reason, never clamped.** The threshold
+  is `MIN_PLACED_SHORT_EDGE` (324 px), the project's own answer to how small a
+  placed picture may be. `vitasilk` `img002` has 205 px to the speaker's right,
+  and that button is disabled.
+- **The control disappears entirely against a service too old to offer it**,
+  rather than the panel inventing one — session 32's rule.
