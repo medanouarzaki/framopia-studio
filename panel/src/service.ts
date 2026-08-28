@@ -1,5 +1,5 @@
 import { NODE_NOT_FOUND_HELP } from '@framopia/core/node-path';
-import type { ClientMode, DryRunPlan, HealthPayload, Reel, ServiceError, PlanSteps , ServiceOrigin } from './types.js';
+import type { ClientMode, DryRunPlan, HealthPayload, Reel, ServiceError, PlanSteps , ServiceOrigin , PipelineJob } from './types.js';
 
 /**
  * The panel's half of the ARCHITECTURE §1.3 handshake: the service binds
@@ -259,4 +259,32 @@ export async function fetchSteps(
     connection,
     `/steps?reel=${encodeURIComponent(reel)}&mode=${encodeURIComponent(mode)}`,
   );
+}
+
+/**
+ * Starts a pipeline run and returns the job id. **The job lives in the
+ * service**: the panel can be closed, or the user can walk off to another step,
+ * and the run carries on. Everything after this is polling.
+ */
+export async function startPipeline(
+  connection: Connection,
+  reel: string,
+  mode: string,
+): Promise<string> {
+  const res = await fetch(`http://127.0.0.1:${connection.port}/jobs`, {
+    method: 'POST',
+    headers: { 'x-service-token': connection.token, 'content-type': 'application/json' },
+    body: JSON.stringify({ type: 'pipeline', params: { reel, mode } }),
+  });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as Partial<ServiceError>;
+    throw new Error(body.cause ?? body.error ?? `HTTP ${res.status} starting the pipeline`);
+  }
+  const body = (await res.json()) as { id?: string };
+  if (typeof body.id !== 'string') throw new Error('the service started a job without an id');
+  return body.id;
+}
+
+export async function fetchJob(connection: Connection, id: string): Promise<PipelineJob> {
+  return await getJson<PipelineJob>(connection, `/jobs/${encodeURIComponent(id)}`);
 }

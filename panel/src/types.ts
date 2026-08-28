@@ -158,3 +158,50 @@ export interface PlanSteps {
   planPath: string | null;
   steps: StepState[];
 }
+
+/** How a pipeline stage is going, as the service reports it. */
+export type StageState = 'waiting' | 'running' | 'done' | 'skipped' | 'failed';
+
+/** ARCHITECTURE §8: surfaced verbatim, never paraphrased. */
+export interface PipelineStageError {
+  stage: string;
+  cause: string;
+  retryable: boolean;
+}
+
+export interface PipelineStageReport {
+  id: string;
+  label: string;
+  state: StageState;
+  reason: string | null;
+  costUsd: number;
+  cacheEntryId: string | null;
+  cacheProvenance: EntryProvenance | null;
+  startedAt: string | null;
+  finishedAt: string | null;
+  error: PipelineStageError | null;
+}
+
+export interface PipelineProgress {
+  reel: string;
+  modeId: string;
+  planPath: string | null;
+  stages: PipelineStageReport[];
+  percent: number;
+  spentUsd: number;
+  planSpentUsd: number | null;
+  done: boolean;
+  error: PipelineStageError | null;
+}
+
+/**
+ * The job as `GET /jobs/:id` returns it. `detail` is the runner's progress,
+ * which is absent until the first stage reports.
+ */
+export interface PipelineJob {
+  id: string;
+  status: 'pending' | 'running' | 'done' | 'error';
+  progress: number;
+  error?: string;
+  detail?: PipelineProgress;
+}
