@@ -550,6 +550,59 @@ edits a template's keyframes**, so the scale is set on the instance, not the
 comp. It also depends on the K2 fonts Block 9 collects: a different face changes
 every width.
 
+### The audit never closes a project it did not open
+
+`tools/validate-templates/audit.jsx` called
+`app.project.close(CloseOptions.DO_NOT_SAVE_CHANGES)` unconditionally — it
+destroyed unsaved work in whatever the user had open, and it cost Block 8
+session 21 its second half, because taking the measurement would have thrown his
+project away. **A diagnostic that mutates the host is the same class of mistake
+as a diagnostic that writes to the plan.**
+
+`refuseIfUnsafe` runs before anything opens: a project with unsaved changes is a
+**refusal with a sentence**, not a prompt. An unreadable `dirty` is treated as
+dirty — refusing costs a re-run, guessing costs the user's work. A *saved*
+project that is not the library is closed, and the fact is announced in the
+output rather than done silently.
+
+**The CLI had the same defect one layer up**: it wrote whatever the script
+returned into `library.audit.json`, so a refusal would have replaced a working
+measurement with an error message. It now throws and leaves the file untouched.
+
+### SFX placement is measured end to end
+
+**The impact frame: every one of the six comps settles at 0.4004 s = 12.00
+frames**, derived from its last entrance keyframe by `impactFrameOf`. Read from
+the audit the user ran; `templateImpacts` maps it, and a template whose impact
+cannot be derived is **absent from the map**, so `deriveSfxEvents` falls back to
+the manifest offset rather than to a guess.
+
+**What the 0.13 s offset turned out to be: wrong by 53.4 frames for a hit.**
+`hit_01`'s anchor is 2.0525 s into the file and the impact is 0.4004 s after the
+element, so the layer starts **1.6521 s before** it, where the old rule started
+it 0.13 s after. A whoosh moves 8.7 frames earlier.
+
+**`introS` says 0.13 s and the comps animate over 0.4004 s.** Two claims about
+the same templates, and only the second is measured. SFX uses the measured one;
+buildability, display timing and the short-card rule still use `introS` and
+**nothing in session 22 changed them**. Recorded, not resolved.
+
+**Each sound declares its anchor** — `onset` for a dry percussive hit, `peak`
+for a riser that sweeps into a slam — defaulted from the measured shape and
+carrying `anchorSource` so a declared choice is never mistaken for a derived
+one. A field per file, emitted by the measuring tool, never hardcoded in the
+placement code.
+
+**Gain is derived, not typed.** The user's −20 dB and −24 dB are now targets
+that are *reached*: each file's gain is `target − measured peak`. `whoosh_02`
+peaks 8.39 dB down, so it moves from −24 to −15.61; the other three move by
+about a decibel.
+
+**All 17 events across the corpus moved**, and **3 clamp** at the composition
+start because their derived in-point is negative — reported with `clamped` and
+`clampedByS` rather than absorbed. `npm run migrate:sfx-placement` is the
+migration.
+
 ### A sound's impact is not at its first sample
 
 `npm run sfx:measure` — free, local, **read-only on the audio** — measures every
@@ -5465,6 +5518,21 @@ the user's open After Effects project without saving. The audit is extended to
 emit keyframe times; running it is his to trigger.
 
 `npm run sfx:measure` is the new command.
+
+## Block 8 part 2, session 22 — the rule in force
+
+**Spent $0.00; no API was called, the pipeline was not run, After Effects was
+not driven.** Ledger 108 entries / sha `50ec3f57…` at both ends.
+
+The user ran `npm run audit:templates`, which gave session 21's missing
+measurement. The three conventions above are the session: the audit can no
+longer destroy his work, every sound's anchor and gain are derived from its own
+audio, and the placement rule is in force on all five plans.
+
+**Every hit was landing about 1.78 s late and every whoosh about 0.29 s late.**
+All 17 events are corrected.
+
+New commands: `npm run sfx:measure`, `npm run migrate:sfx-placement`.
 
 See `docs/BLOCKS.md` for the full block plan and `handoffs/` for prior
 session context.
