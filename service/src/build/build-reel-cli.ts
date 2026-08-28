@@ -384,5 +384,67 @@ const result = runBuildReel({
 const wallS = (Date.now() - startedAt) / 1000;
 
 console.log(`\n${JSON.stringify(result, null, 2)}`);
+
+/*
+ * What After Effects stored, against what it was asked for.
+ *
+ * An audio layer's `startTime` may now be negative — a sound whose lead-in is
+ * longer than the reel in front of its element begins before the composition —
+ * and the whole point of that placement is a number AE has to honour. A build
+ * that silently disagrees with its plan is the defect this thread was about, so
+ * it is checked here rather than trusted.
+ */
+if (result.ok) {
+  const masters = (result['masters'] ?? []) as {
+    name: string;
+    audio?: { sourceElementId: string; askedStartTimeS: number; startTimeS: number; inPointS: number }[];
+  }[];
+  /*
+   * A hundredth of a frame. After Effects re-derives a layer's start onto its
+   * own grid using a **float32** frame rate — 29.9700317382812 rather than the
+   * exact 30000/1001 — so a start snapped with the rational lands a fraction
+   * off and AE stores its nearest value. Measured across this corpus the
+   * residue is at most 5.8e-4 frames and grows with time, exactly as a frame
+   * rate difference does. A real disagreement is a whole frame or more, so this
+   * clears the storage artefact by more than an order of magnitude while still
+   * catching one.
+   */
+  const TOLERANCE_FRAMES = 0.01;
+  const wrong: string[] = [];
+  let worstFrames = 0;
+  let checked = 0;
+  for (const master of masters) {
+    for (const layer of master.audio ?? []) {
+      checked += 1;
+      const offBy = Math.abs(layer.startTimeS - layer.askedStartTimeS) * (30000 / 1001);
+      worstFrames = Math.max(worstFrames, offBy);
+      if (offBy > TOLERANCE_FRAMES) {
+        wrong.push(
+          `${master.name}/${layer.sourceElementId}: asked ${layer.askedStartTimeS.toFixed(4)}s, ` +
+            `After Effects stored ${layer.startTimeS.toFixed(4)}s`,
+        );
+      }
+    }
+  }
+  console.log(
+    `\naudio layers verified against the plan: ${checked} checked, ${wrong.length} disagreeing ` +
+      `(worst ${worstFrames.toExponential(1)} frames, tolerance ${TOLERANCE_FRAMES})`,
+  );
+  for (const line of wrong) console.log(`  ${line}`);
+  const early = masters
+    .flatMap((m) => (m.audio ?? []).map((a) => ({ master: m.name, ...a })))
+    .filter((a) => a.startTimeS < 0);
+  for (const a of early) {
+    console.log(
+      `  ${a.master}/${a.sourceElementId} starts ${(-a.startTimeS).toFixed(4)}s before the ` +
+        `composition, playing from its in-point at ${a.inPointS.toFixed(4)}s`,
+    );
+  }
+  if (wrong.length > 0) {
+    console.error('\nthe built comp does not match the plan');
+    process.exit(1);
+  }
+}
+
 console.log(`\nbuild wall clock ${wallS.toFixed(1)}s`);
 if (!result.ok) process.exit(1);
