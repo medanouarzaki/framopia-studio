@@ -75,6 +75,12 @@ export interface DryRunPlan {
   stages: DryRunStage[];
   /** Whether this reel is built with the intro watermark. */
   watermark: boolean;
+  /**
+   * The client the plan itself records, and the version it was built at. Null
+   * on a plan whose analysis has never run, which is the only honest answer:
+   * nothing on disk says which client it belongs to.
+   */
+  planClientMode: { id: string; version: number } | null;
   estimateUsd: number;
   /** True when a stage reuses a transcription made against an older guide. */
   reusesOlderGuide: boolean;

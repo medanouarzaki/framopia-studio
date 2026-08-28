@@ -726,6 +726,15 @@ function stageTone(stage: DryRunStage): string {
 function DryRun({ plan }: { plan: DryRunPlan }): JSX.Element {
   return (
     <div className="card" style={{ marginBottom: 12 }}>
+      {/* Above the stage list, not in it: the client is not a stage, and the
+          cost block's rows are read as stages by everything that scrapes them.
+          Nullish rather than null — a service that has not been rebuilt sends
+          no such field, and the panel renders rather than throws. */}
+      <p className="spend note" style={{ marginTop: 0 }}>
+        {plan.planClientMode == null
+          ? 'This plan records no client; a build needs --mode.'
+          : `Built for ${plan.planClientMode.id} v${plan.planClientMode.version}, recorded on the plan.`}
+      </p>
       <ul className="facts">
         {plan.stages.map((stage) => (
           <li key={stage.id}>

@@ -43,7 +43,8 @@
     "diagnose:timing": "tsx src/analysis/timing-defect-cli.ts",
     "retiming": "tsx src/analysis/retiming-cli.ts",
     "timing-budget": "tsx src/analysis/timing-budget-cli.ts",
-    "probe:audio-start": "tsx src/build/audio-start-probe-cli.ts"
+    "probe:audio-start": "tsx src/build/audio-start-probe-cli.ts",
+    "migrate:client-mode": "tsx src/editplan/migrate-client-mode-cli.ts"
   },
   "dependencies": {
     "@framopia/core": "*",

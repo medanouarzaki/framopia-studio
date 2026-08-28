@@ -199,10 +199,27 @@ for (const e of built.elements) {
  * disappear. The colour is derived per image rather than set once, so a light
  * picture on a future reel gets a dark frame without anyone deciding again.
  */
-const modeId = plan.clientMode?.id ?? flag('mode');
+/*
+ * The plan says which client it was built for. `--mode` overrides it, for
+ * rebuilding a reel against a different client deliberately; without either the
+ * card frame keeps the template's own colour, which is a fallback rather than a
+ * decision and is said out loud.
+ */
+const modeOverride = flag('mode');
+const modeId = modeOverride ?? plan.clientMode?.id;
+const modeSource =
+  modeOverride !== undefined
+    ? `--mode (overriding the plan's ${plan.clientMode?.id ?? 'none'})`
+    : plan.clientMode === null
+      ? 'nothing'
+      : `the plan (recorded v${plan.clientMode.version})`;
 if (modeId === undefined) {
-  console.log('\nno client mode: the card frame keeps the template’s own colour');
+  console.log(
+    '\nno client mode on the plan and none given: the card frame keeps the ' +
+      'template’s own colour',
+  );
 } else {
+  console.log(`\nclient mode ${modeId}, from ${modeSource}`);
   const palette = Object.fromEntries(
     Object.entries(loadMode(modeId).palette).map(([role, hex]) => [role, parseHexColour(hex)]),
   );

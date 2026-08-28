@@ -587,6 +587,7 @@ describe('the dry run', () => {
                 : {
                   reel: 'vitasilk',
                   videoPath: '/v/vitasilk.mov',
+                  planClientMode: { id: 'k2-syndicalia', version: 5 },
                   modeId: 'k2-syndicalia',
                   modeName: 'K2 Syndicalia',
                   modeVersion: 6,
@@ -639,6 +640,8 @@ describe('the dry run', () => {
     });
 
     expect(text()).toContain('Transcribe and correct');
+    // The plan says which client it belongs to, so a build need not be told.
+    expect(text()).toContain('Built for k2-syndicalia v5');
     // Read off `provenance`, never off `status`: a stage the plan calls done
     // can still bill, which is the defect this replaced.
     expect(text()).toContain('cached, older guide');

@@ -4,6 +4,7 @@ import {
   loadSfxIndex,
   loadTemplateManifest,
   templatesById,
+  modePathFor,
   type ClientMode,
 } from '@framopia/core';
 import { recordStageSpend } from '../editplan/costs.js';
@@ -27,6 +28,28 @@ export function analysisConfigLabel(promptVersion: number, mode: ClientMode): st
 
 export function slotConfigLabel(promptVersion: number, mode: ClientMode): string {
   return `slots-prompt-v${promptVersion}-${mode.id}-v${mode.version}`;
+}
+
+/**
+ * The mode a stage ran against, read back out of the label it wrote.
+ *
+ * The inverse of the two functions above, and it lives beside them so the
+ * format cannot be changed in one place only — a round-trip test pins them
+ * together. It exists because `plan.clientMode` was null on every plan while
+ * the label had recorded the answer all along.
+ *
+ * A mode id may contain hyphens (`k2-syndicalia`), so the version is taken from
+ * the **last** `-v<digits>` and the id is what lies between the prompt version
+ * and it. Anything that does not match that shape returns null rather than a
+ * guess: a wrong client is worse than an absent one.
+ */
+export function modeFromConfigLabel(
+  label: string | null | undefined,
+): { id: string; version: number } | null {
+  if (typeof label !== 'string') return null;
+  const match = /^(?:keywords|slots)-prompt-v\d+-(.+)-v(\d+)$/.exec(label);
+  if (match?.[1] === undefined || match[2] === undefined) return null;
+  return { id: match[1], version: Number(match[2]) };
 }
 
 export function planWordsForAnalysis(plan: EditPlan): AnalysisWord[] {
@@ -200,6 +223,10 @@ export async function analyseKeywordsForPlan(
     plan.source.dialoguePeakDbfs,
   ) };
 
+  // The plan records which client it was built for, at the point the mode is
+  // chosen. Without it every build needs the mode typed by hand, and a plan
+  // cannot be rebuilt for its own client later.
+  plan.clientMode = { id: mode.id, version: mode.version, path: modePathFor(mode.id) };
   plan.pipeline.analysis = {
     status: 'done',
     config: analysisConfigLabel(ACTIVE_ANALYSIS_PROMPT_VERSION, mode),
@@ -387,6 +414,7 @@ export async function planImageSlotsForPlan(
     plan.source.dialogueLufs,
     plan.source.dialoguePeakDbfs,
   ) };
+  plan.clientMode = { id: mode.id, version: mode.version, path: modePathFor(mode.id) };
   plan.pipeline.images = {
     status: 'done',
     config: slotConfigLabel(ACTIVE_SLOT_PROMPT_VERSION, mode),

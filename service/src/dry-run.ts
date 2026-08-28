@@ -65,6 +65,12 @@ export interface DryRunPlan {
   stages: DryRunStage[];
   /** Whether this reel is built with the intro watermark. */
   watermark: boolean;
+  /**
+   * The client the plan itself records, and the version it was built at. Null
+   * on a plan whose analysis has never run, which is the only honest answer:
+   * nothing on disk says which client it belongs to.
+   */
+  planClientMode: { id: string; version: number } | null;
   /** Sum of the stages that would actually bill. */
   estimateUsd: number;
   /** True when any stage resolves `compatible`; the panel says so plainly. */
@@ -97,6 +103,7 @@ interface PlanLike {
   transcript?: { words?: PlanLikeWord[] };
   images?: { slots?: PlanLikeSlot[] };
   watermark?: { enabled?: boolean } | null;
+  clientMode?: { id?: string; version?: number } | null;
 }
 
 /**
@@ -158,6 +165,7 @@ export async function dryRun(reelLabel: string, modeId: string): Promise<DryRunP
   let words: PlanLikeWord[] = [];
   let slots: PlanLikeSlot[] = [];
   let watermark = true;
+  let planClientMode: { id: string; version: number } | null = null;
   if (reel.planPath !== null && existsSync(reel.planPath)) {
     try {
       const plan = JSON.parse(readFileSync(reel.planPath, 'utf8')) as PlanLike;
@@ -168,6 +176,10 @@ export async function dryRun(reelLabel: string, modeId: string): Promise<DryRunP
       words = plan.transcript?.words ?? [];
       slots = plan.images?.slots ?? [];
       watermark = watermarkEnabled(plan.watermark ?? null);
+      planClientMode =
+        typeof plan.clientMode?.id === 'string' && typeof plan.clientMode.version === 'number'
+          ? { id: plan.clientMode.id, version: plan.clientMode.version }
+          : null;
     } catch (error) {
       throw new DryRunError(`${reel.planPath} did not parse: ${(error as Error).message}`);
     }
@@ -338,6 +350,7 @@ export async function dryRun(reelLabel: string, modeId: string): Promise<DryRunP
     spentUsd,
     stages,
     watermark,
+    planClientMode,
     estimateUsd: stages.reduce((sum, s) => sum + (s.estimateUsd ?? 0), 0),
     reusesOlderGuide: stages.some((s) => s.provenance === 'compatible'),
   };
