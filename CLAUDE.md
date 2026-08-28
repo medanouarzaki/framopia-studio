@@ -6126,3 +6126,57 @@ The user ruled the panel must read as a tool a person made. `alpha_edge_noise
 `img003 11.62–13.96s card z_left_4 img_float` were all on his screen and he had
 to ask what several meant. The strings this session owns were rewritten for him;
 **a full pass over the panel is the last session of this block.**
+
+
+## Block 8 session 32 — the panel was newer than its service
+
+**Spent $0.00.** Ledger 108 entries / sha `50ec3f57…` at both ends. After
+Effects: 1 instance, 0 `aerender` — **AE was not contacted.**
+
+Session 31 changed the picker to render `renderedPath`. On the user's machine
+**all ten candidates read "this picture is missing from the disk"**, and every
+file was present.
+
+### The three columns agreed; the defect was between the service and the screen
+
+Measured on the machine rather than reasoned about: the builder's path, the
+picker's `renderedPath` and the disk **matched on all ten candidates**, and all
+twenty files exist.
+
+**The running service was older than the panel.** Queried directly over its own
+port and token, the service the panel talks to (pid 95358, started 20:57Z,
+against a `service/dist` built at 22:14) does not send `renderedPath`,
+`renderedExists` or `qualityApplies` at all. The panel read `undefined` as
+falsy and printed the else-branch for every candidate.
+
+**The panel and the service are deployed separately** — the bundle is reloaded
+from `panel/dist`, the service is a long-running process the user started
+earlier — so a bundle can always be newer than the service it talks to. Reading
+a field the service does not send as a fact about the disk is the defect, and it
+is the panel's standing rule broken: it is a view over the service and degrades
+rather than concluding.
+
+`pictureFor` in `panel/src/picture.ts` falls back to the older reply using the
+builder's own rule, and separates the three facts session 31 had collapsed into
+one sentence: **no longer on the disk** (the service says so), **the panel could
+not work out which picture this is — restart the service** (a fault in the
+tool), and **on the disk but the panel could not display it** (from the image's
+own `onError`).
+
+`fileUrl` encodes the path. Every cutout lives under `my files/test videos/`, so
+a space in a directory name is the normal case and a raw space is not legal in a
+URL.
+
+### A fixture is more capable than a filesystem
+
+141 panel tests passed while nothing rendered, because every one drives a
+fixture shaped like the service's reply and a fixture always has its files.
+`service/src/image-files.test.ts` walks the reels that really have images and
+checks every path the picker would render — exists, is a file, is readable, is
+not empty — and that the picker names the same file the builder would place. It
+is in the service tests because they already read the real plans; a browser test
+cannot see the filesystem.
+
+**The browser tests reproduce the defect too**: one drives a payload with
+session 31's fields stripped and asserts the pictures still appear, and it fails
+against the shipped code and passes against the fix.
