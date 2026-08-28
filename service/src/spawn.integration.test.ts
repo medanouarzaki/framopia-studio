@@ -186,7 +186,26 @@ describe.skipIf(!ENTRY_BUILT)('what happens around a running service', () => {
     }
   }, 40_000);
 
-  /* Two panels opening together must not leave two services holding ports. */
+  /**
+ * A spawned process writes its refusal as it exits, so reading stderr once can
+ * beat it there. Polls until the line appears or the budget runs out, then
+ * returns whatever it has so the assertion reports the real content.
+ */
+async function waitForStderr(
+  spawned: { stderr: () => string },
+  needle: string,
+  timeoutMs = 5000,
+): Promise<string> {
+  const deadline = Date.now() + timeoutMs;
+  let seen = spawned.stderr();
+  while (!seen.includes(needle) && Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    seen = spawned.stderr();
+  }
+  return seen;
+}
+
+/* Two panels opening together must not leave two services holding ports. */
   it('refuses to start a second service over a live lock', async () => {
     const lockFile = tempLock();
     const first = await spawnAndWait(lockFile);
@@ -198,7 +217,13 @@ describe.skipIf(!ENTRY_BUILT)('what happens around a running service', () => {
       try {
         // The lock still names the first service, which is still answering.
         expect(readHandshake(lockFile)?.port).toBe(firstPort);
-        expect(second.stderr()).toContain('already running');
+        /*
+         * The refusal is written to stderr as the second process exits, and a
+         * single sample raced it: this failed once inside the full suite and
+         * passed four times alone. Waiting for the line is the fix; retrying
+         * the assertion would only make the race quieter.
+         */
+        expect(await waitForStderr(second, 'already running')).toContain('already running');
       } finally {
         await stop(second.child);
       }
