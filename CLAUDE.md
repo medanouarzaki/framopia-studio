@@ -550,6 +550,41 @@ edits a template's keyframes**, so the scale is set on the instance, not the
 comp. It also depends on the K2 fonts Block 9 collects: a different face changes
 every width.
 
+### The impact frame is measured, and it disagrees with the user's eye by 1.25 frames
+
+The audit now carries each key's interpolation type and temporal ease, so the
+crossing is computable. `core/src/impact-crossing.ts` builds AE's bezier —
+`influence` is the fraction of the segment a handle spans, `speed` is the value
+rate, so a handle's vertical extent is `speed × influence/100 × d` — and finds
+where the value first reaches `IMPACT_THRESHOLD` of its delta.
+
+**Every comp and every entrance property crosses at 5.25 frames**, against a
+settle at 12.00 and a linear reading of 11.40. Six comps agreeing exactly is
+what one shared easing preset should produce, and it is the evidence the
+convention is being read correctly.
+
+**The user says `kw_slam`'s word lands at frame 4, and 5.25 is not that.** The
+convention is not the problem — the threshold is. Frame 4 corresponds to a
+threshold of **0.8966**, where `IMPACT_THRESHOLD` was chosen at **0.95**:
+
+| threshold | crossing |
+|---:|---:|
+| 0.8966 | 4.00 f — the user's eye |
+| 0.90 | 4.06 f |
+| 0.95 | 5.25 f — as chosen |
+
+**Nothing was migrated onto 5.25.** The 17 SFX events remain where session 22
+left them, 8 frames late, and the threshold is a judgement about when a motion
+reads as arrived that belongs to the person who drew the curve.
+
+**Two units traps, both found by the numbers disagreeing.** A *spatial* property
+reports one ease for all three dimensions because AE eases along the path, so
+its value axis is the magnitude; a *non-spatial* multi-dimensional property
+reports one ease per dimension. Comparing a 3-D magnitude against dimension
+zero's speed put `img_float`'s Scale at 7.27 frames where everything else gave
+5.25. And a null ease is not linear — AE refused to answer, and reading it as
+zero would put a plausible number where a missing one belongs.
+
 ### The impact frame is not the settle frame, and it is still unmeasured
 
 Session 22 placed every sound on **12 frames**, the last entrance keyframe. The
@@ -5589,6 +5624,22 @@ session 22 fixed in the audit and never checked for elsewhere.
 
 The 17 SFX events remain **8 frames late** and are not corrected, because the
 correction rests on a number nobody has measured.
+
+## Block 8 part 2, session 24 — the crossing measured, and it disagrees
+
+**Spent $0.00; no API was called, the pipeline was not run, After Effects was
+not driven.** Ledger 108 entries / sha `50ec3f57…` at both ends.
+
+The user re-ran the audit and the easing is there, so the impact frame is
+finally computable: **5.25 frames**, uniform across all six comps, against
+linear's 11.40 and the settle's 12.00. **It does not match his frame 4**, so
+nothing shipped — the convention is validated and `IMPACT_THRESHOLD` is what
+disagrees, his eye corresponding to 0.8966 rather than the chosen 0.95.
+
+**`vitasilk` was not built.** The build drives his running After Effects over
+`DoScript`, which the session brief forbids; the command is his to run.
+
+The 17 SFX events remain 8 frames late.
 
 See `docs/BLOCKS.md` for the full block plan and `handoffs/` for prior
 session context.
