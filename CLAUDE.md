@@ -205,13 +205,12 @@ AI-generated contextual images, SFX, and a watermark. Full spec in
   all five reels into `benchmarks/results/latest-face/`, reusing the sidecar's
   `head_overlay` task rather than adding a renderer.
 - `npm run place:images [-- --mode <id>]` — free, local, **read-only on the
-  plan**. Reports where each image slot goes: the corner rule's size and
-  position beside the new one, the multiplier, which side of the speaker it took,
-  and — asserted, not eyeballed — that it clears the face and sits inside the
-  frame. Exits non-zero if either bound is broken. Writes
-  `.local/build/image-placement-<reel>.json` as a record; **the builder derives
-  the same placement itself**, so no build depends on this having been run.
-  Replaces `npm run top-left`.
+  plan**. Reports each image slot's top-left placement: the size, the position,
+  which bound decided it, and — asserted, not eyeballed — that it clears the
+  face and sits inside the frame. Exits non-zero if either bound is broken.
+  Writes `.local/build/image-placement-<reel>.json` as a record; **the builder
+  derives the same placement itself**, so no build depends on this having been
+  run. Replaces `npm run top-left`.
 - `npm run image-ceiling` — free, local, **read-only**. Computes the largest
   placeable square per slot under each constraint relaxed one at a time, ranks
   what each is worth, and writes `benchmarks/RESULTS-block7-image-ceiling.md`
@@ -6256,3 +6255,74 @@ carrying what each is worth.
   and that button is disabled.
 - **The control disappears entirely against a service too old to offer it**,
   rather than the panel inventing one — session 32's rule.
+
+
+## Block 8 session 34 — the corner, with the room it really has
+
+**Spent $0.00.** Ledger 108 entries / sha `50ec3f57…` at both ends. After
+Effects: 1 instance, 0 `aerender`.
+
+### Images are back in the top-left corner, and lost nothing by it
+
+**Session 33's move off the corner is reverted** (user ruling). He asked for the
+pictures bigger, not moved.
+
+**And the move bought nothing.** The corner rule was converting a width fraction
+to a height fraction by **multiplying** by the frame's aspect ratio where it
+should divide — the third time that bug has been found in this block — which
+understated the room above the speaker's head by **327 px** and held the corner
+to 749–818 px. Corrected, the corner holds **837–937 px**: the same figures
+session 33's band measurement reported. The size was in the corner all along.
+
+| | before session 33 | session 33's band | the corner now |
+|---|---:|---:|---:|
+| placed sides | 749–818 px | 826–925 px | **801–917 px** |
+| overlapping the face | 0 | 0 | **0** |
+| outside the frame | 0 | 0 | **0** |
+
+`topLeftPlacementDetail` reports which bound decided it — the space beside the
+speaker or above him — and `placementIsSafe` is the one declaration of "clears
+the face", asserted per slot by the builder and by `npm run place:images`, which
+exits non-zero if either bound is broken. The test's own copy of that check had
+the same aspect bug and is gone.
+
+The side-choice control from session 33 went with the placement it described,
+along with `ImageSlot.placementBand` — no plan carried it.
+`benchmarks/RESULTS-block8-image-placement.md` is kept and `PROJECT_SPEC.md`
+records the band as **tried and rejected**, so the next person does not repeat
+it.
+
+### The frame contrasts with what actually meets it
+
+Session 25 chose the frame colour from **the raw picture's outer ring**, which
+for a cut-out is a picture that is not on screen. Every cutout's ring is
+**alpha 0**; dropping the alpha makes it black; it always chose the palette's
+lightest colour, and `img002-c1`'s lit half is nearly white.
+
+`frameReferenceLuminance` in `core/src/image-border.ts`: the picture's own edge
+when the whole picture is shown, **the lit part of the subject** when it is cut
+out — a subject spans 0.006 to 0.891 on that candidate, so no frame contrasts
+with all of it and the median picks one the lit half vanishes into.
+`SUBJECT_LIT_PERCENTILE` is the **75th**, CHOSEN NOT MEASURED.
+
+**One candidate of ten changes, and it is the one that is built**: `img002-c1`
+from a frame worth **1.03:1** against what is on screen to **9.85:1**.
+
+### The voice was coming down for a sound nothing plays
+
+Session 27 taught the sound derivation to compute the mix attenuation against
+the loudest **bound** offset and did not teach the builder. The build printed
+**−3.80 dB** while the sounds were gained for **−3.07** — and the whooshes
+therefore sat **3.73 dB** above the voice where the rule says 3.00. Every reel
+is now about 0.7 dB louder and the balance is exactly what the offset states.
+**No sfx offset, gain, placement or binding changed.**
+
+### The pictures are too dark to read
+
+Measured across all ten candidates: **mean luminance 0.0359**, and **87.4% of
+the average frame below 0.05** (71.9–97.0%). Mid-grey is 0.216. The cause is one
+prompt fragment — *"lit against #1A0000, with #F8F6F2 reserved for
+highlights"* — and a proposed replacement is in
+`docs/DECISION-image-config.md` beside the fidelity defect. **Nothing was
+generated and no prompt was changed**; testing it is `test-1`'s 8 images at
+about $1.24, and needs the user's go-ahead.
