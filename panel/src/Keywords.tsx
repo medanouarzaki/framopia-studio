@@ -127,7 +127,11 @@ export function Keywords({
                 <em className="src">{keyword.reason}</em>
               )}
               {keyword.sfx === null ? (
-                <em className="tag">no sfx</em>
+                <em className="tag">
+                  {keyword.sfxDroppedSinceS === null
+                    ? 'no sfx'
+                    : `no sfx: ${keyword.sfxDroppedSinceS.toFixed(2)}s after the previous hit`}
+                </em>
               ) : (
                 <em className="src">{sfxLine(keyword.sfx)}</em>
               )}

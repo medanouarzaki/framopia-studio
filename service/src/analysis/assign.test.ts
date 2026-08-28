@@ -40,10 +40,16 @@ const MULTI_VARIANT_TEMPLATES: TemplateEntry[] = [
   template({ id: 'sub_wipe' }),
   template({ id: 'kw_slam', type: 'keyword', sfx: [{ sfxId: 'hit_01', offsetS: 0.1, gainDb: -6 }] }),
   template({ id: 'kw_glitch', type: 'keyword', sfx: [{ sfxId: 'hit_01', offsetS: 0, gainDb: -3 }] }),
-  template({ id: 'img_slide_left', type: 'image', imagePresentation: 'cutout' }),
-  template({ id: 'img_float', type: 'image', imagePresentation: 'card' }),
-  template({ id: 'img_pan', type: 'image', imagePresentation: 'cutout' }),
-  template({ id: 'img_zoom', type: 'image', imagePresentation: 'cutout' }),
+  // Every image template binds a sound, as the real manifest's do: an image
+  // whose template binds nothing is a silent image and the derivation refuses.
+  ...(['img_slide_left', 'img_float', 'img_pan', 'img_zoom'] as const).map((id, i) =>
+    template({
+      id,
+      type: 'image',
+      imagePresentation: i === 1 ? 'card' : 'cutout',
+      sfx: [{ sfxId: 'whoosh_01', offsetS: 0, gainDb: -9 }],
+    }),
+  ),
 ];
 
 const templates = (entries = MULTI_VARIANT_TEMPLATES): Map<string, TemplateEntry> =>
@@ -283,14 +289,20 @@ describe('deriveSfxEvents', () => {
     const index = {
       schemaVersion: 1,
       stub: false,
-      sfx: [{ id: 'hit_01', file: 'a.wav', defaultGainDb: -6 }],
+      sfx: [
+        { id: 'hit_01', file: 'a.wav', defaultGainDb: -6 },
+        { id: 'whoosh_01', file: 'b.wav', defaultGainDb: -9 },
+      ],
     };
     expect(p.keywords.items.every((k) => k.templateId === null)).toBe(true);
     expect(deriveSfxEvents(p, templates(), index)).toEqual([]);
 
     assignTemplates(p, mode(), templates());
     expect(p.keywords.items.every((k) => k.templateId !== null)).toBe(true);
-    expect(deriveSfxEvents(p, templates(), index)).toHaveLength(p.keywords.items.length);
+    // One per keyword and one per image; subtitles declare no sound.
+    expect(deriveSfxEvents(p, templates(), index)).toHaveLength(
+      p.keywords.items.length + p.images.slots.length,
+    );
   });
 
   it('derives one event per binding, in time order, and nothing for subtitles', () => {
@@ -299,15 +311,20 @@ describe('deriveSfxEvents', () => {
     const events = deriveSfxEvents(p, templates(), {
       schemaVersion: 1,
       stub: true,
-      sfx: [{ id: 'hit_01', file: 'a.wav', defaultGainDb: -6 }],
+      sfx: [
+        { id: 'hit_01', file: 'a.wav', defaultGainDb: -6 },
+        { id: 'whoosh_01', file: 'b.wav', defaultGainDb: -9 },
+      ],
     });
 
-    expect(events).toHaveLength(p.keywords.items.length);
-    expect(events.every((e) => e.sourceElementId.startsWith('k'))).toBe(true);
+    expect(events).toHaveLength(p.keywords.items.length + p.images.slots.length);
+    expect(events.some((e) => e.sourceElementId.startsWith('g'))).toBe(false);
     for (let i = 1; i < events.length; i += 1) {
       expect(events[i]!.timeS).toBeGreaterThanOrEqual(events[i - 1]!.timeS);
     }
-    expect(events.map((e) => e.id)).toEqual(['sfx001', 'sfx002', 'sfx003']);
+    expect(events.map((e) => e.id)).toEqual(
+      events.map((_, i) => `sfx${String(i + 1).padStart(3, '0')}`),
+    );
   });
 
   it('fires at the element start plus the manifest offset, at the binding gain', () => {
@@ -319,7 +336,10 @@ describe('deriveSfxEvents', () => {
     const [event] = deriveSfxEvents(p, templates(), {
       schemaVersion: 1,
       stub: true,
-      sfx: [{ id: 'hit_01', file: 'a.wav', defaultGainDb: -99 }],
+      sfx: [
+        { id: 'hit_01', file: 'a.wav', defaultGainDb: -99 },
+        { id: 'whoosh_01', file: 'b.wav', defaultGainDb: -9 },
+      ],
     });
     expect(event?.timeS).toBeCloseTo(0.1, 10);
     expect(event?.gainDb).toBe(-6);
@@ -332,7 +352,10 @@ describe('deriveSfxEvents', () => {
     const events = deriveSfxEvents(p, templates(), {
       schemaVersion: 1,
       stub: true,
-      sfx: [{ id: 'hit_01', file: 'a.wav', defaultGainDb: -6 }],
+      sfx: [
+        { id: 'hit_01', file: 'a.wav', defaultGainDb: -6 },
+        { id: 'whoosh_01', file: 'b.wav', defaultGainDb: -9 },
+      ],
     });
     expect(events.some((e) => e.id === 'stale')).toBe(false);
   });
@@ -352,7 +375,16 @@ describe('checkBuildability', () => {
   it('passes a plan whose elements are long enough', () => {
     const p = plan();
     assignTemplates(p, mode(), templates());
-    p.sfx = { events: deriveSfxEvents(p, templates(), { schemaVersion: 1, stub: true, sfx: [{ id: 'hit_01', file: 'a.wav', defaultGainDb: -6 }] }) };
+    p.sfx = {
+      events: deriveSfxEvents(p, templates(), {
+        schemaVersion: 1,
+        stub: true,
+        sfx: [
+          { id: 'hit_01', file: 'a.wav', defaultGainDb: -6 },
+          { id: 'whoosh_01', file: 'b.wav', defaultGainDb: -9 },
+        ],
+      }),
+    };
     expect(checkBuildability(p, templates()).issues).toEqual([]);
   });
 
@@ -504,7 +536,15 @@ describe('derived gains come from the real index', () => {
     const index = loadSfxIndex();
     const declared = new Set(index.sfx.map((s) => s.defaultGainDb));
     const p = plan();
-    assignTemplates(p, mode(), templatesById(loadTemplateManifest()));
+    // The real manifest, so the mode may only allow templates it actually has.
+    const real = mode({
+      allowedTemplates: {
+        subtitle: ['sub_pop', 'sub_pop_ar'],
+        keyword: ['kw_slam', 'kw_slam_ar'],
+        image: ['img_slide_left', 'img_float'],
+      },
+    });
+    assignTemplates(p, real, templatesById(loadTemplateManifest()));
     const events = deriveSfxEvents(p, templatesById(loadTemplateManifest()), index);
     expect(events.length).toBeGreaterThan(0);
     for (const e of events) expect(declared.has(e.gainDb)).toBe(true);

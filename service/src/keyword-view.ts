@@ -10,7 +10,7 @@ import {
 } from '@framopia/core';
 import { listReels } from './catalogue.js';
 import { readEditPlan, writeEditPlan } from './editplan/io.js';
-import { deriveSfxEvents } from './analysis/sfx.js';
+import { deriveSfxDetail, deriveSfxEvents } from './analysis/sfx.js';
 import { templateImpacts } from './analysis/template-impacts.js';
 import { SCRIPT_VARIANT_SUFFIX } from './analysis/assign.js';
 import { ACTIVE_ANALYSIS_PROMPT_VERSION } from './analysis/keywords.js';
@@ -63,6 +63,12 @@ export interface KeywordView {
   fontSize: number;
   edited: boolean;
   sfx: KeywordSfxView | null;
+  /**
+   * Why this keyword has no sound, when it has none. A hit thinned out for
+   * landing too close to the previous one is a rule doing its job, and the
+   * panel must not show it the same way as a missing binding.
+   */
+  sfxDroppedSinceS: number | null;
 }
 
 /** A word that could be promoted: not already a keyword, not removed. */
@@ -166,6 +172,20 @@ function viewOf(
     for (const id of group.wordIds) cardOf.set(id, group.id);
   }
 
+  // Re-derived rather than read off the plan: the plan records the events that
+  // survived, and a keyword the spacing rule thinned out leaves nothing behind
+  // to distinguish it from one whose template binds no sound at all.
+  const droppedSince = new Map<string, number>(
+    deriveSfxDetail(
+      plan,
+      templatesById(loadTemplateManifest()),
+      loadSfxIndex(),
+      templateImpacts(),
+      plan.source.dialogueLufs,
+      plan.source.dialoguePeakDbfs,
+    ).dropped.map((d) => [d.elementId, d.sinceS]),
+  );
+
   const keywords: KeywordView[] = [...plan.keywords.items]
     .sort((a, b) => a.start - b.start || a.id.localeCompare(b.id))
     .map((k) => ({
@@ -183,9 +203,11 @@ function viewOf(
       fontSize: KEYWORD_FONT_SIZE,
       edited: k.edited === true,
       sfx: sfxViewOf(plan, k),
+      sfxDroppedSinceS: droppedSince.get(k.id) ?? null,
     }));
 
   const claimed = new Set(plan.keywords.items.flatMap((k) => k.wordIds));
+
   const promotable: PromotableWord[] = plan.transcript.words
     .filter((w) => !w.removed && !claimed.has(w.id))
     .map((w) => ({

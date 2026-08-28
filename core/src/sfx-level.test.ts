@@ -13,9 +13,15 @@ describe('sfx level, relative to the dialogue', () => {
     expect(SFX_TARGET_OFFSET_DB.hit).toBeGreaterThan(0);
   });
 
-  it('puts a whoosh at the dialogue’s own level, where a bed belongs', () => {
-    expect(sfxPeakDbfs({ sfxId: 'whoosh_01', dialogueLufs: -14.4 })).toBeCloseTo(-14.4, 2);
-    expect(SFX_TARGET_OFFSET_DB.whoosh).toBe(0);
+  /*
+   * It sat at the dialogue's own level and the user could not hear it under
+   * speech. A bed still belongs below the hit's accent, so it went to +3 rather
+   * than up to +6.
+   */
+  it('puts a whoosh above the dialogue but below the hit', () => {
+    expect(sfxPeakDbfs({ sfxId: 'whoosh_01', dialogueLufs: -14.4 })).toBeCloseTo(-11.4, 2);
+    expect(SFX_TARGET_OFFSET_DB.whoosh).toBeGreaterThan(0);
+    expect(SFX_TARGET_OFFSET_DB.whoosh).toBeLessThan(SFX_TARGET_OFFSET_DB.hit);
   });
 
   /* The whole point: the same file lands correctly on a quiet and a loud reel. */
@@ -35,15 +41,23 @@ describe('sfx level, relative to the dialogue', () => {
     );
   });
 
-  it('reproduces the corpus figures', () => {
-    expect(sfxGainDb({ sfxId: 'hit_01', filePeakDbfs: -0.72, dialogueLufs: -14.4 })).toBeCloseTo(-7.68, 2);
-    expect(sfxGainDb({ sfxId: 'whoosh_01', filePeakDbfs: -1.23, dialogueLufs: -14.4 })).toBeCloseTo(-13.17, 2);
+  it('reproduces the corpus figures, with the mix attenuated', () => {
+    const args = { dialogueLufs: -14.4, attenuationDb: 3.8 } as const;
+    expect(sfxGainDb({ ...args, sfxId: 'hit_01', filePeakDbfs: -0.72 })).toBeCloseTo(-11.48, 2);
+    expect(sfxGainDb({ ...args, sfxId: 'hit_02', filePeakDbfs: -0.03 })).toBeCloseTo(-12.17, 2);
+    expect(sfxGainDb({ ...args, sfxId: 'whoosh_01', filePeakDbfs: -1.23 })).toBeCloseTo(-13.97, 2);
   });
 
-  /* It is louder than what was there, which is the reported symptom. */
+  /*
+   * Still louder than the absolute figures it replaces, even after the mix is
+   * turned down to stop it clipping — which is the point: the voice came down
+   * with it, so both sounds gained against the thing they have to be heard
+   * through.
+   */
   it('raises every sound above the absolute figures it replaces', () => {
-    expect(sfxGainDb({ sfxId: 'hit_01', filePeakDbfs: -0.72, dialogueLufs: -14.4 })).toBeGreaterThan(-19.28);
-    expect(sfxGainDb({ sfxId: 'whoosh_01', filePeakDbfs: -1.23, dialogueLufs: -14.4 })).toBeGreaterThan(-22.77);
+    const args = { dialogueLufs: -14.4, attenuationDb: 3.8 } as const;
+    expect(sfxGainDb({ ...args, sfxId: 'hit_01', filePeakDbfs: -0.72 })).toBeGreaterThan(-19.28);
+    expect(sfxGainDb({ ...args, sfxId: 'whoosh_01', filePeakDbfs: -1.23 })).toBeGreaterThan(-22.77);
   });
 
   it('names a sound’s kind from its id', () => {

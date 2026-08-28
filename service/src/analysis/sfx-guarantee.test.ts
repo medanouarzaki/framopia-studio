@@ -4,6 +4,7 @@ import { loadSfxIndex, loadTemplateManifest, REPO_ROOT, templatesById } from '@f
 import { deriveSfxDetail, SilentImageSlotError } from './sfx.js';
 import { templateImpacts } from './template-impacts.js';
 import { readEditPlan } from '../editplan/io.js';
+import { checkBuildability } from './buildability.js';
 
 const FOOTAGE = path.join(REPO_ROOT, 'my files', 'test videos');
 const REELS = ['ground truth', 'test 1', 'test 2', 'test 3', 'vitasilk'];
@@ -51,18 +52,24 @@ describe('every image gets a sound', () => {
     ).toThrow(SilentImageSlotError);
   });
 
-  it('refuses a slot left without a template', async () => {
+  /*
+   * A slot with no template is a different defect and deliberately not this
+   * one: the builder drops it rather than building a silent image, and
+   * `checkBuildability` names it. The plan also passes through that state
+   * legitimately, before templates are assigned.
+   */
+  it('leaves a slot with no template to the buildability check', async () => {
     const { plan } = await derive('vitasilk');
     const slots = plan.images.slots.map((s, i) => (i === 0 ? { ...s, templateId: null } : s));
+    const stripped = { ...plan, images: { ...plan.images, slots } };
     expect(() =>
-      deriveSfxDetail(
-        { ...plan, images: { ...plan.images, slots } },
-        templates,
-        sfxIndex,
-        templateImpacts(),
-        plan.source.dialogueLufs,
+      deriveSfxDetail(stripped, templates, sfxIndex, templateImpacts(), plan.source.dialogueLufs),
+    ).not.toThrow();
+    expect(
+      checkBuildability(stripped, templates).issues.some(
+        (i) => i.path === 'images.slots[0]' && /no templateId/.test(i.message),
       ),
-    ).toThrow(/img001/);
+    ).toBe(true);
   });
 });
 

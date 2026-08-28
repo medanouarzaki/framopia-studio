@@ -59,19 +59,38 @@ describe('keywordsView', () => {
    */
   it('names the sound bound to each keyword, with its derived gain and placement', async () => {
     const view = await keywordsView('vitasilk');
+    // Per file: the gains differ because each compensates its own peak, and the
+    // two hits differ because a repeat inside the variation window takes the
+    // next file of the kind.
+    const gain: Record<string, number> = { hit_01: -11.48, hit_02: -12.17 };
+    const peak: Record<string, number> = { hit_01: 2.0525, hit_02: 0.5433 };
     for (const keyword of view.keywords) {
-      expect(keyword.sfx?.sfxId, keyword.id).toBe('hit_01');
-      // Derived from hit_01's −0.72 dBFS peak against the reel's own dialogue
-      // loudness, not against an absolute figure: −14.4 LUFS + 6 dB of accent.
-      // The −19.28 dB it read before was measured against nothing and could
-      // not be heard on the built reel.
-      expect(keyword.sfx?.gainDb).toBeCloseTo(-7.68, 2);
+      if (keyword.sfx === null) continue;
+      expect(keyword.sfx.sfxId, keyword.id).toMatch(/^hit_0[12]$/);
+      // Derived from the file's own peak against the reel's dialogue as the
+      // build plays it: −14.4 LUFS attenuated 3.80 dB so the sum has somewhere
+      // to go, plus 6 dB of accent.
+      expect(keyword.sfx.gainDb, keyword.id).toBeCloseTo(gain[keyword.sfx.sfxId] as number, 2);
       // Negative: the file starts well before the word it belongs to.
-      expect(keyword.sfx?.offsetS, keyword.id).toBeLessThan(0);
-      expect(keyword.sfx?.peakOffsetS).toBeCloseTo(2.0525, 4);
+      expect(keyword.sfx.offsetS, keyword.id).toBeLessThan(0);
+      expect(keyword.sfx.peakOffsetS).toBeCloseTo(peak[keyword.sfx.sfxId] as number, 4);
       // The file has to be on disk or the build cannot use it either.
-      expect(keyword.sfx?.fileExists, keyword.sfx?.file).toBe(true);
+      expect(keyword.sfx.fileExists, keyword.sfx.file).toBe(true);
     }
+  });
+
+  /*
+   * `vitasilk`'s three keywords were 1.57 s and 1.24 s apart and all fired the
+   * identical file, which the user heard as mechanical. The spacing rule takes
+   * one out and the variation rule makes the survivors differ, so the panel now
+   * has a keyword with no sound to show and says so rather than implying one.
+   */
+  it('shows a keyword the spacing rule left silent, and varies the rest', async () => {
+    const view = await keywordsView('vitasilk');
+    const sounds = view.keywords.map((k) => k.sfx?.sfxId ?? null);
+    expect(sounds.filter((s) => s === null)).toHaveLength(1);
+    const fired = sounds.filter((s): s is string => s !== null);
+    expect(new Set(fired).size).toBe(fired.length);
   });
 
   it('offers every unclaimed word for promotion, and no claimed one', async () => {
@@ -159,7 +178,7 @@ describe('adding a keyword', () => {
     // Placed by measurement like every other event: before the word, at the
     // gain derived from the file's own peak against the reel's dialogue.
     expect(added?.sfx?.offsetS).toBeLessThan(0);
-    expect(added?.sfx?.gainDb).toBeCloseTo(-7.68, 2);
+    expect(added?.sfx?.gainDb).toBeCloseTo(-11.48, 2);
   });
 
   /*

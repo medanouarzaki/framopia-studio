@@ -297,6 +297,8 @@ export interface KeywordView {
   fontSize: number;
   edited: boolean;
   sfx: KeywordSfxView | null;
+  /** How close it was to the previous hit, when the spacing rule dropped it. */
+  sfxDroppedSinceS: number | null;
 }
 
 export interface PromotableWord {

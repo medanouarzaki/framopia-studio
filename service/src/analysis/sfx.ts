@@ -18,8 +18,11 @@ const FPS = 30000 / 1001;
  *
  * **Every image gets a sound** (user ruling, Block 8 session 26). It was true
  * of the corpus already, but only because both image templates happen to bind a
- * whoosh — a manifest edit or a slot left without a template would have made a
- * silent image with nothing to say so.
+ * whoosh; a manifest edit would have made a silent image with nothing to say so.
+ *
+ * A slot with no template at all is a different thing and is not this error:
+ * the builder drops it and `checkBuildability` names it, and the plan passes
+ * through that state legitimately before templates are assigned.
  */
 export class SilentImageSlotError extends Error {
   constructor(readonly slotIds: string[]) {
@@ -149,9 +152,14 @@ export function deriveSfxDetail(
       .sort();
   const selection = selectSfx(candidates, sameKind);
 
+  /*
+   * Only slots that have a template: one without is not a silent image, it is
+   * an absent one — the builder drops it and `checkBuildability` names it. The
+   * plan legitimately passes through that state before templates are assigned.
+   */
   const withSound = new Set(selection.kept.map((c) => c.elementId));
   const silent = plan.images.slots
-    .filter((s) => !withSound.has(s.id))
+    .filter((s) => s.templateId !== null && !withSound.has(s.id))
     .map((s) => s.id);
   if (silent.length > 0) throw new SilentImageSlotError(silent);
 
