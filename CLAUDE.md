@@ -517,6 +517,39 @@ Python sidecar, which take minutes and have their own commands; the stage
 reports what the plan already has, or says which commands to run. Pretending to
 have run it would be worse.
 
+### The three subtitle questions are ruled, and all three land in Block 9
+
+Recorded in `docs/PROJECT_SPEC.md` §3 with the date. **None is implemented**;
+they are the user's decisions on what the transcript editor showed him.
+
+1. **A multi-word §6 term occupies one card together.** `MAX_WORDS_PER_CARD` = 1
+   stands for ordinary speech; a §6 term overrides it.
+2. **A card stays tight to its word; the animation compresses.** This ratifies
+   Block 7's short-card entrance stretching, so the **23 clipped holds are a
+   recorded decision, not an open defect. Nothing to build.**
+3. **An overlong word shrinks to fit** — never clipped, never wrapped to a
+   second line; the type scales down for that word on its own card.
+
+**Ruling 1 needs a term source the project does not have.** The split-term
+detector flags every run of consecutive Arabic-script words, and §6 defines a
+term semantically: some of the 13 are not terms. `Transcript.terms`,
+`service/src/analysis/terms.ts` and `ACTIVE_ANALYSIS_PROMPT_VERSION` 4 all exist
+and are **unread by grouping**, because Block 6 session 5 got three different
+term sets from three identical calls and two of them broke a term the guide
+names verbatim. A trustworthy source is either a hand-made reference of term
+spans — the same shape as the alignment references, and the same cost in the
+user's time — or a prompt that returns them stably, which n=3 says the current
+one does not.
+
+**Ruling 3 needs a width measurement the panel cannot take.** Rendered width
+comes from `sourceRectAtTime` inside After Effects — the panel's 11-character
+proxy is not it. A per-word scale touches `service/src/build/` (a scale computed
+per card from the measured rect against `SUBTITLE_SAFE_WIDTH`) and the template
+contract (`TXT_MAIN`'s scale becomes a per-instance value). **The system never
+edits a template's keyframes**, so the scale is set on the instance, not the
+comp. It also depends on the K2 fonts Block 9 collects: a different face changes
+every width.
+
 ### A count names its scope, or it is the wrong number
 
 The transcript editor's three ruling counts read **1, 5 and 0** on `vitasilk`

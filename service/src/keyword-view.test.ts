@@ -1,0 +1,221 @@
+import { describe, expect, it } from 'vitest';
+import { copyFileSync, mkdtempSync, readFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { KEYWORD_FONT_SIZE, REPO_ROOT, SUBTITLE_FONT_SIZE } from '@framopia/core';
+import {
+  addKeyword,
+  keywordsView,
+  keywordsViewForPlan,
+  KeywordViewError,
+  removeKeyword,
+} from './keyword-view.js';
+import { readEditPlan } from './editplan/io.js';
+import { humanFlaggedItems } from './editplan/merge.js';
+
+const FOOTAGE = path.join(REPO_ROOT, 'my files', 'test videos');
+const LEDGER = path.join(REPO_ROOT, '.local', 'costs.jsonl');
+
+function scratch(reel = 'vitasilk'): string {
+  const dir = mkdtempSync(path.join(tmpdir(), 'framopia-keywords-'));
+  const to = path.join(dir, `${reel}.editplan.json`);
+  copyFileSync(path.join(FOOTAGE, `${reel}.editplan.json`), to);
+  return to;
+}
+
+describe('keywordsView', () => {
+  it('returns the keywords the analysis chose', async () => {
+    const view = await keywordsView('vitasilk');
+    expect(view.keywords.map((k) => k.text)).toEqual(['7rir', 'filler glow', 'Vita Silk']);
+  });
+
+  it('gives each keyword its card, interval and reason', async () => {
+    const view = await keywordsView('vitasilk');
+    const keyword = view.keywords.find((k) => k.text === 'filler glow');
+    expect(keyword?.cardId).toBe('g022');
+    expect(keyword?.reason).toBe('names the specific product being promoted');
+    expect(keyword?.kind).toBe('label');
+  });
+
+  /* The variant follows the script, which is what decides the font. */
+  it('takes the Arabic keyword template for an Arabic keyword', async () => {
+    const view = await keywordsView('test-1');
+    expect(view.keywords.map((k) => k.script)).toEqual(['arabic', 'arabic']);
+    expect(view.keywords.map((k) => k.templateId)).toEqual(['kw_slam_ar', 'kw_slam_ar']);
+  });
+
+  it('reports the frozen type sizes rather than the panel inventing them', async () => {
+    const view = await keywordsView('vitasilk');
+    expect(view.subtitleFontSize).toBe(SUBTITLE_FONT_SIZE);
+    expect(view.keywordFontSize).toBe(KEYWORD_FONT_SIZE);
+    expect(view.keywords.every((k) => k.fontSize === KEYWORD_FONT_SIZE)).toBe(true);
+  });
+
+  it('names the sound bound to each keyword, with its gain and offset', async () => {
+    const view = await keywordsView('vitasilk');
+    for (const keyword of view.keywords) {
+      expect(keyword.sfx?.sfxId, keyword.id).toBe('hit_01');
+      expect(keyword.sfx?.gainDb).toBe(-20);
+      expect(keyword.sfx?.offsetS).toBeCloseTo(0.13, 3);
+      // The file has to be on disk or the build cannot use it either.
+      expect(keyword.sfx?.fileExists, keyword.sfx?.file).toBe(true);
+    }
+  });
+
+  it('offers every unclaimed word for promotion, and no claimed one', async () => {
+    const view = await keywordsView('vitasilk');
+    const claimed = new Set(view.keywords.flatMap((k) => k.wordIds));
+    expect(view.promotable).toHaveLength(73 - claimed.size);
+    expect(view.promotable.some((w) => claimed.has(w.wordId))).toBe(false);
+  });
+
+  it('refuses a reel with no plan by name', async () => {
+    await expect(keywordsView('nope')).rejects.toThrow(KeywordViewError);
+  });
+});
+
+/**
+ * A reel with no keywords must say **why**. "Analysis has not run" and "analysis
+ * ran and chose none" are different facts, and an empty list states neither.
+ */
+describe('a reel with no keywords', () => {
+  it('says the analysis has not run, and names the stage', async () => {
+    for (const reel of ['ground-truth', 'test-3']) {
+      const view = await keywordsView(reel);
+      expect(view.keywords, reel).toHaveLength(0);
+      expect(view.emptyReason, reel).toContain('has not run');
+      expect(view.emptyReason, reel).toContain('pending');
+    }
+  });
+
+  it('says nothing at all when there are keywords', async () => {
+    expect((await keywordsView('vitasilk')).emptyReason).toBeNull();
+  });
+
+  it('names where the choice came from, whether or not there is one', async () => {
+    for (const reel of ['vitasilk', 'ground-truth']) {
+      const view = await keywordsView(reel);
+      expect(view.source.promptVersion, reel).toBe(4);
+      expect(view.source.mode, reel).toBe('auto');
+      expect(typeof view.source.stageStatus, reel).toBe('string');
+    }
+  });
+});
+
+describe('removing a keyword', () => {
+  it('drops it and clears the card’s supersession', async () => {
+    const planPath = scratch();
+    const before = await readEditPlan(planPath);
+    const keyword = before.keywords.items[0];
+    if (keyword === undefined) throw new Error('fixture has no keywords');
+    const superseded = before.subtitles.groups.filter((g) => g.supersededBy === keyword.id);
+    expect(superseded.length).toBeGreaterThan(0);
+
+    const view = await removeKeyword({ planPath, keywordId: keyword.id });
+    expect(view.keywords.some((k) => k.id === keyword.id)).toBe(false);
+
+    const after = await readEditPlan(planPath);
+    expect(after.subtitles.groups.some((g) => g.supersededBy === keyword.id)).toBe(false);
+  });
+
+  /* SFX is generated, never hand-authored: it is re-derived, not patched. */
+  it('drops the hit that was bound to it', async () => {
+    const planPath = scratch();
+    const keyword = (await readEditPlan(planPath)).keywords.items[0];
+    if (keyword === undefined) throw new Error('fixture has no keywords');
+
+    await removeKeyword({ planPath, keywordId: keyword.id });
+    const after = await readEditPlan(planPath);
+    expect(after.sfx.events.some((e) => e.sourceElementId === keyword.id)).toBe(false);
+  });
+
+  it('refuses an unknown keyword by name', async () => {
+    await expect(removeKeyword({ planPath: scratch(), keywordId: 'k999' })).rejects.toThrow(
+      'k999',
+    );
+  });
+});
+
+describe('adding a keyword', () => {
+  it('promotes a word, gives it the matching template and a hit', async () => {
+    const planPath = scratch();
+    const view = await addKeyword({ planPath, wordId: 'w0000' });
+    const added = view.keywords.find((k) => k.wordIds.includes('w0000'));
+    expect(added?.templateId).toBe('kw_slam');
+    expect(added?.fontSize).toBe(KEYWORD_FONT_SIZE);
+    expect(added?.sfx?.sfxId).toBe('hit_01');
+    expect(added?.sfx?.offsetS).toBeCloseTo(0.13, 3);
+    expect(added?.sfx?.gainDb).toBe(-20);
+  });
+
+  /*
+   * `edited` is what `mergeIntoExistingPlan` refuses to discard: a transcript
+   * change clears the keyword block, and `PlanMergeBlockedError` stops that when
+   * a human has touched an item. The choice cannot be lost silently.
+   */
+  it('marks it edited, so a re-run cannot discard it silently', async () => {
+    const planPath = scratch();
+    await addKeyword({ planPath, wordId: 'w0000' });
+    const plan = await readEditPlan(planPath);
+    const added = plan.keywords.items.find((k) => k.wordIds.includes('w0000'));
+    expect(added?.edited).toBe(true);
+    expect(humanFlaggedItems(plan).some((f) => f.itemId === added?.id)).toBe(true);
+  });
+
+  it('records no reason, rather than inventing one the analysis never gave', async () => {
+    const planPath = scratch();
+    const view = await addKeyword({ planPath, wordId: 'w0000' });
+    expect(view.keywords.find((k) => k.wordIds.includes('w0000'))?.reason).toBe('');
+  });
+
+  it('supersedes the card the word renders in', async () => {
+    const planPath = scratch();
+    const view = await addKeyword({ planPath, wordId: 'w0000' });
+    const added = view.keywords.find((k) => k.wordIds.includes('w0000'));
+    const plan = await readEditPlan(planPath);
+    expect(plan.subtitles.groups.some((g) => g.supersededBy === added?.id)).toBe(true);
+  });
+
+  it('refuses a word that is already a keyword, and one that is removed', async () => {
+    const planPath = scratch();
+    const existing = (await readEditPlan(planPath)).keywords.items[0]?.wordIds[0] as string;
+    await expect(addKeyword({ planPath, wordId: existing })).rejects.toThrow('already a keyword');
+
+    const plan = await readEditPlan(planPath);
+    const word = plan.transcript.words[2];
+    if (word === undefined) throw new Error('fixture has no third word');
+    word.removed = true;
+    word.removedReason = 'filler';
+    const { writeEditPlan } = await import('./editplan/io.js');
+    await writeEditPlan(planPath, plan);
+    await expect(addKeyword({ planPath, wordId: word.id })).rejects.toThrow('marked removed');
+  });
+
+  it('refuses an unknown word by name', async () => {
+    await expect(addKeyword({ planPath: scratch(), wordId: 'w9999' })).rejects.toThrow('w9999');
+  });
+
+  it('round-trips: promote then remove leaves the plan as it was', async () => {
+    const planPath = scratch();
+    const before = await keywordsViewForPlan(planPath);
+    const added = (await addKeyword({ planPath, wordId: 'w0000' })).keywords.find((k) =>
+      k.wordIds.includes('w0000'),
+    );
+    const after = await removeKeyword({ planPath, keywordId: added?.id ?? '' });
+    expect(after.keywords.map((k) => k.id)).toEqual(before.keywords.map((k) => k.id));
+    expect(after.keywords.map((k) => k.sfx?.timeS)).toEqual(
+      before.keywords.map((k) => k.sfx?.timeS),
+    );
+  });
+
+  it('spends nothing: both edits are local writes', async () => {
+    const ledger = readFileSync(LEDGER, 'utf8');
+    const planPath = scratch();
+    const view = await addKeyword({ planPath, wordId: 'w0000' });
+    await removeKeyword({
+      planPath,
+      keywordId: view.keywords.find((k) => k.wordIds.includes('w0000'))?.id ?? '',
+    });
+    expect(readFileSync(LEDGER, 'utf8')).toBe(ledger);
+  });
+});

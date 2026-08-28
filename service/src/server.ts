@@ -16,6 +16,12 @@ import {
   transcriptView,
   TranscriptViewError,
 } from './transcript-view.js';
+import {
+  addKeyword,
+  keywordsView,
+  KeywordViewError,
+  removeKeyword,
+} from './keyword-view.js';
 // Imported for its side effect: registering the pipeline job runner.
 import './pipeline.js';
 import { health } from './health.js';
@@ -248,6 +254,67 @@ export function createApp(token: string): http.Server {
         } catch (error) {
           if (!(error instanceof TranscriptViewError)) throw error;
           sendJson(res, 400, serviceError('transcript', error.message, false));
+        }
+        return;
+      }
+
+      if (req.method === 'GET' && url.pathname === '/keywords') {
+        const reel = url.searchParams.get('reel');
+        if (reel === null) {
+          sendJson(res, 400, serviceError('keywords', 'reel is required', false));
+          return;
+        }
+        try {
+          sendJson(res, 200, await keywordsView(reel));
+        } catch (error) {
+          if (!(error instanceof KeywordViewError)) throw error;
+          sendJson(res, 400, serviceError('keywords', error.message, false));
+        }
+        return;
+      }
+
+      if (req.method === 'POST' && url.pathname === '/keywords/add') {
+        let body: { planPath?: unknown; wordId?: unknown };
+        try {
+          body = JSON.parse((await readBody(req)) || '{}') as typeof body;
+        } catch {
+          sendJson(res, 400, serviceError('keywords', 'invalid JSON body', false));
+          return;
+        }
+        if (typeof body.planPath !== 'string' || typeof body.wordId !== 'string') {
+          sendJson(res, 400, serviceError('keywords', 'planPath and wordId are required', false));
+          return;
+        }
+        try {
+          sendJson(res, 200, await addKeyword({ planPath: body.planPath, wordId: body.wordId }));
+        } catch (error) {
+          if (!(error instanceof KeywordViewError)) throw error;
+          sendJson(res, 400, serviceError('keywords', error.message, false));
+        }
+        return;
+      }
+
+      if (req.method === 'POST' && url.pathname === '/keywords/remove') {
+        let body: { planPath?: unknown; keywordId?: unknown };
+        try {
+          body = JSON.parse((await readBody(req)) || '{}') as typeof body;
+        } catch {
+          sendJson(res, 400, serviceError('keywords', 'invalid JSON body', false));
+          return;
+        }
+        if (typeof body.planPath !== 'string' || typeof body.keywordId !== 'string') {
+          sendJson(res, 400, serviceError('keywords', 'planPath and keywordId are required', false));
+          return;
+        }
+        try {
+          sendJson(
+            res,
+            200,
+            await removeKeyword({ planPath: body.planPath, keywordId: body.keywordId }),
+          );
+        } catch (error) {
+          if (!(error instanceof KeywordViewError)) throw error;
+          sendJson(res, 400, serviceError('keywords', error.message, false));
         }
         return;
       }

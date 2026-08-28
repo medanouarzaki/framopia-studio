@@ -1,5 +1,5 @@
 import { NODE_NOT_FOUND_HELP } from '@framopia/core/node-path';
-import type { ClientMode, DryRunPlan, HealthPayload, Reel, ServiceError, PlanSteps , ServiceOrigin , PipelineJob , TranscriptView, TranscriptWordView, TranscriptCardView } from './types.js';
+import type { ClientMode, DryRunPlan, HealthPayload, Reel, ServiceError, PlanSteps , ServiceOrigin , PipelineJob , TranscriptView, TranscriptWordView, TranscriptCardView , KeywordsView } from './types.js';
 
 /**
  * The panel's half of the ARCHITECTURE §1.3 handshake: the service binds
@@ -331,4 +331,25 @@ export async function saveCard(
   edit: { planPath: string; cardId: string; displayStart: number; displayEnd: number },
 ): Promise<TranscriptCardView> {
   return await postJson(connection, '/transcript/card', edit);
+}
+
+export async function fetchKeywords(
+  connection: Connection,
+  reel: string,
+): Promise<KeywordsView> {
+  return await getJson<KeywordsView>(connection, `/keywords?reel=${encodeURIComponent(reel)}`);
+}
+
+export async function addKeyword(
+  connection: Connection,
+  edit: { planPath: string; wordId: string },
+): Promise<KeywordsView> {
+  return await postJson(connection, '/keywords/add', edit);
+}
+
+export async function removeKeyword(
+  connection: Connection,
+  edit: { planPath: string; keywordId: string },
+): Promise<KeywordsView> {
+  return await postJson(connection, '/keywords/remove', edit);
 }

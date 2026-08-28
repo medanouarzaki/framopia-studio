@@ -268,3 +268,56 @@ export interface TranscriptView {
   editCost: string;
   transcriptHash: string;
 }
+
+export interface KeywordSfxView {
+  sfxId: string;
+  file: string;
+  fileExists: boolean;
+  gainDb: number;
+  offsetS: number;
+  timeS: number;
+}
+
+export interface KeywordView {
+  id: string;
+  wordIds: string[];
+  text: string;
+  cardId: string | null;
+  start: number;
+  end: number;
+  reason: string;
+  score: number;
+  kind: 'label' | 'promise' | null;
+  script: 'latin' | 'arabic';
+  templateId: string | null;
+  fontSize: number;
+  edited: boolean;
+  sfx: KeywordSfxView | null;
+}
+
+export interface PromotableWord {
+  wordId: string;
+  text: string;
+  cardId: string | null;
+  script: 'latin' | 'arabic';
+  start: number;
+  end: number;
+}
+
+export interface KeywordsView {
+  reel: string;
+  planPath: string;
+  keywords: KeywordView[];
+  promotable: PromotableWord[];
+  /** Why there are none. Null when there are some. */
+  emptyReason: string | null;
+  source: {
+    stageStatus: string;
+    cacheEntryId: string | null;
+    cacheProvenance: string | null;
+    promptVersion: number;
+    mode: 'auto' | 'propose';
+  };
+  subtitleFontSize: number;
+  keywordFontSize: number;
+}

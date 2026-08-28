@@ -13,6 +13,7 @@ import {
 import { nodeMatch } from './node-match.js';
 import { isWide, observeWidth } from './panel-width.js';
 import { Transcript } from './Transcript.js';
+import { Keywords } from './Keywords.js';
 import {
   openingStep,
   readLastSteps,
@@ -440,9 +441,7 @@ function Panel({
           view={views.find((v) => v.id === step) as StepView}
           onBack={() => goTo(previousStep(step))}
         >
-          {step === 'transcript' ? (
-            <Transcript connection={connection} reel={reel?.label ?? null} />
-          ) : null}
+          {stepContent(step, connection, reel?.label ?? null)}
         </StepPane>
       )}
     </div>
@@ -490,6 +489,17 @@ function StepRail({
       </ol>
     </nav>
   );
+}
+
+/** The step that is built, or nothing — which is what makes it an empty state. */
+function stepContent(
+  step: StepId,
+  connection: Connection | null,
+  reel: string | null,
+): JSX.Element | null {
+  if (step === 'transcript') return <Transcript connection={connection} reel={reel} />;
+  if (step === 'keywords') return <Keywords connection={connection} reel={reel} />;
+  return null;
 }
 
 function previousStep(step: StepId): StepId {

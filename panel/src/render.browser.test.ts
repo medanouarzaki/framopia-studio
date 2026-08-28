@@ -598,6 +598,12 @@ function stubRoutes(steps: unknown, resumeAt: string): string {
       stages: [], estimateUsd: 0, reusesOlderGuide: false,
     },
     steps: { reel: 'vitasilk', planPath: '/v/p.json', steps, resumeAt },
+    keywords: {
+      reel: 'vitasilk', planPath: '/v/p.json', keywords: [], promotable: [],
+      emptyReason: 'Keyword analysis has not run for this reel yet.',
+      source: { stageStatus: 'pending', cacheEntryId: null, cacheProvenance: null, promptVersion: 4, mode: 'auto' },
+      subtitleFontSize: 343, keywordFontSize: 425,
+    },
     transcript: {
       reel: 'vitasilk', planPath: '/v/p.json', transcriptHash: 'h',
       editCost: 'Editing a word changes the transcript hash.',
@@ -620,6 +626,7 @@ function stubRoutes(steps: unknown, resumeAt: string): string {
     const body = u.indexOf('/health') !== -1 ? p.health
       : u.indexOf('/reels') !== -1 ? p.reels
       : u.indexOf('/modes') !== -1 ? p.modes
+      : u.indexOf('/keywords') !== -1 ? p.keywords
       : u.indexOf('/transcript') !== -1 ? p.transcript
       : u.indexOf('/steps') !== -1 ? p.steps
       : p.dry;
@@ -1164,6 +1171,195 @@ describe.skipIf(!built)('the transcript editor', () => {
   });
 });
 
+/**
+ * Step 3, over the built bundle. The service half is tested against the real
+ * plans in `service/src/keyword-view.test.ts`; this drives the panel.
+ */
+const KEYWORDS = {
+  reel: 'vitasilk',
+  planPath: '/v/p.json',
+  subtitleFontSize: 343,
+  keywordFontSize: 425,
+  emptyReason: null,
+  source: {
+    stageStatus: 'done',
+    cacheEntryId: 'analysis-324f3a034ef9c903',
+    cacheProvenance: 'exact',
+    promptVersion: 4,
+    mode: 'auto',
+  },
+  keywords: [
+    {
+      id: 'k001', wordIds: ['w0021'], text: 'filler glow', cardId: 'g022',
+      start: 6.98, end: 7.579, reason: 'names the specific product being promoted',
+      score: 0.95, kind: 'label', script: 'latin', templateId: 'kw_slam',
+      fontSize: 425, edited: false,
+      sfx: { sfxId: 'hit_01', file: '/repo/assets/sfx/hit_01.mp3', fileExists: true, gainDb: -20, offsetS: 0.13, timeS: 7.11 },
+    },
+    {
+      id: 'k002', wordIds: ['w0030'], text: 'ترطيب', cardId: 'g031',
+      start: 9.1, end: 9.6, reason: '', score: 1, kind: null, script: 'arabic',
+      templateId: 'kw_slam_ar', fontSize: 425, edited: true,
+      sfx: { sfxId: 'hit_01', file: '/repo/assets/sfx/hit_01.mp3', fileExists: true, gainDb: -20, offsetS: 0.13, timeS: 9.23 },
+    },
+  ],
+  promotable: [
+    { wordId: 'w0000', text: '5', cardId: 'g001', script: 'latin', start: 0.1, end: 0.4 },
+    { wordId: 'w0001', text: 'd9ay9', cardId: 'g002', script: 'latin', start: 0.5, end: 0.9 },
+  ],
+};
+
+describe.skipIf(!built)('the keyword picker', () => {
+  async function loadKeywords(payload: unknown = KEYWORDS): Promise<Loaded | null> {
+    if (browser === undefined) return null;
+    const page = await browser.newPage({ viewport: { width: 1000, height: 900 } });
+    const uncaught: string[] = [];
+    page.on('pageerror', (error: Error) => uncaught.push(error.message));
+    await page.addInitScript(stubHost(HANDSHAKE));
+    await page.addInitScript(stubRoutes(stepsThrough('build'), 'build'));
+    await page.addInitScript(`
+      window.__keywords = ${JSON.stringify(payload)};
+      const realFetch = window.fetch;
+      window.fetch = (url, init) => {
+        const u = String(url);
+        if (u.indexOf('/keywords/remove') !== -1) {
+          const body = JSON.parse(init.body);
+          window.__keywords = Object.assign({}, window.__keywords, {
+            keywords: window.__keywords.keywords.filter((k) => k.id !== body.keywordId),
+          });
+          return Promise.resolve({ ok: true, json: () => Promise.resolve(window.__keywords) });
+        }
+        if (u.indexOf('/keywords/add') !== -1) {
+          const body = JSON.parse(init.body);
+          const word = window.__keywords.promotable.find((w) => w.wordId === body.wordId);
+          const added = {
+            id: 'k900', wordIds: [word.wordId], text: word.text, cardId: word.cardId,
+            start: word.start, end: word.end, reason: '', score: 1, kind: null,
+            script: word.script, templateId: 'kw_slam', fontSize: 425, edited: true,
+            sfx: { sfxId: 'hit_01', file: '/repo/assets/sfx/hit_01.mp3', fileExists: true, gainDb: -20, offsetS: 0.13, timeS: word.start + 0.13 },
+          };
+          window.__keywords = Object.assign({}, window.__keywords, {
+            keywords: window.__keywords.keywords.concat([added]),
+            promotable: window.__keywords.promotable.filter((w) => w.wordId !== body.wordId),
+          });
+          return Promise.resolve({ ok: true, json: () => Promise.resolve(window.__keywords) });
+        }
+        if (u.indexOf('/keywords') !== -1) {
+          return Promise.resolve({ ok: true, json: () => Promise.resolve(window.__keywords) });
+        }
+        return realFetch(url, init);
+      };
+    `);
+    await page.goto(`file://${INDEX}`);
+    await page.waitForSelector('nav.rail', { timeout: 10_000 });
+    await page.selectOption('select[aria-label="Reel"]', 'vitasilk');
+    await page.selectOption('select[aria-label="Client mode"]', 'k2-syndicalia');
+    await page.click('nav.rail li:nth-child(3) button');
+    await page.waitForSelector('main h2', { timeout: 5000 });
+    return { page, uncaught };
+  }
+
+  it('shows each keyword with its card, template, size and sound', async () => {
+    const loaded = await loadKeywords();
+    if (loaded === null) return;
+    await loaded.page.waitForSelector('ol.keywords li', { timeout: 5000 });
+    const text = (await loaded.page.textContent('ol.keywords')) ?? '';
+    expect(text).toContain('filler glow');
+    expect(text).toContain('g022');
+    expect(text).toContain('kw_slam');
+    expect(text).toContain('425');
+    expect(text).toContain('hit_01 at +0.13s, -20 dB');
+    expect(text).toContain('names the specific product being promoted');
+    await loaded.page.close();
+  });
+
+  /* The variant follows the script, and so does the direction. */
+  it('sets direction per keyword and shows the Arabic variant', async () => {
+    const loaded = await loadKeywords();
+    if (loaded === null) return;
+    await loaded.page.waitForSelector('ol.keywords li', { timeout: 5000 });
+    const dirs = await loaded.page.$$eval('ol.keywords .ktext', (els) =>
+      els.map((e) => e.getAttribute('dir')),
+    );
+    expect(dirs).toEqual(['ltr', 'rtl']);
+    expect((await loaded.page.textContent('ol.keywords')) ?? '').toContain('kw_slam_ar');
+    await loaded.page.close();
+  });
+
+  it('says a hand-promoted keyword had no reason from the analysis', async () => {
+    const loaded = await loadKeywords();
+    if (loaded === null) return;
+    await loaded.page.waitForSelector('ol.keywords li', { timeout: 5000 });
+    expect((await loaded.page.textContent('ol.keywords')) ?? '').toContain('promoted by hand');
+    await loaded.page.close();
+  });
+
+  it('names where the choice came from', async () => {
+    const loaded = await loadKeywords();
+    if (loaded === null) return;
+    const text = (await loaded.page.textContent('main')) ?? '';
+    expect(text).toContain('analysis prompt v4');
+    expect(text).toContain('analysis-324f3a034ef9c903');
+    await loaded.page.close();
+  });
+
+  it('removes a keyword', async () => {
+    const loaded = await loadKeywords();
+    if (loaded === null) return;
+    await loaded.page.waitForSelector('ol.keywords li', { timeout: 5000 });
+    await loaded.page.click('button[aria-label="Remove k001"]');
+    await loaded.page.waitForFunction(
+      () => document.querySelectorAll('ol.keywords li').length === 1,
+      undefined,
+      { timeout: 5000 },
+    );
+    expect((await loaded.page.textContent('ol.keywords')) ?? '').not.toContain('filler glow');
+    await loaded.page.close();
+  });
+
+  it('promotes a word to a keyword', async () => {
+    const loaded = await loadKeywords();
+    if (loaded === null) return;
+    await loaded.page.waitForSelector('ol.keywords li', { timeout: 5000 });
+    await loaded.page.click('button.chip:text("Emphasise another word")');
+    await loaded.page.click('button[aria-label="Emphasise w0000"]');
+    await loaded.page.waitForFunction(
+      () => document.querySelectorAll('ol.keywords li').length === 3,
+      undefined,
+      { timeout: 5000 },
+    );
+    await loaded.page.close();
+  });
+
+  /*
+   * A reel with no keywords says **why**. "Analysis has not run" and "analysis
+   * ran and chose none" are different facts and an empty list states neither.
+   */
+  it('says why a reel has no keywords', async () => {
+    const loaded = await loadKeywords({
+      ...KEYWORDS,
+      keywords: [],
+      emptyReason: 'Keyword analysis has not run for this reel yet (stage is "pending").',
+    });
+    if (loaded === null) return;
+    await loaded.page.waitForFunction(
+      () => (document.querySelector('main') as HTMLElement).textContent?.includes('has not run') === true,
+      undefined,
+      { timeout: 5000 },
+    );
+    expect(await loaded.page.$$eval('ol.keywords li', (els) => els.length)).toBe(0);
+    await loaded.page.close();
+  });
+
+  it('renders with no uncaught errors', async () => {
+    const loaded = await loadKeywords();
+    if (loaded === null) return;
+    await loaded.page.waitForSelector('ol.keywords li', { timeout: 5000 });
+    expect(loaded.uncaught).toEqual([]);
+    await loaded.page.close();
+  });
+});
+
 describe.skipIf(!built)('focus', () => {
   it('never paints the brand accent on any control it lands on', async () => {
     const loaded = await loadFlow('build', 'build');
@@ -1593,12 +1789,16 @@ describe.skipIf(!built)('the step rail', () => {
     await loaded.page.close();
   });
 
+  /*
+   * Keywords was the example until session 20 built it. Images is the step that
+   * is still an empty state, and the assertion follows the thing it is about.
+   */
   it('shows the plan summary on a step that is not built yet', async () => {
-    const loaded = await loadFlow('keywords', 'keywords');
+    const loaded = await loadFlow('build', 'build');
     if (loaded === null) return;
-    await loaded.page.click('nav.rail li:nth-child(3) button');
+    await loaded.page.click('nav.rail li:nth-child(4) button');
     const text = (await loaded.page.textContent('main')) ?? '';
-    expect(text).toContain('Keywords summary from the plan');
+    expect(text).toContain('Images summary from the plan');
     expect(text).toContain('This step is not built yet.');
     await loaded.page.close();
   });
