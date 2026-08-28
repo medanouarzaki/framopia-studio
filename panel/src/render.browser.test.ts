@@ -2124,6 +2124,87 @@ describe('the image candidate picker', () => {
     await loaded.page.close();
   });
 
+  /*
+   * **The session 31 defect, reproduced.** The panel is reloaded from
+   * `panel/dist` while the service is a long-running process, so the bundle can
+   * be newer than the service it talks to. Against one started before
+   * `renderedPath` existed, every candidate read "this picture is missing from
+   * the disk" — a claim of data loss about ten files that were all present.
+   */
+  it('still shows the pictures when the service is older than the panel', async () => {
+    const older = JSON.parse(JSON.stringify(IMAGES)) as typeof IMAGES;
+    for (const slot of older.slots) {
+      delete (slot as Record<string, unknown>)['rendersAsCutout'];
+      delete (slot as Record<string, unknown>)['nothingIsMeasured'];
+      for (const candidate of slot.candidates) {
+        delete (candidate as Record<string, unknown>)['renderedPath'];
+        delete (candidate as Record<string, unknown>)['renderedExists'];
+        delete (candidate as Record<string, unknown>)['qualityApplies'];
+      }
+    }
+    const loaded = await loadImages(older);
+    if (loaded === null) return;
+    await loaded.page.waitForSelector('ol.slots li', { timeout: 5000 });
+    const text = (await loaded.page.textContent('ol.slots')) ?? '';
+    expect(text).not.toContain('no longer on the disk');
+    expect(text).not.toContain('could not work out which picture');
+    const shown = await loaded.page.$$eval('img.shot.built', (els) =>
+      els.map((e) => (e as HTMLImageElement).getAttribute('src')),
+    );
+    // Three candidates, each falling back to the rule the builder uses.
+    expect(shown).toHaveLength(3);
+    expect(shown).toContain('file:///v/img001-c1.jpg');
+    expect(shown).toContain('file:///v/img002-c1.cutout.png');
+    await loaded.page.close();
+  });
+
+  /* A path that is gone and a path the panel was never given are not the same
+     fact, and only one of them is about the disk. */
+  it('says a picture is gone only when the service says it is gone', async () => {
+    const gone = JSON.parse(JSON.stringify(IMAGES)) as typeof IMAGES;
+    (gone.slots[0]?.candidates[0] as Record<string, unknown>)['renderedExists'] = false;
+    const loaded = await loadImages(gone);
+    if (loaded === null) return;
+    await loaded.page.waitForSelector('ol.slots li', { timeout: 5000 });
+    const text = (await loaded.page.textContent('ol.slots')) ?? '';
+    expect(text).toContain('no longer on the disk');
+    expect(await loaded.page.$$('img.shot.built')).toHaveLength(2);
+    await loaded.page.close();
+  });
+
+  it('blames the tool, not the disk, when it was told no path at all', async () => {
+    const bare = JSON.parse(JSON.stringify(IMAGES)) as typeof IMAGES;
+    for (const candidate of bare.slots[0]?.candidates ?? []) {
+      const c = candidate as Record<string, unknown>;
+      delete c['renderedPath'];
+      delete c['renderedExists'];
+      c['imagePath'] = '';
+      c['cutoutPath'] = null;
+    }
+    const loaded = await loadImages(bare);
+    if (loaded === null) return;
+    await loaded.page.waitForSelector('ol.slots li', { timeout: 5000 });
+    const text = (await loaded.page.textContent('ol.slots')) ?? '';
+    expect(text).toContain('could not work out which picture');
+    expect(text).not.toContain('no longer on the disk');
+    await loaded.page.close();
+  });
+
+  /* Every cutout in the corpus lives under `my files/test videos/`. */
+  it('encodes the spaces in a real path', async () => {
+    const spaced = JSON.parse(JSON.stringify(IMAGES)) as typeof IMAGES;
+    (spaced.slots[0]?.candidates[0] as Record<string, unknown>)['renderedPath'] =
+      '/Volumes/T7 Shield/my files/test videos/cutouts/a.png';
+    const loaded = await loadImages(spaced);
+    if (loaded === null) return;
+    await loaded.page.waitForSelector('ol.slots li', { timeout: 5000 });
+    const shown = await loaded.page.$$eval('img.shot.built', (els) =>
+      els.map((e) => (e as HTMLImageElement).getAttribute('src')),
+    );
+    expect(shown).toContain('file:///Volumes/T7%20Shield/my%20files/test%20videos/cutouts/a.png');
+    await loaded.page.close();
+  });
+
   it('says what a slot with nothing generated would cost', async () => {
     const loaded = await loadImages();
     if (loaded === null) return;

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { chooseImage, fetchImages, type Connection } from './service.js';
+import { fileUrl, pictureFor } from './picture.js';
 import type { CandidateView, ImageSlotView, ImagesView } from './types.js';
 
 /**
@@ -130,7 +131,7 @@ function Slot({
         {slot.rendersAsCutout
           ? 'This one is shown with its background removed, so only the subject appears.'
           : 'This one is shown whole, inside a frame.'}
-        {slot.nothingIsMeasured
+        {slot.nothingIsMeasured === true
           ? ' Nothing is checked automatically about these pictures — judge them by eye.'
           : ''}
       </p>
@@ -153,7 +154,7 @@ function Slot({
           <ul className="candidates">
             {slot.candidates.map((candidate) => (
               <li key={candidate.id} className={candidate.chosen ? 'candidate chosen' : 'candidate'}>
-                <Candidate candidate={candidate} rendersAsCutout={slot.rendersAsCutout} />
+                <Candidate candidate={candidate} slot={slot} />
                 <div className="wactions">
                   <button
                     type="button"
@@ -177,32 +178,47 @@ function Slot({
 
 function Candidate({
   candidate,
-  rendersAsCutout,
+  slot,
 }: {
   candidate: CandidateView;
-  rendersAsCutout: boolean;
+  slot: ImageSlotView;
 }): JSX.Element {
+  const rendersAsCutout = slot.rendersAsCutout ?? slot.presentation === 'cutout';
   // The raw picture is worth a second look only where it differs from what
   // gets built, which is a cutout slot. On a card slot the two are the same
   // file and showing it twice would say the build does something it does not.
-  const showRaw = rendersAsCutout && candidate.imageExists;
+  const showRaw = rendersAsCutout && candidate.imageExists !== false;
+  const picture = pictureFor(slot, candidate);
+  const [unreadable, setUnreadable] = useState(false);
   return (
     <div className="cbody">
       <div className="shots">
-        {candidate.renderedExists ? (
+        {picture.state === 'ready' && !unreadable ? (
           <img
             className={rendersAsCutout ? 'shot built cut' : 'shot built'}
-            src={`file://${candidate.renderedPath}`}
+            src={fileUrl(picture.path)}
             alt={`${candidate.id} as it will look`}
+            onError={() => setUnreadable(true)}
           />
         ) : (
-          <span className="tag">this picture is missing from the disk</span>
+          /*
+           * Three different facts, said as three different sentences. Session
+           * 31 collapsed them into "missing from the disk" and told the user he
+           * had lost ten pictures that were all present.
+           */
+          <span className="tag">
+            {picture.state === 'absent'
+              ? 'this picture is no longer on the disk'
+              : picture.state === 'unnamed'
+                ? 'the panel could not work out which picture this is — restart the service'
+                : 'this picture is on the disk but the panel could not display it'}
+          </span>
         )}
         {showRaw ? (
           <figure className="rawshot">
             <img
               className="shot"
-              src={`file://${candidate.imagePath}`}
+              src={fileUrl(candidate.imagePath)}
               alt={`${candidate.id} before the background was removed`}
             />
             <figcaption className="src">before the background was removed</figcaption>
@@ -211,7 +227,7 @@ function Candidate({
       </div>
       <p className="slothead">
         <strong>{candidate.id}</strong>
-        {candidate.qualityApplies ? (
+        {candidate.qualityApplies === true ? (
           <em className={candidate.backgroundCameAwayCleanly === true ? 'tag pass' : 'tag reject'}>
             {candidate.backgroundCameAwayCleanly === true
               ? 'background came away cleanly'
@@ -222,15 +238,15 @@ function Candidate({
       {/* Only where it changes what gets built. On a slot that shows the whole
           picture the matte is never drawn, so a threshold it misses says
           nothing about what the user will see. */}
-      {candidate.qualityApplies && candidate.problems.length > 0 ? (
-        <p className="reason">{candidate.problems.join('; ')}</p>
+      {candidate.qualityApplies === true && (candidate.problems ?? []).length > 0 ? (
+        <p className="reason">{(candidate.problems ?? []).join('; ')}</p>
       ) : null}
-      {candidate.unexpectedText.length === 0 ? null : (
+      {(candidate.unexpectedText ?? []).length === 0 ? null : (
         <p className="src">
           words visible in the picture that the idea did not ask for:{' '}
-          {candidate.unexpectedText.slice(0, 8).join(', ')}
-          {candidate.unexpectedText.length > 8
-            ? ` and ${candidate.unexpectedText.length - 8} more`
+          {(candidate.unexpectedText ?? []).slice(0, 8).join(', ')}
+          {(candidate.unexpectedText ?? []).length > 8
+            ? ` and ${(candidate.unexpectedText ?? []).length - 8} more`
             : ''}
         </p>
       )}

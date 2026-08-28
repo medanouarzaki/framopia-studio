@@ -326,8 +326,13 @@ export interface CandidateView {
   imageExists: boolean;
   cutoutPath: string | null;
   cutoutExists: boolean;
-  renderedPath: string;
-  renderedExists: boolean;
+  /*
+   * Optional because the panel and the service are deployed separately: a
+   * reloaded bundle can be newer than the long-running service it talks to, and
+   * a field it does not send must not be read as a fact about the disk.
+   */
+  renderedPath?: string;
+  renderedExists?: boolean;
   modelId: string | null;
   resolution: string | null;
   generatedAt: string | null;
@@ -339,9 +344,9 @@ export interface CandidateView {
     edgeHalo: number;
   } | null;
   cutoutQuality: number | null;
-  qualityApplies: boolean;
-  backgroundCameAwayCleanly: boolean | null;
-  problems: string[];
+  qualityApplies?: boolean;
+  backgroundCameAwayCleanly?: boolean | null;
+  problems?: string[];
   gatePassed: boolean | null;
   gateFailures: string[];
   unexpectedText: string[];
@@ -354,8 +359,8 @@ export interface ImageSlotView {
   end: number;
   idea: string;
   presentation: 'cutout' | 'card' | null;
-  rendersAsCutout: boolean;
-  nothingIsMeasured: boolean;
+  rendersAsCutout?: boolean;
+  nothingIsMeasured?: boolean;
   templateId: string | null;
   zoneId: string | null;
   candidates: CandidateView[];
