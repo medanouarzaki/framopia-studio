@@ -234,3 +234,47 @@ Hits move about **53 frames earlier**, whooshes about **8.7**. Three events
 reel, needing a layer that starts 1.27 s before the comp does. Its hit cannot
 land on the impact at any placement, and that is a property of a 5.9 s file
 whose anchor is 2 s in — not of this rule.
+
+### The impact frame is not the settle frame — 2026-08-28
+
+Session 22 placed sound on **0.4004 s / 12 frames**, the last entrance keyframe.
+The user, who built these templates by hand, has settled what that figure is:
+**the easing front-loads the motion, so the word has visually landed by frame 4
+and frames 4 to 12 are the tail settling.** The animation is not changing; the
+measurement was reading the wrong moment.
+
+Both earlier figures were right about different things and **neither was the
+impact**:
+
+- `introS = 0.13 s` is **4 frames** and correctly describes when the word lands.
+- `impactFrameOf`'s last-key figure is **12 frames** and correctly describes when
+  the settle ends.
+
+**Consequence: the 17 events session 22 moved are 8 frames late.** Hits went
+from about 2 s wrong to about 0.27 s wrong — better, still wrong, and they have
+**not been corrected**, because the correction cannot be measured yet.
+
+**The impact is where an animated property first reaches `IMPACT_THRESHOLD` of
+its final value.** `IMPACT_THRESHOLD = 0.95` in `core/src/impact-frame.ts` —
+**CHOSEN, NOT MEASURED**: far enough that the remaining travel is a settle
+rather than a move, near enough to land inside the front-loaded part of an
+ease-out.
+
+**It cannot be computed from the audit as it stands.** The audit recorded
+`index`, `time`, `value` and `unreadable` per keyframe — two endpoints and a
+duration, which do not say when the value arrives between them. On `kw_slam`'s
+Position the same two keys give **11.40 frames if the interpolation is linear**
+and the user's eye says **4**, which is 33.3% of the span. The difference is
+entirely the easing.
+
+**What was missing, and what now records it.** `audit.jsx` asks for, per key and
+per side: `keyInInterpolationType` / `keyOutInterpolationType` (LINEAR, BEZIER or
+HOLD) and `keyInTemporalEase` / `keyOutTemporalEase`, whose `influence` and
+`speed` per dimension define the bezier. Emitted as AE reports them; a property
+AE refuses emits **null**, never a zero that would read as "no easing".
+`AuditKeyframe` carries them **optional with a default**, so an audit taken
+before this session parses and reads as *not recorded* rather than as linear.
+
+**`impactFrameOf` is renamed in its documentation, not its behaviour.** It
+measures the settle, it says so, and nothing may read it as the impact again.
+The corrected derivation waits on one more audit run.
