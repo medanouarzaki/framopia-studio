@@ -132,10 +132,10 @@ describe('deriveSfxEvents under the measured rule', () => {
   it('falls back to the manifest offset when no impact is known', async () => {
     const p = await plan('vitasilk');
     const events = deriveSfxEvents(p, templates, sfxIndex, new Map());
-    const keyword = p.keywords.items[0];
-    if (keyword === undefined) throw new Error('fixture has no keywords');
-    const event = events.find((e) => e.sourceElementId === keyword.id);
-    expect(event?.timeS).toBeCloseTo(keyword.start + 0.13, 6);
+    const slot = p.images.slots[0];
+    if (slot === undefined) throw new Error('fixture has no image slots');
+    const event = events.find((e) => e.sourceElementId === slot.id);
+    expect(event?.timeS).toBeCloseTo(slot.start + 0, 6);
     expect(event?.anchorAtS).toBeUndefined();
   });
 
@@ -181,7 +181,9 @@ describe('the removed-keyword marker', () => {
  */
 describe('the corpus', () => {
   it('carries anchor times on every event that was placed by measurement', async () => {
-    for (const reel of ['test 1', 'test 2', 'vitasilk']) {
+    // test-2 has keywords and no image slots, so with the hits removed it has
+    // no sound at all — see the keyword test below.
+    for (const reel of ['test 1', 'vitasilk']) {
       const p = await readEditPlan(path.join(FOOTAGE, `${reel}.editplan.json`));
       expect(p.sfx.events.length, reel).toBeGreaterThan(0);
       for (const event of p.sfx.events) {
@@ -191,20 +193,18 @@ describe('the corpus', () => {
   });
 
   /*
-   * How far a hit moves from the old rule is the file's own anchor, so the
-   * bound cannot be one figure for every hit: `hit_01`'s anchor is 2.05 s in
-   * and `hit_02`'s is 0.54 s, and both are now in use. What every hit has in
-   * common is that it starts before its keyword, which the old rule never did.
+   * The user removed the hits in Block 8 session 27, so a keyword produces no
+   * event at all. `test-2` has three keywords and no image slots, which makes
+   * it the reel that goes completely silent.
    */
-  it('places no hit at its old card-plus-0.13s position', async () => {
-    const p = await readEditPlan(path.join(FOOTAGE, 'vitasilk.editplan.json'));
-    const hits = p.sfx.events.filter((e) => e.sfxId.startsWith('hit'));
-    expect(hits.length).toBeGreaterThan(0);
-    for (const event of hits) {
-      const keyword = p.keywords.items.find((k) => k.id === event.sourceElementId);
-      if (keyword === undefined) continue;
-      expect(event.timeS, event.id).toBeLessThan(keyword.start);
-      expect(Math.abs(event.timeS - (keyword.start + 0.13)) * FPS, event.id).toBeGreaterThan(1);
+  it('places no sound on a keyword, on any reel', async () => {
+    for (const reel of ['test 1', 'test 2', 'vitasilk']) {
+      const p = await readEditPlan(path.join(FOOTAGE, `${reel}.editplan.json`));
+      const keywordIds = new Set(p.keywords.items.map((k) => k.id));
+      expect(p.sfx.events.filter((e) => keywordIds.has(e.sourceElementId)), reel).toEqual([]);
     }
+    const testTwo = await readEditPlan(path.join(FOOTAGE, 'test 2.editplan.json'));
+    expect(testTwo.keywords.items.length).toBeGreaterThan(0);
+    expect(testTwo.sfx.events).toEqual([]);
   });
 });

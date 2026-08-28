@@ -148,15 +148,8 @@ export { renderSheet, type SheetInputs, type SheetRow } from './align-sheet.js';
 export { ACTIVE_PROMPT_VERSION, type PromptVersion } from './prompt-version.js';
 export { resolveUserPath } from './user-path.js';
 export {
-  selectSfx,
-  MIN_SFX_SPACING_S,
-  SFX_VARIATION_WINDOW_S,
-  type SfxCandidate,
-  type SfxChoice,
-  type SfxSelection,
-} from './sfx-variation.js';
-export {
   dialogueAttenuationDb,
+  loudestBoundOffsetDb,
   sfxGainDb,
   sfxKindOf,
   sfxLevel,

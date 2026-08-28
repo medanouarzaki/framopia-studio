@@ -44,13 +44,7 @@
       "minHoldS": 0.1,
       "anchor": "center",
       "imagePresentation": null,
-      "sfx": [
-        {
-          "sfxId": "hit_01",
-          "offsetS": 0.13,
-          "gainDb": -20
-        }
-      ],
+      "sfx": [],
       "notes": "latin keyword slam; places at the subtitle anchor with no offset, which KEYWORDS_ARE_INSIDE_SUBTITLE_BAND depends on"
     },
     {
@@ -65,13 +59,7 @@
       "minHoldS": 0.1,
       "anchor": "center",
       "imagePresentation": null,
-      "sfx": [
-        {
-          "sfxId": "hit_01",
-          "offsetS": 0.13,
-          "gainDb": -20
-        }
-      ],
+      "sfx": [],
       "notes": "arabic variant of kw_slam; almarai bold, rtl paragraph direction, matched timing"
     },
     {

@@ -85,14 +85,42 @@ export function dialogueAttenuationDb(options: {
   dialogueLufs: number;
   dialoguePeakDbfs: number;
   ceilingDbfs?: number;
+  /**
+   * The loudest offset a sound on this reel will actually use. Defaults to the
+   * loudest of all kinds, which is right when every kind is in play and
+   * over-attenuates by the difference when one is not — hits have been unbound
+   * since Block 8 session 27, so the whoosh is the loudest thing in the mix.
+   */
+  loudestOffsetDb?: number;
 }): number {
   const ceiling = options.ceilingDbfs ?? MIX_CEILING_DBFS;
-  const loudestOffset = Math.max(...Object.values(SFX_TARGET_OFFSET_DB));
+  const loudestOffset =
+    options.loudestOffsetDb ?? Math.max(...Object.values(SFX_TARGET_OFFSET_DB));
   const summed = summedPeakDbfs(
     options.dialoguePeakDbfs,
     options.dialogueLufs + loudestOffset,
   );
   return Number(Math.max(0, summed - ceiling).toFixed(2));
+}
+
+/**
+ * The loudest offset among the kinds any template actually binds.
+ *
+ * The attenuation exists to keep the loudest sound under the ceiling, so a kind
+ * bound to nothing must not set it: with the hits unbound, computing against
+ * their +6 would take the whole reel down 0.7 dB further than anything in it
+ * needs. A template set that binds nothing at all returns the quietest offset,
+ * because there is nothing to make room for.
+ */
+export function loudestBoundOffsetDb(
+  templates: Map<string, { sfx: { sfxId: string }[] }>,
+): number {
+  const offsets = [...templates.values()]
+    .flatMap((t) => t.sfx)
+    .map((b) => SFX_TARGET_OFFSET_DB[sfxKindOf(b.sfxId)]);
+  return offsets.length === 0
+    ? Math.min(...Object.values(SFX_TARGET_OFFSET_DB))
+    : Math.max(...offsets);
 }
 
 /** A sound's kind, from its id. The manifest has never had another naming. */

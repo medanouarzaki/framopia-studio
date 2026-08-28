@@ -57,40 +57,27 @@ describe('keywordsView', () => {
    * now starts **before** the keyword so `hit_01`'s anchor — 2.05 s into the
    * file — lands on the template's impact.
    */
-  it('names the sound bound to each keyword, with its derived gain and placement', async () => {
+  /*
+   * The user removed the hits in Block 8 session 27 — he heard them on a built
+   * reel and ruled that the sound fought the animation rather than supporting
+   * it. No keyword template binds a sound, so the picker has none to show and
+   * nothing to explain: there is no absence where there was never a binding.
+   */
+  it('shows no sound on any keyword, and no explanation for its absence', async () => {
     const view = await keywordsView('vitasilk');
-    // Per file: the gains differ because each compensates its own peak, and the
-    // two hits differ because a repeat inside the variation window takes the
-    // next file of the kind.
-    const gain: Record<string, number> = { hit_01: -11.48, hit_02: -12.17 };
-    const peak: Record<string, number> = { hit_01: 2.0525, hit_02: 0.5433 };
+    expect(view.keywords.length).toBeGreaterThan(0);
     for (const keyword of view.keywords) {
-      if (keyword.sfx === null) continue;
-      expect(keyword.sfx.sfxId, keyword.id).toMatch(/^hit_0[12]$/);
-      // Derived from the file's own peak against the reel's dialogue as the
-      // build plays it: −14.4 LUFS attenuated 3.80 dB so the sum has somewhere
-      // to go, plus 6 dB of accent.
-      expect(keyword.sfx.gainDb, keyword.id).toBeCloseTo(gain[keyword.sfx.sfxId] as number, 2);
-      // Negative: the file starts well before the word it belongs to.
-      expect(keyword.sfx.offsetS, keyword.id).toBeLessThan(0);
-      expect(keyword.sfx.peakOffsetS).toBeCloseTo(peak[keyword.sfx.sfxId] as number, 4);
-      // The file has to be on disk or the build cannot use it either.
-      expect(keyword.sfx.fileExists, keyword.sfx.file).toBe(true);
+      expect(Object.keys(keyword), keyword.id).not.toContain('sfx');
+      expect(Object.keys(keyword), keyword.id).not.toContain('sfxDroppedSinceS');
     }
   });
 
-  /*
-   * `vitasilk`'s three keywords were 1.57 s and 1.24 s apart and all fired the
-   * identical file, which the user heard as mechanical. The spacing rule takes
-   * one out and the variation rule makes the survivors differ, so the panel now
-   * has a keyword with no sound to show and says so rather than implying one.
-   */
-  it('shows a keyword the spacing rule left silent, and varies the rest', async () => {
-    const view = await keywordsView('vitasilk');
-    const sounds = view.keywords.map((k) => k.sfx?.sfxId ?? null);
-    expect(sounds.filter((s) => s === null)).toHaveLength(1);
-    const fired = sounds.filter((s): s is string => s !== null);
-    expect(new Set(fired).size).toBe(fired.length);
+  it('leaves no sfx event pointing at a keyword', async () => {
+    const plan = await readEditPlan(
+      path.join(REPO_ROOT, 'my files', 'test videos', 'vitasilk.editplan.json'),
+    );
+    const keywordIds = new Set(plan.keywords.items.map((k) => k.id));
+    expect(plan.sfx.events.filter((e) => keywordIds.has(e.sourceElementId))).toEqual([]);
   });
 
   it('offers every unclaimed word for promotion, and no claimed one', async () => {
@@ -168,17 +155,26 @@ describe('removing a keyword', () => {
 });
 
 describe('adding a keyword', () => {
-  it('promotes a word, gives it the matching template and a hit', async () => {
+  it('promotes a word and gives it the matching template', async () => {
     const planPath = scratch();
     const view = await addKeyword({ planPath, wordId: 'w0000' });
     const added = view.keywords.find((k) => k.wordIds.includes('w0000'));
     expect(added?.templateId).toBe('kw_slam');
     expect(added?.fontSize).toBe(KEYWORD_FONT_SIZE);
-    expect(added?.sfx?.sfxId).toBe('hit_01');
-    // Placed by measurement like every other event: before the word, at the
-    // gain derived from the file's own peak against the reel's dialogue.
-    expect(added?.sfx?.offsetS).toBeLessThan(0);
-    expect(added?.sfx?.gainDb).toBeCloseTo(-11.48, 2);
+  });
+
+  /*
+   * SFX are still re-derived on an edit rather than patched, which is what
+   * keeps them from drifting when the manifest moves — the keyword templates
+   * bind nothing now, so what a promotion must produce is no event at all.
+   */
+  it('adds no sound with the keyword, the hits having been removed', async () => {
+    const planPath = scratch();
+    await addKeyword({ planPath, wordId: 'w0000' });
+    const plan = await readEditPlan(planPath);
+    const added = plan.keywords.items.find((k) => k.wordIds.includes('w0000'));
+    expect(added).toBeDefined();
+    expect(plan.sfx.events.some((e) => e.sourceElementId === added?.id)).toBe(false);
   });
 
   /*

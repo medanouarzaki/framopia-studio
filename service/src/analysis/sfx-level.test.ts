@@ -32,12 +32,10 @@ describe('sfx gain on a real plan', () => {
       plan.source.dialoguePeakDbfs,
     );
     // Per file, because the gain compensates each file's own peak to put them
-    // all on their kind's target.
-    const expected: Record<string, number> = {
-      hit_01: -11.48,
-      hit_02: -12.17,
-      whoosh_01: -13.97,
-    };
+    // all on their kind's target. `whoosh_01` is the only sound bound to
+    // anything since the hits were removed, so it is also what the mix makes
+    // room for: the attenuation is 3.07 dB, not the 3.80 the hits needed.
+    const expected: Record<string, number> = { whoosh_01: -13.24 };
     for (const event of events) {
       expect(event.gainDb, `${event.id} ${event.sfxId}`).toBeCloseTo(
         expected[event.sfxId] as number,
@@ -47,10 +45,10 @@ describe('sfx gain on a real plan', () => {
   });
 
   /*
-   * The gains differ per file and the peaks must not: that is what makes the
-   * balance a rule rather than four numbers.
+   * Every whoosh in the corpus arrives at the same peak, whatever its file's
+   * own level. That is what makes the balance a rule rather than a number.
    */
-  it('lands every sound of a kind on the same peak', async () => {
+  it('lands every sound on the same peak', async () => {
     const plan = await readEditPlan(path.join(FOOTAGE, 'vitasilk.editplan.json'));
     const events = deriveSfxEvents(
       plan,
@@ -60,14 +58,14 @@ describe('sfx gain on a real plan', () => {
       plan.source.dialogueLufs,
       plan.source.dialoguePeakDbfs,
     );
-    const peaks = new Map<string, number>();
-    for (const event of events) {
-      const file = sfxIndex.sfx.find((f) => f.id === event.sfxId);
-      const peak = (file?.measured?.peakDbfs as number) + event.gainDb;
-      peaks.set(event.sfxId, Number(peak.toFixed(1)));
-    }
-    expect(peaks.get('hit_01')).toBe(peaks.get('hit_02'));
-    expect(peaks.get('hit_01')).toBeGreaterThan(peaks.get('whoosh_01') as number);
+    expect(events.length).toBeGreaterThan(0);
+    const peaks = new Set(
+      events.map((event) => {
+        const file = sfxIndex.sfx.find((f) => f.id === event.sfxId);
+        return Number(((file?.measured?.peakDbfs as number) + event.gainDb).toFixed(1));
+      }),
+    );
+    expect(peaks.size).toBe(1);
   });
 
   /*
@@ -77,8 +75,8 @@ describe('sfx gain on a real plan', () => {
   it('falls back to the file’s absolute gain when the reel is unmeasured', async () => {
     const plan = await readEditPlan(path.join(FOOTAGE, 'vitasilk.editplan.json'));
     const events = deriveSfxEvents(plan, templates, sfxIndex, templateImpacts(), undefined);
-    const hit = events.find((e) => e.sfxId.startsWith('hit'));
-    expect(hit?.gainDb).toBeCloseTo(-19.28, 2);
+    expect(events.length).toBeGreaterThan(0);
+    for (const event of events) expect(event.gainDb).toBeCloseTo(-22.77, 2);
   });
 
   it('reproduces the in-points stored on the plan', async () => {

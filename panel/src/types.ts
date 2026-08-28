@@ -271,17 +271,6 @@ export interface TranscriptView {
   transcriptHash: string;
 }
 
-export interface KeywordSfxView {
-  sfxId: string;
-  file: string;
-  fileExists: boolean;
-  gainDb: number;
-  offsetS: number;
-  /** Measured peak, from `npm run sfx:measure`. Null when unmeasured. */
-  peakOffsetS: number | null;
-  timeS: number;
-}
-
 export interface KeywordView {
   id: string;
   wordIds: string[];
@@ -296,9 +285,6 @@ export interface KeywordView {
   templateId: string | null;
   fontSize: number;
   edited: boolean;
-  sfx: KeywordSfxView | null;
-  /** How close it was to the previous hit, when the spacing rule dropped it. */
-  sfxDroppedSinceS: number | null;
 }
 
 export interface PromotableWord {

@@ -458,3 +458,40 @@ the author decides.** **12 of 15 events moved 8.00 frames earlier**; 3 clamp at
 the composition start and their anchors are later than before, because a nearer
 impact needs an earlier start. Full table:
 `benchmarks/RESULTS-block8-sfx-placement.md`.
+
+### The hits are removed — user ruling, 2026-08-29
+
+**No SFX event is bound to a keyword.** The user built `vitasilk`, heard the
+hits, and ruled them out: **the sound fights the animation rather than
+supporting it.** A product decision, not a defect — `kw_slam` and `kw_slam_ar`
+declare `sfx: []`, and `hit_01` and `hit_02` are bound to nothing.
+
+**The files and their measurements stay** in `assets/sfx/sfx.json`. They are
+measured facts — peak offset, first audible sample, anchor, derived gain — and a
+later block may want them; nothing about them is deleted.
+
+**The machinery that existed only for them is gone**, not left behind a flag:
+the hit spacing rule, the hit variation rule (`core/src/sfx-variation.ts`), and
+the keyword picker's sound row along with the explanation it showed when a hit
+had been thinned out. A keyword now has no sound to have or to lack, so the
+panel says nothing in either direction.
+
+**Events across the corpus, before and after:**
+
+| reel | before | after | what went |
+|---|---:|---:|---|
+| ground-truth | 0 | 0 | — |
+| test-1 | 6 | **4** | 2 hits |
+| test-2 | 2 | **0** | 2 hits; it has keywords and no image slots |
+| test-3 | 0 | 0 | — |
+| vitasilk | 7 | **5** | 2 hits |
+| **corpus** | **15** | **9** | **6 hits** |
+
+**The mix is attenuated less, because the loudest bound sound changed.**
+`dialogueAttenuationDb` exists to keep the loudest sound under the ceiling, and
+it was computing against the hits' +6 dB offset while nothing binds a hit.
+`loudestBoundOffsetDb` reads the offsets the manifest actually binds, so the
+figure now follows the whooshes' +3: `vitasilk` goes **3.80 → 3.07 dB** and the
+whoosh gain **−13.97 → −13.24 dB**. The balance is unchanged — the whoosh still
+sits 3 dB above the dialogue as heard — and the whole reel is 0.73 dB louder
+than it needed to be turned down.

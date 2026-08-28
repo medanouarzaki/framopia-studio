@@ -10,7 +10,7 @@ import {
 } from '@framopia/core';
 import { listReels } from './catalogue.js';
 import { readEditPlan, writeEditPlan } from './editplan/io.js';
-import { deriveSfxDetail, deriveSfxEvents } from './analysis/sfx.js';
+import { deriveSfxEvents } from './analysis/sfx.js';
 import { templateImpacts } from './analysis/template-impacts.js';
 import { SCRIPT_VARIANT_SUFFIX } from './analysis/assign.js';
 import { ACTIVE_ANALYSIS_PROMPT_VERSION } from './analysis/keywords.js';
@@ -18,33 +18,19 @@ import { scriptVariantOf } from './transcript-view.js';
 import type { EditPlan, KeywordItem, SfxEvent } from './editplan/types.js';
 
 /**
- * Step 3, the keyword picker: which words are emphasised, what template each
- * takes, and what sound fires with it.
+ * Step 3, the keyword picker: which words are emphasised and what template each
+ * takes.
+ *
+ * **Keywords are silent** — the user removed the hits in Block 8 session 27,
+ * because the sound fought the animation rather than supporting it. Nothing
+ * here shows a binding, and nothing explains an absent one: there is no
+ * absence to explain when no keyword template binds a sound.
  *
  * Everything is derived from the plan, and every edit is written back through
  * `writeEditPlan`, which validates — a keyword naming an unknown word, claiming
  * a removed one or overlapping another cannot reach disk.
  */
 export class KeywordViewError extends Error {}
-
-export interface KeywordSfxView {
-  sfxId: string;
-  /** Absolute path to the audio, so the panel can name it and try to play it. */
-  file: string;
-  fileExists: boolean;
-  gainDb: number;
-  /** Seconds after the card's start. */
-  offsetS: number;
-  /**
-   * Where the file's loudest point is, measured by `npm run sfx:measure`. The
-   * preview seeks here so the user hears the impact rather than the run-up —
-   * `hit_01`'s peak is 2.05 s in, so playing from the start is two seconds of
-   * lead before the sound he is judging.
-   */
-  peakOffsetS: number | null;
-  /** Absolute time on the reel. */
-  timeS: number;
-}
 
 export interface KeywordView {
   id: string;
@@ -62,13 +48,6 @@ export interface KeywordView {
   templateId: string | null;
   fontSize: number;
   edited: boolean;
-  sfx: KeywordSfxView | null;
-  /**
-   * Why this keyword has no sound, when it has none. A hit thinned out for
-   * landing too close to the previous one is a rule doing its job, and the
-   * panel must not show it the same way as a missing binding.
-   */
-  sfxDroppedSinceS: number | null;
 }
 
 /** A word that could be promoted: not already a keyword, not removed. */
@@ -124,31 +103,6 @@ function scriptOf(plan: EditPlan, wordIds: string[]): 'latin' | 'arabic' {
   return scripts.includes('arabic') ? 'arabic' : 'latin';
 }
 
-function sfxViewOf(
-  plan: EditPlan,
-  keyword: KeywordItem,
-): KeywordSfxView | null {
-  const event: SfxEvent | undefined = plan.sfx.events.find(
-    (e) => e.sourceElementId === keyword.id,
-  );
-  if (event === undefined) return null;
-  const entry = loadSfxIndex().sfx.find((s) => s.id === event.sfxId);
-  const file =
-    entry === undefined
-      ? ''
-      : path.join(REPO_ROOT, 'assets', 'sfx', entry.file);
-  const measured = (entry as { measured?: { peakOffsetS?: number } } | undefined)?.measured;
-  return {
-    sfxId: event.sfxId,
-    file,
-    fileExists: file !== '' && existsSync(file),
-    gainDb: event.gainDb,
-    offsetS: Number((event.timeS - keyword.start).toFixed(3)),
-    peakOffsetS: typeof measured?.peakOffsetS === 'number' ? measured.peakOffsetS : null,
-    timeS: event.timeS,
-  };
-}
-
 export async function keywordsView(reelLabel: string): Promise<KeywordsView> {
   const { planPath } = planFor(reelLabel);
   return viewOf(await readEditPlan(planPath), planPath, reelLabel);
@@ -175,17 +129,6 @@ function viewOf(
   // Re-derived rather than read off the plan: the plan records the events that
   // survived, and a keyword the spacing rule thinned out leaves nothing behind
   // to distinguish it from one whose template binds no sound at all.
-  const droppedSince = new Map<string, number>(
-    deriveSfxDetail(
-      plan,
-      templatesById(loadTemplateManifest()),
-      loadSfxIndex(),
-      templateImpacts(),
-      plan.source.dialogueLufs,
-      plan.source.dialoguePeakDbfs,
-    ).dropped.map((d) => [d.elementId, d.sinceS]),
-  );
-
   const keywords: KeywordView[] = [...plan.keywords.items]
     .sort((a, b) => a.start - b.start || a.id.localeCompare(b.id))
     .map((k) => ({
@@ -202,8 +145,6 @@ function viewOf(
       templateId: k.templateId,
       fontSize: KEYWORD_FONT_SIZE,
       edited: k.edited === true,
-      sfx: sfxViewOf(plan, k),
-      sfxDroppedSinceS: droppedSince.get(k.id) ?? null,
     }));
 
   const claimed = new Set(plan.keywords.items.flatMap((k) => k.wordIds));

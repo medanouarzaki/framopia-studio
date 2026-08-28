@@ -73,34 +73,29 @@ describe('every image gets a sound', () => {
   });
 });
 
-describe('the corpus under the spacing and variation rules', () => {
-  it('thins the three hits the user heard as mechanical', async () => {
-    const { detail } = await derive('vitasilk');
-    const hits = detail.events.filter((e) => e.sfxId.startsWith('hit'));
-    expect(hits).toHaveLength(2);
-    expect(new Set(hits.map((h) => h.sfxId)).size).toBe(2);
-    expect(detail.dropped.map((d) => d.elementId)).toEqual(['k002']);
+describe('the corpus, with keywords silent', () => {
+  /*
+   * The user removed the hits in Block 8 session 27: he heard them on a built
+   * reel and ruled that the sound fought the animation. No keyword template
+   * binds anything, so no keyword produces an event.
+   */
+  it('produces no keyword event anywhere', async () => {
+    for (const reel of REELS) {
+      const { plan, detail } = await derive(reel);
+      const keywordIds = new Set(plan.keywords.items.map((k) => k.id));
+      expect(detail.events.filter((e) => keywordIds.has(e.sourceElementId)), reel).toEqual([]);
+      expect(detail.events.filter((e) => e.sfxId.startsWith('hit')), reel).toEqual([]);
+    }
   });
 
-  it('drops one on test-2 and varies nothing, its pair being far apart', async () => {
-    const { detail } = await derive('test 2');
-    expect(detail.dropped.map((d) => d.elementId)).toEqual(['k003']);
-    expect(detail.varied).toEqual([]);
-  });
-
-  it('leaves test-1 alone: two keywords four seconds apart', async () => {
-    const { detail } = await derive('test 1');
-    expect(detail.dropped).toEqual([]);
-    expect(detail.varied).toEqual([]);
-  });
-
-  /* No two images in this corpus are close enough for either rule to fire. */
-  it('never varies or drops a whoosh anywhere in the corpus', async () => {
+  it('leaves the whooshes as the only sound in the corpus', async () => {
+    let total = 0;
     for (const reel of REELS) {
       const { detail } = await derive(reel);
-      expect(detail.dropped.filter((d) => d.sfxId.startsWith('whoosh')), reel).toEqual([]);
-      expect(detail.varied.filter((v) => v.bound.startsWith('whoosh')), reel).toEqual([]);
+      total += detail.events.length;
+      expect(detail.events.every((e) => e.sfxId.startsWith('whoosh')), reel).toBe(true);
     }
+    expect(total).toBe(9);
   });
 
   it('is stable: deriving twice gives the same events', async () => {

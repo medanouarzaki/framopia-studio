@@ -1194,13 +1194,11 @@ const KEYWORDS = {
       start: 6.98, end: 7.579, reason: 'names the specific product being promoted',
       score: 0.95, kind: 'label', script: 'latin', templateId: 'kw_slam',
       fontSize: 425, edited: false,
-      sfx: { sfxId: 'hit_01', file: '/repo/assets/sfx/hit_01.mp3', fileExists: true, gainDb: -20, offsetS: 0.13, peakOffsetS: 2.0525, timeS: 7.11 },
     },
     {
       id: 'k002', wordIds: ['w0030'], text: 'ترطيب', cardId: 'g031',
       start: 9.1, end: 9.6, reason: '', score: 1, kind: null, script: 'arabic',
       templateId: 'kw_slam_ar', fontSize: 425, edited: true,
-      sfx: { sfxId: 'hit_01', file: '/repo/assets/sfx/hit_01.mp3', fileExists: true, gainDb: -20, offsetS: 0.13, peakOffsetS: 2.0525, timeS: 9.23 },
     },
   ],
   promotable: [
@@ -1236,7 +1234,6 @@ describe.skipIf(!built)('the keyword picker', () => {
             id: 'k900', wordIds: [word.wordId], text: word.text, cardId: word.cardId,
             start: word.start, end: word.end, reason: '', score: 1, kind: null,
             script: word.script, templateId: 'kw_slam', fontSize: 425, edited: true,
-            sfx: { sfxId: 'hit_01', file: '/repo/assets/sfx/hit_01.mp3', fileExists: true, gainDb: -20, offsetS: 0.13, peakOffsetS: 2.0525, timeS: word.start + 0.13 },
           };
           window.__keywords = Object.assign({}, window.__keywords, {
             keywords: window.__keywords.keywords.concat([added]),
@@ -1259,7 +1256,7 @@ describe.skipIf(!built)('the keyword picker', () => {
     return { page, uncaught };
   }
 
-  it('shows each keyword with its card, template, size and sound', async () => {
+  it('shows each keyword with its card, template and size', async () => {
     const loaded = await loadKeywords();
     if (loaded === null) return;
     await loaded.page.waitForSelector('ol.keywords li', { timeout: 5000 });
@@ -1268,10 +1265,24 @@ describe.skipIf(!built)('the keyword picker', () => {
     expect(text).toContain('g022');
     expect(text).toContain('kw_slam');
     expect(text).toContain('425');
-    expect(text).toContain('hit_01 at +0.13s, -20 dB');
-    // The measured peak, so it is visible that the file's impact is not at zero.
-    expect(text).toContain('peak 2.053s into the file');
     expect(text).toContain('names the specific product being promoted');
+    await loaded.page.close();
+  });
+
+  /*
+   * The user removed the hits in Block 8 session 27. The picker showed the
+   * binding and, when there was none, said why — both are gone, because a
+   * keyword now has no sound to have or to lack.
+   */
+  it('says nothing about sound, in either direction', async () => {
+    const loaded = await loadKeywords();
+    if (loaded === null) return;
+    await loaded.page.waitForSelector('ol.keywords li', { timeout: 5000 });
+    const text = (await loaded.page.textContent('ol.keywords')) ?? '';
+    expect(text).not.toContain('sfx');
+    expect(text).not.toContain('hit_01');
+    expect(text).not.toContain('dB');
+    expect(await loaded.page.$$('ol.keywords button[aria-label^="Play"]')).toHaveLength(0);
     await loaded.page.close();
   });
 

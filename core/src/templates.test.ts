@@ -149,14 +149,27 @@ describe('the files on disk', () => {
   // The Block 7 session 3 ruling: keywords punctuate with a hit, images lead
   // with a whoosh, subtitles stay silent because they fire ~190 times a reel
   // and any sound there becomes noise.
-  it('bind sfx by element type, and leave subtitles silent', () => {
+  /*
+   * Subtitles have always been silent — they fire about 190 times a reel — and
+   * **keywords are silent too since Block 8 session 27**, when the user heard
+   * the hits and ruled them out: the sound fought the animation rather than
+   * supporting it. `hit_01` and `hit_02` stay in the index with their
+   * measurements; nothing binds them.
+   */
+  it('bind sfx to images only, leaving subtitles and keywords silent', () => {
     const byType: Record<string, string[]> = {};
     for (const t of loaded.templates) {
       byType[t.type] = (byType[t.type] ?? []).concat(t.sfx.map((b) => b.sfxId));
     }
     expect(byType.subtitle).toEqual([]);
-    expect(byType.keyword).toEqual(['hit_01', 'hit_01']);
+    expect(byType.keyword).toEqual([]);
     expect(byType.image).toEqual(['whoosh_01', 'whoosh_01']);
+  });
+
+  it('still declares both hits, measured and available to a later block', () => {
+    const ids = loadSfxIndex().sfx.map((s) => s.id);
+    expect(ids).toContain('hit_01');
+    expect(ids).toContain('hit_02');
   });
 
   /*

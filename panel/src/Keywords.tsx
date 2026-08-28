@@ -5,11 +5,13 @@ import {
   removeKeyword,
   type Connection,
 } from './service.js';
-import type { KeywordsView, KeywordSfxView } from './types.js';
+import type { KeywordsView } from './types.js';
 
 /**
- * Step 3. Which words are emphasised, what template each takes, and what sound
- * fires with it.
+ * Step 3. Which words are emphasised and what template each takes.
+ *
+ * **Keywords are silent** since Block 8 session 27: the user removed the hits,
+ * so there is no binding to show and no absence to explain.
  *
  * Every figure is the service's, derived from the plan. The panel renders it
  * and posts the two edits — promote a word, drop a keyword — back.
@@ -24,7 +26,6 @@ export function Keywords({
   const [view, setView] = useState<KeywordsView | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
-  const [audioError, setAudioError] = useState<string | null>(null);
 
   useEffect(() => {
     if (connection === null || reel === null) {
@@ -126,27 +127,8 @@ export function Keywords({
               ) : (
                 <em className="src">{keyword.reason}</em>
               )}
-              {keyword.sfx === null ? (
-                <em className="tag">
-                  {keyword.sfxDroppedSinceS === null
-                    ? 'no sfx'
-                    : `no sfx: ${keyword.sfxDroppedSinceS.toFixed(2)}s after the previous hit`}
-                </em>
-              ) : (
-                <em className="src">{sfxLine(keyword.sfx)}</em>
-              )}
             </span>
             <span className="wactions">
-              {keyword.sfx === null || !keyword.sfx.fileExists ? null : (
-                <button
-                  type="button"
-                  className="chip"
-                  aria-label={`Play ${keyword.sfx.sfxId}`}
-                  onClick={() => play(keyword.sfx as KeywordSfxView, setAudioError)}
-                >
-                  Play
-                </button>
-              )}
               <button
                 type="button"
                 className="chip"
@@ -159,12 +141,6 @@ export function Keywords({
           </li>
         ))}
       </ol>
-
-      {audioError === null ? null : (
-        <p className="reason" role="status">
-          {audioError}
-        </p>
-      )}
 
       <div className="card" style={{ marginTop: 12 }}>
         <button type="button" className="chip" onClick={() => setAdding(!adding)}>
@@ -213,50 +189,3 @@ export function sourceLine(view: KeywordsView): string {
   return `From analysis prompt v${view.source.promptVersion}, mode ${view.source.mode}, stage ${view.source.stageStatus} — ${entry}.`;
 }
 
-/** The binding, in words, whether or not the sound can be played. */
-export function sfxLine(sfx: KeywordSfxView): string {
-  const peak =
-    sfx.peakOffsetS === null
-      ? ', peak unmeasured'
-      : `, peak ${sfx.peakOffsetS.toFixed(3)}s into the file`;
-  return `${sfx.sfxId} at +${sfx.offsetS.toFixed(2)}s, ${sfx.gainDb} dB${peak}`;
-}
-
-/** How much of the run-up to keep before the peak. Chosen, not measured. */
-const PREVIEW_LEAD_S = 0.2;
-
-/**
- * Plays the bound sound at its own gain.
- *
- * The panel cannot play through After Effects, so this is the browser's own
- * audio element pointed at the file on disk. It works from a `file://` page
- * because the manifest declares `allow-file-access-from-files`; a failure is
- * reported rather than swallowed, so a control that cannot work says so instead
- * of doing nothing.
- */
-function play(sfx: KeywordSfxView, onError: (message: string | null) => void): void {
-  try {
-    const audio = new Audio(`file://${sfx.file}`);
-    // -20 dB is a tenth of full scale; the same figure the build applies.
-    audio.volume = Math.min(1, Math.max(0, 10 ** (sfx.gainDb / 20)));
-    /*
-     * Seeks to just before the measured peak rather than playing from the
-     * file's start. `hit_01`'s loudest point is 2.05 s in, so playing from zero
-     * is two seconds of run-up before the sound being judged.
-     */
-    if (sfx.peakOffsetS !== null && sfx.peakOffsetS > PREVIEW_LEAD_S) {
-      audio.addEventListener('loadedmetadata', () => {
-        audio.currentTime = (sfx.peakOffsetS as number) - PREVIEW_LEAD_S;
-      });
-    }
-    audio.addEventListener('error', () =>
-      onError(`Could not play ${sfx.file}. The build still uses it at ${sfx.gainDb} dB.`),
-    );
-    onError(null);
-    void audio.play().catch(() =>
-      onError(`Could not play ${sfx.file}. The build still uses it at ${sfx.gainDb} dB.`),
-    );
-  } catch {
-    onError(`Could not play ${sfx.file}. The build still uses it at ${sfx.gainDb} dB.`);
-  }
-}
