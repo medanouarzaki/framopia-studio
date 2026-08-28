@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { chooseImage, fetchImages, type Connection } from './service.js';
+import { chooseImage, chooseImageSide, fetchImages, type Connection } from './service.js';
 import { fileUrl, pictureFor } from './picture.js';
 import type { CandidateView, ImageSlotView, ImagesView } from './types.js';
 
@@ -73,6 +73,15 @@ export function Images({
     );
   };
 
+  const moveTo = (slotId: string, band: 'above' | 'left' | 'right' | null): void => {
+    if (connection === null) return;
+    setError(null);
+    void chooseImageSide(connection, { planPath: view.planPath, slotId, band }).then(
+      setView,
+      (f: Error) => setError(f.message),
+    );
+  };
+
   const withCandidates = view.slots.filter((s) => s.candidates.length > 0);
   const chosen = view.slots.filter((s) => s.chosenCandidateId !== null).length;
 
@@ -101,7 +110,7 @@ export function Images({
       <ol className="slots">
         {view.slots.map((slot) => (
           <li key={slot.id}>
-            <Slot slot={slot} view={view} onChoose={choose} />
+            <Slot slot={slot} view={view} onChoose={choose} onMove={moveTo} />
           </li>
         ))}
       </ol>
@@ -113,10 +122,12 @@ function Slot({
   slot,
   view,
   onChoose,
+  onMove,
 }: {
   slot: ImageSlotView;
   view: ImagesView;
   onChoose: (slotId: string, candidateId: string | null) => void;
+  onMove: (slotId: string, band: 'above' | 'left' | 'right' | null) => void;
 }): JSX.Element {
   return (
     <div className="card">
@@ -135,6 +146,8 @@ function Slot({
           ? ' Nothing is checked automatically about these pictures — judge them by eye.'
           : ''}
       </p>
+
+      <Where slot={slot} onMove={onMove} />
 
       {slot.candidates.length === 0 ? (
         <p className="reason" role="status">
@@ -172,6 +185,63 @@ function Slot({
           </ul>
         </>
       )}
+    </div>
+  );
+}
+
+/**
+ * Where the picture sits, and the other sides of the speaker it could sit on.
+ *
+ * **These are sides, not the stored zones.** Twenty of those exist on
+ * `vitasilk`, derived from the person mask, and placement has not read them
+ * since Block 7 session 9 — it works from the face mask now. Offering a list of
+ * rectangles would be a control pretending to a choice that no longer exists;
+ * the real choice is which side of the speaker, and how big each one lets the
+ * picture be.
+ */
+function Where({
+  slot,
+  onMove,
+}: {
+  slot: ImageSlotView;
+  onMove: (slotId: string, band: 'above' | 'left' | 'right' | null) => void;
+}): JSX.Element | null {
+  const options = slot.placementOptions;
+  if (slot.placedWhere == null || options === undefined) return null;
+  const current = options.find((o) => o.label === slot.placedWhere);
+  return (
+    <div className="where">
+      <p className="reason">
+        Sits <strong>{slot.placedWhere}</strong>
+        {slot.placedSidePx == null ? '' : `, ${slot.placedSidePx} px across`}
+        {slot.placementChosenByHuman === true
+          ? ' — your choice.'
+          : ' — the roomiest side, picked for you.'}
+      </p>
+      <div className="wactions">
+        {options.map((option) => (
+          <button
+            key={option.key}
+            type="button"
+            className="chip"
+            disabled={!option.usable || option.label === current?.label}
+            aria-label={`Put ${slot.id} ${option.label}`}
+            onClick={() => onMove(slot.id, option.key)}
+          >
+            {option.label} · {option.sidePx} px
+          </button>
+        ))}
+        {slot.placementChosenByHuman === true ? (
+          <button
+            type="button"
+            className="chip"
+            aria-label={`Let the tool choose for ${slot.id}`}
+            onClick={() => onMove(slot.id, null)}
+          >
+            let the tool choose
+          </button>
+        ) : null}
+      </div>
     </div>
   );
 }

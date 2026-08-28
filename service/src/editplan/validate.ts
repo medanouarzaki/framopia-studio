@@ -335,6 +335,9 @@ function checkKeywords(c: Checker, value: unknown, words: Map<string, Rec>): voi
 }
 
 const PRESENTATIONS = new Set(['cutout', 'card']);
+/** Which side of the speaker a human may put an image on. */
+const PLACEMENT_BANDS = new Set(['above', 'left', 'right']);
+
 const SLOT_STATUSES = new Set(['pending', 'generated', 'approved']);
 
 /**
@@ -437,6 +440,9 @@ function checkImages(c: Checker, value: unknown, words: Map<string, Rec>): void 
       }
     });
     c.nullableString(`${p}.chosenCandidateId`, slot.chosenCandidateId);
+    if (slot.placementBand !== undefined) {
+      c.oneOf(`${p}.placementBand`, slot.placementBand, PLACEMENT_BANDS);
+    }
     // Optional with a default: absent on every plan written before Block 8
     // session 30, and on any slot whose choice did not override the gate.
     if (slot.overriddenGateFailures !== undefined) {

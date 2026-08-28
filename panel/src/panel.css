@@ -427,3 +427,12 @@ ol.keywords { list-style: none; margin: 14px 0 0; padding: 0; }
   width: 76px;
   height: 76px;
 }
+
+/* Where an image sits, and the other sides it could sit on. */
+.where {
+  margin: 8px 0 4px;
+}
+
+.where .wactions {
+  margin-top: 4px;
+}

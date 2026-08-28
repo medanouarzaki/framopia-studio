@@ -3,6 +3,7 @@ import {
   FRAME_HEIGHT,
   FRAME_WIDTH,
   HEAD_CLEARANCE,
+  MIN_PLACED_SHORT_EDGE,
   SUBTITLE_BAND,
   TOP_LEFT_JITTER,
   TOP_LEFT_MARGIN,
@@ -45,7 +46,21 @@ export interface ImagePlacementInput {
   jitter?: number;
   /** The client mode's `imageScale`, default 1.0. */
   scale?: number;
+  /**
+   * The side of the speaker a human chose. Absent takes the largest band, which
+   * is the normal case. A band too small to hold anything is refused rather
+   * than honoured — see `bandChoices`.
+   */
+  prefer?: 'above' | 'left' | 'right';
 }
+
+/** The key a human's choice uses, for each band. */
+export const BAND_KEY: Record<PlacementBand, 'above' | 'left' | 'right' | null> = {
+  'above the face': 'above',
+  'left of the face': 'left',
+  'right of the face': 'right',
+  'the frame': null,
+};
 
 export interface ImagePlacementDetail {
   rect: Rect;
@@ -122,7 +137,11 @@ export function placeImageDetail(input: ImagePlacementInput): ImagePlacementDeta
   const scale = input.scale ?? 1;
 
   const bands = bandsAround(input.faceBox, marginPx, clearancePx);
-  const best = bands.reduce((a, b) => (sideOf(b) > sideOf(a) ? b : a));
+  const preferred =
+    input.prefer === undefined
+      ? undefined
+      : bands.find((b) => BAND_KEY[b.name] === input.prefer && sideOf(b) > 0);
+  const best = preferred ?? bands.reduce((a, b) => (sideOf(b) > sideOf(a) ? b : a));
   const bandSidePx = sideOf(best);
 
   const wantedSidePx = bandSidePx * scale;
@@ -182,4 +201,58 @@ export function placementIsSafe(
     rect.y < grown.y + grown.h - epsilon &&
     grown.y < rect.y + rect.h - epsilon;
   return { insideFrame, clearsFace: !overlaps };
+}
+
+export interface BandChoice {
+  /** The value a human's choice stores. */
+  key: 'above' | 'left' | 'right';
+  /** Which side of the speaker, in words. */
+  label: string;
+  /** The largest square this band could hold, in source pixels. */
+  sidePx: number;
+  /** False when the band is too narrow to hold a picture at all. */
+  usable: boolean;
+}
+
+/**
+ * The sides of the speaker this slot could sit on, and how big a picture each
+ * would take.
+ *
+ * **This is what the zone editor can honestly offer.** The stored zones — 20 on
+ * `vitasilk`, derived from the person mask — have not been read by placement
+ * since Block 7 session 9, and the placement is derived from the face mask
+ * rather than chosen from a list. So the real choice is not which of twenty
+ * rectangles, it is which side of the speaker; offering the rectangles would be
+ * a control pretending to a choice that no longer exists.
+ */
+export function bandChoices(
+  faceBox: Rect | null,
+  options: { marginW?: number; clearanceW?: number } = {},
+): BandChoice[] {
+  const marginPx = (options.marginW ?? TOP_LEFT_MARGIN) * FRAME_WIDTH;
+  const clearancePx = (options.clearanceW ?? HEAD_CLEARANCE) * FRAME_WIDTH;
+  const labels: Record<string, string> = {
+    above: 'above you',
+    left: 'to your left',
+    right: 'to your right',
+  };
+  return bandsAround(faceBox, marginPx, clearancePx)
+    .map((band) => ({ band, key: BAND_KEY[band.name] }))
+    .filter((b): b is { band: Band; key: 'above' | 'left' | 'right' } => b.key !== null)
+    .map(({ band, key }) => {
+      const sidePx = sideOf(band);
+      return {
+        key,
+        label: labels[key] as string,
+        sidePx,
+        /*
+         * `MIN_PLACED_SHORT_EDGE` — 324 px — is the project's own answer to how
+         * small a placed image may be before it stops being worth showing,
+         * settled in Block 5 against the zone predicate and stated in terms of
+         * the picture a viewer sees. `vitasilk`'s `img002` has 205 px to the
+         * speaker's right, which is a strip rather than a picture.
+         */
+        usable: sidePx >= MIN_PLACED_SHORT_EDGE * FRAME_WIDTH,
+      };
+    });
 }

@@ -192,6 +192,7 @@ for (const slot of plan.images.slots) {
     faceBox,
     seed: `${plan.meta.id}:${slot.id}`,
     scale: imageScale,
+    prefer: slot.placementBand,
   });
   const safe = placementIsSafe(detail.rect, faceBox);
   if (!safe.insideFrame || !safe.clearsFace) {
@@ -204,6 +205,7 @@ for (const slot of plan.images.slots) {
   imagePlacements[slot.id] = detail.rect;
   console.log(
     `${slot.id}: ${(detail.rect.w * plan.source.width).toFixed(0)}px ${detail.band}` +
+      (slot.placementBand === undefined ? '' : ' (your choice)') +
       (detail.clamped
         ? `, smaller than the ${imageScale}x asked for (the band holds ${detail.bandSidePx.toFixed(0)}px)`
         : ''),

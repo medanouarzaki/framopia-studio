@@ -77,7 +77,9 @@ for (const file of readdirSync(FOOTAGE_DIR).filter((f) => f.endsWith('.editplan.
     const seed = `${plan.meta.id}:${slot.id}`;
     // The corner rule, kept only to report what moving off it is worth.
     const was = topLeftPlacementDetail({ faceBox, seed, scale: imageScale }).rect;
-    const detail = placeImageDetail({ faceBox, seed, scale: imageScale });
+    const detail = placeImageDetail({
+      faceBox, seed, scale: imageScale, prefer: slot.placementBand,
+    });
     const rect = detail.rect;
     if (detail.clamped) clamped += 1;
     out[slot.id] = rect;
