@@ -182,6 +182,42 @@ That sentence, above, was true when it was written and is not now: the fallback
 has fired on **8 of 10** real candidates. It is the normal case, not the
 exception.
 
+## Amendment (2026-08-29) — nothing measures whether the picture shows the idea
+
+**This is the substantive image defect, and it is not the gate's.**
+
+The gate measures cutout quality. **No check compares a generated picture
+against the idea it was generated from**, so on a slot that renders whole —
+which is nearly all of them — nothing is measured about the picture at all. Once
+the cutout metrics are scoped to the slots they affect, that is plain: those
+candidates carry no verdict because there is none to carry.
+
+Seen on `vitasilk`, every one of these passing every check that exists:
+
+| slot | the idea asked for | both candidates show |
+|---|---|---|
+| `img001` | a clock face showing exactly five minutes | roughly quarter past |
+| `img003` | capsules and molecular structures | an undifferentiated swirl |
+| `img004` | a woman at a mirror | two women, no clear mirror |
+
+**What it would take**, none of which is a threshold:
+
+- **A reworked prompt.** The composed prompt carries the mode's style and the
+  slot's idea; whether the idea survives into the picture is a prompt-authoring
+  question, and the corpus already shows the model dropping specifics — the
+  clock is the clearest case.
+- **A check.** A vision call comparing the picture against the idea, which is a
+  billable model call per candidate and a new stage with its own cache,
+  fingerprint and cost.
+- **A human pass.** The picker built in Block 8 session 30 is the place for it;
+  what it lacks is not a control but a reason for the user to trust or distrust
+  what he sees.
+
+**It is Block 9 work.** Block 9 owns the client's visual identity and the
+prompts that carry it, so the prompt option and the check option both belong to
+whoever settles what a K2 picture should look like. Nothing was attempted here;
+naming it correctly is the deliverable.
+
 ## References
 
 - `benchmarks/RESULTS-block4-imagebakeoff.md` — the six-image comparison.
