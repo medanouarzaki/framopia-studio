@@ -489,6 +489,27 @@ flex `gap` (84), `overflow-wrap: anywhere` (80), custom properties (49).
 
 ### The panel is a five-step view over the plan, never a wizard
 
+**Selecting a reel or a mode never navigates** (user ruling). It used to jump to
+the furthest step the plan supported, which hid every step in between and left
+Build open on a reel with no keywords. The rail updates availability; the user
+chooses. The only automatic move is off a step the new plan cannot show.
+
+**Which step a reel opens on is remembered per reel in `localStorage`**, keyed
+`framopia.panel.last-step`. Closing a CEP panel unloads the page, so React state
+cannot survive it. It is a **view preference, never a fact about the plan**, so
+it does not reach the Edit Plan: two people opening the same reel are entitled
+to be looking at different steps. Every access is guarded — a `file://` page
+with site data disabled throws on the accessor itself.
+
+**`resumeAt` is gone.** It was session 15's navigation rule and nothing reads it
+now; it was removed with the test that pinned it rather than left unreferenced.
+
+**Build opens whenever there are subtitle cards, and that is the stated rule.**
+A subtitles-only comp is a legitimate build: keywords and images are
+enrichments, and `ground-truth` builds 76 cards with neither. The pane says what
+the comp **would and would not** contain, and names each buildability issue
+rather than counting them.
+
 `1 Reel · 2 Transcript · 3 Keywords · 4 Images · 5 Build`. **Step availability
 and where the panel opens are derived from the Edit Plan on disk**, by
 `stepsFor` in `service/src/steps.ts`, served at `GET /steps?reel=&mode=`. The
@@ -543,6 +564,41 @@ The panel spawns `<repo>/service/dist/service.js`. `npm run service:build`
 builds it; `npm run service` builds and starts it from a terminal. The panel
 re-checks that the file exists **on every attempt**, against the freshly
 resolved root, so the message cannot outlive the condition.
+
+### ffmpeg and ffprobe are resolved too, for the same reason as Node
+
+The panel reported `ffmpeg version 8.0.1` and, eight minutes later, `missing`,
+with nothing changed on the machine. The first reading came from a service the
+user had started **from a terminal**, which inherits a shell `PATH`; the second
+from one **After Effects spawned**, which does not. Homebrew is not on that
+path. **ffmpeg detection had never worked in a panel-spawned service, and a
+terminal-started process had been masking it.**
+
+`resolveFfmpegPath` in `core/src/ffmpeg-path.ts` resolves each tool
+independently: `ffmpegPath`/`ffprobePath` in `.local/config.json` →
+`/opt/homebrew/bin` → `/usr/local/bin` → `PATH`. Nothing is version-pinned —
+Homebrew's `bin` is a directory of symlinks, so no Cellar version appears — and
+`PATH` stays last rather than absent, because a machine that installs elsewhere
+and puts it on the path is working. `verified` says which case it is.
+
+**Every call site uses it**: `service/src/health.ts`,
+`service/src/transcription/media.ts`, `service/src/frames/sample.ts`,
+`benchmarks/src/audio.ts` and `tools/measure-watermark/cli.ts`. A second site
+left on `PATH` reproduces the defect somewhere less visible.
+
+**The resolved path is in the health payload and on screen**, under the version
+each tool reported, exactly as Node's is. A failure names every candidate tried
+and what each returned.
+
+### The panel says which service answered
+
+`GET /health` reports the service's own `pid` and `startedAt`, and `connect`
+reports whether the panel **spawned** it or found it **already running**. The
+panel shows one quiet line: `Started by the panel · pid 21204 · since 01:34:13`.
+
+It exists because a terminal-started service and a panel-spawned one disagree
+about what the machine has — that is what the ffmpeg reading above was — and
+nothing on screen distinguished them.
 
 ### The panel spawns Node directly, at a resolved absolute path
 
@@ -5049,6 +5105,32 @@ leaving a number whose meaning the user had to guess. Session 14's "$1.73" was
 $0.18 analysis plus that flat $1.55, and its claim that this re-measured part
 1's ~$1.21 was wrong: **~$1.21 was and is right**, and matches
 `docs/DECISION-image-config.md`'s four-slot measured row of $1.203.
+
+## Block 8 part 2, session 16 — four defects from the user's first real pass
+
+**Spent $0.00; no API was called.** Ledger 108 entries / sha `50ec3f57…` at both
+ends. After Effects was not driven.
+
+The rail is confirmed on CEP — one row docked, all five labels wide, no red.
+What the pass found, and the conventions above now carry: **ffmpeg was never
+being found by a panel-spawned service**; the panel could not say **which
+service** it was reading; **picking a reel navigated**; and **Build's rule was
+undeclared**.
+
+**The dry run understated a second class of reel.** Session 15 computed from
+*uncached candidates*, so a reel with no slots planned at all computed to zero
+images and read $0.18 — while a run would plan slots and generate them.
+`ground-truth`, `test-2` and `test-3` now read **$1.63**, using
+`imageSlotCountFor` — the planner's own rule, so the two cannot drift — and the
+figure is labelled as a **planned** slot count rather than a known one.
+
+| reel | images stage | total |
+|---|---|---:|
+| ground-truth | none planned; ~4 slots, 8 candidates | **$1.63** |
+| test-1 | 0 of 8 cached | **$1.63** |
+| test-2 | none planned; ~4 slots, 8 candidates | **$1.63** |
+| test-3 | none planned; ~4 slots, 8 candidates | **$1.63** |
+| vitasilk | 10 of 10 cached | $0.18 |
 
 See `docs/BLOCKS.md` for the full block plan and `handoffs/` for prior
 session context.
