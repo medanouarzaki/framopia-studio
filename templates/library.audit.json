@@ -80,12 +80,40 @@
                   "index": 1,
                   "time": 0,
                   "value": 30,
+                  "inInterpolation": "BEZIER",
+                  "outInterpolation": "BEZIER",
+                  "inEase": [
+                    {
+                      "influence": 66,
+                      "speed": 0
+                    }
+                  ],
+                  "outEase": [
+                    {
+                      "influence": 14,
+                      "speed": -535.178571428571
+                    }
+                  ],
                   "unreadable": null
                 },
                 {
                   "index": 2,
                   "time": 0.4004004004004,
                   "value": 0,
+                  "inInterpolation": "BEZIER",
+                  "outInterpolation": "BEZIER",
+                  "inEase": [
+                    {
+                      "influence": 66,
+                      "speed": 0
+                    }
+                  ],
+                  "outEase": [
+                    {
+                      "influence": 14,
+                      "speed": 0
+                    }
+                  ],
                   "unreadable": null
                 }
               ]
@@ -98,12 +126,40 @@
                   "index": 1,
                   "time": 0,
                   "value": 0,
+                  "inInterpolation": "BEZIER",
+                  "outInterpolation": "BEZIER",
+                  "inEase": [
+                    {
+                      "influence": 66,
+                      "speed": 0
+                    }
+                  ],
+                  "outEase": [
+                    {
+                      "influence": 14,
+                      "speed": 1783.92857142857
+                    }
+                  ],
                   "unreadable": null
                 },
                 {
                   "index": 2,
                   "time": 0.4004004004004,
                   "value": 100,
+                  "inInterpolation": "BEZIER",
+                  "outInterpolation": "BEZIER",
+                  "inEase": [
+                    {
+                      "influence": 66,
+                      "speed": 0
+                    }
+                  ],
+                  "outEase": [
+                    {
+                      "influence": 14,
+                      "speed": 0
+                    }
+                  ],
                   "unreadable": null
                 }
               ]
@@ -181,12 +237,40 @@
                   "index": 1,
                   "time": 0,
                   "value": 30,
+                  "inInterpolation": "BEZIER",
+                  "outInterpolation": "BEZIER",
+                  "inEase": [
+                    {
+                      "influence": 66,
+                      "speed": 0
+                    }
+                  ],
+                  "outEase": [
+                    {
+                      "influence": 14,
+                      "speed": -535.178571428571
+                    }
+                  ],
                   "unreadable": null
                 },
                 {
                   "index": 2,
                   "time": 0.4004004004004,
                   "value": 0,
+                  "inInterpolation": "BEZIER",
+                  "outInterpolation": "BEZIER",
+                  "inEase": [
+                    {
+                      "influence": 66,
+                      "speed": 0
+                    }
+                  ],
+                  "outEase": [
+                    {
+                      "influence": 14,
+                      "speed": 0
+                    }
+                  ],
                   "unreadable": null
                 }
               ]
@@ -203,6 +287,36 @@
                     85,
                     100
                   ],
+                  "inInterpolation": "BEZIER",
+                  "outInterpolation": "BEZIER",
+                  "inEase": [
+                    {
+                      "influence": 66,
+                      "speed": 0
+                    },
+                    {
+                      "influence": 66,
+                      "speed": 0
+                    },
+                    {
+                      "influence": 66,
+                      "speed": 0
+                    }
+                  ],
+                  "outEase": [
+                    {
+                      "influence": 14,
+                      "speed": 267.589285714286
+                    },
+                    {
+                      "influence": 14,
+                      "speed": 267.589285714286
+                    },
+                    {
+                      "influence": 14,
+                      "speed": 0
+                    }
+                  ],
                   "unreadable": null
                 },
                 {
@@ -212,6 +326,36 @@
                     100,
                     100,
                     100
+                  ],
+                  "inInterpolation": "BEZIER",
+                  "outInterpolation": "BEZIER",
+                  "inEase": [
+                    {
+                      "influence": 66,
+                      "speed": 0
+                    },
+                    {
+                      "influence": 66,
+                      "speed": 0
+                    },
+                    {
+                      "influence": 66,
+                      "speed": 0
+                    }
+                  ],
+                  "outEase": [
+                    {
+                      "influence": 14,
+                      "speed": 0
+                    },
+                    {
+                      "influence": 14,
+                      "speed": 0
+                    },
+                    {
+                      "influence": 14,
+                      "speed": 0
+                    }
                   ],
                   "unreadable": null
                 }
@@ -225,12 +369,40 @@
                   "index": 1,
                   "time": 0,
                   "value": 0,
+                  "inInterpolation": "BEZIER",
+                  "outInterpolation": "BEZIER",
+                  "inEase": [
+                    {
+                      "influence": 66,
+                      "speed": 0
+                    }
+                  ],
+                  "outEase": [
+                    {
+                      "influence": 14,
+                      "speed": 1783.92857142857
+                    }
+                  ],
                   "unreadable": null
                 },
                 {
                   "index": 2,
                   "time": 0.4004004004004,
                   "value": 100,
+                  "inInterpolation": "BEZIER",
+                  "outInterpolation": "BEZIER",
+                  "inEase": [
+                    {
+                      "influence": 66,
+                      "speed": 0
+                    }
+                  ],
+                  "outEase": [
+                    {
+                      "influence": 14,
+                      "speed": 0
+                    }
+                  ],
                   "unreadable": null
                 }
               ]
@@ -317,12 +489,40 @@
                   "index": 1,
                   "time": 0,
                   "value": 30,
+                  "inInterpolation": "BEZIER",
+                  "outInterpolation": "BEZIER",
+                  "inEase": [
+                    {
+                      "influence": 66,
+                      "speed": 0
+                    }
+                  ],
+                  "outEase": [
+                    {
+                      "influence": 14,
+                      "speed": -535.178571428571
+                    }
+                  ],
                   "unreadable": null
                 },
                 {
                   "index": 2,
                   "time": 0.4004004004004,
                   "value": 0,
+                  "inInterpolation": "BEZIER",
+                  "outInterpolation": "BEZIER",
+                  "inEase": [
+                    {
+                      "influence": 66,
+                      "speed": 0
+                    }
+                  ],
+                  "outEase": [
+                    {
+                      "influence": 14,
+                      "speed": 0
+                    }
+                  ],
                   "unreadable": null
                 }
               ]
@@ -339,6 +539,20 @@
                     600,
                     0
                   ],
+                  "inInterpolation": "BEZIER",
+                  "outInterpolation": "BEZIER",
+                  "inEase": [
+                    {
+                      "influence": 66,
+                      "speed": 0
+                    }
+                  ],
+                  "outEase": [
+                    {
+                      "influence": 14,
+                      "speed": 2675.89285714286
+                    }
+                  ],
                   "unreadable": null
                 },
                 {
@@ -348,6 +562,20 @@
                     600,
                     600,
                     0
+                  ],
+                  "inInterpolation": "BEZIER",
+                  "outInterpolation": "BEZIER",
+                  "inEase": [
+                    {
+                      "influence": 66,
+                      "speed": 0
+                    }
+                  ],
+                  "outEase": [
+                    {
+                      "influence": 14,
+                      "speed": 0
+                    }
                   ],
                   "unreadable": null
                 }
@@ -361,12 +589,40 @@
                   "index": 1,
                   "time": 0,
                   "value": 0,
+                  "inInterpolation": "BEZIER",
+                  "outInterpolation": "BEZIER",
+                  "inEase": [
+                    {
+                      "influence": 66,
+                      "speed": 0
+                    }
+                  ],
+                  "outEase": [
+                    {
+                      "influence": 14,
+                      "speed": 1783.92857142857
+                    }
+                  ],
                   "unreadable": null
                 },
                 {
                   "index": 2,
                   "time": 0.4004004004004,
                   "value": 100,
+                  "inInterpolation": "BEZIER",
+                  "outInterpolation": "BEZIER",
+                  "inEase": [
+                    {
+                      "influence": 66,
+                      "speed": 0
+                    }
+                  ],
+                  "outEase": [
+                    {
+                      "influence": 14,
+                      "speed": 0
+                    }
+                  ],
                   "unreadable": null
                 }
               ]
@@ -459,12 +715,40 @@
                   "index": 1,
                   "time": 0,
                   "value": 30,
+                  "inInterpolation": "BEZIER",
+                  "outInterpolation": "BEZIER",
+                  "inEase": [
+                    {
+                      "influence": 66,
+                      "speed": 0
+                    }
+                  ],
+                  "outEase": [
+                    {
+                      "influence": 14,
+                      "speed": -535.178571428571
+                    }
+                  ],
                   "unreadable": null
                 },
                 {
                   "index": 2,
                   "time": 0.4004004004004,
                   "value": 0,
+                  "inInterpolation": "BEZIER",
+                  "outInterpolation": "BEZIER",
+                  "inEase": [
+                    {
+                      "influence": 66,
+                      "speed": 0
+                    }
+                  ],
+                  "outEase": [
+                    {
+                      "influence": 14,
+                      "speed": 0
+                    }
+                  ],
                   "unreadable": null
                 }
               ]
@@ -481,6 +765,20 @@
                     750,
                     0
                   ],
+                  "inInterpolation": "BEZIER",
+                  "outInterpolation": "BEZIER",
+                  "inEase": [
+                    {
+                      "influence": 66,
+                      "speed": 0
+                    }
+                  ],
+                  "outEase": [
+                    {
+                      "influence": 14,
+                      "speed": 891.964285714285
+                    }
+                  ],
                   "unreadable": null
                 },
                 {
@@ -490,6 +788,20 @@
                     1080,
                     700,
                     0
+                  ],
+                  "inInterpolation": "BEZIER",
+                  "outInterpolation": "BEZIER",
+                  "inEase": [
+                    {
+                      "influence": 66,
+                      "speed": 0
+                    }
+                  ],
+                  "outEase": [
+                    {
+                      "influence": 14,
+                      "speed": 0
+                    }
                   ],
                   "unreadable": null
                 }
@@ -503,12 +815,40 @@
                   "index": 1,
                   "time": 0,
                   "value": 0,
+                  "inInterpolation": "BEZIER",
+                  "outInterpolation": "BEZIER",
+                  "inEase": [
+                    {
+                      "influence": 66,
+                      "speed": 0
+                    }
+                  ],
+                  "outEase": [
+                    {
+                      "influence": 14,
+                      "speed": 1783.92857142857
+                    }
+                  ],
                   "unreadable": null
                 },
                 {
                   "index": 2,
                   "time": 0.4004004004004,
                   "value": 100,
+                  "inInterpolation": "BEZIER",
+                  "outInterpolation": "BEZIER",
+                  "inEase": [
+                    {
+                      "influence": 66,
+                      "speed": 0
+                    }
+                  ],
+                  "outEase": [
+                    {
+                      "influence": 14,
+                      "speed": 0
+                    }
+                  ],
                   "unreadable": null
                 }
               ]
@@ -601,12 +941,40 @@
                   "index": 1,
                   "time": 0,
                   "value": 30,
+                  "inInterpolation": "BEZIER",
+                  "outInterpolation": "BEZIER",
+                  "inEase": [
+                    {
+                      "influence": 66,
+                      "speed": 0
+                    }
+                  ],
+                  "outEase": [
+                    {
+                      "influence": 14,
+                      "speed": -535.178571428571
+                    }
+                  ],
                   "unreadable": null
                 },
                 {
                   "index": 2,
                   "time": 0.4004004004004,
                   "value": 0,
+                  "inInterpolation": "BEZIER",
+                  "outInterpolation": "BEZIER",
+                  "inEase": [
+                    {
+                      "influence": 66,
+                      "speed": 0
+                    }
+                  ],
+                  "outEase": [
+                    {
+                      "influence": 14,
+                      "speed": 0
+                    }
+                  ],
                   "unreadable": null
                 }
               ]
@@ -623,6 +991,20 @@
                     750,
                     0
                   ],
+                  "inInterpolation": "BEZIER",
+                  "outInterpolation": "BEZIER",
+                  "inEase": [
+                    {
+                      "influence": 66,
+                      "speed": 0
+                    }
+                  ],
+                  "outEase": [
+                    {
+                      "influence": 14,
+                      "speed": 891.964285714285
+                    }
+                  ],
                   "unreadable": null
                 },
                 {
@@ -632,6 +1014,20 @@
                     1080,
                     700,
                     0
+                  ],
+                  "inInterpolation": "BEZIER",
+                  "outInterpolation": "BEZIER",
+                  "inEase": [
+                    {
+                      "influence": 66,
+                      "speed": 0
+                    }
+                  ],
+                  "outEase": [
+                    {
+                      "influence": 14,
+                      "speed": 0
+                    }
                   ],
                   "unreadable": null
                 }
@@ -645,12 +1041,40 @@
                   "index": 1,
                   "time": 0,
                   "value": 0,
+                  "inInterpolation": "BEZIER",
+                  "outInterpolation": "BEZIER",
+                  "inEase": [
+                    {
+                      "influence": 66,
+                      "speed": 0
+                    }
+                  ],
+                  "outEase": [
+                    {
+                      "influence": 14,
+                      "speed": 1783.92857142857
+                    }
+                  ],
                   "unreadable": null
                 },
                 {
                   "index": 2,
                   "time": 0.4004004004004,
                   "value": 100,
+                  "inInterpolation": "BEZIER",
+                  "outInterpolation": "BEZIER",
+                  "inEase": [
+                    {
+                      "influence": 66,
+                      "speed": 0
+                    }
+                  ],
+                  "outEase": [
+                    {
+                      "influence": 14,
+                      "speed": 0
+                    }
+                  ],
                   "unreadable": null
                 }
               ]
@@ -743,12 +1167,40 @@
                   "index": 1,
                   "time": 0,
                   "value": 30,
+                  "inInterpolation": "BEZIER",
+                  "outInterpolation": "BEZIER",
+                  "inEase": [
+                    {
+                      "influence": 66,
+                      "speed": 0
+                    }
+                  ],
+                  "outEase": [
+                    {
+                      "influence": 14,
+                      "speed": -535.178571428571
+                    }
+                  ],
                   "unreadable": null
                 },
                 {
                   "index": 2,
                   "time": 0.4004004004004,
                   "value": 0,
+                  "inInterpolation": "BEZIER",
+                  "outInterpolation": "BEZIER",
+                  "inEase": [
+                    {
+                      "influence": 66,
+                      "speed": 0
+                    }
+                  ],
+                  "outEase": [
+                    {
+                      "influence": 14,
+                      "speed": 0
+                    }
+                  ],
                   "unreadable": null
                 }
               ]
@@ -765,6 +1217,20 @@
                     750,
                     0
                   ],
+                  "inInterpolation": "BEZIER",
+                  "outInterpolation": "BEZIER",
+                  "inEase": [
+                    {
+                      "influence": 66,
+                      "speed": 0
+                    }
+                  ],
+                  "outEase": [
+                    {
+                      "influence": 14,
+                      "speed": 891.964285714285
+                    }
+                  ],
                   "unreadable": null
                 },
                 {
@@ -774,6 +1240,20 @@
                     1080,
                     700,
                     0
+                  ],
+                  "inInterpolation": "BEZIER",
+                  "outInterpolation": "BEZIER",
+                  "inEase": [
+                    {
+                      "influence": 66,
+                      "speed": 0
+                    }
+                  ],
+                  "outEase": [
+                    {
+                      "influence": 14,
+                      "speed": 0
+                    }
                   ],
                   "unreadable": null
                 }
@@ -787,12 +1267,40 @@
                   "index": 1,
                   "time": 0,
                   "value": 0,
+                  "inInterpolation": "BEZIER",
+                  "outInterpolation": "BEZIER",
+                  "inEase": [
+                    {
+                      "influence": 66,
+                      "speed": 0
+                    }
+                  ],
+                  "outEase": [
+                    {
+                      "influence": 14,
+                      "speed": 1783.92857142857
+                    }
+                  ],
                   "unreadable": null
                 },
                 {
                   "index": 2,
                   "time": 0.4004004004004,
                   "value": 100,
+                  "inInterpolation": "BEZIER",
+                  "outInterpolation": "BEZIER",
+                  "inEase": [
+                    {
+                      "influence": 66,
+                      "speed": 0
+                    }
+                  ],
+                  "outEase": [
+                    {
+                      "influence": 14,
+                      "speed": 0
+                    }
+                  ],
                   "unreadable": null
                 }
               ]
@@ -885,12 +1393,40 @@
                   "index": 1,
                   "time": 0,
                   "value": 30,
+                  "inInterpolation": "BEZIER",
+                  "outInterpolation": "BEZIER",
+                  "inEase": [
+                    {
+                      "influence": 66,
+                      "speed": 0
+                    }
+                  ],
+                  "outEase": [
+                    {
+                      "influence": 14,
+                      "speed": -535.178571428571
+                    }
+                  ],
                   "unreadable": null
                 },
                 {
                   "index": 2,
                   "time": 0.4004004004004,
                   "value": 0,
+                  "inInterpolation": "BEZIER",
+                  "outInterpolation": "BEZIER",
+                  "inEase": [
+                    {
+                      "influence": 66,
+                      "speed": 0
+                    }
+                  ],
+                  "outEase": [
+                    {
+                      "influence": 14,
+                      "speed": 0
+                    }
+                  ],
                   "unreadable": null
                 }
               ]
@@ -907,6 +1443,20 @@
                     750,
                     0
                   ],
+                  "inInterpolation": "BEZIER",
+                  "outInterpolation": "BEZIER",
+                  "inEase": [
+                    {
+                      "influence": 66,
+                      "speed": 0
+                    }
+                  ],
+                  "outEase": [
+                    {
+                      "influence": 14,
+                      "speed": 891.964285714285
+                    }
+                  ],
                   "unreadable": null
                 },
                 {
@@ -916,6 +1466,20 @@
                     1080,
                     700,
                     0
+                  ],
+                  "inInterpolation": "BEZIER",
+                  "outInterpolation": "BEZIER",
+                  "inEase": [
+                    {
+                      "influence": 66,
+                      "speed": 0
+                    }
+                  ],
+                  "outEase": [
+                    {
+                      "influence": 14,
+                      "speed": 0
+                    }
                   ],
                   "unreadable": null
                 }
@@ -929,12 +1493,40 @@
                   "index": 1,
                   "time": 0,
                   "value": 0,
+                  "inInterpolation": "BEZIER",
+                  "outInterpolation": "BEZIER",
+                  "inEase": [
+                    {
+                      "influence": 66,
+                      "speed": 0
+                    }
+                  ],
+                  "outEase": [
+                    {
+                      "influence": 14,
+                      "speed": 1783.92857142857
+                    }
+                  ],
                   "unreadable": null
                 },
                 {
                   "index": 2,
                   "time": 0.4004004004004,
                   "value": 100,
+                  "inInterpolation": "BEZIER",
+                  "outInterpolation": "BEZIER",
+                  "inEase": [
+                    {
+                      "influence": 66,
+                      "speed": 0
+                    }
+                  ],
+                  "outEase": [
+                    {
+                      "influence": 14,
+                      "speed": 0
+                    }
+                  ],
                   "unreadable": null
                 }
               ]
