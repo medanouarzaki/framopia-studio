@@ -587,3 +587,12 @@ That rule was true while the placement clamped and false the moment it stopped.
 **Every image in the corpus has a sound again**, and the guarantee is
 unconditional: `SilentImageSlotError` is unchanged for the case it was built
 for — a template that binds nothing.
+
+**What the lead-in outside the composition costs** is measured in
+`benchmarks/RESULTS-block8-lead-in-cost.md`: 0.4671 s of `whoosh_01` falls
+before frame zero on `img001`, of which 0.1178 s is past the file's own first
+audible sample — but the sound is **31.2 dB below its own peak** there, roughly
+26 dB under the dialogue, so no transient is lost. The peak lands **0.31 frames
+early**, which is the frame grid rounding early by design and below what the
+timeline can express.
+
