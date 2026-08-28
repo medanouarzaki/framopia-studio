@@ -1,10 +1,8 @@
 import { existsSync } from 'node:fs';
-import path from 'node:path';
 import {
   KEYWORD_FONT_SIZE,
   loadSfxIndex,
   loadTemplateManifest,
-  REPO_ROOT,
   SUBTITLE_FONT_SIZE,
   templatesById,
 } from '@framopia/core';
@@ -15,7 +13,7 @@ import { templateImpacts } from './analysis/template-impacts.js';
 import { SCRIPT_VARIANT_SUFFIX } from './analysis/assign.js';
 import { ACTIVE_ANALYSIS_PROMPT_VERSION } from './analysis/keywords.js';
 import { scriptVariantOf } from './transcript-view.js';
-import type { EditPlan, KeywordItem, SfxEvent } from './editplan/types.js';
+import type { EditPlan } from './editplan/types.js';
 
 /**
  * Step 3, the keyword picker: which words are emphasised and what template each
