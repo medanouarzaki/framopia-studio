@@ -3,9 +3,11 @@ import { buildFonts } from '@framopia/core/build-fonts';
 import {
   connect,
   fetchDryRun,
+  fetchJob,
   fetchModes,
   fetchReels,
   fetchSteps,
+  startPipeline,
   type Connection,
 } from './service.js';
 import { nodeMatch } from './node-match.js';
@@ -23,6 +25,9 @@ import {
 
 /** How often to notice a service that has gone away. Chosen, not measured. */
 const HEARTBEAT_MS = 5000;
+
+/** How often to ask the service how the run is going. Chosen, not measured. */
+const JOB_POLL_MS = 1000;
 import { runGate } from './run-gate.js';
 import { formatUsd, SPEND_SOFT_ALARM_USD, spendLevel } from './spend.js';
 import type {
@@ -30,6 +35,8 @@ import type {
   DryRunPlan,
   DryRunStage,
   HostEnvironment,
+  PipelineJob,
+  PipelineStageReport,
   PlanSteps,
   Reel,
   ServiceState,
@@ -118,6 +125,14 @@ function Panel({
   const [lastStep, setLastStep] = useState<Record<string, StepId>>(() => readLastSteps());
   /** Which reel `step` belongs to, so a new reel's plan can restore its own. */
   const [stepReel, setStepReel] = useState<string | null>(null);
+  /*
+   * The run lives in the service; this is only the id of the job being watched
+   * and the last progress read from it. Leaving step 1 does not stop it, and
+   * coming back picks the polling up again.
+   */
+  const [jobId, setJobId] = useState<string | null>(null);
+  const [job, setJob] = useState<PipelineJob | null>(null);
+  const [startError, setStartError] = useState<string | null>(null);
 
   const check = useCallback(async () => {
     setService({ kind: 'starting' });
@@ -181,7 +196,6 @@ function Panel({
 
   const reel = reels.find((r) => r.label === reelLabel) ?? null;
   const mode = modes.find((m) => m.id === modeId) ?? null;
-  const gate = runGate({ service, reel, mode });
 
   /* What a run would do, before anything is paid for. It spends nothing. */
   useEffect(() => {
@@ -259,6 +273,56 @@ function Panel({
     // `lastStep` is read but deliberately not a dependency: recording a step
     // must not feed back into choosing one.
   }, [plan, stepReel]);
+
+  /* Polls the job while it is unfinished. The service owns the run. */
+  useEffect(() => {
+    if (connection === null || jobId === null) return;
+    let live = true;
+    const tick = (): void => {
+      void fetchJob(connection, jobId).then(
+        (next) => {
+          if (!live) return;
+          setJob(next);
+          if (next.status === 'done' || next.status === 'error') setJobId(null);
+        },
+        () => {
+          /* A poll that fails is not a run that failed; the next tick retries. */
+        },
+      );
+    };
+    tick();
+    const timer = setInterval(tick, JOB_POLL_MS);
+    return () => {
+      live = false;
+      clearInterval(timer);
+    };
+  }, [connection, jobId]);
+
+  /*
+   * A finished run changes what the plan supports, so the rail has to be told.
+   * This is where `cacheProvenance` first reaches the screen from real data.
+   */
+  useEffect(() => {
+    if (job?.status !== 'done' || connection === null || reel === null || mode === null) return;
+    void fetchSteps(connection, reel.label, mode.id).then(setPlan, () => undefined);
+    void fetchDryRun(connection, reel.label, mode.id).then(setDry, () => undefined);
+  }, [job?.status, connection, reel, mode]);
+
+  const running = job !== null && (job.status === 'running' || job.status === 'pending');
+  const gate = runGate({ service, reel, mode, running });
+  const onRun = (): void => {
+    if (connection === null || reel === null || mode === null) return;
+    setStartError(null);
+    setJob(null);
+    void startPipeline(connection, reel.label, mode.id).then(
+      (id) => {
+        setJobId(id);
+      },
+      (error: Error) => {
+        setStartError(error.message);
+      },
+    );
+  };
 
   const views = stepViews(plan, step, { reel: reel !== null, mode: mode !== null });
   const goTo = (id: StepId): void => {
@@ -354,9 +418,15 @@ function Panel({
               {dryError}
             </p>
           )}
-          <button className="run" type="button" disabled={!gate.enabled}>
-            Run pipeline
+          <button className="run" type="button" disabled={!gate.enabled} onClick={onRun}>
+            {running ? 'Running…' : 'Run pipeline'}
           </button>
+          {startError === null ? null : (
+            <p className="reason" role="status">
+              {startError}
+            </p>
+          )}
+          {job === null ? null : <RunProgress job={job} />}
           {gate.reason === null ? null : (
             <p className="reason" role="status">
               {gate.reason}
@@ -747,6 +817,79 @@ function ServiceCard({
  * Retry was indistinguishable from a dead one. The user pressed it after
  * building the service and could not tell whether anything had happened.
  */
+/**
+ * The run, stage by stage, in the same words and the same order the dry run
+ * used — they are two views of one thing, and the stage list is declared once
+ * in the service.
+ *
+ * A failed stage shows the cause **as it came**, per ARCHITECTURE §8. The panel
+ * does not summarise it: a paraphrase of "the model returned 503" is worth less
+ * than the sentence, and the panel is not where a diagnosis is made.
+ */
+function RunProgress({ job }: { job: PipelineJob }): JSX.Element {
+  const detail = job.detail;
+  if (detail === undefined) {
+    return (
+      <p className="reason" role="status">
+        Starting the run…
+      </p>
+    );
+  }
+  return (
+    <div className="card" style={{ marginTop: 12 }}>
+      <ul className="facts">
+        {detail.stages.map((stage) => (
+          <li key={stage.id}>
+            <span className="k">{stage.label}</span>
+            <span className={`v ${stageToneOf(stage.state)}`} title={stage.reason ?? stage.label}>
+              {stageWordOf(stage)}
+              {stage.reason === null ? null : <em className="where">{stage.reason}</em>}
+            </span>
+          </li>
+        ))}
+      </ul>
+      {detail.error === null ? null : (
+        <p className="reason" role="status">
+          {detail.error.stage}: {detail.error.cause}
+          {detail.error.retryable ? ' (worth retrying)' : ''}
+        </p>
+      )}
+      <div className="spend" style={{ marginTop: 12 }}>
+        <div>
+          <div
+            className={`amount ${
+              (detail.planSpentUsd ?? 0) >= SPEND_SOFT_ALARM_USD ? 'alarm' : ''
+            }`}
+          >
+            {formatUsd(detail.spentUsd)}
+          </div>
+          <div className="cap">
+            billed by this run
+            {detail.planSpentUsd === null
+              ? ''
+              : ` · ${formatUsd(detail.planSpentUsd)} on this reel in total`}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function stageWordOf(stage: PipelineStageReport): string {
+  if (stage.state === 'done') return stage.costUsd > 0 ? `done, ${formatUsd(stage.costUsd)}` : 'done';
+  if (stage.state === 'skipped') return 'skipped';
+  if (stage.state === 'failed') return 'failed';
+  if (stage.state === 'running') return 'running…';
+  return 'waiting';
+}
+
+function stageToneOf(state: PipelineStageReport['state']): string {
+  if (state === 'done') return 'good';
+  if (state === 'failed') return 'bad';
+  if (state === 'skipped') return 'warn';
+  return '';
+}
+
 /** One quiet, factual line: who started this service, its pid, and when. */
 function serviceOriginLine(state: Extract<ServiceState, { kind: 'healthy' }>): string {
   const started = state.origin === 'spawned' ? 'Started by the panel' : 'Was already running';

@@ -30,8 +30,8 @@ const healthy: HealthPayload = {
 };
 
 const reels: Reel[] = [
-  { label: 'vitasilk', videoPath: '/v/vitasilk.mov', planPath: '/v/vitasilk.editplan.json', durationS: 25.692333, spentUsd: 1.550444 },
-  { label: 'test-1', videoPath: '/v/test 1.mov', planPath: null, durationS: 21.988646, spentUsd: null },
+  { label: 'vitasilk', videoPath: '/v/vitasilk.mov', planPath: '/v/vitasilk.editplan.json', durationS: 25.692333, spentUsd: 1.550444, present: true },
+  { label: 'test-1', videoPath: '/v/test 1.mov', planPath: null, durationS: 21.988646, spentUsd: null, present: true },
 ];
 
 const modes: ClientMode[] = [{ id: 'k2-syndicalia', name: 'K2 Syndicalia', version: 6, fontsResolved: false }];
@@ -271,7 +271,9 @@ describe('runGate', () => {
    */
   it('lets a mode whose fonts are still tbd through to Run', () => {
     const gate = runGate({ ...base, service: { kind: 'healthy', health: healthy, origin: 'spawned' } });
-    expect(gate.reason).not.toContain('fonts');
+    // Enabled with nothing to say: fonts are a Build concern, not a Run one.
+    expect(gate.enabled).toBe(true);
+    expect(gate.reason).toBeNull();
   });
 
   /*
@@ -279,14 +281,40 @@ describe('runGate', () => {
    * because the runner does not exist. A button that looked ready and did
    * nothing would be worse.
    */
-  it('says the runner is not built when nothing else is wrong', () => {
+  /*
+   * Rewritten in session 17: the runner exists, so "not built yet" is retired.
+   * With a healthy service, a reel and a mode, Run is enabled and has nothing
+   * to say.
+   */
+  it('enables Run when nothing is wrong', () => {
     const gate = runGate({
       reel: reels[0] as Reel,
       mode: { ...(modes[0] as ClientMode), fontsResolved: true },
       service: { kind: 'healthy', health: healthy, origin: 'spawned' },
     });
+    expect(gate.enabled).toBe(true);
+    expect(gate.reason).toBeNull();
+  });
+
+  it('says a run is already going rather than letting a second one start', () => {
+    const gate = runGate({
+      reel: reels[0] as Reel,
+      mode: modes[0] as ClientMode,
+      service: { kind: 'healthy', health: healthy, origin: 'spawned' },
+      running: true,
+    });
     expect(gate.enabled).toBe(false);
-    expect(gate.reason).toBe('The pipeline runner is not built yet.');
+    expect(gate.reason).toContain('continues if you leave this step');
+  });
+
+  it('names a reel the catalogue lists but the machine does not have', () => {
+    const gate = runGate({
+      reel: { ...(reels[0] as Reel), present: false },
+      mode: modes[0] as ClientMode,
+      service: { kind: 'healthy', health: healthy, origin: 'spawned' },
+    });
+    expect(gate.enabled).toBe(false);
+    expect(gate.reason).toContain('not on this machine');
   });
 });
 
@@ -793,8 +821,8 @@ describe('the fonts gate', () => {
       reel: reels[0] as Reel,
       mode: tbd,
     });
-    expect(gate.reason).not.toContain('fonts');
-    expect(gate.reason).toBe('The pipeline runner is not built yet.');
+    expect(gate.reason).toBeNull();
+    expect(gate.enabled).toBe(true);
   });
 
   it('surfaces at Build, naming the fonts the build will use instead', async () => {

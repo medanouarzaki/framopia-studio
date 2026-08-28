@@ -18,8 +18,10 @@ export function runGate(options: {
   service: ServiceState;
   reel: Reel | null;
   mode: ClientMode | null;
+  /** A run already in flight for this panel. */
+  running?: boolean;
 }): RunGate {
-  const { service, reel, mode } = options;
+  const { service, reel, mode, running = false } = options;
 
   if (service.kind === 'starting') {
     return { enabled: false, reason: 'Waiting for the companion service to answer.' };
@@ -40,6 +42,15 @@ export function runGate(options: {
   }
   if (reel === null) return { enabled: false, reason: 'Pick a video.' };
   if (mode === null) return { enabled: false, reason: 'Pick a client mode.' };
+  if (!reel.present) {
+    return {
+      enabled: false,
+      reason: `${reel.label} is in the catalogue but the file is not on this machine.`,
+    };
+  }
+  if (running) {
+    return { enabled: false, reason: 'A run is already going. It continues if you leave this step.' };
+  }
 
   /*
    * Fonts are deliberately **not** checked here. They decide how the comp is
@@ -50,11 +61,11 @@ export function runGate(options: {
    */
 
   /*
-   * The pipeline itself is Block 8's next session. Saying so is better than a
-   * button that looks ready and does nothing — and better than hiding it,
-   * which would leave no place for the reason to appear.
+   * Enabled. Every remaining way to be disabled says so in the line beneath the
+   * button, which is what "The pipeline runner is not built yet" was for until
+   * the runner existed.
    */
-  return { enabled: false, reason: 'The pipeline runner is not built yet.' };
+  return { enabled: true, reason: null };
 }
 
 function formatList(items: string[]): string {

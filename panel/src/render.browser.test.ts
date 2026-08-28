@@ -601,12 +601,21 @@ function stubRoutes(steps: unknown, resumeAt: string): string {
   };
   return `
   window.__payload = ${JSON.stringify(payload)};
+  window.__polls = 0;
   window.fetch = (url) => {
     const p = window.__payload;
-    const body = String(url).indexOf('/health') !== -1 ? p.health
-      : String(url).indexOf('/reels') !== -1 ? p.reels
-      : String(url).indexOf('/modes') !== -1 ? p.modes
-      : String(url).indexOf('/steps') !== -1 ? p.steps
+    const u = String(url);
+    if (u.indexOf('/jobs/') !== -1) {
+      window.__polls += 1;
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(window.__job()) });
+    }
+    if (u.indexOf('/jobs') !== -1) {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ id: 'job-1' }) });
+    }
+    const body = u.indexOf('/health') !== -1 ? p.health
+      : u.indexOf('/reels') !== -1 ? p.reels
+      : u.indexOf('/modes') !== -1 ? p.modes
+      : u.indexOf('/steps') !== -1 ? p.steps
       : p.dry;
     return Promise.resolve({ ok: true, json: () => Promise.resolve(body) });
   };`;
@@ -647,6 +656,158 @@ async function loadFlow(upTo: string, resumeAt: string, width = 420): Promise<Lo
   );
   return { page, uncaught };
 }
+
+/** A pipeline job the stub serves, in whatever state the test wants. */
+function stubJob(state: 'running' | 'done' | 'failed'): string {
+  const stage = (
+    id: string,
+    label: string,
+    s: string,
+    extra: Record<string, unknown> = {},
+  ): Record<string, unknown> => ({
+    id, label, state: s, reason: null, costUsd: 0,
+    cacheEntryId: null, cacheProvenance: null, startedAt: null, finishedAt: null,
+    error: null, ...extra,
+  });
+  const stages =
+    state === 'running'
+      ? [
+          stage('transcription', 'Transcribe and correct', 'skipped', {
+            reason: 'reusing an older guide',
+            cacheProvenance: 'compatible',
+            cacheEntryId: 'transcription-758a3924d090d1b5',
+          }),
+          stage('analysis', 'Keywords and image slots', 'running'),
+          stage('images', 'Generate images', 'waiting'),
+          stage('zones', 'Frame analysis (local, free)', 'waiting'),
+        ]
+      : state === 'failed'
+        ? [
+            stage('transcription', 'Transcribe and correct', 'skipped', { reason: 'already on the plan' }),
+            stage('analysis', 'Keywords and image slots', 'failed', {
+              error: {
+                stage: 'analysis',
+                cause: 'the model returned 503 Service Unavailable',
+                retryable: true,
+              },
+            }),
+            stage('images', 'Generate images', 'waiting'),
+            stage('zones', 'Frame analysis (local, free)', 'waiting'),
+          ]
+        : [
+            stage('transcription', 'Transcribe and correct', 'skipped', { reason: 'reusing an older guide' }),
+            stage('analysis', 'Keywords and image slots', 'done', { costUsd: 0.1835 }),
+            stage('images', 'Generate images', 'skipped', { reason: 'no image slots on the plan' }),
+            stage('zones', 'Frame analysis (local, free)', 'skipped', { reason: 'already on the plan' }),
+          ];
+  const detail = {
+    reel: 'vitasilk', modeId: 'k2-syndicalia', planPath: '/v/p.json', stages,
+    percent: state === 'done' ? 1 : 0.25,
+    spentUsd: state === 'done' ? 0.1835 : 0,
+    planSpentUsd: 1.550444,
+    done: state !== 'running',
+    error: state === 'failed' ? (stages[1]?.['error'] ?? null) : null,
+  };
+  const status = state === 'running' ? 'running' : state === 'failed' ? 'error' : 'done';
+  return `window.__job = () => (${JSON.stringify({
+    id: 'job-1',
+    status,
+    progress: detail.percent,
+    detail,
+  })});`;
+}
+
+describe.skipIf(!built)('a pipeline run', () => {
+  async function loadRun(state: 'running' | 'done' | 'failed'): Promise<Loaded | null> {
+    if (browser === undefined) return null;
+    const page = await browser.newPage({ viewport: { width: 420, height: 900 } });
+    const uncaught: string[] = [];
+    page.on('pageerror', (error: Error) => uncaught.push(error.message));
+    await page.addInitScript(stubHost(HANDSHAKE));
+    await page.addInitScript(stubRoutes(stepsThrough('build'), 'build'));
+    await page.addInitScript(stubJob(state));
+    await page.goto(`file://${INDEX}`);
+    await page.waitForSelector('nav.rail', { timeout: 10_000 });
+    await page.selectOption('select[aria-label="Reel"]', 'vitasilk');
+    await page.selectOption('select[aria-label="Client mode"]', 'k2-syndicalia');
+    await page.click('button.run');
+    await page.waitForFunction(
+      () => (document.querySelector('main') as HTMLElement).textContent?.includes('Transcribe and correct') === true,
+      undefined,
+      { timeout: 5000 },
+    );
+    return { page, uncaught };
+  }
+
+  it('shows every stage with its state, in the dry run’s words', async () => {
+    const loaded = await loadRun('running');
+    if (loaded === null) return;
+    const text = (await loaded.page.textContent('main')) ?? '';
+    for (const label of ['Transcribe and correct', 'Keywords and image slots', 'Generate images', 'Frame analysis (local, free)']) {
+      expect(text, label).toContain(label);
+    }
+    expect(text).toContain('running…');
+    expect(text).toContain('waiting');
+    await loaded.page.close();
+  });
+
+  /* The first time cacheProvenance reaches the screen from a real run. */
+  it('says a stage was skipped and why', async () => {
+    const loaded = await loadRun('running');
+    if (loaded === null) return;
+    const text = (await loaded.page.textContent('main')) ?? '';
+    expect(text).toContain('skipped');
+    expect(text).toContain('reusing an older guide');
+    await loaded.page.close();
+  });
+
+  it('shows a failed stage’s cause as it came, not a summary', async () => {
+    const loaded = await loadRun('failed');
+    if (loaded === null) return;
+    const text = (await loaded.page.textContent('main')) ?? '';
+    expect(text).toContain('the model returned 503 Service Unavailable');
+    expect(text).toContain('worth retrying');
+    await loaded.page.close();
+  });
+
+  it('reports what the run billed and what the reel has cost in total', async () => {
+    const loaded = await loadRun('done');
+    if (loaded === null) return;
+    const text = (await loaded.page.textContent('main')) ?? '';
+    expect(text).toContain('billed by this run');
+    expect(text).toContain('on this reel in total');
+    await loaded.page.close();
+  });
+
+  /*
+   * The job lives in the service. Walking to another step and back must not
+   * stop it or lose it — the panel is a viewer.
+   */
+  it('survives leaving step one and coming back', async () => {
+    const loaded = await loadRun('running');
+    if (loaded === null) return;
+    await loaded.page.click('nav.rail li:nth-child(3) button');
+    expect(await loaded.page.textContent('main h2')).toBe('Keywords');
+    await loaded.page.click('nav.rail li:nth-child(1) button');
+    const text = (await loaded.page.textContent('main')) ?? '';
+    expect(text).toContain('Keywords and image slots');
+    expect(text).toContain('running…');
+    await loaded.page.close();
+  });
+
+  it('will not start a second run while one is going, and says so', async () => {
+    const loaded = await loadRun('running');
+    if (loaded === null) return;
+    const state = await loaded.page.evaluate(() => {
+      const el = document.querySelector('button.run') as HTMLButtonElement;
+      return { disabled: el.disabled, label: el.textContent };
+    });
+    expect(state.disabled).toBe(true);
+    expect(state.label).toBe('Running…');
+    expect((await loaded.page.textContent('main')) ?? '').toContain('continues if you leave this step');
+    await loaded.page.close();
+  });
+});
 
 describe.skipIf(!built)('the step rail', () => {
   it('shows all five steps before any reel is picked', async () => {
@@ -731,36 +892,49 @@ describe.skipIf(!built)('the step rail', () => {
   });
 
   /*
-   * The user's ruling: Run pipeline is the one red thing on screen. It has
-   * never been *seen* enabled — the gate still reports "the pipeline runner is
-   * not built yet", and before this session ffmpeg was reported missing too —
-   * so the enabled paint had never been checked at all.
-   *
-   * The attribute is removed in the page rather than the gate being faked:
-   * that exercises the real `button.run` rule in the real engine, and the
-   * comment is here so nobody reads this as proof that Run works.
+   * The user's ruling: Run pipeline is the one red thing on screen. Session 16
+   * could only assert this by removing the `disabled` attribute in the page,
+   * because the gate reported "the pipeline runner is not built yet" and the
+   * control could never be enabled. The runner exists now, so this reads the
+   * real enabled control.
    */
-  it('paints Run pipeline in the brand accent when it is enabled', async () => {
+  it('paints the enabled Run pipeline in the brand accent', async () => {
     const loaded = await loadFlow('build', 'build');
     if (loaded === null) return;
     const run = await loaded.page.evaluate(() => {
       const el = document.querySelector('button.run') as HTMLButtonElement;
-      const disabledPaint = getComputedStyle(el).backgroundColor.replace(/\s/g, '');
-      el.removeAttribute('disabled');
-      return { disabledPaint, enabledPaint: getComputedStyle(el).backgroundColor.replace(/\s/g, '') };
+      return {
+        disabled: el.disabled,
+        label: el.textContent,
+        background: getComputedStyle(el).backgroundColor.replace(/\s/g, ''),
+      };
     });
-    expect(run.enabledPaint).toBe('rgb(237,28,36)');
-    // And the disabled state is deliberately not red, so a control that cannot
-    // be pressed never claims the accent.
-    expect(run.disabledPaint).not.toBe('rgb(237,28,36)');
+    expect(run.disabled).toBe(false);
+    expect(run.label).toBe('Run pipeline');
+    expect(run.background).toBe('rgb(237,28,36)');
+    await loaded.page.close();
+  });
+
+  it('does not paint Run in the accent while it is disabled', async () => {
+    // No reel picked, so the gate is off and the control must not claim it.
+    const loaded = await load({ fetch: 'healthy' });
+    if (loaded === null) return;
+    const run = await loaded.page.evaluate(() => {
+      const el = document.querySelector('button.run') as HTMLButtonElement;
+      return {
+        disabled: el.disabled,
+        background: getComputedStyle(el).backgroundColor.replace(/\s/g, ''),
+      };
+    });
+    expect(run.disabled).toBe(true);
+    expect(run.background).not.toBe('rgb(237,28,36)');
     await loaded.page.close();
   });
 
   /*
    * Scoped to the rail and the pane, not the whole page: the brand header is
    * identity rather than flow, and PROJECT_SPEC §6 puts the accent in the
-   * wordmark and the logo by design. The ruling is about controls competing
-   * for attention inside the work area.
+   * wordmark and the logo by design.
    */
   it('spends the accent on nothing else in the flow', async () => {
     const loaded = await loadFlow('build', 'build');
@@ -768,8 +942,6 @@ describe.skipIf(!built)('the step rail', () => {
     const painted = await loaded.page.evaluate(() => {
       const norm = (c: string): string => c.replace(/\s/g, '');
       const accent = 'rgb(237,28,36)';
-      const el = document.querySelector('button.run') as HTMLButtonElement;
-      el.removeAttribute('disabled');
       return [...document.querySelectorAll('nav.rail *, main *')]
         .filter((node) => {
           const s = getComputedStyle(node);
