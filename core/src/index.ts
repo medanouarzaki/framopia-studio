@@ -146,7 +146,7 @@ export {
 } from './align-review.js';
 export { renderSheet, type SheetInputs, type SheetRow } from './align-sheet.js';
 export { ACTIVE_PROMPT_VERSION, type PromptVersion } from './prompt-version.js';
-export { impactFrameOf, type ImpactFrame } from './impact-frame.js';
+export { impactFrameOf, IMPACT_THRESHOLD, type ImpactFrame } from './impact-frame.js';
 export {
   placeSfx,
   snapToFrame,

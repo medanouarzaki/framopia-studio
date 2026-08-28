@@ -349,11 +349,27 @@ export interface AuditProperty {
   unreadable: string | null;
 }
 
+/** One side's temporal ease: influence as a percentage, speed in units/second. */
+export interface AuditEase {
+  influence: number | null;
+  speed: number | null;
+}
+
 export interface AuditKeyframe {
   index: number;
   /** Seconds from the comp's start, as AE reports it. */
   time: number | null;
   value: unknown;
+  /**
+   * The easing, without which the curve between two keys is unknowable — two
+   * endpoints and a duration do not say when the value arrives. **Optional with
+   * a default**: an audit taken before Block 8 session 23 records none, and
+   * reads as "not recorded" rather than as linear.
+   */
+  inInterpolation?: string | null;
+  outInterpolation?: string | null;
+  inEase?: AuditEase[] | null;
+  outEase?: AuditEase[] | null;
   unreadable: string | null;
 }
 

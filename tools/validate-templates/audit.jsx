@@ -107,7 +107,16 @@ function framopiaAudit(aepPath, outPath) {
                      */
                     var keys = [];
                     for (var k = 1; k <= n; k++) {
-                        var key = { index: k, time: null, value: null, unreadable: null };
+                        var key = {
+                            index: k,
+                            time: null,
+                            value: null,
+                            inInterpolation: null,
+                            outInterpolation: null,
+                            inEase: null,
+                            outEase: null,
+                            unreadable: null
+                        };
                         try {
                             key.time = p.keyTime(k);
                         } catch (e5) {
@@ -119,6 +128,24 @@ function framopiaAudit(aepPath, outPath) {
                             key.unreadable = (key.unreadable ? key.unreadable + '; ' : '') +
                                 'keyValue threw: ' + String(e6);
                         }
+                        /*
+                         * **The easing, without which the curve between two keys
+                         * is unknowable.**
+                         *
+                         * Two endpoints and a duration do not say when the value
+                         * arrives: linear puts kw_slam's word at 95% on frame
+                         * 11.4, and the user's eye puts it on frame 4, because
+                         * the motion is front-loaded. Session 23 could not
+                         * measure the impact frame for exactly this reason.
+                         *
+                         * `influence` and `speed` are what AE exposes per side,
+                         * and together with the interpolation type they define
+                         * the bezier. Emitted exactly as reported.
+                         */
+                        key.inInterpolation = interpolationName(p, k, true);
+                        key.outInterpolation = interpolationName(p, k, false);
+                        key.inEase = easeOf(p, k, true);
+                        key.outEase = easeOf(p, k, false);
                         keys.push(key);
                     }
                     into.push({ path: prefix + p.name, keyframes: n, keys: keys });
@@ -127,6 +154,59 @@ function framopiaAudit(aepPath, outPath) {
                 collectAnimated(p, into, prefix + p.name + '/');
             }
         }
+    }
+
+    /*
+     * A keyframe's interpolation type per side, named rather than numbered so a
+     * reader does not have to know AE's enum.
+     */
+    function interpolationName(prop, index, incoming) {
+        var type;
+        try {
+            type = incoming ? prop.keyInInterpolationType(index) : prop.keyOutInterpolationType(index);
+        } catch (e) {
+            return null;
+        }
+        try {
+            if (type === KeyframeInterpolationType.LINEAR) return 'LINEAR';
+            if (type === KeyframeInterpolationType.BEZIER) return 'BEZIER';
+            if (type === KeyframeInterpolationType.HOLD) return 'HOLD';
+        } catch (e2) {
+            return null;
+        }
+        return String(type);
+    }
+
+    /*
+     * The temporal ease on one side of a key: influence as a percentage and
+     * speed in value-units per second, one entry per dimension. A property AE
+     * refuses the call for emits null, never a zero that would read as "no
+     * easing".
+     */
+    function easeOf(prop, index, incoming) {
+        var ease;
+        try {
+            ease = incoming ? prop.keyInTemporalEase(index) : prop.keyOutTemporalEase(index);
+        } catch (e) {
+            return null;
+        }
+        if (!ease || !ease.length) return null;
+        var out = [];
+        for (var i = 0; i < ease.length; i++) {
+            var entry = { influence: null, speed: null };
+            try {
+                entry.influence = ease[i].influence;
+            } catch (e2) {
+                entry.influence = null;
+            }
+            try {
+                entry.speed = ease[i].speed;
+            } catch (e3) {
+                entry.speed = null;
+            }
+            out.push(entry);
+        }
+        return out;
     }
 
     function justificationName(value) {

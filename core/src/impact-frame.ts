@@ -1,22 +1,45 @@
 import type { AuditAnimatedProperty, AuditComp } from './templates.js';
 
 /**
- * The frame at which a template's entrance resolves — the moment the animation
- * impacts, which is where a sound has to land.
+ * The frame at which a template's entrance **finishes settling** — its last
+ * entrance keyframe.
  *
- * It is **not** the card's start. `kw_slam` moves and blurs into place over its
- * entrance, and a hit fired at the start of that lands before anything has
- * happened. The moment worth hitting is where the last entrance keyframe sits:
- * after it the pose is settled and nothing further moves.
+ * **This is not the impact frame, and Block 8 session 23 established that it
+ * never was.** The user built these templates: the easing front-loads the
+ * motion, so on `kw_slam` the word has visually landed by **frame 4** while the
+ * last key sits at frame 12. Frames 4 to 12 are the tail settling. Sound placed
+ * on the settle lands 8 frames late.
  *
- * **Derived from the template's own keyframes, never authored.** The audit
- * emits every key's time; this reads them. If the audit has no keys — one taken
- * before session 21 — the answer is `null` with a reason, because an absent
- * measurement is not a measurement of zero.
+ * The impact is where an animated property first reaches
+ * `IMPACT_THRESHOLD` of its final value, which needs the **interpolated
+ * curve** — and the curve needs the easing, which the audit did not record
+ * until session 23 extended it. `impactFrameOf` is kept because the settle
+ * frame is a real measurement and the validator has other uses for it; it is
+ * named for what it measures so nothing reads it as the impact again.
+ *
+ * **Derived from the template's own keyframes, never authored.** An audit with
+ * no keys answers `null` with a reason: an absent measurement is not a
+ * measurement of zero.
  */
+/**
+ * The share of its final value an animated property must reach for the motion
+ * to read as arrived.
+ *
+ * **CHOSEN, NOT MEASURED.** 95% is far enough that the remaining travel is a
+ * settle rather than a move, and near enough that it lands inside the
+ * front-loaded part of an ease-out. It is the number the impact derivation will
+ * use once the easing is recorded; nothing reads it yet.
+ */
+export const IMPACT_THRESHOLD = 0.95;
+
 export interface ImpactFrame {
   comp: string;
-  /** Seconds from the comp's start. Null when it cannot be derived. */
+  /**
+   * The **settle** — the last entrance keyframe — in seconds. Null when it
+   * cannot be derived. Named `impactS` while the field is what SFX placement
+   * reads; session 23 established the two are not the same and the impact is
+   * earlier.
+   */
   impactS: number | null;
   impactFrames: number | null;
   /** Which property's last key decided it. */
