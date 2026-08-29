@@ -8,6 +8,8 @@ import {
   surveyGroups,
   type GroupSurvey,
 } from './set.js';
+import { classifyDestination, type DestinationKind } from './destination.js';
+import { classifyFile } from './secrets.js';
 
 /**
  * Copy what cannot be got back, and prove the copy is the same.
@@ -71,19 +73,56 @@ if (!existsSync(destination)) {
   process.exit(1);
 }
 
+const writable = destination;
+const declared: DestinationKind | null = has('cloud') ? 'cloud' : has('local') ? 'local' : null;
+const kind = declared ?? classifyDestination(writable);
+if (kind === 'unknown') {
+  console.error(
+    `this tool cannot tell whether ${writable} is a cloud folder or a local disk, and it will ` +
+      'not guess: getting it wrong one way copies your API keys into a shared folder.\n' +
+      'A macOS sync folder is not a mount — Google Drive reports the same filesystem as your ' +
+      'own home directory — so nothing on disk separates the two before writing.\n' +
+      'Say which it is: pass --cloud or --local.',
+  );
+  process.exit(1);
+}
+console.log(
+  `\nDestination: ${writable}\n  treated as ${kind === 'cloud' ? 'a cloud folder' : 'a local disk'}` +
+    `${declared === null ? '' : ' (you said so)'}` +
+    `${kind === 'cloud' ? ', so nothing holding a key will be copied' : ''}`,
+);
+
 printSurvey(groups, withVideo);
-const root = path.join(destination, 'framopia-studio');
+const root = path.join(writable, 'framopia-studio');
 console.log(`\nCopying into ${root}\n`);
 
 let copied = 0;
 let already = 0;
 let bytes = 0;
 const failures: string[] = [];
+const skipped: { file: string; reason: string }[] = [];
+const startedAt = Date.now();
 
 for (const group of groups) {
   if (group.optIn === true && !withVideo) continue;
   for (const source of group.paths) {
     const relative = path.relative(REPO_ROOT, source);
+
+    /*
+     * A dead disk and a shared cloud folder are different risks. A key can be
+     * reissued; the ground-truth transcripts cannot — so the key is the one
+     * item worth leaving out rather than protecting, and leaving it out is said
+     * out loud, because a backup that quietly omits something is one you would
+     * over-trust.
+     */
+    if (kind === 'cloud') {
+      const verdict = classifyFile(source);
+      if (verdict.secret) {
+        skipped.push({ file: relative, reason: verdict.reason ?? 'it holds a credential' });
+        continue;
+      }
+    }
+
     const target = path.join(root, relative);
     mkdirSync(path.dirname(target), { recursive: true });
 
@@ -105,13 +144,27 @@ for (const group of groups) {
   console.log(`  ${group.title}: done`);
 }
 
+const seconds = (Date.now() - startedAt) / 1000;
 console.log(
   `\n${copied} copied (${humanBytes(bytes)}), ${already} already there and identical, ` +
     `${failures.length} failed verification.`,
 );
+console.log(
+  `Took ${seconds.toFixed(1)}s` +
+    (bytes > 0 ? `, about ${humanBytes(bytes / Math.max(seconds, 0.001))} a second.` : '.'),
+);
+
+if (skipped.length > 0) {
+  console.log(
+    `\nNot copied, because this is a cloud folder and ${skipped.length === 1 ? 'this file holds' : 'these files hold'} a key:`,
+  );
+  for (const s of skipped) console.log(`  ${s.file} — ${s.reason}`);
+  console.log('  Keep a copy of it somewhere you would keep passwords. Nothing else was left out.');
+}
+
 if (failures.length > 0) {
   console.error('\nthese files did not match after copying, so this backup is NOT complete:');
   for (const f of failures) console.error(`  ${f}`);
   process.exit(1);
 }
-console.log('Every file was re-read from the destination and matched by sha256.');
+console.log('\nEvery file was re-read from the destination and matched by sha256.');
