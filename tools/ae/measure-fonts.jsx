@@ -56,11 +56,20 @@ function framopiaMeasureFonts() {
         { role: 'arabic', family: 'Almarai', style: 'Bold', repoString: 'Almarai Bold' }
     ];
 
-    /* Short and long, so a ratio is not read off one word. */
+    /*
+     * One word and a phrase, so a ratio is not read off a single word.
+     *
+     * The keys are `oneWord` and `phrase` and not the obvious `short` and
+     * `long`: **both of those are reserved words in ExtendScript**, whose list
+     * is Java's rather than JavaScript's, and it rejects them as unquoted
+     * object keys and after a dot. Written the obvious way this file did not
+     * parse and measured nothing. `npm run check` gates every .jsx against that
+     * list now.
+     */
     var SAMPLES = {
-        latin: { short: 'glow', long: 'dernière génération' },
-        emphasis: { short: 'glow', long: 'dernière génération' },
-        arabic: { short: 'شنو', long: 'ترطيب عميق للبشرة' }
+        latin: { oneWord: 'glow', phrase: 'dernière génération' },
+        emphasis: { oneWord: 'glow', phrase: 'dernière génération' },
+        arabic: { oneWord: 'شنو', phrase: 'ترطيب عميق للبشرة' }
     };
 
     var stage = 'start';
@@ -294,18 +303,21 @@ function framopiaRect(layer, comp, text, font, size) {
 }
 
 function framopiaMeasureAt(layer, comp, font, size, sample) {
+    /* Measured once each: every call sets the text and re-measures the layer. */
+    var oneWord = framopiaRect(layer, comp, sample.oneWord, font, size);
+    var phrase = framopiaRect(layer, comp, sample.phrase, font, size);
     return {
         size: size,
         /* An uppercase letter with no descender: cap height. */
         capHeight: framopiaRect(layer, comp, 'H', font, size).height,
         /* A lowercase letter with neither: an x-height proxy. */
         xHeight: framopiaRect(layer, comp, 'x', font, size).height,
-        shortText: sample.short,
-        shortAdvance: framopiaRect(layer, comp, sample.short, font, size).width,
-        shortRect: framopiaRect(layer, comp, sample.short, font, size),
-        longText: sample.long,
-        longAdvance: framopiaRect(layer, comp, sample.long, font, size).width,
-        longRect: framopiaRect(layer, comp, sample.long, font, size)
+        oneWordText: sample.oneWord,
+        oneWordAdvance: oneWord.width,
+        oneWordRect: oneWord,
+        phraseText: sample.phrase,
+        phraseAdvance: phrase.width,
+        phraseRect: phrase
     };
 }
 
