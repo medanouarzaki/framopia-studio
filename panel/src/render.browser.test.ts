@@ -2403,19 +2403,27 @@ describe.skipIf(!built)('what a client looks like', () => {
  * that both answers behave.
  */
 describe.skipIf(!built)('Browse, when the host has a dialog', () => {
-  it('is absent in an engine with no dialog, and the path field still works', async () => {
+  /*
+   * The path field is gone (session 45). It was the fallback for a host with no
+   * dialog, and this host has one — so what a host without one gets is a
+   * sentence he can act on, which is what this asserts.
+   */
+  it('is absent in an engine with no dialog, and says what to do instead', async () => {
     const loaded = await loadFlow('build', 'build');
     if (loaded === null) return;
     try {
       expect(await loaded.page.getByRole('button', { name: 'Browse…' }).count()).toBe(0);
-      expect(await loaded.page.$$('input.browse')).toHaveLength(1);
+      expect(await loaded.page.$$('input.browse')).toHaveLength(0);
+      const video = (await loaded.page.textContent('section.video')) ?? '';
+      expect(video).toContain('offers no file dialog');
+      expect(video).toContain('client’s folder');
       expect(loaded.uncaught).toEqual([]);
     } finally {
       await loaded.page.close();
     }
   }, 30_000);
 
-  it('appears when the host has one, and fills the path from it', async () => {
+  it('appears when the host has one, and opens what it returns', async () => {
     const loaded = await loadFlow(
       'build', 'build', 420,
       `window.cep = { fs: { showOpenDialogEx: function () {
@@ -2424,10 +2432,14 @@ describe.skipIf(!built)('Browse, when the host has a dialog', () => {
     );
     if (loaded === null) return;
     try {
-      await loaded.page.getByRole('button', { name: 'Browse…' }).click();
-      expect(await loaded.page.inputValue('input.browse')).toBe(
-        '/Volumes/T7 Shield/clients/jenna/before.mov',
-      );
+      expect(await loaded.page.getByRole('button', { name: 'Browse…' }).count()).toBe(1);
+      // Nothing to paste into any more: Refresh and Browse, and that is all.
+      expect(await loaded.page.$$('input.browse')).toHaveLength(0);
+      expect(
+        await loaded.page.$$eval('.videoactions button', (els) =>
+          els.map((e) => e.textContent),
+        ),
+      ).toEqual(['Refresh', 'Browse…']);
       expect(loaded.uncaught).toEqual([]);
     } finally {
       await loaded.page.close();

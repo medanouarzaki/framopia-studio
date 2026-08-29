@@ -120,7 +120,7 @@ function Panel({
     trouble: string | null;
     skipped: { name: string; why: string }[];
   }>({ folder: null, trouble: null, skipped: [] });
-  const [browsePath, setBrowsePath] = useState('');
+
   /*
    * The run lives in the service; this is only the id of the job being watched
    * and the last progress read from it. Leaving step 1 does not stop it, and
@@ -331,6 +331,23 @@ function Panel({
     );
   };
 
+  /** Open one video from anywhere, once the dialog has given us its path. */
+  const browse = async (): Promise<void> => {
+    if (connection === null) return;
+    const picked = pickVideoFile(videoNote.folder ?? '');
+    if (picked === null) return;
+    try {
+      const opened = await openVideo(connection, picked);
+      setReels((prev) =>
+        prev.some((r) => r.videoPath === opened.videoPath) ? prev : [...prev, opened],
+      );
+      setReelLabel(opened.label);
+      setVideoNote((n) => ({ ...n, trouble: null }));
+    } catch (error) {
+      setVideoNote((n) => ({ ...n, trouble: (error as Error).message }));
+    }
+  };
+
   const buildStep = plan?.steps.find((x) => x.id === 'build') ?? null;
   /*
    * A service running older code than this bundle is the normal way things
@@ -449,55 +466,28 @@ function Panel({
               Refresh
             </button>
             {/*
-              Only when the host really has a dialog. A button that opens
-              nothing is worse than no button, and whether CEP's own dialog is
-              here is a claim about the host this project has been wrong about
-              five times — so it is looked for, not assumed.
-            */}
+             * Session 44 established that this host has CEP's own dialog, so
+             * the path field it used to sit beside is gone: it was the fallback
+             * for a case that does not arise here, and a control nobody presses
+             * is clutter.
+             *
+             * The fallback itself is kept, because Block 10's second machine may
+             * be a host without one — but as a sentence he can act on rather
+             * than a field, and only when the dialog is genuinely absent.
+             */}
             {dialog.available ? (
-              <button
-                className="ghost"
-                type="button"
-                onClick={() => {
-                  const picked = pickVideoFile(videoNote.folder ?? '');
-                  if (picked !== null) setBrowsePath(picked);
-                }}
-              >
+              <button className="ghost" type="button" onClick={() => void browse()}>
                 Browse…
               </button>
             ) : null}
-            <input
-              className="browse"
-              type="text"
-              aria-label="Open a video from anywhere"
-              placeholder="…or paste the full path to a video"
-              value={browsePath}
-              onChange={(e) => setBrowsePath(e.target.value)}
-            />
-            <button
-              className="ghost"
-              type="button"
-              disabled={browsePath.trim() === '' || connection === null}
-              onClick={() => {
-                if (connection === null) return;
-                void openVideo(connection, browsePath.trim()).then(
-                  (opened) => {
-                    setReels((prev) =>
-                      prev.some((r) => r.videoPath === opened.videoPath)
-                        ? prev
-                        : [...prev, opened],
-                    );
-                    setReelLabel(opened.label);
-                    setBrowsePath('');
-                    setVideoNote((n) => ({ ...n, trouble: null }));
-                  },
-                  (error: Error) => setVideoNote((n) => ({ ...n, trouble: error.message })),
-                );
-              }}
-            >
-              Open
-            </button>
           </div>
+          {dialog.available ? null : (
+            <p className="say" role="status">
+              This copy of After Effects offers no file dialog, so videos can only come from a
+              client’s folder. Set the folder on the client, or put the video in one that is
+              already set.
+            </p>
+          )}
 
           {videoNote.folder === null ? null : (
             <p className="faint">From {videoNote.folder}</p>
