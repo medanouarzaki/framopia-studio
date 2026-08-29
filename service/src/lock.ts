@@ -77,6 +77,22 @@ export function inspectLock(
   return { state: 'held', handshake };
 }
 
-export function clearHandshake(file = SERVICE_JSON_PATH): void {
+/**
+ * Removes the handshake, but only when it still names this process.
+ *
+ * A service that lost the lock to `--force` is still running and still has a
+ * SIGTERM handler. Stopping it used to delete the handshake belonging to the
+ * service that took over, which left a healthy service running with nothing on
+ * disk pointing at it — the panel then finds no handshake and spawns a third.
+ * Observed while verifying the remedy this session ships.
+ *
+ * `pid` is optional so a caller with no opinion still gets the old behaviour,
+ * which is what a test that writes its own file wants.
+ */
+export function clearHandshake(file = SERVICE_JSON_PATH, pid?: number): void {
+  if (pid !== undefined) {
+    const handshake = readHandshake(file);
+    if (handshake !== null && handshake.pid !== pid) return;
+  }
   rmSync(file, { force: true });
 }

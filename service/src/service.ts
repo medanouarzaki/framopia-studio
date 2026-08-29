@@ -23,7 +23,10 @@ startServer({ force })
   .then(({ port }) => {
     console.log(`framopia-service listening on 127.0.0.1:${port}`);
     const stop = (): void => {
-      clearHandshake();
+      // Only if it is still ours: a service that lost the lock to `--force` is
+      // still running, and clearing unconditionally deletes the handshake of
+      // the service that took over.
+      clearHandshake(undefined, process.pid);
       process.exit(0);
     };
     process.on('SIGINT', stop);

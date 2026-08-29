@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -91,5 +91,40 @@ describe('inspectLock', () => {
     );
     writeHandshake(handshake, file);
     expect(inspectLock(file, () => false)).toMatchObject({ reason: 'lock names a dead process' });
+  });
+});
+
+/*
+ * Observed while verifying this session's remedy: `npm run service -- --force`
+ * takes the lock but leaves the old process running, and stopping that old
+ * process deleted the handshake belonging to the service that took over. A
+ * healthy service was then running with nothing on disk pointing at it, and the
+ * panel's next load would spawn a third.
+ */
+describe('clearHandshake', () => {
+  it('leaves a handshake that names another process alone', () => {
+    const file = tempFile();
+    writeFileSync(
+      file,
+      JSON.stringify({ port: 1, token: 't', pid: process.pid + 1, startedAt: 'now' }),
+      'utf8',
+    );
+
+    clearHandshake(file, process.pid);
+
+    expect(existsSync(file)).toBe(true);
+  });
+
+  it('removes its own', () => {
+    const file = tempFile();
+    writeFileSync(
+      file,
+      JSON.stringify({ port: 1, token: 't', pid: process.pid, startedAt: 'now' }),
+      'utf8',
+    );
+
+    clearHandshake(file, process.pid);
+
+    expect(existsSync(file)).toBe(false);
   });
 });
