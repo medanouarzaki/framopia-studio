@@ -1,8 +1,8 @@
 {
   "id": "k2-syndicalia",
   "name": "K2 Syndicalia",
-  "version": 7,
-  "note": "Stub. The palette is locked (PROJECT_SPEC §5); fonts, the real image style and the vocabulary are supplied by the user at Block 9. vocabulary is deliberately empty rather than guessed: Block 2 saw one brand name rendered three different ways across three identical correction calls, so these terms become load-bearing as transcription key terms once they exist. allowedTemplates holds stub ids until the real templates arrive in Block 6. Version 2 added imageVariation.",
+  "version": 8,
+  "note": "The palette is locked (PROJECT_SPEC §5). Fonts, their colour roles and the palette role names come from the client's own brand document, supplied by the user at Block 9 session 2: Noir Abyssal #1A0000 is the dominant ground, Blanc Cassé/Crème #F8F6F2 is text, Or Signature #C9A96E carries highlights and emphasis, and Rouge K2 #820000 is used sparingly in gradients and background motion. The three faces are Inter Semi-Bold for ordinary words, Cormorant Garamond SemiBold Italic for emphasized ones and Almarai Bold for Arabic; all three are installed on both machines. Still open: the emphasis size ratio, which is 1.0 because nobody has measured it (see EMPHASIS_SIZE_RATIO); the PostScript names After Effects wants, which only After Effects can give; whether the build should set colour and font at all, which today live in the template comps; and vocabulary, which is deliberately still empty because it keys the keyword cache and the brand document's terms -- Loi 18-00, CNDP, copropriété, syndic, assemblée générale, recouvrement -- are load-bearing on transcription. imageStyle and imageVariation are untouched: they change only in the billable image session, on the user's explicit go-ahead, because editing them strands images already paid for.",
   "palette": {
     "background": "#1A0000",
     "primary": "#820000",
@@ -10,8 +10,15 @@
     "light": "#F8F6F2"
   },
   "fonts": {
-    "status": "tbd",
-    "note": "The user has fonts in use; their names are collected at Block 9 and recorded here. PROJECT_SPEC §5 forbids inventing them, and requireFonts() throws rather than substituting a default."
+    "status": "set",
+    "latin": "Inter Semi-Bold",
+    "arabic": "Almarai Bold",
+    "emphasis": "Cormorant Garamond SemiBold Italic",
+    "note": "Family and style as one string, the representation LATIN_FONT and ARABIC_FONT already use -- not a PostScript name. After Effects reports its own fonts as Inter-SemiBold and Almarai-Bold, and nothing in this project has ever written TextDocument.font, so resolving these to what AE accepts is a measurement to take inside After Effects on the user's machine."
+  },
+  "textColours": {
+    "ordinary": "light",
+    "emphasis": "accent"
   },
   "imageStyle": {
     "stylePrompt": [

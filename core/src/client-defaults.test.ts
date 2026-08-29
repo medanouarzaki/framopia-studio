@@ -35,10 +35,12 @@ describe('what a client who says nothing gets', () => {
     expect(d.source.videoShape).toBe('standard');
   });
 
-  it('leaves k2-syndicalia exactly as it was', () => {
+  it('leaves k2-syndicalia taking every client detail’s standard value', () => {
     const mode = loadMode('k2-syndicalia');
     expect(validateMode(mode)).toEqual([]);
-    expect(mode.version).toBe(7);
+    // v8 at Block 9 session 2: the client's real faces and their colour roles.
+    // None of the fields *this* module answers for was touched by that.
+    expect(mode.version).toBe(8);
     // None of the new fields is set, so every one of them takes the old value.
     const d = clientDefaults(mode);
     expect(d.source).toEqual({

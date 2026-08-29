@@ -71,11 +71,13 @@ describe('making a client', () => {
  * allowed to do that.
  */
 describe('the client that already exists', () => {
-  it('loads unchanged and carries none of the new fields', () => {
+  it('loads unchanged and carries none of the client-detail fields', () => {
     const raw = readFileSync(modePathFor('k2-syndicalia'), 'utf8');
     const mode = loadMode('k2-syndicalia');
     expect(validateMode(mode)).toEqual([]);
-    expect(mode.version).toBe(7);
+    // v8 at Block 9 session 2 — the faces and their colour roles. The fields
+    // listed below are a different set and are still absent.
+    expect(mode.version).toBe(8);
     for (const field of [
       'videoFolder', 'logoPath', 'pictures', 'language',
       'subtitleBaselineY', 'videoShape', 'watermarkByDefault',

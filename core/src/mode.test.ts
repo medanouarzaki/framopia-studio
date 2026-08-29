@@ -198,19 +198,47 @@ describe('the k2 stub on disk', () => {
     });
   });
 
-  it('still has fonts marked TBD', () => {
-    expect(mode.fonts.status).toBe('tbd');
+  /*
+   * Retired at Block 9 session 2: the user supplied the faces from the client's
+   * own brand document, so K2 is no longer the mode that exercises the `tbd`
+   * fallback. `build-fonts.test.ts` still exercises it against a client that
+   * really has none, which is every client yet to be made.
+   */
+  it('carries the three faces from the brand document', () => {
+    expect(mode.fonts.status).toBe('set');
+    expect(mode.fonts).toMatchObject({
+      latin: 'Inter Semi-Bold',
+      arabic: 'Almarai Bold',
+      emphasis: 'Cormorant Garamond SemiBold Italic',
+    });
+  });
+
+  it('says which palette role carries ordinary words and which carries emphasis', () => {
+    expect(mode.textColours).toEqual({ ordinary: 'light', emphasis: 'accent' });
   });
 
   it('has no vocabulary yet', () => {
     expect(mode.vocabulary).toEqual([]);
   });
 
-  // v7, Block 8 session 25: `imageScale`. The image cache stopped keying on
-  // modeVersion in Block 7 session 1 and the analysis stages key on content
-  // hashes of the fields their own call reads, so the bump invalidates nothing.
-  it('is at version 7', () => {
-    expect(mode.version).toBe(7);
+  /*
+   * v8, Block 9 session 2: the real faces, their colour roles and a note.
+   *
+   * The bump invalidates nothing, and that was measured before it was made
+   * rather than argued: the image cache stopped keying on `modeVersion` in
+   * Block 7 session 1, and the analysis stages key on content hashes of the
+   * fields their own call reads — `[name, vocabulary]` for keywords and
+   * `[name]` for slots — none of which moved. Transcription never reads the
+   * mode at all.
+   */
+  it('is at version 8', () => {
+    expect(mode.version).toBe(8);
+  });
+
+  it('bumping to v8 moved no cache key', () => {
+    expect(keywordModeContentHash(mode)).toBe('7756f1e7883417fc');
+    expect(slotModeContentHash(mode)).toBe('a654c324f198ed37');
+    expect(compositionContentHash(mode)).toBe('c5b43f23a3bd4b0b');
   });
 
   it('allows both script variants of the text templates', () => {
