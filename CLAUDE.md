@@ -825,6 +825,45 @@ of copying inside a 1.7 s run, every hash verified, every file materialised
 locally, `.local/config.json` skipped**, at
 `.../My Drive/framopia-studio/`.
 
+### The panel is one screen, not a five-step form
+
+**User ruling, 2026-08-29**, after session 41 rewrote the words and changed
+nothing for him: *"You should reconsider everything... think about user
+experience."* The decisive fact, which he gave when asked how he works: *"I will
+click on Run and then Build and then see the results, and if there is a problem,
+I will change it."*
+
+**He is not filling in a form.** The five-step rail is gone. One screen, top to
+bottom: the wordmark, **one readiness line**, Video, Client, Cost, **Run
+pipeline**, **Build the composition** directly beneath it, and a row of three —
+**Words**, **Emphasis**, **Pictures**, each with its count — under *Change
+something first*. The three editors are unchanged in content and behaviour; only
+how they are reached changed, and each opens over the main screen with Back.
+
+**Readiness is one word.** ffmpeg, ffprobe, the picture tools, the Node path,
+the template count, the service pid and who started it all moved behind
+**Details** — none of them changes what he does next while everything works.
+**A real problem comes forward** on the main screen as a sentence with what to
+do about it, because then it is the only thing that matters.
+
+**The type scale is 17px**, up from 13. Everything else is in `em`, so one
+number moves the whole panel; headings are 0.62em uppercase, secondary text
+0.72–0.85em, the spend figure 1.05em.
+
+**The two-column layout above 830 px is retired** (supersedes the session 9
+ruling): the screen is short enough not to need it and a docked panel is a
+column. `panel/src/panel-width.ts` is deleted. One column at every width from
+380 to 1920, with nothing overflowing, asserted in a real browser.
+
+**Picking a video always shows the main screen.** `panel/src/steps.ts` — the
+remembered-step store, `stepViews`, `reconcileStep`, `openingStep` and the
+`framopia.panel.last-step` key — is deleted with its tests. The behaviour it
+produced, landing on Build after choosing a video, must not come back in another
+form.
+
+**The Client picker is a `<select>`**, so the next session's "Set up a new
+client…" entry is an added option and moves nothing else on the screen.
+
 ### The panel is written in his words, not the code's
 
 **User ruling, 2026-08-29**, after he had used all five steps: the panel *"shows

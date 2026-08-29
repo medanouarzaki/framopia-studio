@@ -1724,7 +1724,7 @@ describe('the image candidate picker', () => {
   it('shows the picture the build will place, not the cut-out of it', async () => {
     const loaded = await loadImages();
     if (loaded === null) return;
-    await loaded.page.waitForSelector('ol.slots li', { timeout: 5000 });
+    await loaded.page.waitForSelector('img.shot.built', { timeout: 5000 });
     const built = await loaded.page.$$eval('img.shot.built', (els) =>
       els.map((e) => (e as HTMLImageElement).getAttribute('src')),
     );
@@ -1750,7 +1750,7 @@ describe('the image candidate picker', () => {
   it('offers the picture before the background was removed, on a cutout slot only', async () => {
     const loaded = await loadImages();
     if (loaded === null) return;
-    await loaded.page.waitForSelector('ol.slots li', { timeout: 5000 });
+    await loaded.page.waitForSelector('img.shot.built', { timeout: 5000 });
     const raws = await loaded.page.$$('figure.rawshot');
     expect(raws).toHaveLength(1);
     const text = (await loaded.page.textContent('ol.slots')) ?? '';
@@ -1799,7 +1799,7 @@ describe('the image candidate picker', () => {
     (gone.slots[0]?.candidates[0] as Record<string, unknown>)['renderedExists'] = false;
     const loaded = await loadImages(gone);
     if (loaded === null) return;
-    await loaded.page.waitForSelector('ol.slots li', { timeout: 5000 });
+    await loaded.page.waitForSelector('img.shot.built', { timeout: 5000 });
     const text = (await loaded.page.textContent('ol.slots')) ?? '';
     expect(text).toContain('no longer on the disk');
     expect(await loaded.page.$$('img.shot.built')).toHaveLength(2);
