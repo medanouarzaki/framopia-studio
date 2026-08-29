@@ -11,6 +11,7 @@ import { context, build } from 'esbuild';
 import { copyFileSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { buildStamp } from '../../scripts/build-stamp.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const PANEL = path.resolve(HERE, '..');
@@ -31,12 +32,12 @@ const options = {
   define: {
     'process.env.NODE_ENV': watch ? '"development"' : '"production"',
     /*
-     * When this bundle was built. The panel compares it against the time the
-     * companion service started: a service that started before the bundle was
-     * built is running older code, which has confused what is on screen in four
-     * separate sessions and was never checkable until now.
+     * Which build this bundle is. The panel compares it against the stamp the
+     * companion service reports, and equal means the same code whoever started
+     * first — a timestamp answered a different question and accused a service
+     * that was running exactly the right code. `scripts/build-stamp.mjs`.
      */
-    __PANEL_BUILT_AT__: JSON.stringify(new Date().toISOString()),
+    __PANEL_BUILD_STAMP__: JSON.stringify(buildStamp()),
   },
 };
 

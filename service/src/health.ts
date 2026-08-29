@@ -12,6 +12,7 @@ import {
 } from '@framopia/core';
 import { existsSync as fsExists, readFileSync as fsRead, readdirSync as fsReaddir } from 'node:fs';
 import { homedir } from 'node:os';
+import { fileURLToPath } from 'node:url';
 import {
   describeFfmpegFailure,
   NODE_NOT_FOUND_HELP,
@@ -75,6 +76,16 @@ export interface HealthPayload {
     issues: string[];
     count: number;
   };
+  /**
+   * Which build this service process is running.
+   *
+   * Optional with a default: a service older than this sends nothing, and the
+   * panel then reports that it **cannot tell**, which is a different thing from
+   * "behind". Written beside the compiled output by
+   * `scripts/write-build-stamp.mjs` and read **once, at startup** — reading it
+   * per request would report a rebuild the running process has not loaded.
+   */
+  buildStamp?: string | null;
   /** So the panel can locate footage, modes and brand assets without guessing. */
   repoRoot: string;
   /**
@@ -84,6 +95,30 @@ export interface HealthPayload {
    * interpreter that is.
    */
   node: (ResolvedNode & { help?: string; version: string }) | { path: null; source: null; help: string };
+}
+
+/**
+ * Read once, when this module loads, and never again.
+ *
+ * The stamp has to travel with the **process**, not with the file: rebuilding
+ * while the service runs rewrites `build-stamp.json` while the running code is
+ * still the old code, and re-reading it would tell the panel the two agree when
+ * they do not.
+ */
+const BUILD_STAMP: string | null = (() => {
+  try {
+    const file = path.join(path.dirname(fileURLToPath(import.meta.url)), 'build-stamp.json');
+    const parsed = JSON.parse(fsRead(file, 'utf8')) as { stamp?: unknown };
+    return typeof parsed.stamp === 'string' ? parsed.stamp : null;
+  } catch {
+    // Running from source through tsx, or a build that predates the stamp.
+    // Unknown is a real answer and the panel says so; it is not "stale".
+    return null;
+  }
+})();
+
+export function serviceBuildStamp(): string | null {
+  return BUILD_STAMP;
 }
 
 function probe(command: string, args: string[]): ToolState {
@@ -165,6 +200,7 @@ export function health(serviceVersion: string): HealthPayload {
     process: { pid: process.pid, startedAt: STARTED_AT },
     sidecar: { venv, pythonPath },
     templates,
+    buildStamp: BUILD_STAMP,
     repoRoot: REPO_ROOT,
     /*
      * `process.version` is the interpreter actually running this service, not

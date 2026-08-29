@@ -275,6 +275,13 @@ export {
 } from './repo-root.js';
 export { buildFonts, type BuildFonts, type ModeFontsLike } from './build-fonts.js';
 export {
+  compareBuildStamps,
+  describeBuildStamps,
+  REBUILD_COMMAND,
+  type BuildStampComparison,
+  type BuildStampVerdict,
+} from './build-stamp.js';
+export {
   CLIENT_SNAPSHOT_VERSION,
   snapshotIsBehind,
   snapshotOfMode,
