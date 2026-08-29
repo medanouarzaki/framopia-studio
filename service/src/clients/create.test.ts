@@ -75,9 +75,9 @@ describe('the client that already exists', () => {
     const raw = readFileSync(modePathFor('k2-syndicalia'), 'utf8');
     const mode = loadMode('k2-syndicalia');
     expect(validateMode(mode)).toEqual([]);
-    // v8 at Block 9 session 2 — the faces and their colour roles. The fields
+    // v9 at Block 9 session 5 — the measured PostScript names. The fields
     // listed below are a different set and are still absent.
-    expect(mode.version).toBe(8);
+    expect(mode.version).toBe(9);
     for (const field of [
       'videoFolder', 'logoPath', 'pictures', 'language',
       'subtitleBaselineY', 'videoShape', 'watermarkByDefault',

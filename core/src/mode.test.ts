@@ -231,11 +231,31 @@ describe('the k2 stub on disk', () => {
    * `[name]` for slots — none of which moved. Transcription never reads the
    * mode at all.
    */
-  it('is at version 8', () => {
-    expect(mode.version).toBe(8);
+  it('is at version 9', () => {
+    expect(mode.version).toBe(9);
   });
 
-  it('bumping to v8 moved no cache key', () => {
+  /*
+   * Measured on the user's machine, and the emphasis family is
+   * CormorantGaramondItalic rather than CormorantGaramond — a separate family
+   * here, which is why the obvious CormorantGaramond-SemiBoldItalic is not it.
+   */
+  it('carries the font names After Effects accepts', () => {
+    expect(mode.fonts.status).toBe('set');
+    const names = mode.fonts.status === 'set' ? mode.fonts.postScriptNames : undefined;
+    expect(names).toEqual({
+      latin: 'Inter-SemiBold',
+      arabic: 'Almarai-Bold',
+      emphasis: 'CormorantGaramondItalic-SemiBoldItalic',
+    });
+  });
+
+  it('records no PostScript name with a space, which cannot be written', () => {
+    const names = mode.fonts.status === 'set' ? (mode.fonts.postScriptNames ?? {}) : {};
+    for (const value of Object.values(names)) expect(value).not.toMatch(/\s/);
+  });
+
+  it('bumping to v9 moved no cache key', () => {
     expect(keywordModeContentHash(mode)).toBe('7756f1e7883417fc');
     expect(slotModeContentHash(mode)).toBe('a654c324f198ed37');
     expect(compositionContentHash(mode)).toBe('c5b43f23a3bd4b0b');

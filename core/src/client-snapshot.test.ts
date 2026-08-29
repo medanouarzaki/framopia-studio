@@ -116,7 +116,7 @@ describe('the real client', () => {
   it('pins K2 Syndicalia’s three faces and its locked palette', () => {
     const snap = snapshotOfMode(loadMode('k2-syndicalia'), 'now');
 
-    expect(snap.version).toBe(8);
+    expect(snap.version).toBe(9);
     expect(snap.palette).toEqual({
       background: '#1A0000',
       primary: '#820000',

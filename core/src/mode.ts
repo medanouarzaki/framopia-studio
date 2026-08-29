@@ -105,7 +105,28 @@ export const GLOBAL_NEGATIVE_PROMPTS = ['no watermark', 'no logo'];
  */
 export type ModeFonts =
   | { status: 'tbd'; note: string }
-  | { status: 'set'; latin: string; arabic: string; emphasis?: string; note?: string };
+  | {
+      status: 'set';
+      latin: string;
+      arabic: string;
+      emphasis?: string;
+      /**
+       * The strings After Effects actually accepts, per role.
+       *
+       * **Optional with a default**: a client whose faces have not been checked
+       * on a host has none, and every mode written before Block 9 session 5 is
+       * that client. Absent means unresolved, which is not the same as absent
+       * from the machine.
+       *
+       * They are PostScript names because **After Effects rejects any font name
+       * containing a space** — `TextDocument.font` throws `Unable to set
+       * "font". Contains invalid character 32`, measured on 26.0x67. The
+       * family-and-style strings above stay: they are what the user gave, and
+       * they are what a person reads.
+       */
+      postScriptNames?: { latin?: string; arabic?: string; emphasis?: string };
+      note?: string;
+    };
 
 /**
  * Which palette role carries which kind of text.
@@ -372,6 +393,27 @@ function validateFonts(c: Checker, value: unknown): void {
     // exactly what every mode written before Block 9 session 2 looks like.
     if (fonts.emphasis !== undefined) c.string('fonts.emphasis', fonts.emphasis);
     if (fonts.note !== undefined) c.string('fonts.note', fonts.note);
+    if (fonts.postScriptNames !== undefined) {
+      const names = c.object('fonts.postScriptNames', fonts.postScriptNames);
+      if (names !== null) {
+        for (const role of ['latin', 'arabic', 'emphasis']) {
+          const value = names[role];
+          if (value === undefined) continue;
+          if (typeof value !== 'string' || value.length === 0) {
+            c.fail(`fonts.postScriptNames.${role}`, 'expected a non-empty string');
+            continue;
+          }
+          // A name with a space cannot be written to a text layer at all, so
+          // recording one would record something that provably does not work.
+          if (/\s/.test(value)) {
+            c.fail(
+              `fonts.postScriptNames.${role}`,
+              'a PostScript name has no spaces; After Effects rejects one that does',
+            );
+          }
+        }
+      }
+    }
     return;
   }
   c.fail('fonts.status', `expected "tbd" or "set", found ${JSON.stringify(fonts.status)}`);

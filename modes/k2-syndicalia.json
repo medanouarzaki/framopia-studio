@@ -1,8 +1,8 @@
 {
   "id": "k2-syndicalia",
   "name": "K2 Syndicalia",
-  "version": 8,
-  "note": "The palette is locked (PROJECT_SPEC §5). Fonts, their colour roles and the palette role names come from the client's own brand document, supplied by the user at Block 9 session 2: Noir Abyssal #1A0000 is the dominant ground, Blanc Cassé/Crème #F8F6F2 is text, Or Signature #C9A96E carries highlights and emphasis, and Rouge K2 #820000 is used sparingly in gradients and background motion. The three faces are Inter Semi-Bold for ordinary words, Cormorant Garamond SemiBold Italic for emphasized ones and Almarai Bold for Arabic; all three are installed on both machines. Still open: the emphasis size ratio, which is 1.0 because nobody has measured it (see EMPHASIS_SIZE_RATIO); the PostScript names After Effects wants, which only After Effects can give; whether the build should set colour and font at all, which today live in the template comps; and vocabulary, which is deliberately still empty because it keys the keyword cache and the brand document's terms -- Loi 18-00, CNDP, copropriété, syndic, assemblée générale, recouvrement -- are load-bearing on transcription. imageStyle and imageVariation are untouched: they change only in the billable image session, on the user's explicit go-ahead, because editing them strands images already paid for.",
+  "version": 9,
+  "note": "The palette is locked (PROJECT_SPEC §5). Fonts, their colour roles and the palette role names come from the client's own brand document, supplied by the user at Block 9 session 2: Noir Abyssal #1A0000 is the dominant ground, Blanc Cassé/Crème #F8F6F2 is text, Or Signature #C9A96E carries highlights and emphasis, and Rouge K2 #820000 is used sparingly in gradients and background motion. The three faces are Inter Semi-Bold for ordinary words, Cormorant Garamond SemiBold Italic for emphasized ones and Almarai Bold for Arabic; all three are installed on both machines. Block 9 session 5 measured the faces in After Effects: EMPHASIS_SIZE_RATIO is 1.3479 and the PostScript names are recorded below. Still open: whether the build should set colour and font at all, which today live in the template comps; and vocabulary, which is deliberately still empty because it keys the keyword cache and the brand document's terms -- Loi 18-00, CNDP, copropriété, syndic, assemblée générale, recouvrement -- are load-bearing on transcription. imageStyle and imageVariation are untouched: they change only in the billable image session, on the user's explicit go-ahead, because editing them strands images already paid for.",
   "palette": {
     "background": "#1A0000",
     "primary": "#820000",
@@ -14,7 +14,12 @@
     "latin": "Inter Semi-Bold",
     "arabic": "Almarai Bold",
     "emphasis": "Cormorant Garamond SemiBold Italic",
-    "note": "Family and style as one string, the representation LATIN_FONT and ARABIC_FONT already use -- not a PostScript name. After Effects reports its own fonts as Inter-SemiBold and Almarai-Bold, and nothing in this project has ever written TextDocument.font, so resolving these to what AE accepts is a measurement to take inside After Effects on the user's machine."
+    "postScriptNames": {
+      "latin": "Inter-SemiBold",
+      "arabic": "Almarai-Bold",
+      "emphasis": "CormorantGaramondItalic-SemiBoldItalic"
+    },
+    "note": "Family and style as one string, the representation LATIN_FONT and ARABIC_FONT already use. postScriptNames are what After Effects actually accepts, measured on the user's machine (AE 26.0x67) on 2026-08-29 by tools/ae/measure-fonts.jsx: it rejects any font name containing a space, so the family-and-style strings above cannot be written to a text layer and the PostScript names must be. Note the emphasis family is CormorantGaramondItalic and not CormorantGaramond -- that face is a separate family on this machine, and CormorantGaramond-SemiBoldItalic does not exist. All three were confirmed present in app.fonts.allFonts before anything was written."
   },
   "textColours": {
     "ordinary": "light",
