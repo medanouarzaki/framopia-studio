@@ -174,10 +174,27 @@ describe('the build’s unsaved-changes guard', () => {
     expect(BUILD_REEL).toContain('Save or close it yourself, then run it again');
   });
 
-  it('keeps refusing a project that was never written to disk', () => {
+  it('keeps refusing a project that was never written to disk and holds something', () => {
     // `isOurs` needs a file to compare, so a null file can never satisfy it.
     expect(BUILD_REEL).toContain('var isOurs = openFile !== null');
     expect(BUILD_REEL).toContain('and has never been saved');
+  });
+
+  /*
+   * An empty untitled project holds no work, and it is the state After Effects
+   * is left in by any script that adds a temporary comp and removes it again —
+   * the modified flag is read-only and cannot be put back. Session 6's own
+   * font measurement put the user's project there and then could not build.
+   *
+   * This is **not** the "unreadable dirty counts as dirty" case: `numItems` is
+   * read, and the exemption needs it to be exactly zero **and** the project to
+   * have no file. Either one missing keeps the refusal.
+   */
+  it('proceeds past an empty untitled project, and only an empty one', () => {
+    expect(BUILD_REEL).toContain('itemCount = app.project.numItems');
+    expect(BUILD_REEL).toContain('isDirty && openFile === null && itemCount === 0');
+    // An unreadable count is -1, which the condition above cannot satisfy.
+    expect(BUILD_REEL).toContain('itemCount = -1;');
   });
 
   it('never closes a project it did not write', () => {
