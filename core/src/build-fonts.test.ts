@@ -75,14 +75,14 @@ describe('buildFonts', () => {
   });
 
   /*
-   * 1.0 is CHOSEN, NOT MEASURED and near-certainly wrong — Cormorant sets much
-   * smaller than Inter at the same size. Pinned so the day it is measured is a
-   * deliberate change with this test in the diff, rather than a number quietly
-   * appearing in every build.
+   * Measured in After Effects 26.0x67 on 2026-08-29 from the x-height of real
+   * text: Inter-SemiBold against CormorantGaramondItalic-SemiBoldItalic, the
+   * same at 343 and at 425. Pinned so a change to it is a deliberate one with
+   * this test in the diff, rather than a number quietly moving every build.
    */
-  it('reports the emphasis ratio, which nobody has measured', () => {
-    expect(EMPHASIS_SIZE_RATIO).toBe(1);
-    expect(buildFonts({ name: 'x', fonts: { status: 'tbd' } }).emphasisSizeRatio).toBe(1);
+  it('reports the measured emphasis ratio', () => {
+    expect(EMPHASIS_SIZE_RATIO).toBe(1.3479);
+    expect(buildFonts({ name: 'x', fonts: { status: 'tbd' } }).emphasisSizeRatio).toBe(1.3479);
   });
 
   it('falls back with an emphasis face too, so the field is never absent', () => {

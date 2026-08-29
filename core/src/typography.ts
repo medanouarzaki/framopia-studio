@@ -21,28 +21,58 @@ export const ARABIC_FONT = 'Almarai Bold';
 
 /**
  * Almarai runs smaller than Inter at the same nominal size, so the Arabic face
- * is set larger to match it optically. Measured by the user, not derived from
- * the metrics: it is a judgement about how the two faces read side by side.
+ * is set larger to match it optically. **Measured by the user's eye, not from
+ * the metrics**: it is a judgement about how the two faces read side by side.
  *
- * **It was measured against Inter, and Block 9 session 2 gave K2 an emphasis
- * face that is not Inter.** Against Cormorant Garamond it is unverified; the
- * measurement that would settle it is the same `sourceRectAtTime` pass that
- * settles `EMPHASIS_SIZE_RATIO`.
+ * Block 9 session 5 measured the two faces in After Effects and the metrics do
+ * **not** reproduce 1.07: Inter's cap height over Almarai's is **1.0161** and
+ * its x-height over Almarai's is **1.0300**, both at 343 and at 425. That is
+ * recorded rather than applied. The figure came from a person looking at a
+ * delivered reel, a metric ratio is not evidence his eye was wrong, and
+ * lowering every Arabic word on every build by 4% is a change he should see
+ * before it happens.
+ *
+ * **Cormorant does not bear on it.** The Arabic companion is sized against the
+ * ordinary Latin face: subtitles pair Inter with Almarai, and an Arabic keyword
+ * takes `kw_slam_ar`, which is Almarai again. The emphasis face never sits
+ * beside Arabic, so adding it leaves this ratio's reference unchanged.
  */
 export const ARABIC_SIZE_RATIO = 1.07;
 
 /**
  * The emphasis face's size against the ordinary Latin one.
  *
- * **CHOSEN, NOT MEASURED, and near-certainly wrong.** Cormorant Garamond is an
- * old-style serif and sets optically much smaller than Inter at the same
- * nominal size, so an emphasized word at 1.0 will read smaller than the words
- * around it rather than larger. The right number can only come from
- * `sourceRectAtTime` inside After Effects, against the real faces, and that is
- * the same measurement shrink-to-fit needs — PROJECT_SPEC §3 ruling 3. Guessing
- * it here would put a number nobody measured into every build.
+ * **Measured 2026-08-29 in After Effects 26.0x67 on the user's machine**,
+ * through `sourceRectAtTime` on real text — `tools/ae/measure-fonts.jsx`, and
+ * the run is `.local/build/font-measurements.json`. Inter-SemiBold is the
+ * reference and CormorantGaramondItalic-SemiBoldItalic is the emphasis face.
+ *
+ * **Derived from the x-height proxy**, the rendered height of a lowercase `x`.
+ * The three candidate quantities do not agree, and which one is right is a
+ * question about what the eye reads as "the same size":
+ *
+ * | quantity | ratio |
+ * |---|---|
+ * | cap height, rendered `H` | 1.1641 |
+ * | **x-height, rendered `x`** | **1.3479** |
+ * | advance width, one word and a phrase | 1.3562 and 1.3730 |
+ *
+ * x-height wins because **the corpus is lowercase**: subtitle cards are one
+ * Arabizi or French word each, and apparent size in lowercase text is governed
+ * by the x-height rather than by the capitals. Advance width, an independent
+ * measure of the same thing, lands within 1.2% of it; cap height is the
+ * outlier, and it is low because Cormorant is an old-style face whose capitals
+ * are large relative to its lowercase. Two measures agreeing against one is the
+ * reason, not a preference.
+ *
+ * Identical at 343 and at 425 to five decimal places, so the ratio is a
+ * property of the faces rather than of a size.
+ *
+ * **It is still a judgement the user can overturn by looking at a build.** If
+ * an emphasized word reads too large, cap height's 1.1641 is the other end of
+ * the range and the number to try.
  */
-export const EMPHASIS_SIZE_RATIO = 1.0;
+export const EMPHASIS_SIZE_RATIO = 1.3479;
 
 export const SUBTITLE_FONT_SIZE = 343;
 export const KEYWORD_FONT_SIZE = 425;
