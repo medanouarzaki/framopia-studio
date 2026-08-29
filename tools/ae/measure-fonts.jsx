@@ -145,6 +145,37 @@ function framopiaMeasureFonts(quiet) {
             });
         }
 
+        /*
+         * A face this machine does not have, or one no candidate name resolved
+         * to, is a **failure**. The first run of this script reported
+         * `ok: true` having found zero faces for all three families and having
+         * resolved none of them, and that was read as a measurement — it was
+         * the absence of one. A result that answers nothing must not look like
+         * a result that answers everything.
+         */
+        stage = 'check-complete';
+        var unresolved = [];
+        for (i = 0; i < measurements.length; i++) {
+            if (!measurements[i].resolved) unresolved.push(measurements[i].role);
+        }
+        var empty = [];
+        for (i = 0; i < installed.families.length; i++) {
+            if (installed.families[i].found.length === 0) {
+                empty.push(installed.families[i].asked);
+            }
+        }
+        if (!installed.available) {
+            throw new Error('the installed faces could not be listed: ' + String(installed.reason));
+        }
+        if (empty.length > 0) {
+            throw new Error('no face was found for ' + empty.join(', ') +
+                            '; a family with no faces is a failure, not an empty answer');
+        }
+        if (unresolved.length > 0) {
+            throw new Error('no name resolved for ' + unresolved.join(', ') +
+                            '; a face that did not resolve was not measured');
+        }
+
         result = {
             ok: true,
             measuredAt: new Date().toString(),
