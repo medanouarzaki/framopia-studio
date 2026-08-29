@@ -296,6 +296,13 @@ AI-generated contextual images, SFX, and a watermark. Full spec in
   analysis stage already wrote** (`keywords-prompt-v3-k2-syndicalia-v5`) rather
   than guessed. A plan whose analysis never ran is left null. Dry run by
   default; asserts it changed only `meta` and `clientMode`.
+- `tools/ae/measure-fonts.jsx` — **the user runs this himself**, File > Scripts >
+  Run Script File. Local and free. Lists what After Effects has for each of the
+  three K2 faces, writes `TextDocument.font` and reads it back to find which
+  name form actually takes, records what an unresolvable name becomes, and
+  measures cap height, an x-height proxy and advance width at 343 and 425 with
+  `sourceRectAtTime`. Adds one temporary comp to the open project and removes
+  it; **never saves**. Writes `.local/build/font-measurements.json`.
 - `npm run validate:panel` — free, local. Parses `panel/CSXS/manifest.xml` and
   fails on any parse error. Part of `npm run check`.
 - `npm run panel:build` / `npm run panel:dev` — build the CEP panel to
@@ -968,26 +975,64 @@ of copying inside a 1.7 s run, every hash verified, every file materialised
 locally, `.local/config.json` skipped**, at
 `.../My Drive/framopia-studio/`.
 
-### The panel can see a service running older code than itself
+### Staleness is a fact about code, never about clocks
 
-**Four sessions in a row lost time to a stale service**, and nothing could see
-it: `serviceVersion` and `appVersion` both come **from the service**, so they
-agree with each other by construction and say nothing about the bundle. The one
-thing the two sides do not share is *when* each came into being. `build.mjs`
-injects `__PANEL_BUILT_AT__`; `stalenessOf` compares it against the service's
-`process.startedAt` with a minute of slack, and a service that started before
-the bundle was built is named as such on the main screen.
+**Four sessions lost time to a stale service and nothing could see it**:
+`serviceVersion` and `appVersion` both come **from the service**, so they agree
+by construction and say nothing about the bundle. Block 8 session 32's answer
+was to stamp the bundle with its **build time** and compare it against the
+service's `process.startedAt`. That answers a different question, and Block 9
+session 3 is the session it cost: **a service running exactly the right code was
+accused of being behind because it had started first, and no amount of
+restarting anything cleared the banner** — nothing about the code was being
+measured. `handoffs/block-8.md` §9 had already recorded both limits.
 
-It answers one question — is this service running the code that was on disk when
-the panel was built — and **cannot tell a service that is behind from one that
-is broken**. Either timestamp missing means it says nothing.
+**Both artifacts carry one build stamp now** — `scripts/build-stamp.mjs`,
+`<short commit>+<content hash>`. The commit is for a human; the content hash is
+what decides, over every source file that is compiled or evaluated
+(`core/src`, `service/src`, `panel/src`, `panel/jsx`, `index.html`, the CSXS
+manifest), **tests excluded** because they are in neither artifact. One stamp
+for the whole build, not one per side, so the two can be compared directly.
 
-**"This service is older than the Build control" was wrong, and the evidence is
-recorded.** The running service was queried directly and does send `build`; the
-pane showed the message because **nothing had been picked yet** — with no video
-and no client there is no plan, so `plan.build` is absent. It told him to
-restart a service he had just restarted. Three states now: nothing picked, a
-service that really did not answer, and a stale one.
+`panel/scripts/build.mjs` defines `__PANEL_BUILD_STAMP__`; the service build
+writes `service/dist/build-stamp.json` and `/health` reports it. **The service
+reads it once, at startup** — re-reading per request would report a rebuild the
+running process has not loaded, which is the whole failure again.
+
+**`compareBuildStamps` in `core/src/build-stamp.ts` is the one rule, read by
+both sides** and imported by the panel through the `@framopia/core/build-stamp`
+subpath — the barrel reaches `node:fs` through the config loader and esbuild
+cannot resolve that for a browser target.
+
+**Behind, unknown and down are three different states.** Equal stamps say
+nothing, whoever started first. Different stamps name it with a remedy. A
+service too old to send a stamp is **`unknown` — not an accusation**; the main
+screen stays quiet and the details pane says *"this service does not say which
+build it is, so the two cannot be compared"*, so silence and ignorance do not
+look alike. `buildStamp` is optional-with-default for exactly that.
+
+**`__PANEL_BUILT_AT__` and the start-time comparison are deleted**, with the
+tests that asserted them.
+
+### A remedy sentence is verified by running it, or it is a guess
+
+Three in a row were wrong this session, each found only by doing it:
+
+- **`npm run service` exits 1 while a service is running.** The lock is live and
+  `service.ts` refuses rather than taking over. The old banner told the user to
+  run exactly that, in the one situation where it cannot work.
+- **`npm run service -- --force` did not forward `--force`.** The root script
+  ended `npm run service --workspace framopia-service`, so npm attached the
+  caller's arguments to the *inner npm invocation* instead of to node, and the
+  service still printed "pass --force to take it over". The root script ends
+  with `--` now.
+- **`--force` takes the lock but does not stop the old process.** Two services
+  then run, and stopping the old one **deleted the live one's handshake** —
+  `clearHandshake` removed the file unconditionally. It takes an optional pid
+  and leaves a handshake naming another process alone.
+
+`REBUILD_COMMAND` is declared once beside the rule, so the sentence on screen
+and the sentence in the tests cannot drift.
 
 ### A file dialog is looked for, never assumed
 
