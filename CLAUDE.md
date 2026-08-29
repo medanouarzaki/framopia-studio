@@ -772,6 +772,18 @@ successful backup into it. The default destination is `backupDir` in
 
 53.3 MB without video, and it took **1.5 s** to a local disk.
 
+**A cloud destination is refused when nothing is syncing it.** Session 40 copied
+94 files into `~/Library/CloudStorage/GoogleDrive-…`, verified every hash and
+confirmed every byte was local — all true, and none of it a backup: Google Drive
+was not installed and macOS had left the mount point behind. **Nothing on the
+filesystem separates a live provider folder from that leftover**, measured: same
+device id as the home directory, same filesystem in `df`, and permissions
+persist so the root is `dr-x------` either way. `checkSyncClient` reads the app
+out of the folder name (`GoogleDrive-…` → Google Drive) and looks for a running
+process from that app bundle. **What it cannot tell you**: whether this exact
+folder is the one being served, whether the account is signed in, whether syncing
+is paused, or whether the upload has finished.
+
 **A cloud destination refuses to receive a credential.** `secrets.ts` classifies
 each file by its **bytes**, not its name — a field whose name *ends* with
 `apiKey`/`token`/`secret`/`password`/`credential` **and** whose value is 16+
@@ -812,6 +824,31 @@ account root, so `npm run backup` alone repeats it. **94 files, 53.3 MB, 0.2 s
 of copying inside a 1.7 s run, every hash verified, every file materialised
 locally, `.local/config.json` skipped**, at
 `.../My Drive/framopia-studio/`.
+
+### The panel is written in his words, not the code's
+
+**User ruling, 2026-08-29**, after he had used all five steps: the panel *"shows
+so many technical words that are hard, that I don't know what he means by
+them."* He named `alpha_edge_noise 0.0897 > 0.02`, `hole_ratio`, `edge_halo`,
+`gate rejected`, `cacheProvenance`, `img003 11.62-13.96s card z_left_4
+img_float`, `stage: service-lost`, `retryable: yes` and `HTTP 404 from
+/images?reel=vitasilk`.
+
+Four rules, in force for any string this project puts on screen:
+
+- **A field name is not a label.** `cacheProvenance`, `k001`, `g022`,
+  `kw_slam_ar`, `img003` are names from the code.
+- **A number belongs on screen only if it changes a decision he could make.**
+  `0.0897 > 0.02` does not; `912 px` does and stays.
+- **Say the consequence, not the mechanism.** Not `HTTP 404 from /images` but
+  "there is nothing here for this reel yet".
+- **A string that answers no question he could ask is deleted, not reworded.**
+  The keyword picker's source line carried five facts, four of them ids, and now
+  says whether the words were chosen for him or are waiting on him.
+
+Kept deliberately, because they are evidence a dozen sessions paid for: sizes in
+pixels, costs in dollars, which service answered and when, the file a build
+wrote, and every buildability issue by name.
 
 ### Build runs from the panel, through the same CLI a terminal runs
 
