@@ -909,20 +909,33 @@ PostScript names joined by commas, and a single-face family is one name.
 `FramopiaNoSuchFaceZZQX` reported itself installed on the next run. A fresh
 launch is the only way to clear it. `panel/jsx/fonts.jsx` is the one reader.
 
-### The emphasis ratio is measured; the Arabic one is still the user's eye
+### The emphasis ratio is ruled; the Arabic one is still the user's eye
 
-**`EMPHASIS_SIZE_RATIO` is 1.3479**, from the **x-height** of real text through
-`sourceRectAtTime`, Inter-SemiBold against
-CormorantGaramondItalic-SemiBoldItalic. Identical at 343 and at 425 to five
-decimal places, so it is a property of the faces rather than of a size.
+**`EMPHASIS_SIZE_RATIO` is 1.1641, from cap height — RULED BY THE USER on
+2026-08-30.** He was built `vitasilk` twice from one plan, once at 1.3479 and
+once at 1.1641, differing in that number and nothing else, and he chose the
+smaller. **Where a measurement and the user's eye disagree, his eye decides** —
+the same principle that settled `IMPACT_THRESHOLD`.
 
-The three candidate quantities disagree and the choice is a judgement:
+Measured through `sourceRectAtTime`, Inter-SemiBold against
+CormorantGaramondItalic-SemiBoldItalic. Every quantity is identical at 343 and
+at 425 to five decimal places, so each is a property of the faces rather than of
+a size.
 
-| quantity | ratio |
-|---|---:|
-| cap height, rendered `H` | 1.1641 |
-| **x-height, rendered `x`** | **1.3479** |
-| advance width, one word / a phrase | 1.3562 / 1.3730 |
+| quantity | ratio | |
+|---|---:|---|
+| **cap height, rendered `H`** | **1.1641** | **ruled** |
+| x-height, rendered `x` | 1.3479 | what the derivation preferred |
+| advance width, one word / a phrase | 1.3562 / 1.3730 | |
+
+**`chooseRatio` still refuses cap height** on the numbers alone, 16.5% from
+advance, and is still right to: **the gate exists to stop an underived number
+reaching the code, not to overrule a ruling.** `RULED_EMPHASIS_QUANTITY` is the
+named way past it and nothing else has one; `font-ratios.test.ts` pins the
+constant against a derivation from that quantity, so a re-measurement that moved
+cap height fails rather than leaving a stale number.
+
+**What the derivation preferred, and why it lost:**
 
 x-height wins because **the corpus is lowercase** — one Arabizi or French word
 per card — and advance width, an independent measure of the same thing, lands
@@ -949,6 +962,39 @@ see before it happens. **Cormorant does not bear on it**: the Arabic companion
 is sized against the ordinary Latin face, and an Arabic keyword takes
 `kw_slam_ar`, which is Almarai again, so the emphasis face never sits beside
 Arabic.
+
+### The template style pass is written down, not done
+
+`docs/TEMPLATE_STYLE_PASS.md` is what the user works from: the four text comps
+and the one layer in each (`TXT_MAIN`), what must not change and what breaks if
+it does, and the order. **The system never edits a template's animation**, so a
+drop shadow and a contour are his to draw.
+
+**Measured 2026-08-30, because it decides whether the layout has to move: a
+stroke of width *w* makes a word 2*w* wider and 2*w* taller** — it sits *w*
+outside the letters on every side, at 6, 12 and 20 px on Inter-SemiBold at 343.
+**A drop shadow changed `sourceRectAtTime` by nothing**, at 20 distance and 30
+softness. `extents=false` and `extents=true` agree exactly for point text.
+
+So the two halves of the layout part company:
+
+- **Line breaking looks after itself.** `framopiaFitText` asks After Effects for
+  the width at build time, so it sees the stroke and wraps a card one word
+  earlier. Nothing to do.
+- **`SUBTITLE_BAND` does not.** It is derived from `FONT_METRICS`, read from the
+  **font files** with fontTools — and a stroke is not in a font file. After the
+  pass the band is short by the stroke width above and below, and **no existing
+  command re-derives it**, because re-running the same derivation would read the
+  same font files. The constant needs a term for the stroke; then
+  `npm run zones -- --all --write-plan` and `npm run place -- --all` re-derive
+  what depends on it. The audit also has to be re-run: it is stamped with the
+  `.aep`'s sha256 and `validate:templates` refuses a stale one.
+
+**The shadow and the contour live in the templates; their colours come from the
+client** (decision taken by the conversation). Baking them in gives every future
+client K2's black shadow and K2's gold edge, which is what per-client type
+already solved. Two mode fields carry them alongside the palette and the faces.
+**Neither field exists yet and this session did not add them.**
 
 ### The build sets the face and the colour on the placeholder
 
