@@ -434,6 +434,45 @@ an exception.** `detectHost()` returns a discriminated union and never throws;
 empty list. The panel is a view over the service and the ExtendScript layer and
 is never the place a decision lives.
 
+### ExtendScript's reserved words are Java's, and every .jsx is parsed
+
+**`short` and `long` are reserved in ExtendScript** — so are `class`, `char`,
+`int`, `byte`, `float`, `double`, `boolean`, `final`, `enum`, `export`,
+`import`, `synchronized`, `throws`, `transient`, `volatile`, `abstract`,
+`native`, `goto`, `implements`, `interface`, `package`, `private`, `protected`,
+`public`, `static` and `super`. They are rejected as identifiers, as property
+names after a dot, and as unquoted object-literal keys.
+
+`tools/ae/measure-fonts.jsx` was written with `{ short: …, long: … }` and
+handed to the user. **It failed at the parse: not one statement ran, nothing was
+measured, nothing was written.** A syntax error needs no After Effects to catch,
+and nothing here was looking — `.jsx` is not TypeScript, eslint is pointed at
+`src`, and no test opened these files.
+
+**`npm run check` runs `scripts/check-extendscript.mjs` over every `.jsx` in the
+repository**, and it is the gate that would have caught it. Three checks: Node's
+own parser for structural errors, the reserved-word list above, and post-ES3
+syntax (`const`, `let`, arrow functions, `class`, template literals, spread,
+`async`/`await`, `for…of`). Comments and string literals are stripped first —
+keeping newlines so line numbers stay true — so **any bare occurrence of a
+reserved word is an error**, while a quoted key is legal and survives as a
+string. The `/` ambiguity between a regex literal and division is resolved the
+usual way, on what precedes it, and a test pins that the stripper does not lose
+its place in a regex.
+
+**It deliberately does not check runtime methods.** `JSON.stringify` is absent
+from ExtendScript and present in every one of these files, because
+`panel/jsx/json2.jsx` installs it; flagging that would be wrong about the only
+thing the gate can see.
+
+**All eight pre-existing `.jsx` files pass** — the six in `panel/jsx/`,
+`tools/validate-templates/audit.jsx` and `json2.jsx`. Nothing in production was
+found wanting; the only file that failed was the new one.
+
+**A file delivered to the user is parsed first.** The gate is the mechanism, not
+a reminder: `core/src/extendscript.test.ts` pins it, including that it catches
+the exact two words that broke this one.
+
 ### A comment must not break the file it documents
 
 **In XML, `--` is illegal anywhere inside a comment.** Name flags without their
