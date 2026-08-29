@@ -377,7 +377,7 @@ function Panel({
                 onChange={(e) => setReelLabel(e.target.value)}
               >
                 <option value="">
-                  {reels.length === 0 ? 'No reels found on this machine' : 'Select a video…'}
+                  {reels.length === 0 ? 'No videos found' : 'Select a video…'}
                 </option>
                 {reels.map((r) => (
                   <option key={r.label} value={r.label}>
@@ -403,7 +403,7 @@ function Panel({
                 onChange={(e) => setModeId(e.target.value)}
               >
                 <option value="">
-                  {modes.length === 0 ? 'No modes in modes/' : 'Select a client…'}
+                  {modes.length === 0 ? 'No clients set up yet' : 'Select a client…'}
                 </option>
                 {modes.map((m) => (
                   <option key={m.id} value={m.id}>
@@ -768,10 +768,10 @@ function FontsNote({ mode }: { mode: ClientMode }): JSX.Element | null {
  * string.
  */
 function stageWord(stage: DryRunStage): string {
-  if (stage.action === 'skip') return 'skipped, already on the plan';
-  if (stage.provenance === 'compatible') return 'cached, older guide';
-  if (stage.action === 'reuse') return 'cached';
-  return stage.estimateUsd === null ? 'to run' : `to run, about $${stage.estimateUsd.toFixed(2)}`;
+  if (stage.action === 'skip') return 'already done';
+  if (stage.provenance === 'compatible') return 'free, reusing an earlier run';
+  if (stage.action === 'reuse') return 'free, already paid for';
+  return stage.estimateUsd === null ? 'will run' : `will run, about $${stage.estimateUsd.toFixed(2)}`;
 }
 
 function stageTone(stage: DryRunStage): string {
@@ -795,8 +795,8 @@ function DryRun({ plan }: { plan: DryRunPlan }): JSX.Element {
           no such field, and the panel renders rather than throws. */}
       <p className="spend note" style={{ marginTop: 0 }}>
         {plan.planClientMode == null
-          ? 'This plan records no client; a build needs --mode.'
-          : `Built for ${plan.planClientMode.id} v${plan.planClientMode.version}, recorded on the plan.`}
+          ? 'No client saved for this reel yet. Run the pipeline and it is saved for you.'
+          : `Made for ${plan.planClientMode.id}.`}
       </p>
       <ul className="facts">
         {plan.stages.map((stage) => (
@@ -889,20 +889,18 @@ function ServiceCard({
                 <div className="detail">{state.error.cause}</div>
               </div>
             </div>
-            <ul className="facts">
-              <li>
-                <span className="k">stage</span>
-                <span className="v">{state.error.stage}</span>
-              </li>
-              <li>
-                <span className="k">retryable</span>
-                <span className={`v ${state.error.retryable ? 'good' : 'bad'}`}>
-                  {state.error.retryable ? 'yes' : 'no'}
-                </span>
-              </li>
-            </ul>
+            {/*
+              `stage: service-lost` and `retryable: yes` were two of the words
+              the user had to ask about. Neither answers anything he can act on:
+              the cause above says what happened and the button says what to do.
+            */}
+            {state.error.retryable ? (
+              <p className="reason" role="status">
+                This usually clears on its own. Press Try again.
+              </p>
+            ) : null}
             <button className="retry" type="button" onClick={onRetry}>
-              Retry
+              Try again
             </button>
           </>
         ) : null}
@@ -913,9 +911,7 @@ function ServiceCard({
               <div className={`dot ${state.health.ok ? 'healthy' : 'unreachable'}`} />
               <div>
                 <div className="headline">{state.health.ok ? 'Ready' : 'Running, with problems'}</div>
-                <div className="detail">
-                  Service {state.health.serviceVersion} · correction prompt v{state.health.promptVersion}
-                </div>
+                <div className="detail">Version {state.health.serviceVersion}</div>
                 {/*
                  * Which process answered. A service started in a terminal
                  * inherits a shell PATH and one this panel spawned does not, so
@@ -1009,8 +1005,8 @@ function RunProgress({ job }: { job: PipelineJob }): JSX.Element {
       </ul>
       {detail.error === null ? null : (
         <p className="reason" role="status">
-          {detail.error.stage}: {detail.error.cause}
-          {detail.error.retryable ? ' (worth retrying)' : ''}
+          {detail.error.cause}
+          {detail.error.retryable ? ' It is worth trying again.' : ''}
         </p>
       )}
       <div className="spend" style={{ marginTop: 12 }}>

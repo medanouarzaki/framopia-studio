@@ -111,15 +111,18 @@ export function Keywords({
       <ol className="keywords">
         {view.keywords.map((keyword) => (
           <li key={keyword.id} className="keyword">
-            <span className="wid">{keyword.id}</span>
             <span className="ktext" dir={keyword.script === 'arabic' ? 'rtl' : 'ltr'}>
               {keyword.text}
             </span>
+            {/*
+              `k001` and `g022` are names from the code, and the size is a
+              number nobody can read without units. What is worth keeping is
+              when it is on screen and how big it is drawn.
+            */}
             <span className="wmeta">
-              {keyword.start.toFixed(3)}–{keyword.end.toFixed(3)}s
-              {keyword.cardId === null ? null : <em className="tag">{keyword.cardId}</em>}
-              <em className="tag">{keyword.templateId ?? 'no template'}</em>
-              <em className="tag">{keyword.fontSize}</em>
+              at {keyword.start.toFixed(1)}s
+              <em className="tag">{keyword.script === 'arabic' ? 'Arabic' : 'Latin'}</em>
+              <em className="tag">{keyword.fontSize} px</em>
               {keyword.kind === null ? null : <em className="tag">{keyword.kind}</em>}
               {keyword.edited ? <em className="tag edited">edited</em> : null}
               {keyword.reason === '' ? (
@@ -181,11 +184,21 @@ export function Keywords({
   );
 }
 
+/**
+ * Where these words came from.
+ *
+ * It used to read `From analysis prompt v4, mode auto, stage done —
+ * analysis-590f79bed5eed690 (compatible).` — five facts, four of them names
+ * from the code, and the user had to ask what `cacheProvenance` meant. None of
+ * them changes anything he can do here. What does is whether these were chosen
+ * for him or are waiting for him to choose.
+ */
 export function sourceLine(view: KeywordsView): string {
-  const entry =
-    view.source.cacheEntryId === null
-      ? 'no analysis cache entry recorded on the plan'
-      : `${view.source.cacheEntryId} (${view.source.cacheProvenance ?? 'provenance unrecorded'})`;
-  return `From analysis prompt v${view.source.promptVersion}, mode ${view.source.mode}, stage ${view.source.stageStatus} — ${entry}.`;
+  if (view.source.stageStatus !== 'done') {
+    return 'These have not been worked out for this reel yet.';
+  }
+  return view.source.mode === 'auto'
+    ? 'Chosen for you. Remove any you disagree with, and add your own below.'
+    : 'Suggested for you. Nothing is emphasised until you pick it.';
 }
 

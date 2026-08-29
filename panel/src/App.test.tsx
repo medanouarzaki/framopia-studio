@@ -119,22 +119,22 @@ describe('service state', () => {
     await render(hostThatAnswers());
 
     expect(text()).toContain('Ready');
-    expect(text()).toContain('correction prompt v4');
+    expect(text()).toContain('Version 0.1.0');
     expect(text()).toContain('ffmpeg version 8.0.1');
     expect(text()).toContain('Python 3.11.14');
     expect(text()).toContain('6 valid');
     expect(text()).not.toContain('{');
   });
 
-  it('shows unreachable with the service’s own cause, stage and retryability', async () => {
+  it('shows unreachable with the service’s own cause and a way forward', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('connect ECONNREFUSED')));
     await render(hostThatAnswers());
 
     expect(text()).toContain('Not reachable');
     expect(text()).toContain('connect ECONNREFUSED');
-    expect(text()).toContain('service-connect');
-    expect(text()).toContain('yes');
-    expect([...container.querySelectorAll('button')].some((b) => b.textContent === 'Retry')).toBe(true);
+    expect(text()).toContain('Try again');
+    expect(text()).toContain('This usually clears on its own');
+    expect([...container.querySelectorAll('button')].some((b) => b.textContent === 'Try again')).toBe(true);
   });
 
   it('shows starting while the health call is in flight', async () => {
@@ -182,8 +182,8 @@ describe('the pickers', () => {
     vi.stubGlobal('fetch', serviceFetch({ reels: [], modes: [] }));
     await render(hostThatAnswers());
 
-    expect(text()).toContain('No reels found on this machine');
-    expect(text()).toContain('No modes in modes/');
+    expect(text()).toContain('No videos found');
+    expect(text()).toContain('No clients set up yet');
     expect(select('Reel').disabled).toBe(true);
   });
 
@@ -502,7 +502,6 @@ describe('starting the service', () => {
 
     expect(text()).toContain('spawn /n/node ENOENT');
     expect(text()).toContain('/n/node');
-    expect(text()).toContain('service-spawn');
     expect(text()).not.toContain('Retry in a moment');
   });
 
@@ -530,7 +529,6 @@ describe('starting the service', () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('connect ECONNREFUSED')));
     await render(noService);
 
-    expect(text()).toContain('service-start-timeout');
     expect(text()).toContain('did not answer');
     expect(text()).toContain('/n/node');
     expect(text()).not.toContain('Ready');
@@ -555,7 +553,6 @@ describe('starting the service', () => {
     vi.stubGlobal('fetch', serviceFetch());
     await render({ ...noService, resolveNode: () => null });
 
-    expect(text()).toContain('node-missing');
     expect(text()).toContain('.local/config.json');
     expect(text()).toContain('does not inherit your shell PATH');
   });
@@ -641,12 +638,12 @@ describe('the dry run', () => {
 
     expect(text()).toContain('Transcribe and correct');
     // The plan says which client it belongs to, so a build need not be told.
-    expect(text()).toContain('Built for k2-syndicalia v5');
+    expect(text()).toContain('Made for k2-syndicalia');
     // Read off `provenance`, never off `status`: a stage the plan calls done
     // can still bill, which is the defect this replaced.
-    expect(text()).toContain('cached, older guide');
-    expect(text()).toContain('to run, about $1.55');
-    expect(text()).toContain('to run, about $0.18');
+    expect(text()).toContain('free, reusing an earlier run');
+    expect(text()).toContain('will run, about $1.55');
+    expect(text()).toContain('will run, about $0.18');
     expect(text()).toContain('about $1.73');
     expect(text()).toContain('budgeted ceiling for the stages that would call the API');
     expect(text()).toContain('will not bill');
@@ -709,7 +706,7 @@ describe('the dry run', () => {
       select('Client mode').dispatchEvent(new Event('change', { bubbles: true }));
     });
 
-    expect(text()).toContain('to run, about $0.18');
+    expect(text()).toContain('will run, about $0.18');
     expect(text()).not.toContain('nothing to pay');
   });
 });
@@ -949,7 +946,7 @@ describe('a service that is already running, or goes away', () => {
         await vi.advanceTimersByTimeAsync(6000);
       });
 
-      expect(text()).toContain('service-lost');
+      expect(text()).toContain('Not reachable');
       expect(text()).toContain('stopped answering');
       expect(text()).not.toContain('Ready');
     } finally {

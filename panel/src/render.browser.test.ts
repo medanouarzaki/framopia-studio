@@ -242,7 +242,7 @@ describe.skipIf(!built)('the built panel in a real browser', () => {
     }
   }, 20_000);
 
-  it('renders unreachable with the stage and retryability on screen', async () => {
+  it('renders unreachable with the cause and a way forward', async () => {
     const loaded = await load({ files: HANDSHAKE });
     if (loaded === null) return;
     const { page } = loaded;
@@ -250,8 +250,8 @@ describe.skipIf(!built)('the built panel in a real browser', () => {
       await page.waitForSelector('.dot.unreachable', { timeout: 10_000 });
       const card = (await page.locator('.card').first().textContent()) ?? '';
       expect(card).toContain('Not reachable');
-      expect(card).toContain('stage');
-      expect(await page.getByRole('button', { name: 'Retry' }).count()).toBe(1);
+      expect(card).toContain('Try again');
+      expect(await page.getByRole('button', { name: 'Try again' }).count()).toBe(1);
     } finally {
       await page.close();
     }
@@ -266,7 +266,7 @@ describe.skipIf(!built)('the built panel in a real browser', () => {
       const card = (await page.locator('.card').first().textContent()) ?? '';
       expect(card).toContain('Ready');
       expect(card).toContain('ffmpeg version 8.0.1');
-      expect(card).toContain('correction prompt v4');
+      expect(card).toContain('Version 0.1.0');
       expect(card).not.toContain('{');
     } finally {
       await page.close();
@@ -407,7 +407,7 @@ describe.skipIf(!built)('the spawn path in a real browser', () => {
       expect(await page.locator('.attempt').first().getAttribute('data-attempt')).toBe('0');
       const first = (await page.locator('.card').first().textContent()) ?? '';
 
-      await page.getByRole('button', { name: 'Retry' }).first().click();
+      await page.getByRole('button', { name: 'Try again' }).first().click();
       await page.waitForSelector('.attempt[data-attempt="1"]', { timeout: 15_000 });
       const second = (await page.locator('.card').first().textContent()) ?? '';
 
@@ -1276,16 +1276,18 @@ describe.skipIf(!built)('the keyword picker', () => {
     return { page, uncaught };
   }
 
-  it('shows each keyword with its card, template and size', async () => {
+  it('shows each keyword with when it plays and how big it is drawn', async () => {
     const loaded = await loadKeywords();
     if (loaded === null) return;
     await loaded.page.waitForSelector('ol.keywords li', { timeout: 5000 });
     const text = (await loaded.page.textContent('ol.keywords')) ?? '';
     expect(text).toContain('filler glow');
-    expect(text).toContain('g022');
-    expect(text).toContain('kw_slam');
-    expect(text).toContain('425');
+    expect(text).toContain('425 px');
     expect(text).toContain('names the specific product being promoted');
+    // Names from the code: the keyword's id, the card's, and the template's.
+    expect(text).not.toContain('k001');
+    expect(text).not.toContain('g022');
+    expect(text).not.toContain('kw_slam');
     await loaded.page.close();
   });
 
@@ -1306,8 +1308,12 @@ describe.skipIf(!built)('the keyword picker', () => {
     await loaded.page.close();
   });
 
-  /* The variant follows the script, and so does the direction. */
-  it('sets direction per keyword and shows the Arabic variant', async () => {
+  /*
+   * Direction follows the script, per token. The template variant follows it
+   * too, but `kw_slam_ar` was a name from the library on screen — the script it
+   * stands for is what he can see, so that is what the row says now.
+   */
+  it('sets direction per keyword and names the script in words', async () => {
     const loaded = await loadKeywords();
     if (loaded === null) return;
     await loaded.page.waitForSelector('ol.keywords li', { timeout: 5000 });
@@ -1315,7 +1321,10 @@ describe.skipIf(!built)('the keyword picker', () => {
       els.map((e) => e.getAttribute('dir')),
     );
     expect(dirs).toEqual(['ltr', 'rtl']);
-    expect((await loaded.page.textContent('ol.keywords')) ?? '').toContain('kw_slam_ar');
+    const text = (await loaded.page.textContent('ol.keywords')) ?? '';
+    expect(text).toContain('Arabic');
+    expect(text).toContain('Latin');
+    expect(text).not.toContain('kw_slam_ar');
     await loaded.page.close();
   });
 
@@ -1327,12 +1336,20 @@ describe.skipIf(!built)('the keyword picker', () => {
     await loaded.page.close();
   });
 
-  it('names where the choice came from', async () => {
+  /*
+   * It used to print the cache entry id and `cacheProvenance` beside an
+   * analysis prompt version — five facts, four of them names from the code, and
+   * the user had to ask what they meant. None of them changes what he can do
+   * here; whether these were chosen for him or are waiting on him does.
+   */
+  it('says whether these were chosen for him, in words and not in ids', async () => {
     const loaded = await loadKeywords();
     if (loaded === null) return;
     const text = (await loaded.page.textContent('main')) ?? '';
-    expect(text).toContain('analysis prompt v4');
-    expect(text).toContain('analysis-324f3a034ef9c903');
+    expect(text).toContain('Chosen for you');
+    expect(text).not.toContain('analysis-324f3a034ef9c903');
+    expect(text).not.toContain('cacheProvenance');
+    expect(text).not.toContain('prompt v');
     await loaded.page.close();
   });
 
@@ -1478,7 +1495,7 @@ describe.skipIf(!built)('the cost block and the run', () => {
     if (loaded === null) return;
     const text = (await loaded.page.textContent('main')) ?? '';
     expect(text).not.toContain('to run');
-    expect(text).toContain('skipped, already on the plan');
+    expect(text).toContain('already done');
     await loaded.page.close();
   });
 
@@ -1511,7 +1528,9 @@ describe.skipIf(!built)('the cost block and the run', () => {
     for (const [label, estimate] of Object.entries(rows.estimate)) {
       const ran = rows.run[label];
       expect(ran, `no run row for "${label}"`).toBeDefined();
-      const estimateSkips = estimate.includes('skipped');
+      // Both sides were reworded in session 41; the pin is that they agree on
+      // whether the stage runs, not on the word they happen to use for it.
+      const estimateSkips = estimate.includes('already done') || estimate.includes('free,');
       const runSkips = (ran ?? '').includes('skipped');
       expect(runSkips, `"${label}": estimate said "${estimate}", run said "${ran}"`).toBe(
         estimateSkips,
@@ -1570,7 +1589,7 @@ describe.skipIf(!built)('a pipeline run', () => {
     if (loaded === null) return;
     const text = (await loaded.page.textContent('main')) ?? '';
     expect(text).toContain('the model returned 503 Service Unavailable');
-    expect(text).toContain('worth retrying');
+    expect(text).toContain('worth trying again');
     await loaded.page.close();
   });
 

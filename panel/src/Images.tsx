@@ -285,7 +285,7 @@ function Candidate({
 export function sourceLine(view: ImagesView): string {
   const client =
     view.source.clientMode === null
-      ? 'This plan does not say which client it is for.'
+      ? 'No client saved for this reel yet.'
       : `Made for ${view.source.clientMode}.`;
   const spent =
     view.reelSpentUsd === null

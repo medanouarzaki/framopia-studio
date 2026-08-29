@@ -41,7 +41,7 @@ export function serviceErrorOf(stage: string, cause: string, retryable: boolean)
 
 async function getHealth(port: number, signal: AbortSignal): Promise<HealthPayload> {
   const res = await fetch(`http://127.0.0.1:${port}/health`, { signal });
-  if (!res.ok) throw new Error(`health returned HTTP ${res.status}`);
+  if (!res.ok) throw new Error('the companion service answered, but not with its status');
   return (await res.json()) as HealthPayload;
 }
 
@@ -56,6 +56,21 @@ async function getHealth(port: number, signal: AbortSignal): Promise<HealthPaylo
  * a live lock, would start a second service on a second port with the first
  * still holding the file.
  */
+/**
+ * What to say when the service answers with a status and no sentence.
+ *
+ * `HTTP 404 from /images?reel=vitasilk` was on the user's screen and he had to
+ * ask what it meant. The number tells him nothing he can act on; what does is
+ * whether the thing he wanted is missing or the tool is out of step.
+ */
+function serviceTrouble(status: number): string {
+  if (status === 404) return 'there is nothing here for this reel yet';
+  if (status === 401 || status === 403) {
+    return 'the panel and the companion service are out of step — close the panel and open it again';
+  }
+  return 'the companion service ran into trouble and did not say what';
+}
+
 export async function connect(host: PanelHost): Promise<
   { ok: true; health: HealthPayload; port: number; token: string; origin: ServiceOrigin } | { ok: false; error: ServiceError }
 > {
@@ -218,7 +233,7 @@ async function getJson<T>(connection: Connection, route: string): Promise<T> {
   });
   if (!res.ok) {
     const body = (await res.json().catch(() => ({}))) as Partial<ServiceError>;
-    throw new Error(body.cause ?? `HTTP ${res.status} from ${route}`);
+    throw new Error(body.cause ?? serviceTrouble(res.status));
   }
   return (await res.json()) as T;
 }
@@ -230,13 +245,13 @@ async function getJson<T>(connection: Connection, route: string): Promise<T> {
  */
 export async function fetchReels(connection: Connection): Promise<Reel[]> {
   const body = await getJson<{ reels?: Reel[] }>(connection, '/reels');
-  if (!Array.isArray(body.reels)) throw new Error('/reels did not return a list');
+  if (!Array.isArray(body.reels)) throw new Error('the list of videos came back unreadable');
   return body.reels;
 }
 
 export async function fetchModes(connection: Connection): Promise<ClientMode[]> {
   const body = await getJson<{ modes?: ClientMode[] }>(connection, '/modes');
-  if (!Array.isArray(body.modes)) throw new Error('/modes did not return a list');
+  if (!Array.isArray(body.modes)) throw new Error('the list of clients came back unreadable');
   return body.modes;
 }
 
@@ -279,10 +294,10 @@ export async function startPipeline(
   });
   if (!res.ok) {
     const body = (await res.json().catch(() => ({}))) as Partial<ServiceError>;
-    throw new Error(body.cause ?? body.error ?? `HTTP ${res.status} starting the pipeline`);
+    throw new Error(body.cause ?? body.error ?? serviceTrouble(res.status));
   }
   const body = (await res.json()) as { id?: string };
-  if (typeof body.id !== 'string') throw new Error('the service started a job without an id');
+  if (typeof body.id !== 'string') throw new Error('the run started but cannot be followed');
   return body.id;
 }
 
@@ -305,10 +320,10 @@ export async function startBuild(
   });
   if (!res.ok) {
     const body = (await res.json().catch(() => ({}))) as Partial<ServiceError>;
-    throw new Error(body.cause ?? body.error ?? `HTTP ${res.status} starting the build`);
+    throw new Error(body.cause ?? body.error ?? serviceTrouble(res.status));
   }
   const body = (await res.json()) as { id?: string };
-  if (typeof body.id !== 'string') throw new Error('the service started a build without an id');
+  if (typeof body.id !== 'string') throw new Error('the build started but cannot be followed');
   return body.id;
 }
 
@@ -334,7 +349,7 @@ async function postJson<T>(connection: Connection, route: string, body: unknown)
   });
   if (!res.ok) {
     const failure = (await res.json().catch(() => ({}))) as Partial<ServiceError>;
-    throw new Error(failure.cause ?? failure.error ?? `HTTP ${res.status} from ${route}`);
+    throw new Error(failure.cause ?? failure.error ?? serviceTrouble(res.status));
   }
   return (await res.json()) as T;
 }

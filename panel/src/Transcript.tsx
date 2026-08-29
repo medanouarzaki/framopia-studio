@@ -244,7 +244,7 @@ export function Transcript({
                   /* Per token, never on the line: a container dir would flip
                      the Latin words around it. */
                   dir={word.script === 'arabic' ? 'rtl' : 'ltr'}
-                  title={`${word.lang ?? 'lang unknown'} · ${word.script}`}
+                  title={word.script === 'arabic' ? 'Arabic script' : 'Latin script'}
                   onClick={() => {
                     setEditing(word.id);
                     setDraft(word.text);
@@ -263,7 +263,12 @@ export function Transcript({
                   </em>
                 )}
                 {word.edited ? <em className="tag edited">edited</em> : null}
-                {card?.holdClipped === true ? <em className="tag">hold clipped</em> : null}
+                {/* "hold clipped" is our word for it; what he sees is a card that flashes past. */}
+                {card?.holdClipped === true ? (
+                  <em className="tag" title="Too short to hold: it appears and goes.">
+                    very short
+                  </em>
+                ) : null}
                 {word.removed ? <em className="tag">{word.removedReason ?? 'removed'}</em> : null}
               </span>
               <span className="wactions">

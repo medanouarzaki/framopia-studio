@@ -19,12 +19,11 @@ export const STEP_LABELS: Record<StepId, string> = {
 
 /** What each step will hold, said plainly while it holds nothing yet. */
 export const STEP_PROMISE: Record<StepId, string> = {
-  reel: 'Pick the video and the client mode, and see what a run would cost.',
-  transcript:
-    'Edit words, toggle script, adjust card grouping, and restore anything cleaning removed.',
-  keywords: 'Choose which words are emphasised, and switch between automatic and proposed.',
-  images: 'Review the generated candidates per slot and pick one, or regenerate with a tweak.',
-  build: 'Check the plan is complete and build the composition in After Effects.',
+  reel: 'Pick the video and the client, and see what a run would cost before it runs.',
+  transcript: 'Fix any word that came out wrong, and set how long each one stays on screen.',
+  keywords: 'Choose which words are emphasised on screen.',
+  images: 'Look at the pictures made for this reel and pick the one you want.',
+  build: 'Build the composition in After Effects.',
 };
 
 export interface StepView {
