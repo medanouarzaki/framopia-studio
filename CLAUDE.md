@@ -286,6 +286,11 @@ AI-generated contextual images, SFX, and a watermark. Full spec in
   (`service/dist/service.js`, directly, with a resolved Node binary) and what to
   run by hand when diagnosing a panel that cannot reach it. `npm run
   service:build` builds without starting.
+- `npm run migrate:client-snapshot [-- --apply]` — free, local, one-shot. Pins
+  every plan that names a client to that client's look as it stands now, so a
+  build reads a copy rather than the mode file. Reads and writes plain JSON
+  rather than going through `readEditPlan`, changes exactly `clientSnapshot`,
+  and asserts it. Dry run by default.
 - `npm run migrate:client-mode [-- --apply]` — free, local, one-shot. Gives an
   existing plan the client it was built for, **derived from the config label the
   analysis stage already wrote** (`keywords-prompt-v3-k2-syndicalia-v5`) rather
@@ -442,6 +447,86 @@ subtitle pair — Inter Semi-Bold and Almarai Bold at 1.07x — and the panel sa
 so at Build. That fallback was already happening and nobody had decided it:
 `requireFonts` throws on a `tbd` mode and **nothing outside `core` has ever
 called it**, so every Block 7 build took the global pair without asking.
+
+**`k2-syndicalia` stopped being the mode that exercises that fallback at Block 9
+session 2** — the user supplied its real faces. The fallback is not retired; it
+is what every client yet to be made still gets, and `build-fonts.test.ts`
+exercises it against a client that really has none.
+
+### K2 Syndicalia is a real client, and a reel is built against a copy of it
+
+**The user supplied the brand document at Block 9 session 2 and the mode is
+version 8.** Three faces, all installed on both machines: **Inter Semi-Bold**
+for ordinary words, **Cormorant Garamond SemiBold Italic** for emphasized ones,
+**Almarai Bold** for Arabic. `fonts.emphasis` is a **third, optional** face —
+`buildFonts` returns the ordinary Latin one when a client has none, and reports
+which in `emphasisSource`, so a two-face client builds exactly as before.
+
+**The faces are recorded family-and-style as one string**, the representation
+`LATIN_FONT` and `ARABIC_FONT` already use. **Not a PostScript name**: After
+Effects reports its own as `Inter-SemiBold` and `Almarai-Bold`, and **nothing in
+this project has ever written `TextDocument.font`**, so resolving one form to
+the other is a measurement to take inside After Effects.
+
+**`EMPHASIS_SIZE_RATIO` is 1.0 and is CHOSEN, NOT MEASURED — and near-certainly
+wrong.** Cormorant is an old-style serif and sets optically much smaller than
+Inter at the same nominal size. The right number comes from `sourceRectAtTime`,
+which is the same measurement shrink-to-fit needs. `ARABIC_SIZE_RATIO` 1.07 was
+measured against Inter and is now **unverified against Cormorant**; both facts
+are stated where the constants are declared.
+
+**`textColours` records which palette role carries which kind of word** —
+`light` for ordinary, `accent` for emphasis, both **optional with a default**
+that is what every build has drawn. It is the brand's own chart stated literally:
+crème for body, Or Signature for the key figure of a sentence. **Nothing reads it
+at build time yet**: a subtitle's colour lives in the template comp and
+`framopiaSetText` sets only the string.
+
+**The palette gained names, not values**: Noir Abyssal `#1A0000` the ground,
+Blanc Cassé/Crème `#F8F6F2` text, Or Signature `#C9A96E` highlights and emphasis,
+Rouge K2 `#820000` used sparingly. The four hexes are unchanged.
+
+**`vocabulary` is deliberately still `[]`.** The brand document is full of terms
+— Loi 18-00, CNDP, copropriété, syndic, assemblée générale, recouvrement — and
+they key the keyword cache **and** reach Scribe as keyterms, so adding them is a
+billable decision. `imageStyle` and `imageVariation` are untouched for the same
+reason: editing either strands generated images.
+
+**The 7 → 8 bump invalidated nothing, and that was measured before it was made.**
+Transcription never reads the mode; keywords key on `contentHash([name,
+vocabulary])`, slots on `contentHash([name])`, and images on the composed prompt
+strings with **no mode version and no mode hash** since Block 7 session 1. All
+three hashes, all 18 image keys and all five reels' dry runs were byte-identical
+across the bump, and the 36-entry cache census was unchanged.
+
+**A reel is built against a snapshot, not a pointer.** `plan.clientSnapshot` — a
+**schema addition, optional with a default** — carries the client's palette,
+faces, colour roles and `imageScale` as they stood when the video was attached.
+`resolveClientIdentity` in `service/src/build/client-identity.ts` is the one
+declaration of which look a build uses, read by the builder and by `steps.ts` so
+the panel cannot say one thing while the build does another. The order is:
+`--mode` wins because someone typed it, then the reel's own copy, then the live
+mode file — **and the fallback is reported, never assumed**, because a build
+quietly reading a mode file is the failure the copy exists to prevent.
+
+A reel approved in March must rebuild in June as it was approved; of the two
+possible failures, a rebuild that silently disagrees with what was approved
+cannot be noticed, while one deliberately out of date can be, and can be moved
+forward with one control. Block 10's golden run needs a fixed input for the same
+reason. **Moving a reel forward is `POST /client-snapshot`, a control someone
+presses — never automatic.** The panel says *"Built with K2 Syndicalia's look as
+it was when this video was set up"* and, when the client has moved on, offers
+*"Use the client's look as it is now"*. No version numbers on screen.
+
+**A client's own pictures are deliberately not in the snapshot**: they are paths
+to files chosen by hand, and a pinned path breaks the moment one is moved.
+
+`npm run migrate:client-snapshot [-- --apply]` — free, local. Pins every plan
+that names a client. **It does not read through `readEditPlan`**, per the
+standing schema rule, changes exactly `clientSnapshot`, and asserts that by
+comparing the file before and after. Run: **`test-1`, `test-2` and `vitasilk`
+pinned to K2 Syndicalia v8; `ground-truth` and `test-3` left alone**, because
+their analysis never ran and nothing on disk says which client they belong to.
 
 ### The review sheet writes every displayed row, or nothing
 
@@ -1797,10 +1882,12 @@ the module's own doc comment, plus `validateMode`, `parseMode`, `loadMode`,
 
 - The four palette colours are **locked** and carry roles read off the values:
   `background #1A0000`, `primary #820000`, `accent #C9A96E`, `light #F8F6F2`.
-- **Fonts are `{ status: "tbd" }`** and must stay that way. PROJECT_SPEC §5
-  forbids inventing them; the user supplies them at Block 9. `requireFonts`
-  throws `ModeFontsUnresolvedError` rather than substituting a default, so a
-  stage that needs a real font fails loudly instead of shipping a placeholder.
+- **Fonts were `{ status: "tbd" }`** and had to stay that way until the user
+  supplied them. He did, at **Block 9 session 2**, and the mode is at version 8
+  with three real faces — see *K2 Syndicalia is a real client* above.
+  `requireFonts` still throws `ModeFontsUnresolvedError` for a mode that has
+  none, so a stage needing a real font fails loudly rather than shipping a
+  placeholder.
 - **No colour is ever written in code.** `imageStyle.stylePrompt` references
   the palette as `{{palette.<role>}}` and `renderStylePrompt` substitutes at
   compose time; a fragment naming a colour literally is a validation failure.
