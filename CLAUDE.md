@@ -296,8 +296,9 @@ AI-generated contextual images, SFX, and a watermark. Full spec in
   analysis stage already wrote** (`keywords-prompt-v3-k2-syndicalia-v5`) rather
   than guessed. A plan whose analysis never ran is left null. Dry run by
   default; asserts it changed only `meta` and `clientMode`.
-- `tools/ae/measure-fonts.jsx` — **the user runs this himself**, File > Scripts >
-  Run Script File. Local and free. Lists what After Effects has for each of the
+- `tools/ae/measure-fonts.jsx` — free, local. A session drives it over
+  AppleScript `DoScript` (`framopiaDriven` set, `quiet` true); a person can also
+  run it from File > Scripts > Run Script File and gets a message box. Lists what After Effects has for each of the
   three K2 faces, writes `TextDocument.font` and reads it back to find which
   name form actually takes, records what an unresolvable name becomes, and
   measures cap height, an x-height proxy and advance width at 343 and 425 with
@@ -826,6 +827,117 @@ On `kw_slam` the same two keys give **11.40 frames if linear** against the user'
 default so an older audit reads as *not recorded* rather than as linear.
 **One more `npm run audit:templates` run supplies it.** `impactFrameOf` is
 documented as measuring the settle so nothing reads it as the impact again.
+
+### Sessions drive After Effects, and here is the whole of what that permits
+
+**User ruling, 2026-08-29 (Block 9 session 5).** He does not want to run things
+by hand. A session drives After Effects itself, through **AppleScript
+`DoScript` into the already-running instance** — the project's established
+mechanism, `service/src/build/drive.ts`.
+
+Everything else is forbidden, and each prohibition is a thing that has gone
+wrong or would:
+
+- **Never launch it.** Not running is a `Status: PROBLEM` and the session stops.
+- **Never quit it**, never close its project, never close a panel.
+- **Never `aerender`, never a resident `-r` process.** A `-r` process was
+  observed executing its body a session later and quitting the application on
+  the user; `handoffs/block-8.md` §9 item 8 is the record.
+- **Never save the user's project.** A script that adds a temporary comp leaves
+  the project **marked modified** — the flag is read-only from a script and
+  cannot be cleared. Leave it. Say so and let him close without saving.
+- **Never modify `templates/library.aep`**, and never open it for writing.
+
+**`DoScript` returns a status, not the script's value.** `DoScript "2+2"` gives
+`0`, not `4`; `0` is success and `1` is failure. So a driven script writes its
+result to a file and the caller reads that, which is why `runJsx` does.
+
+**It is synchronous**: `$.sleep(4000)` inside made the `osascript` call take
+4.87 s, measured. **But it can be blocked**: the first calls this session
+returned `1` and did nothing at all, for minutes, then began working with
+nothing changed on this side. Cause unknown — most likely the application was
+busy or something modal was up. **A `DoScript` that returns `1` did nothing;
+retry rather than concluding anything about the script.**
+
+**A script a session drives must not open a dialog.** `DoScript` is synchronous,
+so a modal `alert()` blocks After Effects until someone walks to the machine.
+`measure-fonts.jsx` takes a `quiet` argument and a session sets
+`framopiaDriven` before evaluating the file, so a person running it from
+File > Scripts still gets their message box.
+
+### What After Effects does with a font name
+
+**All measured on the user's machine, After Effects 26.0x67, 2026-08-29**, by
+`tools/ae/measure-fonts.jsx`. The run is `.local/build/font-measurements.json`.
+
+**A font name containing a space cannot be written at all.** Setting
+`TextDocument.font` to `Inter Semi-Bold` throws `Unable to set "font". Contains
+invalid character 32`. So the family-and-style strings this repo stores — the
+representation `LATIN_FONT` and `ARABIC_FONT` use — **cannot reach a text
+layer**, and PostScript names must. `modes/k2-syndicalia.json` carries both:
+`fonts.postScriptNames` is a **schema addition, optional with a default**, and
+the family-and-style strings stay because they are what the user gave.
+
+| role | family and style | what After Effects takes |
+|---|---|---|
+| ordinary | Inter Semi-Bold | `Inter-SemiBold` |
+| emphasis | Cormorant Garamond SemiBold Italic | `CormorantGaramondItalic-SemiBoldItalic` |
+| Arabic | Almarai Bold | `Almarai-Bold` |
+
+**The emphasis family is `CormorantGaramondItalic`, not `CormorantGaramond`** —
+a separate family on this machine, and `CormorantGaramond-SemiBoldItalic` does
+not exist. The obvious construction is the wrong one.
+
+**After Effects accepts a font name it does not have.** `FramopiaNoSuchFaceZZQX`
+was set, threw nothing, and read back **unchanged**. It does not throw and it
+does not report a substitution: a face that is missing produces a comp that
+looks built and is set in the wrong type. **So round-tripping is not evidence a
+face resolved**, and the only defence is to check before anything is placed —
+`build-reel.jsx`'s `check-fonts` stage, from `requiredFonts` off the client
+snapshot, refusing by name. Empty until a build actually names its faces, which
+is not yet.
+
+**`app.fonts.allFonts` is not an array of font objects.** Reading `familyName`
+off an entry gives `undefined`; each entry stringifies to one family's
+PostScript names joined by commas, and a single-face family is one name.
+**And writing pollutes it**: a name that is set but not installed is added to
+`allFonts` and stays for the rest of the application session, so
+`FramopiaNoSuchFaceZZQX` reported itself installed on the next run. A fresh
+launch is the only way to clear it. `panel/jsx/fonts.jsx` is the one reader.
+
+### The emphasis ratio is measured; the Arabic one is still the user's eye
+
+**`EMPHASIS_SIZE_RATIO` is 1.3479**, from the **x-height** of real text through
+`sourceRectAtTime`, Inter-SemiBold against
+CormorantGaramondItalic-SemiBoldItalic. Identical at 343 and at 425 to five
+decimal places, so it is a property of the faces rather than of a size.
+
+The three candidate quantities disagree and the choice is a judgement:
+
+| quantity | ratio |
+|---|---:|
+| cap height, rendered `H` | 1.1641 |
+| **x-height, rendered `x`** | **1.3479** |
+| advance width, one word / a phrase | 1.3562 / 1.3730 |
+
+x-height wins because **the corpus is lowercase** — one Arabizi or French word
+per card — and advance width, an independent measure of the same thing, lands
+within 1.2% of it. Cap height is the outlier because Cormorant is an old-style
+face whose capitals are large against its lowercase. Two measures agreeing
+against one is the reason. **The consistency gate passed**: the one-word and
+phrase samples are 1.234% apart, against a 3% limit.
+
+**`ARABIC_SIZE_RATIO` stays 1.07 and was not overwritten.** The metrics do not
+reproduce it — cap height gives 1.0161 and x-height 1.0300 — but 1.07 came from
+the user's eye on a delivered reel, and a metric ratio is not evidence his eye
+was wrong. Lowering every Arabic word on every build by 4% is a change he should
+see before it happens. **Cormorant does not bear on it**: the Arabic companion
+is sized against the ordinary Latin face, and an Arabic keyword takes
+`kw_slam_ar`, which is Almarai again, so the emphasis face never sits beside
+Arabic.
+
+**Nothing sets a font or a colour on a text layer yet.** Type still comes from
+the template comps.
 
 ### No script the host evaluates may discard unsaved work
 
