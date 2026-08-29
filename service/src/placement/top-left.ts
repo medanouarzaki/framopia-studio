@@ -3,7 +3,7 @@ import {
   FRAME_HEIGHT,
   FRAME_WIDTH,
   HEAD_CLEARANCE,
-  TOP_LEFT_JITTER,
+  TOP_LEFT_POSITION_JITTER,
   TOP_LEFT_MARGIN,
 } from './constants.js';
 import { fitInsideFrame, type Rect } from './geometry.js';
@@ -49,23 +49,28 @@ export interface TopLeftDetail {
   cornerSidePx: number;
   /** Which bound decided it, for the report. */
   boundBy: 'the space beside the speaker' | 'the space above the speaker' | 'the frame';
+  /** How far jitter nudged the square from the corner, in pixels. */
+  offsetPx: { x: number; y: number };
   /** True when the corner could not hold what the mode asked for. */
   clamped: boolean;
 }
 
 /**
- * The largest square in the corner that clears the face, then a one-sided
- * shrink so a run of images is not identical.
+ * The largest square in the corner that clears the face, nudged a few pixels so
+ * a run of images is not pixel-identical.
  *
  * The square is anchored at the margin and grows down and right until it meets
  * either the speaker's left edge or the top of his head, whichever leaves the
- * larger picture — so it never overlaps the face, whichever bound wins.
+ * larger picture — so it never overlaps the face, whichever bound wins. **Every
+ * slot then takes that whole size**; jitter varies where the square sits, never
+ * how big it is (user ruling, 2026-08-29 — see `TOP_LEFT_POSITION_JITTER`).
  *
- * One-sided jitter is the point: it can only make the square smaller, so it can
- * never push the image onto the face or past the frame. Block 5 established
- * that a bound has to hold by construction rather than by a clamp afterwards,
- * and session 25 moved it **last** so a clamped square cannot sit exactly on
- * the clearance boundary.
+ * **The move holds by construction, not by a clamp afterwards**, which is Block
+ * 5's rule. A square bounded *above* the face may move right, because sliding
+ * it sideways cannot change that it sits above him; one bounded *beside* him
+ * may move down, for the mirror reason. Each axis is offered only the move its
+ * own bound already guarantees, and the second is measured after the first has
+ * been applied, so the two together cannot walk onto the face.
  */
 export function topLeftPlacement(input: TopLeftInput): Rect {
   return topLeftPlacementDetail(input).rect;
@@ -74,7 +79,7 @@ export function topLeftPlacement(input: TopLeftInput): Rect {
 export function topLeftPlacementDetail(input: TopLeftInput): TopLeftDetail {
   const marginPx = (input.marginW ?? TOP_LEFT_MARGIN) * FRAME_WIDTH;
   const clearancePx = (input.clearanceW ?? HEAD_CLEARANCE) * FRAME_WIDTH;
-  const jitter = input.jitter ?? TOP_LEFT_JITTER;
+  const jitter = input.jitter ?? TOP_LEFT_POSITION_JITTER;
   const scale = input.scale ?? 1;
 
   const byFramePx = Math.min(FRAME_WIDTH - 2 * marginPx, FRAME_HEIGHT - 2 * marginPx);
@@ -96,18 +101,38 @@ export function topLeftPlacementDetail(input: TopLeftInput): TopLeftDetail {
   cornerSidePx = Math.max(0, cornerSidePx);
 
   const wantedSidePx = cornerSidePx * scale;
-  const shrink = 1 - jitter * unitStream(`${input.seed}:topleft`)();
-  const allowedPx = Math.min(wantedSidePx, cornerSidePx) * shrink;
+  const sidePx = Math.min(wantedSidePx, cornerSidePx);
+
+  // The face box grown by the clearance, in pixels. The grow is the same figure
+  // on both axes here; it is only the fractions that have different denominators.
+  const faceX0Px =
+    input.faceBox === null ? null : input.faceBox.x * FRAME_WIDTH - clearancePx;
+  const faceY0Px =
+    input.faceBox === null ? null : input.faceBox.y * FRAME_HEIGHT - clearancePx;
+
+  const draw = unitStream(`${input.seed}:topleft`);
+  const jitterPx = jitter * FRAME_WIDTH;
+  const epsilonPx = 1e-9;
+
+  const sitsAboveFace = faceY0Px === null || marginPx + sidePx <= faceY0Px + epsilonPx;
+  const roomRightPx = FRAME_WIDTH - 2 * marginPx - sidePx;
+  const offsetXPx = sitsAboveFace ? Math.min(jitterPx, Math.max(0, roomRightPx)) * draw() : 0;
+
+  const sitsLeftOfFace =
+    faceX0Px === null || marginPx + offsetXPx + sidePx <= faceX0Px + epsilonPx;
+  const roomDownPx = FRAME_HEIGHT - 2 * marginPx - sidePx;
+  const offsetYPx = sitsLeftOfFace ? Math.min(jitterPx, Math.max(0, roomDownPx)) * draw() : 0;
 
   return {
     rect: fitInsideFrame(
-      (marginPx + allowedPx / 2) / FRAME_WIDTH,
-      (marginPx + allowedPx / 2) / FRAME_HEIGHT,
-      allowedPx / FRAME_WIDTH,
+      (marginPx + offsetXPx + sidePx / 2) / FRAME_WIDTH,
+      (marginPx + offsetYPx + sidePx / 2) / FRAME_HEIGHT,
+      sidePx / FRAME_WIDTH,
     ),
     wantedSidePx,
     cornerSidePx,
     boundBy,
+    offsetPx: { x: offsetXPx, y: offsetYPx },
     clamped: wantedSidePx > cornerSidePx + 1e-9,
   };
 }

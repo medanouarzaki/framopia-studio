@@ -100,13 +100,20 @@ export const HEAD_CLEARANCE = 0.04;
 export const TOP_LEFT_MARGIN = 0.03;
 
 /**
- * How far a top-left image may shrink from the largest square that fits, so a
- * run of images is not pixel-identical. Block 5's rule that a set must not read
- * as robotically uniform still applies; the draw is one-sided so jitter can
- * only ever move the image away from the face, never onto it.
- * **CHOSEN, NOT MEASURED.**
+ * How far a top-left image may be nudged from the corner, as a fraction of
+ * frame width — **43 px** on a 2160-wide frame. **CHOSEN, NOT MEASURED.**
+ *
+ * Block 5's rule that a set must not read as robotically uniform still applies;
+ * what changed on 2026-08-29 is the mechanism. This used to shrink the square by
+ * up to 6%, and the user watched a build and read the result as a mistake rather
+ * than as variation: five pictures at 912, 801, 852, 917 and 871 px look like
+ * something went wrong. **A picture that shifts a few pixels reads as variation;
+ * a picture that changes size reads as an error.**
+ *
+ * Small against the 65 px margin on purpose: the image still reads as being in
+ * the corner, which is where the user ruled it belongs.
  */
-export const TOP_LEFT_JITTER = 0.06;
+export const TOP_LEFT_POSITION_JITTER = 0.02;
 
 /**
  * Watermark width as a fraction of frame width — 216 px on a 2160 frame.

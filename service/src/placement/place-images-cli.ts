@@ -88,6 +88,7 @@ for (const file of readdirSync(FOOTAGE_DIR).filter((f) => f.endsWith('.editplan.
     console.log(
       `${reel.padEnd(14)} ${slot.id}: ${px(rect.w)}px at (${px(rect.x)}, ${py(rect.y)})` +
         `  bounded by ${detail.boundBy}` +
+        `  nudged ${detail.offsetPx.x.toFixed(0)}px right, ${detail.offsetPx.y.toFixed(0)}px down` +
         `  clears face ${safe.clearsFace ? 'yes' : 'NO'}, in frame ${safe.insideFrame ? 'yes' : 'NO'}` +
         `${detail.clamped ? `  (asked ${detail.wantedSidePx.toFixed(0)}px, corner holds ${detail.cornerSidePx.toFixed(0)})` : ''}` +
         `${faceBox === null ? '  [no face mask; frame-bounded only]' : ''}`,
