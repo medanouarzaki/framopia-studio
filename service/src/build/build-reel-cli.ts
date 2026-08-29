@@ -27,6 +27,7 @@ import { contentBoxes } from './content-box.js';
 import { assertAllPlaced, assertPathsPresent, type PathRef } from './preflight.js';
 import { resolveClientIdentity } from './client-identity.js';
 import { requiredFonts } from './required-fonts.js';
+import { textStyleFor } from './text-style.js';
 import {
   assertRequirementsMet,
   buildRequirements,
@@ -298,6 +299,18 @@ for (const detail of reelPlaced.slots) {
   );
 }
 
+/*
+ * `--emphasis-ratio` exists so one reel can be built at two ratios and looked
+ * at side by side. Absent takes EMPHASIS_SIZE_RATIO, which is what a normal
+ * build does; nothing in the pipeline passes it.
+ */
+const emphasisRatioFlag = flag('emphasis-ratio');
+const emphasisRatio = emphasisRatioFlag === undefined ? undefined : Number(emphasisRatioFlag);
+if (emphasisRatio !== undefined && (!Number.isFinite(emphasisRatio) || emphasisRatio <= 0)) {
+  console.error(`--emphasis-ratio needs a positive number, not ${emphasisRatioFlag}`);
+  process.exit(2);
+}
+
 const built = buildReel({
   plan,
   audit,
@@ -313,6 +326,25 @@ const built = buildReel({
     return f;
   },
   candidateFileFor,
+  /*
+   * The face, size and colour for each card. Null for a client with no
+   * measured font names, which leaves the template's own type exactly as it
+   * was — the state every build was in before Block 9 session 6.
+   */
+  textStyleFor: (card) => {
+    if (identity.snapshot === null) return undefined;
+    const c = audit.find((x) => x.name === card.templateId);
+    const size = c?.layers.find((l) => l.name === 'TXT_MAIN')?.text?.fontSize;
+    if (size === undefined) return undefined;
+    const style = textStyleFor({
+      kind: card.kind,
+      templateId: card.templateId,
+      templateFontSize: size,
+      snapshot: identity.snapshot,
+      ...(emphasisRatio === undefined ? {} : { emphasisSizeRatio: emphasisRatio }),
+    });
+    return style ?? undefined;
+  },
 });
 
 /*

@@ -16,6 +16,7 @@ function framopiaBuildReel(optionsPath, outPath) {
     var stage = 'start';
     var result;
     var savedOwnOutput = null;
+    var emptiedUntitled = false;
 
     function readOptions(p) {
         var f = new File(p);
@@ -96,6 +97,26 @@ function framopiaBuildReel(optionsPath, outPath) {
                 savedOwnOutput = openFile.fsName;
                 isDirty = false;
             }
+            /*
+             * **An empty project holds no work.** A project with no items that
+             * has never been written to disk cannot lose anything by being
+             * replaced — and it is the state After Effects is in after any
+             * script adds a temporary comp and removes it again, because the
+             * modified flag is read-only and cannot be put back. This is not
+             * the "unreadable dirty counts as dirty" case: `numItems` is read
+             * and it is zero. A project with even one item keeps the refusal,
+             * and so does a saved one with unsaved changes.
+             */
+            var itemCount = -1;
+            try {
+                itemCount = app.project.numItems;
+            } catch (eItems) {
+                itemCount = -1;
+            }
+            if (isDirty && openFile === null && itemCount === 0) {
+                isDirty = false;
+                emptiedUntitled = true;
+            }
             if (isDirty) {
                 throw new Error(
                     'the open After Effects project has unsaved changes' +
@@ -163,8 +184,15 @@ function framopiaBuildReel(optionsPath, outPath) {
                 // The break point arrived precomputed; the decision is here
                 // because only AE knows the rendered width.
                 e.fit = framopiaFitText(
-                    ph, instance.duration / 2, e.candidate, o.safeWidth
+                    ph, instance.duration / 2, e.candidate, o.safeWidth, e.textStyle
                 );
+                // Read back rather than assumed: After Effects substitutes a
+                // face it cannot resolve and reports the name it was given, so
+                // this proves only that the write took, not that the face is
+                // real. `check-fonts` above is what proves the face is real.
+                if (e.textStyle) {
+                    e.textStyleApplied = framopiaReadTextStyle(ph);
+                }
             } else {
                 var img = importOnce(e.imagePath, imports);
                 ph.replaceSource(img, false);
@@ -404,6 +432,7 @@ function framopiaBuildReel(optionsPath, outPath) {
             ok: true,
             aeVersion: app.version,
             savedOwnOutput: savedOwnOutput,
+            emptiedUntitled: emptiedUntitled,
             elementsBuilt: o.elements.length,
             masters: comps,
             imageMeasurements: measured,

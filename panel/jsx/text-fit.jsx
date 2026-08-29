@@ -16,12 +16,39 @@
  * than asserted.
  */
 
-/** Sets a point-text layer's string without touching any other style. */
-function framopiaSetText(layer, value) {
+/**
+ * Sets a point-text layer's string, and its face and colour when the build
+ * carries them.
+ *
+ * `style` is optional and absent for a client with no measured font names; the
+ * template's own type is then left exactly as it was, which is what every build
+ * did before Block 9 session 6. **A missing style is never a guessed one**:
+ * After Effects accepts a font name it cannot resolve and renders a substitute
+ * without saying so, so a guess would not fail — it would set the wrong type.
+ *
+ * `font`, `fillColor` and `text` go in one `setValue`: a TextDocument read from
+ * a property is a copy, so writing it back twice would discard the first write.
+ * `applyFill` has to be true or the colour is carried and not drawn.
+ */
+function framopiaSetText(layer, value, style) {
     var prop = layer.property('Source Text');
     var doc = prop.value;
     doc.text = value;
+    if (style) {
+        doc.font = style.font;
+        if (style.fontSize) doc.fontSize = style.fontSize;
+        if (style.fillColor) {
+            doc.applyFill = true;
+            doc.fillColor = style.fillColor;
+        }
+    }
     prop.setValue(doc);
+}
+
+/** What After Effects has on the layer now, for a caller that checks. */
+function framopiaReadTextStyle(layer) {
+    var doc = layer.property('Source Text').value;
+    return { font: String(doc.font), fontSize: doc.fontSize };
 }
 
 function framopiaMeasureAt(layer, timeS) {
@@ -38,7 +65,7 @@ function framopiaMeasureAt(layer, timeS) {
  * card that stayed on one line, so the survey can report a distribution rather
  * than a verdict.
  */
-function framopiaFitText(layer, sampleTimeS, candidate, safeWidth) {
+function framopiaFitText(layer, sampleTimeS, candidate, safeWidth, style) {
     var out = {
         wrapped: false,
         overflows: false,
@@ -52,7 +79,7 @@ function framopiaFitText(layer, sampleTimeS, candidate, safeWidth) {
         lineCount: 1
     };
 
-    framopiaSetText(layer, candidate.oneLine);
+    framopiaSetText(layer, candidate.oneLine, style);
     var one = framopiaMeasureAt(layer, sampleTimeS);
     out.oneLineWidth = one.width;
     out.oneLineTop = one.top;
@@ -67,7 +94,7 @@ function framopiaFitText(layer, sampleTimeS, candidate, safeWidth) {
         return out;
     }
 
-    framopiaSetText(layer, candidate.twoLines);
+    framopiaSetText(layer, candidate.twoLines, style);
     var two = framopiaMeasureAt(layer, sampleTimeS);
     out.wrapped = true;
     out.lineCount = 2;
@@ -86,14 +113,14 @@ function framopiaFitText(layer, sampleTimeS, candidate, safeWidth) {
     var widths = [];
     var rects = [];
     for (var i = 0; i < candidate.lines.length; i++) {
-        framopiaSetText(layer, candidate.lines[i]);
+        framopiaSetText(layer, candidate.lines[i], style);
         var lr = framopiaMeasureAt(layer, sampleTimeS);
         widths.push(lr.width);
         rects.push(lr);
     }
     out.lineWidths = widths;
     out.lineRects = rects;
-    framopiaSetText(layer, candidate.twoLines);
+    framopiaSetText(layer, candidate.twoLines, style);
 
     for (var j = 0; j < widths.length; j++) {
         if (widths[j] > safeWidth) {

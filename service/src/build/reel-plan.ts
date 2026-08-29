@@ -7,6 +7,7 @@ import {
 import type { EditPlan, SubtitleGroup } from '../editplan/types.js';
 import { displayWindow } from '../analysis/display-timing.js';
 import { chooseBreak, type BreakCandidate } from './wrap.js';
+import type { TextStyle } from './text-style.js';
 import { shortCardTiming } from './short-card.js';
 import { FRAME_WIDTH } from '../placement/constants.js';
 
@@ -36,6 +37,15 @@ export interface ReelElement {
   contentAnchor?: { x: number; y: number };
   /** The card frame's colour, as three floats in 0..1 for After Effects. */
   cardColor?: [number, number, number];
+  /**
+   * The face, size and colour this card is set in.
+   *
+   * Absent for a client with no measured font names, and then the template's
+   * own type is left alone — which is what every build did before. Never
+   * guessed: After Effects accepts a name it cannot resolve and substitutes
+   * silently, so a guess sets the wrong type without failing.
+   */
+  textStyle?: TextStyle;
 }
 
 export interface ReelPlacement {
@@ -158,6 +168,8 @@ export function buildReel(options: {
   topLeftFor?: (slotId: string) => { x: number; y: number; w: number; h: number } | undefined;
   /** Forced template for every image slot; the user ruled every image framed. */
   cardTemplateId?: string;
+  /** The face, size and colour for one card. Absent leaves the template's own. */
+  textStyleFor?: (card: { id: string; kind: 'subtitle' | 'keyword'; templateId: string }) => TextStyle | undefined;
   /** Extra placements, each a copy of the image set at a different size. */
   imageVariants?: {
     name: ImageSizeVariant;
@@ -167,6 +179,7 @@ export function buildReel(options: {
   }[];
 }): ReelBuild {
   const { plan, audit, introFor, minHoldFor, sfxFileFor, candidateFileFor, topLeftFor, cardTemplateId } = options;
+  const styleFor = options.textStyleFor ?? ((): undefined => undefined);
   const shortened: { id: string; stretchPercent: number; introS: number; onFloor: boolean }[] = [];
 
   const elements: ReelElement[] = [];
@@ -237,6 +250,7 @@ export function buildReel(options: {
       placeholder: 'TXT_MAIN',
       text: card.text,
       candidate: chooseBreak(card.text),
+      ...(styleFor(card) === undefined ? {} : { textStyle: styleFor(card) as TextStyle }),
     });
     const inPointS = inPoints[i] as number;
     // A card too short for the standard entrance gets a faster one rather than
