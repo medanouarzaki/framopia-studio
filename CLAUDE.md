@@ -1264,76 +1264,27 @@ defect session 14 fixed:
   an analysis stage that will run and plan some. `test-2` read $1.45 while its
   analysis had already run and planned none, so a run reaches no image call.
 
-### The panel is a five-step view over the plan, never a wizard
+### The five-step rail and the two-column layout are retired
 
-**Selecting a reel or a mode never navigates** (user ruling). It used to jump to
-the furthest step the plan supported, which hid every step in between and left
-Build open on a reel with no keywords. The rail updates availability; the user
-chooses. The only automatic move is off a step the new plan cannot show.
+Both were true and are not. **Session 42 made the panel one screen** — the rail,
+the remembered step, `stepsFor`'s navigation role and the 830 px two-column
+switch went with it, along with `panel/src/steps.ts` and
+`panel/src/panel-width.ts`. What replaced them is above, under *The panel is one
+screen*.
 
-**Which step a reel opens on is remembered per reel in `localStorage`**, keyed
-`framopia.panel.last-step`. Closing a CEP panel unloads the page, so React state
-cannot survive it. It is a **view preference, never a fact about the plan**, so
-it does not reach the Edit Plan: two people opening the same reel are entitled
-to be looking at different steps. Every access is guarded — a `file://` page
-with site data disabled throws on the accessor itself.
+Three things from that period are worth keeping, because they are lessons about
+the host rather than about the layout:
 
-**`resumeAt` is gone.** It was session 15's navigation rule and nothing reads it
-now; it was removed with the test that pinned it rather than left unreferenced.
-
-**Build opens whenever there are subtitle cards, and that is the stated rule.**
-A subtitles-only comp is a legitimate build: keywords and images are
-enrichments, and `ground-truth` builds 76 cards with neither. The pane says what
-the comp **would and would not** contain, and names each buildability issue
-rather than counting them.
-
-`1 Reel · 2 Transcript · 3 Keywords · 4 Images · 5 Build`. **Step availability
-and where the panel opens are derived from the Edit Plan on disk**, by
-`stepsFor` in `service/src/steps.ts`, served at `GET /steps?reel=&mode=`. The
-panel renders what it is told and decides none of it: closing the panel,
-restarting After Effects or reloading the extension has to land the user where
-the reel actually is, and the plan is the only thing that survives all three.
-
-`resumeAt` is **the end of the unbroken run of available steps, not the furthest
-available one.** `build` is available whenever there are cards, so taking the
-last would open a reel with no keywords straight on Build and hide the gap that
-is the actual next thing to do. Today: ground-truth and test-3 resume at
-`transcript`, test-2 at `keywords`, test-1 and vitasilk at `build`.
-
-**Steps 2 to 5 are honest empty states.** Each names what will live there and
-shows figures already on the plan — words and cards, keyword count, slots and
-candidates *actually on disk*, the fonts a build would use. Nothing is mocked.
-
-**The rail's current marker is white, never brand red.** PROJECT_SPEC §6 spends
-`#ED1C24` on one thing and the user ruled that thing is Run pipeline; a red rail
-would put four more of them on screen. Pinned by a browser test that walks the
-computed styles.
-
-**Docked at the manifest's 420 px the rail shows the numbers and only the
-current step's name**, on one row, never wrapping and never scrolling
-sideways — asserted by measuring `offsetTop` and `scrollWidth` in a real engine.
-Labels return at the two-column width.
-
-**A malformed `/steps` payload degrades to a locked rail, never a throw.** The
-same rule that keeps the startup path from throwing, applied to the service's
-replies.
-
-### The panel is laid out by a measured width, not a container query
-
-A docked CEP panel's **window** is the size of the screen while its **panel** is
-a column wide, so a media query lays out for the wrong thing — and a container
-query lays out for nothing at all, because Chromium 99 does not implement one.
-A `ResizeObserver` toggles a `wide` class on `.app` from the panel's measured
-width; it fires on observe, so the first measurement is taken **after** layout
-rather than during the first render, and it re-evaluates on every resize.
-
-The split is at **830 px of the panel's own width** (`PANEL_TWO_COLUMN_PX` in
-`panel/src/panel-width.ts`), measured in session 9: a column must never be
-narrower than the single column already is when docked at the manifest's
-420 px, where the value side of a fact row is 242 px. Two columns reach 241 px
-at 820 and 246 px at 830. Service sits beside Video and Client mode, Build spans
-both beneath. Verified from 380 px to 1920 px with **zero overflow at every
-width**.
+- **A docked CEP panel's window is the size of the screen while its panel is a
+  column wide**, so a media query lays out for the wrong thing. Any future
+  responsive rule has to measure the panel, not the viewport.
+- **A container query lays out for nothing at all**: `container-type` shipped in
+  Chrome 105 and CEP 12 runs Chromium 99, so the whole at-rule block was dead
+  text and the panel silently rendered one column at 1572 px. That is why the
+  capability denylist gates the built bundle.
+- **`GET /steps` still exists and is still the plan's own view of itself.** The
+  panel reads it for what a video supports and for the build preview; it no
+  longer reads it for where to navigate.
 
 ### The service must be built before the panel can start it
 

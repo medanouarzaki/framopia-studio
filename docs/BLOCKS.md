@@ -62,7 +62,16 @@ One block = one Claude Project conversation (Claude Opus) driving several Claude
 **Goal:** the complete branded UI and workflow, wired end-to-end.
 **Deliverables:** CEP scaffold + debug setup; service spawn/health; pipeline runner with staged progress; transcript editor (word edit, script toggle with RTL-aware rendering, group adjust, confidence highlighting, removed-word restore); keyword mode picker + checkboxes; image candidate picker (pick/regenerate-with-tweak/own prompt, cutout-vs-card override); zone editor (view + manual adjust); Build button wiring panel ↔ service ↔ ExtendScript; **visual polish pass as a distinct deliverable** (Framopia dark-first branding per PROJECT_SPEC §6).
 **DoD:** a full reel goes video-in → built comp entirely from the panel with no terminal involvement; UI passes the user's eye for "polished product".
-**Depends on:** 2,3,4,5,7. **Sessions:** 5–7 (largest block; split across two conversations is expected — the handoff makes it safe).
+**Depends on:** 2,3,4,5,7. **Sessions:** planned 5–7; **ran 45 across two conversations.**
+
+**State at close (2026-08-29): one half met, one half not, and the split is exact.**
+
+- **"UI passes the user's eye" — MET.** He has used every part of it and approved the one-screen layout, its order, its type size, its words, the client card and the file dialog.
+- **"Video-in → built comp entirely from the panel with no terminal" — NOT MET.** Frame analysis is reported, never driven: `npm run frames`, `npm run segment` and `npm run zones` run the Python sidecar and take minutes, and the pipeline runner names them rather than running them. A video that has never been through the sidecar therefore cannot be taken end to end from the panel. It no longer *silently* builds a wrong comp — since session 39 the build refuses and names the command — but refusing is not driving.
+- Also terminal-only: `npm run watermark:measure` (without it no watermark is placed at all) and `plan.source.dialogueLufs`, which only `npm run migrate:sfx-placement` writes.
+- **Everything else in the deliverable list exists**, including the zone editor, which was answered rather than built: automatic image placement stopped reading zones in Block 7 session 9, so a list of them would have been a control over a decision nobody makes. What replaced it is the picture editor's size and limit line.
+
+**The handoff is `handoffs/block-8.md`** (part 2, sessions 11–45) and `handoffs/block-8-part-1.md` (sessions 1–10).
 
 ## Block 9 — Client modes + K2 Syndicalia
 **Goal:** mode system for real; first client mode; two-machine sharing.
