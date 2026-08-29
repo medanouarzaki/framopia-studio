@@ -96,6 +96,16 @@ for (const file of readdirSync(FOOTAGE_DIR).filter((f) => f.endsWith('.editplan.
     out[slot.id] = rect;
     placedTotal += 1;
 
+    if (faceBox === null) {
+      // A slot with no face box used to be reported as clearing the face, which
+      // is how a 2030 px picture across the speaker passed this report.
+      console.error(
+        `${reel} ${slot.id}: no face mask covers this slot, so nothing here can say whether ` +
+          'the picture clears the speaker. Run npm run frames and npm run segment for this reel.',
+      );
+      faceHits += 1;
+      continue;
+    }
     const safe = placementIsSafe(rect, faceBox);
     if (!safe.insideFrame) escapes += 1;
     if (!safe.clearsFace) faceHits += 1;

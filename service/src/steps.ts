@@ -3,6 +3,12 @@ import path from 'node:path';
 import { REPO_ROOT, buildFonts, loadMode, loadTemplateManifest, templatesById } from '@framopia/core';
 import { listReels } from './catalogue.js';
 import { checkBuildability } from './analysis/buildability.js';
+import {
+  buildRequirements,
+  missingRequirements,
+  readBuildDisk,
+  type BuildRequirement,
+} from './build/requirements.js';
 import { watermarkEnabled, watermarkSizeOf } from './placement/watermark.js';
 import { FRAME_HEIGHT, FRAME_WIDTH, watermarkWidthFraction } from './placement/constants.js';
 import type { EditPlan, WatermarkSize } from './editplan/types.js';
@@ -94,6 +100,12 @@ export interface BuildPreview {
    * something can spend money, so silence about cost would be read as a cost.
    */
   free: true;
+  /**
+   * What this reel is missing that a correct build needs. Empty is the normal
+   * case; anything here disables Build, because the alternative is a comp that
+   * looks right and is not.
+   */
+  missing: BuildRequirement[];
 }
 
 export class StepsError extends Error {}
@@ -256,6 +268,25 @@ export function stepsFor(reelLabel: string, modeId: string): PlanSteps {
      * so the preview says which one it landed on rather than echoing the picker
      * back at the user.
      */
+    const missing = missingRequirements(
+      buildRequirements(plan, readBuildDisk(planPath ?? ''), {
+        knownTemplateIds: new Set(templatesById(loadTemplateManifest()).keys()),
+      }),
+    );
+    if (missing.length > 0) {
+      buildAvailable = false;
+      buildReason =
+        missing.length === 1
+          ? `${missing[0]?.what}. Without it, ${missing[0]?.consequence}. Run: ${missing[0]?.command}`
+          : `${missing.length} things this reel needs before it can be built correctly.`;
+      // Ahead of the clipped holds, not instead of them: these stop the build
+      // and those are things to know about a comp that will be made anyway.
+      buildIssues = [
+        ...missing.map((m) => `${m.what} — without it, ${m.consequence}. Run: ${m.command}`),
+        ...buildIssues,
+      ];
+    }
+
     const planMode = plan.clientMode;
     const buildMode = planMode === null ? mode : loadMode(planMode.id);
     if (planPath !== null) {
@@ -279,6 +310,7 @@ export function stepsFor(reelLabel: string, modeId: string): PlanSteps {
           globalFallback: fonts.source === 'global',
         },
         free: true,
+        missing,
       };
     }
   } catch (error) {

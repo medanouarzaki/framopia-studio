@@ -62,12 +62,19 @@ describe('topLeftPlacement', () => {
     );
   });
 
+  /*
+   * A null face box is still a legal *placement* input — it is what a reel with
+   * no speaker in the window would be — but it is no longer a legal input to the
+   * safety check, because answering "clears the face" with no face is how a
+   * 2030 px picture landed across the speaker. So the frame bound is asserted
+   * for all three, and the face bound only where there is a face.
+   */
   it('never leaves the frame, for any seed or face position', () => {
     for (let i = 0; i < 50; i += 1) {
       for (const face of [null, vitasilkFace, { x: 0.05, y: 0.05, w: 0.9, h: 0.5 }]) {
         const rect = topLeftPlacement({ faceBox: face, seed: `s${i}` });
         expect(insideFrame(rect, 1e-9)).toBe(true);
-        expect(placementIsSafe(rect, face).clearsFace).toBe(true);
+        if (face !== null) expect(placementIsSafe(rect, face).clearsFace).toBe(true);
       }
     }
   });

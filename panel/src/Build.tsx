@@ -70,6 +70,10 @@ export function Build({
 
   const running = starting || job?.status === 'pending' || job?.status === 'running';
   const detail = job?.detail;
+  // A service older than the requirements check sends nothing, and nothing is
+  // not a clean bill of health — it only means this panel cannot say.
+  const missing = preview?.missing ?? [];
+  const blocked = disabled || missing.length > 0;
 
   return (
     <div className="buildpane">
@@ -81,15 +85,34 @@ export function Build({
         <BuildPreviewCard preview={preview} />
       )}
 
+      {missing.length === 0 ? null : (
+        <div className="card missing" role="alert">
+          <p className="detail">
+            This reel is not ready to build. {missing.length === 1 ? 'One thing is' : `${missing.length} things are`} missing,
+            and building without {missing.length === 1 ? 'it' : 'them'} would make a comp that
+            looks right and is not.
+          </p>
+          <ul className="issues">
+            {missing.map((m) => (
+              <li key={m.id}>
+                <span className="what">{m.what}</span>
+                <span className="detail">Without it, {m.consequence}.</span>
+                <code>{m.command}</code>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <button
         className="build-now"
         type="button"
-        disabled={disabled || running || connection === null || preview === undefined}
+        disabled={blocked || running || connection === null || preview === undefined}
         onClick={() => void onBuild()}
       >
         {running ? 'Building…' : 'Build the composition'}
       </button>
-      {disabled && disabledReason !== null ? (
+      {disabled && missing.length === 0 && disabledReason !== null ? (
         <p className="reason" role="status">
           {disabledReason}
         </p>

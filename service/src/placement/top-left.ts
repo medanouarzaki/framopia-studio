@@ -149,10 +149,16 @@ export function topLeftPlacementDetail(input: TopLeftInput): TopLeftDetail {
  *
  * The two hard bounds, asserted rather than eyeballed. The face box is grown by
  * the clearance first, so "clears" means clears with room, not merely misses.
+ *
+ * **The face box is required, and that is the point.** It used to be nullable
+ * and answered `clearsFace: true` when it was null — so a reel with no masks on
+ * disk got a 2030 px picture placed across the speaker and this function said it
+ * was safe. A check that cannot fail is not a check. A caller with no face box
+ * has to refuse before it gets here; `buildRequirements` is what refuses.
  */
 export function placementIsSafe(
   rect: Rect,
-  faceBox: Rect | null,
+  faceBox: Rect,
   clearanceW: number = HEAD_CLEARANCE,
 ): { insideFrame: boolean; clearsFace: boolean } {
   const epsilon = 1e-9;
@@ -161,7 +167,6 @@ export function placementIsSafe(
     rect.y >= -epsilon &&
     rect.x + rect.w <= 1 + epsilon &&
     rect.y + rect.h <= 1 + epsilon;
-  if (faceBox === null) return { insideFrame, clearsFace: true };
   const grown = {
     x: faceBox.x - clearanceW,
     y: faceBox.y - clearanceW / FRAME_ASPECT,

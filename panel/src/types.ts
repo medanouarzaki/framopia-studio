@@ -273,6 +273,16 @@ export interface BuildPreview {
   watermark: { size: WatermarkSize; widthPx: number; heightPx: number } | null;
   fonts: { latin: string; arabic: string; globalFallback: boolean };
   free: true;
+  /** Absent from a service older than the requirements check. Never assumed. */
+  missing?: BuildRequirementView[];
+}
+
+/** Something this reel needs before it can be built correctly. */
+export interface BuildRequirementView {
+  id: string;
+  what: string;
+  command: string;
+  consequence: string;
 }
 
 export interface TranscriptWordView {

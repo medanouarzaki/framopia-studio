@@ -608,7 +608,7 @@ function stubRoutes(steps: unknown, resumeAt: string): string {
         subtitleCards: 68, keywords: 3, images: 5, sfxEvents: 4,
         watermark: { size: 'medium', widthPx: 324, heightPx: 363 },
         fonts: { latin: 'Inter Semi-Bold', arabic: 'Almarai Bold', globalFallback: true },
-        free: true,
+        free: true, missing: [],
       },
     },
     keywords: {
@@ -2513,6 +2513,85 @@ describe.skipIf(!built)('the Build step', () => {
         return `${s.backgroundColor}|${s.borderTopColor}|${s.color}`;
       });
       expect(colours).not.toContain('237, 28, 36');
+    } finally {
+      await loaded.page.close();
+    }
+  }, 30_000);
+});
+
+/*
+ * A reel that has never been through the sidecar used to build a picture across
+ * the speaker's face and say nothing. It refuses now, and the panel has to show
+ * the refusal as something he can act on rather than as a locked button.
+ */
+describe.skipIf(!built)('a reel that is not ready to build', () => {
+  const MISSING = [
+    {
+      id: 'face-masks',
+      what: 'the face masks for this reel (5 images are placed against them)',
+      command: 'npm run frames -- --reel <label> then npm run segment -- --reel <label>',
+      consequence:
+        'every image is placed against the frame instead of your face, which puts a ' +
+        '2030 px picture across the speaker on a 2160 px frame',
+    },
+  ];
+
+  async function openBuild(missing: unknown[]): Promise<Loaded | null> {
+    const loaded = await loadFlow(
+      'build',
+      'build',
+      420,
+      `window.__payload.steps.build.missing = ${JSON.stringify(missing)};`,
+    );
+    if (loaded === null) return null;
+    await loaded.page.click('nav.rail li:nth-child(5) button');
+    await loaded.page.waitForSelector('.buildpane', { timeout: 5000 });
+    return loaded;
+  }
+
+  it('names what is missing, what it would cost, and the command', async () => {
+    const loaded = await openBuild(MISSING);
+    if (loaded === null) return;
+    try {
+      const text = (await loaded.page.textContent('.buildpane .card.missing')) ?? '';
+      expect(text).toContain('not ready to build');
+      expect(text).toContain('the face masks for this reel');
+      expect(text).toContain('2030 px picture across the speaker');
+      expect(text).toContain('npm run segment');
+      // A field name is not a label.
+      expect(text).not.toContain('face-masks');
+      expect(loaded.uncaught).toEqual([]);
+    } finally {
+      await loaded.page.close();
+    }
+  }, 30_000);
+
+  it('disables Build while anything is missing', async () => {
+    const loaded = await openBuild(MISSING);
+    if (loaded === null) return;
+    try {
+      expect(
+        await loaded.page.$eval('button.build-now', (b) => (b as HTMLButtonElement).disabled),
+      ).toBe(true);
+    } finally {
+      await loaded.page.close();
+    }
+  }, 30_000);
+
+  /* A service too old to answer must not be read as a clean bill of health. */
+  it('says nothing about readiness when the service cannot say', async () => {
+    const loaded = await loadFlow(
+      'build', 'build', 420, 'delete window.__payload.steps.build.missing;',
+    );
+    if (loaded === null) return;
+    try {
+      await loaded.page.click('nav.rail li:nth-child(5) button');
+      await loaded.page.waitForSelector('.buildpane', { timeout: 5000 });
+      expect(await loaded.page.$$('.buildpane .card.missing')).toHaveLength(0);
+      expect(
+        await loaded.page.$eval('button.build-now', (b) => (b as HTMLButtonElement).disabled),
+      ).toBe(false);
+      expect(loaded.uncaught).toEqual([]);
     } finally {
       await loaded.page.close();
     }

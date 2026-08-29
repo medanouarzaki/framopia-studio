@@ -811,24 +811,42 @@ came from, the output path, what the comp will contain, the watermark and its
 size, the fonts, and that building is free. `buildOutputPath` in `steps.ts` is a
 second copy of the builder's own naming rule and is pinned equal to it by a test.
 
-### Frame analysis is the hole in the end-to-end path
+### A missing input refuses; it never degrades
 
-**A reel that has never been through the CV sidecar builds a wrong comp, and
-nothing says so.** Image placement has read the **face masks** rather than zones
-since session 33; `faceBoxesFor` returns an empty map when
-`.local/cv/<video>/masks-2fps/` is absent, placement then falls back to the frame
-alone, and a slot is placed at **2030 px on a 2160 px frame** — nearly the full
-width, straight over the speaker. `placementIsSafe` passes it, because with no
-face box there is no face to clear. All five corpus reels have masks, so this has
-never been seen.
+**Session 38's defect, and the general rule it produced.** Image placement reads
+the **face masks**; with none on disk `faceBoxesFor` returned an empty map,
+placement fell back to the frame alone, and a slot landed at **2030 px on a
+2160 px frame** — across the speaker. `placementIsSafe` **passed it**, because
+with no face box there was no face to clear. **A check that cannot fail is not a
+check**, so `placementIsSafe` now takes a **required** `Rect`: a caller with no
+face box cannot reach it, and the type says so.
 
-The pipeline runner **reports** frame analysis and never drives it
-(`zonesNotDriven`), naming `npm run frames`, `segment` and `zones`. Two more
-measurements are terminal-only and reach a build the same way: `.local/build/
-watermark.json` (`npm run watermark:measure`), without which the builder places
-no watermark at all, and `plan.source.dialogueLufs`, which **only
-`npm run migrate:sfx-placement` ever writes** — so a new reel gets no dialogue
-loudness and the mix attenuates nothing.
+`service/src/build/requirements.ts` is the one declaration of what a correct
+build needs, read by `build-reel-cli.ts` before it places anything and by
+`steps.ts` so the panel shows the same sentence and disables Build. Each
+requirement names itself, what the build would otherwise do, and the command
+that produces it. **Every one is conditional on what the comp actually
+contains** — a check that always fires is as wrong as one that never can:
+
+| requirement | needed when | without it |
+|---|---|---|
+| face masks | the reel has image slots | a 2030 px picture across the speaker |
+| the CV sidecar venv | the reel has image slots | masks unreadable, frame colour chosen from nothing |
+| `.local/build/watermark.json` | the plan asks for the mark | no watermark at all, and the comp looks like one that has none |
+| `dialogueLufs`/`dialoguePeakDbfs` | the reel has sounds | no attenuation, and every sound sums past 0 dBFS |
+| a client mode | the reel has image slots | the template's own frame colour, 1.03:1 against the pictures |
+| every `templateId` in the manifest | any element carries an unknown one | an entrance budget of zero |
+
+**No reel in the corpus refuses**, so the refusals stand on synthetic cases plus
+one real-absence test: a plan copied to a stem nothing has sampled resolves to a
+mask directory that genuinely is not there. All five reels build exactly as
+before — `vitasilk` five pictures at 837 px, `test-1` four at 917.
+
+**Frame analysis is still reported, not driven.** The runner names
+`npm run frames`, `segment` and `zones` rather than running them
+(`zonesNotDriven`), and `dialogueLufs` still reaches a plan only through
+`npm run migrate:sfx-placement`. What changed is that a build no longer proceeds
+without them.
 
 ### Every picture in a reel is one size, and the watermark has three
 

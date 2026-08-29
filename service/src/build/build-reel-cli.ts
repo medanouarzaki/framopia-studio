@@ -23,6 +23,11 @@ import { emitBuildStage } from './stages.js';
 import { imageSize } from './image-size.js';
 import { canvasScalePercent, contentBoxes } from './content-box.js';
 import { assertAllPlaced, assertPathsPresent, type PathRef } from './preflight.js';
+import {
+  assertRequirementsMet,
+  buildRequirements,
+  readBuildDisk,
+} from './requirements.js';
 import { buildChoiceFor } from './choose-candidate.js';
 import {
   COMP_SIDE_PX,
@@ -185,6 +190,18 @@ function faceSpan(startS: number, endS: number): { x: number; y: number; w: numb
  * speaker's face, or off the edge of the frame, is not something to discover in
  * a built comp.
  */
+/*
+ * Every measurement a correct build needs, checked before anything is placed.
+ * Session 38 found a reel with no masks building a picture across the speaker's
+ * face and saying nothing; a missing input names itself and stops here now.
+ */
+assertRequirementsMet(
+  buildRequirements(plan, readBuildDisk(planPath), {
+    ...(flag('mode') === undefined ? {} : { modeId: flag('mode') as string }),
+    knownTemplateIds: new Set(entries.keys()),
+  }),
+);
+
 const placementModeId = flag('mode') ?? plan.clientMode?.id;
 const imageScale =
   placementModeId === undefined ? 1 : (loadMode(placementModeId).imageScale ?? 1);
@@ -208,6 +225,16 @@ if (reelPlaced.slots.length > 0) {
 }
 for (const detail of reelPlaced.slots) {
   const faceBox = slotFaces.get(detail.id) ?? null;
+  if (faceBox === null) {
+    // The requirements check above refuses a reel with no masks, so reaching
+    // here means the masks exist and cover no frame of this slot's window.
+    console.error(
+      `${detail.id}: the face masks cover no frame between ${detail.id} start and end, so ` +
+        'there is nothing to place this picture clear of. Re-sample the reel with ' +
+        'npm run frames -- --reel <label> --force, then npm run segment.',
+    );
+    process.exit(1);
+  }
   const safe = placementIsSafe(detail.rect, faceBox);
   if (!safe.insideFrame || !safe.clearsFace) {
     console.error(
