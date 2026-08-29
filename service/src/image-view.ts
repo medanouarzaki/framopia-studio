@@ -4,10 +4,9 @@ import { listReels } from './catalogue.js';
 import { readEditPlan, writeEditPlan } from './editplan/io.js';
 import { dryRun } from './dry-run.js';
 import { buildChoiceFor } from './build/choose-candidate.js';
-import { topLeftPlacementDetail } from './placement/top-left.js';
+import { reelPlacements, type ReelSlotPlacement } from './placement/top-left.js';
 import { FRAME_WIDTH } from './placement/constants.js';
 import { faceBoxesFor } from './placement/face-boxes.js';
-import type { Rect } from './placement/geometry.js';
 import { nothingIsMeasured, rendersAsCutout, verdictFor } from './images/verdict.js';
 import type { EditPlan, ImageCandidate, ImageSlot } from './editplan/types.js';
 
@@ -183,13 +182,8 @@ function candidateViewOf(candidate: ImageCandidate, slot: ImageSlot): CandidateV
   };
 }
 
-function slotViewOf(slot: ImageSlot, faceBox: Rect | null, planId: string): ImageSlotView {
+function slotViewOf(slot: ImageSlot, placement: ReelSlotPlacement): ImageSlotView {
   const choice = buildChoiceFor(slot);
-  const placement = topLeftPlacementDetail({
-    faceBox,
-    seed: `${planId}:${slot.id}`,
-    scale: 1,
-  });
   return {
     id: slot.id,
     start: slot.start,
@@ -212,9 +206,19 @@ function slotViewOf(slot: ImageSlot, faceBox: Rect | null, planId: string): Imag
 
 async function viewOf(plan: EditPlan, planPath: string, reelLabel: string): Promise<ImagesView> {
   const faces = faceBoxesFor(plan);
-  const slots = plan.images.slots.map((slot) =>
-    slotViewOf(slot, faces.get(slot.id) ?? null, plan.meta.id),
+  const placed = new Map(
+    reelPlacements(
+      plan.images.slots.map((slot) => ({
+        id: slot.id,
+        faceBox: faces.get(slot.id) ?? null,
+        seed: `${plan.meta.id}:${slot.id}`,
+      })),
+    ).slots.map((p) => [p.id, p]),
   );
+  const slots = plan.images.slots.flatMap((slot) => {
+    const placement = placed.get(slot.id);
+    return placement === undefined ? [] : [slotViewOf(slot, placement)];
+  });
   const noCandidates = slots.length > 0 && slots.every((s) => s.candidates.length === 0);
 
   /*

@@ -29,7 +29,7 @@ import {
   WATERMARK_DURATION_S,
 } from '../placement/constants.js';
 import { assertBeepsFitWatermark, placeWatermark, watermarkEnabled } from '../placement/watermark.js';
-import { placementIsSafe, topLeftPlacementDetail } from '../placement/top-left.js';
+import { placementIsSafe, reelPlacements } from '../placement/top-left.js';
 import {
   buildReel,
   auditedSolid,
@@ -187,25 +187,40 @@ const placementModeId = flag('mode') ?? plan.clientMode?.id;
 const imageScale =
   placementModeId === undefined ? 1 : (loadMode(placementModeId).imageScale ?? 1);
 const imagePlacements: Record<string, { x: number; y: number; w: number; h: number }> = {};
-for (const slot of plan.images.slots) {
-  const faceBox = faceSpan(slot.start, slot.end);
-  const detail = topLeftPlacementDetail({
-    faceBox,
+const slotFaces = new Map(
+  plan.images.slots.map((slot) => [slot.id, faceSpan(slot.start, slot.end)]),
+);
+const reelPlaced = reelPlacements(
+  plan.images.slots.map((slot) => ({
+    id: slot.id,
+    faceBox: slotFaces.get(slot.id) ?? null,
     seed: `${plan.meta.id}:${slot.id}`,
-    scale: imageScale,
-  });
+  })),
+  { scale: imageScale },
+);
+if (reelPlaced.slots.length > 0) {
+  console.log(
+    `every picture in this reel is ${reelPlaced.commonSidePx.toFixed(0)}px, ` +
+      `the largest ${reelPlaced.setBy} can hold`,
+  );
+}
+for (const detail of reelPlaced.slots) {
+  const faceBox = slotFaces.get(detail.id) ?? null;
   const safe = placementIsSafe(detail.rect, faceBox);
   if (!safe.insideFrame || !safe.clearsFace) {
     console.error(
-      `${slot.id}: placement ${safe.insideFrame ? '' : 'leaves the frame'}` +
+      `${detail.id}: placement ${safe.insideFrame ? '' : 'leaves the frame'}` +
         `${safe.clearsFace ? '' : 'overlaps the speaker’s face'}`,
     );
     process.exit(1);
   }
-  imagePlacements[slot.id] = detail.rect;
+  imagePlacements[detail.id] = detail.rect;
   console.log(
-    `${slot.id}: ${(detail.rect.w * plan.source.width).toFixed(0)}px in the top-left corner, ` +
+    `${detail.id}: ${(detail.rect.w * plan.source.width).toFixed(0)}px in the top-left corner, ` +
       `bounded by ${detail.boundBy}` +
+      (detail.givesUpPx > 0.5
+        ? `; ${detail.givesUpPx.toFixed(0)}px smaller than this slot alone could hold`
+        : '') +
       (detail.clamped
         ? `; smaller than the ${imageScale}x asked for, which the corner cannot hold`
         : ''),

@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { placementIsSafe, topLeftPlacement, topLeftPlacementDetail } from './top-left.js';
+import {
+  placementIsSafe,
+  reelPlacements,
+  topLeftPlacement,
+  topLeftPlacementDetail,
+} from './top-left.js';
 import { insideFrame, type Rect } from './geometry.js';
 import {
   FRAME_ASPECT, FRAME_HEIGHT, FRAME_WIDTH, HEAD_CLEARANCE, TOP_LEFT_MARGIN, TOP_LEFT_POSITION_JITTER,
@@ -172,5 +177,82 @@ describe('imageScale', () => {
   it('grows into a frame-bounded corner, where there is room to grow', () => {
     const grown = topLeftPlacementDetail({ faceBox: null, seed, scale: 1.4 });
     expect(grown.clamped).toBe(true);
+  });
+});
+
+/*
+ * Retires per-slot independent sizing. The user watched a build whose five
+ * pictures came out 937, 837, 905, 925 and 913 px and ruled that they must read
+ * as one size; which of them is geometry and which is jitter is not his problem.
+ */
+describe('reelPlacements', () => {
+  const roomy: Rect = { x: 0.6, y: 0.5, w: 0.3, h: 0.3 };
+  const tight: Rect = { x: 0.3, y: 0.06, w: 0.5, h: 0.4 };
+  const slots = [
+    { id: 'img001', faceBox: roomy, seed: 'p:img001' },
+    { id: 'img002', faceBox: tight, seed: 'p:img002' },
+    { id: 'img003', faceBox: roomy, seed: 'p:img003' },
+  ];
+
+  it('gives every slot one size, the smallest any of them can hold', () => {
+    const reel = reelPlacements(slots);
+    const sides = reel.slots.map((s) => s.rect.w * FRAME_WIDTH);
+    expect(new Set(sides.map((s) => s.toFixed(9))).size).toBe(1);
+    expect(reel.commonSidePx).toBeCloseTo(Math.min(...reel.slots.map((s) => s.ownMaxPx)), 9);
+    expect(reel.setBy).toBe('img002');
+  });
+
+  it('reports what each slot gives up, so a reel pulled down by one is visible', () => {
+    const reel = reelPlacements(slots);
+    const setter = reel.slots.find((s) => s.id === reel.setBy);
+    expect(setter?.givesUpPx).toBeCloseTo(0, 9);
+    for (const s of reel.slots) {
+      expect(s.givesUpPx).toBeCloseTo(s.ownMaxPx - reel.commonSidePx, 9);
+      expect(s.givesUpPx).toBeGreaterThanOrEqual(-1e-9);
+    }
+  });
+
+  it('clears the face and stays in the frame at the common size', () => {
+    for (const s of reelPlacements(slots).slots) {
+      const face = slots.find((x) => x.id === s.id)?.faceBox ?? null;
+      const safe = placementIsSafe(s.rect, face);
+      expect(`${s.id} frame ${safe.insideFrame} face ${safe.clearsFace}`).toBe(
+        `${s.id} frame true face true`,
+      );
+    }
+  });
+
+  /*
+   * The size is shared; the nudge is not. Session 36's guarantee has to survive
+   * a slot being placed smaller than its own corner, which is when there is the
+   * most room to move and so the most that could go wrong.
+   */
+  it('still nudges position, inward and inside its bound, at the common size', () => {
+    const reel = reelPlacements(slots);
+    const positions = new Set(reel.slots.map((s) => `${s.rect.x},${s.rect.y}`));
+    expect(positions.size).toBeGreaterThan(1);
+    for (const s of reel.slots) {
+      expect(s.offsetPx.x).toBeGreaterThanOrEqual(0);
+      expect(s.offsetPx.y).toBeGreaterThanOrEqual(0);
+      expect(s.offsetPx.x).toBeLessThanOrEqual(TOP_LEFT_POSITION_JITTER * FRAME_WIDTH + 1e-9);
+      expect(s.offsetPx.y).toBeLessThanOrEqual(TOP_LEFT_POSITION_JITTER * FRAME_WIDTH + 1e-9);
+      expect(s.rect.x).toBeGreaterThanOrEqual(TOP_LEFT_MARGIN - 1e-12);
+      expect(s.rect.y).toBeGreaterThanOrEqual(TOP_LEFT_MARGIN / FRAME_ASPECT - 1e-12);
+    }
+  });
+
+  it('is deterministic, and a reel with no slots has no size', () => {
+    expect(reelPlacements(slots)).toEqual(reelPlacements(slots));
+    expect(reelPlacements([])).toEqual({ slots: [], commonSidePx: 0, setBy: null });
+  });
+
+  /*
+   * The risk, asserted rather than only written down: adding one cramped slot
+   * to a roomy reel takes every other picture down with it.
+   */
+  it('lets a single tight slot shrink the whole reel', () => {
+    const roomyOnly = reelPlacements(slots.filter((s) => s.faceBox === roomy));
+    const withTight = reelPlacements(slots);
+    expect(withTight.commonSidePx).toBeLessThan(roomyOnly.commonSidePx);
   });
 });

@@ -6,7 +6,7 @@ import { readEditPlan } from '../editplan/io.js';
 import type { EditPlan, ImageSlot } from '../editplan/types.js';
 import { FRAME_HEIGHT, FRAME_WIDTH, HEAD_CLEARANCE, TOP_LEFT_MARGIN } from './constants.js';
 import { type Rect } from './geometry.js';
-import { placementIsSafe, topLeftPlacementDetail } from './top-left.js';
+import { placementIsSafe, reelPlacements } from './top-left.js';
 
 /**
  * Where each image slot goes, per reel, and what the change from the corner is
@@ -71,10 +71,26 @@ for (const file of readdirSync(FOOTAGE_DIR).filter((f) => f.endsWith('.editplan.
   };
 
   const out: Record<string, Rect> = {};
-  for (const slot of plan.images.slots as ImageSlot[]) {
-    const faceBox = spanBox(slot);
-    const seed = `${plan.meta.id}:${slot.id}`;
-    const detail = topLeftPlacementDetail({ faceBox, seed, scale: imageScale });
+  const faceBoxes = new Map(
+    (plan.images.slots as ImageSlot[]).map((slot) => [slot.id, spanBox(slot)]),
+  );
+  const reel_ = reelPlacements(
+    (plan.images.slots as ImageSlot[]).map((slot) => ({
+      id: slot.id,
+      faceBox: faceBoxes.get(slot.id) ?? null,
+      seed: `${plan.meta.id}:${slot.id}`,
+    })),
+    { scale: imageScale },
+  );
+  if (reel_.slots.length > 0) {
+    console.log(
+      `${reel.padEnd(14)} one size for the reel: ${reel_.commonSidePx.toFixed(0)}px, ` +
+        `set by ${reel_.setBy}`,
+    );
+  }
+  for (const detail of reel_.slots) {
+    const slot = { id: detail.id };
+    const faceBox = faceBoxes.get(detail.id) ?? null;
     const rect = detail.rect;
     if (detail.clamped) clamped += 1;
     out[slot.id] = rect;
@@ -87,6 +103,8 @@ for (const file of readdirSync(FOOTAGE_DIR).filter((f) => f.endsWith('.editplan.
     const py = (v: number): string => (v * FRAME_HEIGHT).toFixed(0);
     console.log(
       `${reel.padEnd(14)} ${slot.id}: ${px(rect.w)}px at (${px(rect.x)}, ${py(rect.y)})` +
+        `  own max ${detail.ownMaxPx.toFixed(0)}px` +
+        `${detail.givesUpPx > 0.5 ? ` (gives up ${detail.givesUpPx.toFixed(0)}px)` : ''}` +
         `  bounded by ${detail.boundBy}` +
         `  nudged ${detail.offsetPx.x.toFixed(0)}px right, ${detail.offsetPx.y.toFixed(0)}px down` +
         `  clears face ${safe.clearsFace ? 'yes' : 'NO'}, in frame ${safe.insideFrame ? 'yes' : 'NO'}` +

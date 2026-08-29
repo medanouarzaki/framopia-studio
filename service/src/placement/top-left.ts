@@ -39,6 +39,13 @@ export interface TopLeftInput {
   jitter?: number;
   /** The client mode's `imageScale`, default 1.0. */
   scale?: number;
+  /**
+   * The size to place at, in source pixels, overriding what this slot's own
+   * corner could hold. This is how a reel gives every picture one size; it is
+   * still bounded by the corner, so an override larger than the corner can hold
+   * is refused rather than granted over the speaker.
+   */
+  sidePx?: number;
 }
 
 export interface TopLeftDetail {
@@ -101,7 +108,7 @@ export function topLeftPlacementDetail(input: TopLeftInput): TopLeftDetail {
   cornerSidePx = Math.max(0, cornerSidePx);
 
   const wantedSidePx = cornerSidePx * scale;
-  const sidePx = Math.min(wantedSidePx, cornerSidePx);
+  const sidePx = Math.min(input.sidePx ?? wantedSidePx, cornerSidePx);
 
   // The face box grown by the clearance, in pixels. The grow is the same figure
   // on both axes here; it is only the fractions that have different denominators.
@@ -167,4 +174,68 @@ export function placementIsSafe(
     rect.y < grown.y + grown.h - epsilon &&
     grown.y < rect.y + rect.h - epsilon;
   return { insideFrame, clearsFace: !overlaps };
+}
+
+export interface ReelSlotInput {
+  id: string;
+  faceBox: Rect | null;
+  seed: string;
+}
+
+export interface ReelSlotPlacement extends TopLeftDetail {
+  id: string;
+  /** The largest square this slot's own corner could hold, in pixels. */
+  ownMaxPx: number;
+  /** What this slot gives up to match the rest of the reel, in pixels. */
+  givesUpPx: number;
+}
+
+export interface ReelPlacements {
+  slots: ReelSlotPlacement[];
+  /** The one size every picture in this reel is drawn at, in pixels. */
+  commonSidePx: number;
+  /** Which slot set it — the tightest corner in the reel. */
+  setBy: string | null;
+}
+
+/**
+ * Every picture in a reel is the same size, and that size is the smallest any
+ * one of its slots can hold.
+ *
+ * **User ruling, 2026-08-29.** Session 36 removed size jitter and the sizes
+ * still differed — `vitasilk` came out 937, 837, 905, 925 and 913 px, because
+ * one slot is bounded by the space beside the speaker where the rest are
+ * bounded by the space above him. That difference is real geometry rather than
+ * a defect, and it does not matter: on screen it reads as inconsistency. **A
+ * consistent set is worth more than a marginally larger one**, which is the
+ * same judgement behind the corner ruling and behind positional jitter.
+ *
+ * The risk is stated rather than hidden: **one tight slot shrinks the whole
+ * reel.** `npm run place:images` prints each slot's own maximum beside the
+ * common size and what each gives up, so a reel that has been pulled down by a
+ * single slot is visible rather than merely small.
+ */
+export function reelPlacements(
+  slots: ReelSlotInput[],
+  options: { scale?: number; jitter?: number } = {},
+): ReelPlacements {
+  if (slots.length === 0) return { slots: [], commonSidePx: 0, setBy: null };
+
+  const maxima = slots.map((slot) => {
+    const own = topLeftPlacementDetail({ ...slot, ...options });
+    return { slot, ownMaxPx: own.rect.w * FRAME_WIDTH };
+  });
+  const tightest = maxima.reduce((a, b) => (b.ownMaxPx < a.ownMaxPx ? b : a));
+  const commonSidePx = tightest.ownMaxPx;
+
+  return {
+    slots: maxima.map(({ slot, ownMaxPx }) => ({
+      id: slot.id,
+      ownMaxPx,
+      givesUpPx: ownMaxPx - commonSidePx,
+      ...topLeftPlacementDetail({ ...slot, ...options, sidePx: commonSidePx }),
+    })),
+    commonSidePx,
+    setBy: tightest.slot.id,
+  };
 }
