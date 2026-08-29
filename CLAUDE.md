@@ -735,6 +735,43 @@ re-run: it closes the open After Effects project without saving**
 `npm run audit:templates` runs, `impactFrameOf` returns null with a reason for
 all six comps and the 0.13 s offset stays.
 
+### What cannot be got back, and `npm run backup`
+
+**The test is not "expensive" — it is "no amount of money reproduces this
+file".** Almost everything here rebuilds from the repository: masks are
+bit-identical across runs, extracted audio is ffmpeg, every report regenerates
+from disk. What fails the test, measured 2026-08-29:
+
+| | files | size | in git |
+|---|---:|---:|---|
+| transcription cache entries | 22 | 8.1 MB | no |
+| keyword and slot analysis entries | 11 | 42 KB | no |
+| **hand-written ground truth** | 8 | 30 KB | **no** |
+| hand-made alignment references | 3 | 15 KB | **yes** |
+| the cost ledger | 1 | 16 KB | no |
+| Edit Plans and their backups | 10 | 487 KB | no |
+| generated images and cutouts | 39 | 44.6 MB | no |
+| machine-local config (API keys) | 1 | 187 B | no |
+| source video (opt-in) | 5 | 11.9 GB | no |
+
+**The finding was `.local/ground-truth/`.** A person transcribed four reels by
+ear and it is the WER baseline for the whole project; `.local/` is gitignored,
+so this disk was the only copy and nothing had ever said so. The alignment
+references were the only irreplaceable thing already safe.
+
+`npm run backup` with no destination **prints the survey and copies nothing**.
+`npm run backup -- --to <dir>` copies into `<dir>/framopia-studio/`, preserving
+repo-relative paths; `--with-video` adds the 11.9 GB of footage. **Every file is
+re-read from the destination and hashed after writing**, and a mismatch fails
+the run — a copy that silently truncated is worse than no copy, because it is a
+backup you would trust. It **never deletes anything at the destination**: a file
+already there whose hash matches is left alone. A missing destination directory
+is an error, never created, because a typo would otherwise make one and report a
+successful backup into it. The default destination is `backupDir` in
+`.local/config.json`, machine-local like every other per-machine setting.
+
+53.3 MB without video, and it took **1.5 s** on this machine.
+
 ### Build runs from the panel, through the same CLI a terminal runs
 
 `POST /jobs {type:"build", params:{reel, planPath, mode}}`, polled like the

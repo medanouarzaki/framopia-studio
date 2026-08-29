@@ -30,6 +30,7 @@
     "probe:image": "tsx src/build/image-probe-cli.ts",
     "wrap:survey": "tsx src/build/wrap-survey-cli.ts",
     "build:reel": "tsx src/build/build-reel-cli.ts",
+    "backup": "tsx src/backup/backup-cli.ts",
     "build:comp": "tsx src/build/build-comp-cli.ts",
     "migrate:sfx-placement": "tsx src/analysis/migrate-sfx-placement-cli.ts",
     "migrate:templates-sfx": "tsx src/analysis/migrate-templates-sfx-cli.ts",
