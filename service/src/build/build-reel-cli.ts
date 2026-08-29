@@ -25,6 +25,7 @@ import { emitBuildStage } from './stages.js';
 import { imageSize } from './image-size.js';
 import { contentBoxes } from './content-box.js';
 import { assertAllPlaced, assertPathsPresent, type PathRef } from './preflight.js';
+import { resolveClientIdentity } from './client-identity.js';
 import {
   assertRequirementsMet,
   buildRequirements,
@@ -222,9 +223,29 @@ assertRequirementsMet(
   }),
 );
 
+/*
+ * The client's look comes from the copy on the plan, not from the mode file as
+ * it stands today. A reel approved in March must rebuild in June as it was
+ * approved; where there is no copy the live file is read, exactly as every
+ * build did before, and the fallback is printed rather than assumed.
+ */
+const identity = resolveClientIdentity(plan, {
+  ...(flag('mode') === undefined ? {} : { modeIdOverride: flag('mode') as string }),
+});
+console.log(`\nclient: ${identity.note}`);
+if (identity.behind === true) {
+  console.log(
+    'the client’s look has changed since this video was set up; this build uses the ' +
+      'saved one. Move it forward from the panel if that is what you want.',
+  );
+}
+const imageScale = identity.snapshot?.imageScale ?? 1;
+/*
+ * A client's own pictures are read from the live mode file, never from the
+ * snapshot: they are paths to files on disk that a person chose by hand, and a
+ * pinned path would break the moment one is moved or replaced.
+ */
 const placementModeId = flag('mode') ?? plan.clientMode?.id;
-const imageScale =
-  placementModeId === undefined ? 1 : (loadMode(placementModeId).imageScale ?? 1);
 const imagePlacements: Record<string, { x: number; y: number; w: number; h: number }> = {};
 const slotFaces = new Map(
   plan.images.slots.map((slot) => [slot.id, faceSpan(slot.start, slot.end)]),
@@ -367,23 +388,17 @@ for (const e of built.elements) {
  * card frame keeps the template's own colour, which is a fallback rather than a
  * decision and is said out loud.
  */
-const modeOverride = flag('mode');
-const modeId = modeOverride ?? plan.clientMode?.id;
-const modeSource =
-  modeOverride !== undefined
-    ? `--mode (overriding the plan's ${plan.clientMode?.id ?? 'none'})`
-    : plan.clientMode === null
-      ? 'nothing'
-      : `the plan (recorded v${plan.clientMode.version})`;
-if (modeId === undefined) {
+if (identity.snapshot === null) {
   console.log(
-    '\nno client mode on the plan and none given: the card frame keeps the ' +
-      'template’s own colour',
+    '\nno client for this video: the card frame keeps the template’s own colour',
   );
 } else {
-  console.log(`\nclient mode ${modeId}, from ${modeSource}`);
+  const snapshot = identity.snapshot;
+  console.log(
+    `\ncard frames from ${snapshot.name} v${snapshot.version}, ${identity.source === 'plan' ? 'as saved for this video' : 'as the client file stands now'}`,
+  );
   const palette = Object.fromEntries(
-    Object.entries(loadMode(modeId).palette).map(([role, hex]) => [role, parseHexColour(hex)]),
+    Object.entries(snapshot.palette).map(([role, hex]) => [role, parseHexColour(hex)]),
   );
   for (const e of built.elements) {
     if (e.kind !== 'image' || e.imagePath === undefined) continue;

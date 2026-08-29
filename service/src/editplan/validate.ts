@@ -1,3 +1,4 @@
+import { PALETTE_ROLES } from '@framopia/core';
 import {
   EDIT_PLAN_SCHEMA_VERSION,
   PIPELINE_STAGES,
@@ -718,6 +719,41 @@ export function validateEditPlan(value: unknown): PlanValidationIssue[] {
       c.string('clientMode.id', mode.id);
       c.number('clientMode.version', mode.version);
       c.string('clientMode.path', mode.path);
+    }
+  }
+
+  // Optional with a default, and so validated only when present: every plan
+  // written before Block 9 session 2 has none and must still open, including
+  // for the migration that adds one.
+  if (plan.clientSnapshot !== undefined && plan.clientSnapshot !== null) {
+    const snap = c.object('clientSnapshot', plan.clientSnapshot);
+    if (snap !== null) {
+      c.number('clientSnapshot.snapshotVersion', snap.snapshotVersion);
+      c.string('clientSnapshot.id', snap.id);
+      c.string('clientSnapshot.name', snap.name);
+      c.number('clientSnapshot.version', snap.version);
+      c.string('clientSnapshot.capturedAt', snap.capturedAt);
+      c.number('clientSnapshot.imageScale', snap.imageScale);
+      const palette = c.object('clientSnapshot.palette', snap.palette);
+      if (palette !== null) {
+        for (const role of PALETTE_ROLES) {
+          c.string(`clientSnapshot.palette.${role}`, palette[role]);
+        }
+      }
+      const colours = c.object('clientSnapshot.textColours', snap.textColours);
+      if (colours !== null) {
+        for (const key of ['ordinary', 'emphasis']) {
+          const role = colours[key];
+          if (typeof role !== 'string' || !(PALETTE_ROLES as readonly string[]).includes(role)) {
+            c.fail(
+              `clientSnapshot.textColours.${key}`,
+              `expected a palette role, one of ${PALETTE_ROLES.join(', ')}`,
+            );
+          }
+        }
+      }
+      const fonts = c.object('clientSnapshot.fonts', snap.fonts);
+      if (fonts !== null) c.string('clientSnapshot.fonts.status', fonts.status);
     }
   }
 

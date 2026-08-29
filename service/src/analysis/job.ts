@@ -6,6 +6,7 @@ import {
   templatesById,
   modePathFor,
   type ClientMode,
+  snapshotOfMode,
 } from '@framopia/core';
 import { recordStageSpend } from '../editplan/costs.js';
 import { readEditPlan, writeEditPlan } from '../editplan/io.js';
@@ -226,7 +227,12 @@ export async function analyseKeywordsForPlan(
   // The plan records which client it was built for, at the point the mode is
   // chosen. Without it every build needs the mode typed by hand, and a plan
   // cannot be rebuilt for its own client later.
+  //
+  // The pointer and the copy are written together: the pointer says which
+  // client, the copy says what that client looked like, and the build reads the
+  // copy so a mode file edited later cannot change a reel that was approved.
   plan.clientMode = { id: mode.id, version: mode.version, path: modePathFor(mode.id) };
+  plan.clientSnapshot = snapshotOfMode(mode, timestamp);
   plan.pipeline.analysis = {
     status: 'done',
     config: analysisConfigLabel(ACTIVE_ANALYSIS_PROMPT_VERSION, mode),
@@ -415,6 +421,7 @@ export async function planImageSlotsForPlan(
     plan.source.dialoguePeakDbfs,
   ) };
   plan.clientMode = { id: mode.id, version: mode.version, path: modePathFor(mode.id) };
+  plan.clientSnapshot = snapshotOfMode(mode, timestamp);
   plan.pipeline.images = {
     status: 'done',
     config: slotConfigLabel(ACTIVE_SLOT_PROMPT_VERSION, mode),

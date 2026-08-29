@@ -1,3 +1,4 @@
+import type { ClientSnapshot } from '@framopia/core';
 export const EDIT_PLAN_SCHEMA_VERSION = 1;
 
 export type StageStatus = 'pending' | 'running' | 'done' | 'error';
@@ -553,6 +554,17 @@ export interface EditPlan {
   source: PlanSource;
   /** Null until a mode is chosen; transcription runs before that. */
   clientMode: ClientMode | null;
+  /**
+   * The client's look as it stood when this reel was attached to them.
+   *
+   * **A schema addition, optional with a default**: a plan without one falls
+   * back to the live mode file exactly as every plan did before, and the build
+   * and the panel both say out loud that it did. `clientMode` above stays and
+   * is still the pointer — which client, which version — while this is the copy
+   * the build reads, so a reel cannot change because a mode file was edited
+   * under it. See `snapshotOfMode` in `@framopia/core`.
+   */
+  clientSnapshot?: ClientSnapshot | null;
   pipeline: Pipeline;
   transcript: Transcript;
   subtitles: Subtitles;
