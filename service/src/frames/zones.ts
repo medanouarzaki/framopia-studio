@@ -133,7 +133,7 @@ function readUtf8(file: string): string {
 }
 
 export function computeZones(options: {
-  frames: { maskPath: string; timeS: number }[];
+  frames: { maskPath: string; timeS: number; headMaskPath?: string }[];
   sampleFps: number;
   threshold?: number;
   method?: string;
