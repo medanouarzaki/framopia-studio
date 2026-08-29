@@ -1629,7 +1629,7 @@ describe.skipIf(!built)('a pipeline run', () => {
     if (loaded === null) return;
     const text = (await loaded.page.textContent('main')) ?? '';
     expect(text).toContain('billed by this run');
-    expect(text).toContain('on this reel in total');
+    expect(text).toContain('on this video in total');
     await loaded.page.close();
   });
 

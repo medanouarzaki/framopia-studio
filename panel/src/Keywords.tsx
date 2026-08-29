@@ -195,7 +195,7 @@ export function Keywords({
  */
 export function sourceLine(view: KeywordsView): string {
   if (view.source.stageStatus !== 'done') {
-    return 'These have not been worked out for this reel yet.';
+    return 'These have not been worked out for this video yet.';
   }
   return view.source.mode === 'auto'
     ? 'Chosen for you. Remove any you disagree with, and add your own below.'

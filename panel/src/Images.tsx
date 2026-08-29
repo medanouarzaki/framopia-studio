@@ -285,11 +285,11 @@ function Candidate({
 export function sourceLine(view: ImagesView): string {
   const client =
     view.source.clientMode === null
-      ? 'No client saved for this reel yet.'
+      ? 'No client saved for this video yet.'
       : `Made for ${view.source.clientMode}.`;
   const spent =
     view.reelSpentUsd === null
       ? ''
-      : ` $${view.reelSpentUsd.toFixed(2)} spent generating pictures for this reel so far.`;
+      : ` $${view.reelSpentUsd.toFixed(2)} spent making pictures for this video so far.`;
   return `${client}${spent}`;
 }

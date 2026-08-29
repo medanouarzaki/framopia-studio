@@ -712,7 +712,7 @@ function DryRun({ plan }: { plan: DryRunPlan }): JSX.Element {
           no such field, and the panel renders rather than throws. */}
       <p className="spend note" style={{ marginTop: 0 }}>
         {plan.planClientMode == null
-          ? 'No client saved for this reel yet. Run the pipeline and it is saved for you.'
+          ? 'No client saved for this video yet. Run the pipeline and it is saved for you.'
           : `Made for ${plan.planClientMode.id}.`}
       </p>
       <ul className="facts">
@@ -732,15 +732,15 @@ function DryRun({ plan }: { plan: DryRunPlan }): JSX.Element {
           </div>
           <div className="cap">
             {plan.estimateUsd === 0
-              ? 'every stage is cached; a run would read from disk'
-              : 'budgeted ceiling for the stages that would call the API, not a forecast'}
+              ? 'everything this video needs has already been paid for'
+              : 'the most it could cost, not what it will'}
           </div>
         </div>
       </div>
       {plan.reusesOlderGuide ? (
         <p className="note">
-          Reusing a transcription made against an older orthography guide. It will not
-          re-transcribe and will not bill.
+          Reusing the words from an earlier run. Nothing is re-transcribed and nothing is
+          charged.
         </p>
       ) : null}
     </div>
@@ -754,7 +754,7 @@ function Spend({ reel }: { reel: Reel }): JSX.Element {
       <div className="spend">
         <div>
           <div className={`amount ${level === 'alarm' ? 'alarm' : ''}`}>{formatUsd(reel.spentUsd)}</div>
-          <div className="cap">spent on this reel so far</div>
+          <div className="cap">spent on this video so far</div>
         </div>
         <div className="cap">soft alarm ${SPEND_SOFT_ALARM_USD.toFixed(2)}</div>
       </div>
@@ -823,7 +823,7 @@ function RunProgress({ job }: { job: PipelineJob }): JSX.Element {
             billed by this run
             {detail.planSpentUsd === null
               ? ''
-              : ` · ${formatUsd(detail.planSpentUsd)} on this reel in total`}
+              : ` · ${formatUsd(detail.planSpentUsd)} on this video in total`}
           </div>
         </div>
       </div>

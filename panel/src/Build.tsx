@@ -160,7 +160,7 @@ function BuildPreviewCard({ preview }: { preview: BuildPreview }): JSX.Element {
       <p className="detail">Will contain {parts.join(', ')}.</p>
       <p className="detail">
         {preview.watermark === null
-          ? 'No watermark on this reel.'
+          ? 'No watermark on this video.'
           : `Watermark ${preview.watermark.size}, ` +
             `${preview.watermark.widthPx} × ${preview.watermark.heightPx} px.`}
       </p>

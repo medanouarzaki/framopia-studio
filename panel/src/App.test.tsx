@@ -199,22 +199,22 @@ describe('the pickers', () => {
     expect(select('Video').disabled).toBe(true);
   });
 
-  it('shows the reel’s cumulative spend once one is picked', async () => {
+  it('shows what a video has cost once one is picked', async () => {
     vi.stubGlobal('fetch', serviceFetch());
     await render(hostThatAnswers());
 
-    expect(text()).not.toContain('spent on this reel');
+    expect(text()).not.toContain('spent on this video');
     await act(async () => {
       select('Video').value = 'vitasilk';
       select('Video').dispatchEvent(new Event('change', { bubbles: true }));
     });
 
     expect(text()).toContain('$1.5504');
-    expect(text()).toContain('spent on this reel so far');
+    expect(text()).toContain('spent on this video so far');
     expect(text()).toContain('soft alarm $2.00');
   });
 
-  it('says a reel has no plan rather than showing $0', async () => {
+  it('says a video has not been run rather than showing $0', async () => {
     vi.stubGlobal('fetch', serviceFetch());
     await render(hostThatAnswers());
     await act(async () => {
@@ -319,7 +319,7 @@ describe('runGate', () => {
     expect(gate.reason).toContain('continues if you leave');
   });
 
-  it('names a reel the catalogue lists but the machine does not have', () => {
+  it('names a video the list has but the machine does not', () => {
     const gate = runGate({
       reel: { ...(reels[0] as Reel), present: false },
       mode: modes[0] as ClientMode,
@@ -571,7 +571,7 @@ describe('starting the service', () => {
 });
 
 describe('the dry run', () => {
-  it('shows what a run would do once a reel and a mode are picked', async () => {
+  it('shows what a run would do once a video and a client are picked', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockImplementation((url: string) => {
@@ -657,8 +657,8 @@ describe('the dry run', () => {
     expect(text()).toContain('will run, about $1.55');
     expect(text()).toContain('will run, about $0.18');
     expect(text()).toContain('about $1.73');
-    expect(text()).toContain('budgeted ceiling for the stages that would call the API');
-    expect(text()).toContain('will not bill');
+    expect(text()).toContain('the most it could cost, not what it will');
+    expect(text()).toContain('nothing is charged');
   });
 
   it('never calls a stage cached because the plan remembers it as done', async () => {

@@ -45,7 +45,7 @@ export function runGate(options: {
   if (!reel.present) {
     return {
       enabled: false,
-      reason: `${reel.label} is in the catalogue but the file is not on this machine.`,
+      reason: `${reel.label} is in the list but the file is not on this machine.`,
     };
   }
   if (running) {
