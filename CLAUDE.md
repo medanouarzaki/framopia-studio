@@ -825,6 +825,68 @@ of copying inside a 1.7 s run, every hash verified, every file materialised
 locally, `.local/config.json` skipped**, at
 `.../My Drive/framopia-studio/`.
 
+### A client is a person, and their folder is where the videos come from
+
+**User ruling, 2026-08-29.** A client was a palette; it is now who the agency
+works for. `ClientMode` gains **`videoFolder`, `logoPath`, `pictures`,
+`language`, `subtitleBaselineY`, `videoShape` and `watermarkByDefault`**, every
+one **optional with a default**, and `core/src/client-defaults.ts` is the one
+declaration of what a blank means:
+
+| field | blank means | which is |
+|---|---|---|
+| `language` | `mixed` | what every corpus reel is |
+| `videoShape` | `vertical` | 2160 x 3840, what everything assumes — **recorded, not yet acted on** |
+| `watermarkByDefault` | `true` | what every build has done; the per-video control still overrides |
+| `subtitleBaselineY` | `SUBTITLE_ANCHOR_BASELINE_Y` | where every build has put it |
+| `fonts` | the standard pair | Inter Semi-Bold and Almarai Bold |
+| `videoFolder` | `benchmarks/footage.json` | so the five corpus reels list as they did |
+
+`k2-syndicalia` carries **none** of them and is asserted unchanged at version 7,
+so `vitasilk` builds identically.
+
+**`POST /clients` makes one from the panel**, through `validateMode` before it
+reaches disk. It inherits the **style half** of `k2-syndicalia` — the palette,
+the prompt fragments, the variation axes — by named field and not by spread: a
+spread carried K2's own `note` onto every new client. A **one-off** is the same
+form with the client-only fields hidden.
+
+**Client comes before Video on screen**, because the client decides which videos
+exist. `GET /reels?client=` lists their folder; **Refresh re-reads it and
+nothing watches the disk** — the T7 is not always plugged in, and a watcher
+would have to decide what to do every time it vanished. A missing folder reads
+as *"plug it in and press Refresh"*, a fact about the disk rather than a fault.
+`GET /video?path=` opens one from anywhere. **A file the tool will not offer says
+why** (`old.wmv — this tool does not open .wmv files`) rather than vanishing.
+
+### The client's own pictures are chosen by hand, and never leave the machine
+
+`ClientMode.pictures` is a list of `{ id, path, description }` — his words, "the
+clinic exterior" — offered in the picture editor beside the generated
+candidates. `ImageSlot.chosenClientPictureId` is a **schema addition, optional
+with a default**, is a **human-flagged marker** so a re-run cannot discard it,
+and **wins over `chosenCandidateId`**: he pointed at a photograph.
+
+**Two properties, both asserted rather than described.** A client's picture is
+**never sent anywhere** — a test reads every file in `service/src/images/` and
+fails if one mentions it, because a doctor's patient results do not go to an
+image model. And it is **never copied**: `core/src/client-pictures.ts` writes no
+file and names no cache path, checked with the comments stripped.
+
+**What actually broke was the shape.** Every generated image is 2048x2048, so
+the builder scaled by width and the height followed for free; a phone's
+3024x4032 at a 1000 px width draws **1333 px tall inside a 1200 px comp**, over
+the top and the bottom and far outside the 1080 px frame. `fitByLongEdge` fits
+the long edge instead, so the whole picture lands inside the box at any shape
+and **nothing is cropped** — cropping a photograph a doctor chose is the tool
+deciding which half of her results matter. On a square it is the same arithmetic
+as before.
+
+**Automatic matching is not attempted, and waits on Block 9.** Deciding that
+"the clinic exterior" is what a moment wants is the same judgement as knowing a
+clock reads quarter past rather than five minutes, which is the open
+image-prompt defect in `docs/DECISION-image-config.md`.
+
 ### The panel is one screen, not a five-step form
 
 **User ruling, 2026-08-29**, after session 41 rewrote the words and changed
