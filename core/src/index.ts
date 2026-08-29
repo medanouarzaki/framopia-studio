@@ -45,14 +45,20 @@ export {
   MULTI_SUBJECT_MARKERS,
   validateMode,
   VARIATION_CONTRADICTIONS,
+  CLIENT_LANGUAGES,
+  VIDEO_SHAPES,
+  type ClientLanguage,
   type ClientMode,
+  type ClientPicture,
   type ImageVariation,
+  type VideoShape,
   type ModeFonts,
   type IdeaIssue,
   type ModeValidationIssue,
   type PaletteRole,
   type TemplateKind,
 } from './mode.js';
+export { clientDefaults, STANDARD_FONTS, type ClientDefaults } from './client-defaults.js';
 export { DOCS_DIR, LOCAL_DIR, REPO_ROOT, ROOT_PACKAGE_JSON } from './paths.js';
 export { SCRIPT_RULES } from './script-rules.js';
 export {

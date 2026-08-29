@@ -137,6 +137,75 @@ export interface ClientMode {
   allowedTemplates: Record<TemplateKind, string[]>;
   vocabulary: string[];
   note?: string;
+
+  /*
+   * Everything below is a **client detail**, added 2026-08-29 when a client
+   * stopped being a palette and became a person the agency works for. All of it
+   * is optional with a default, so `k2-syndicalia` loads unchanged and builds
+   * the same comp: a client with nothing but a name and a folder works exactly
+   * as one written before any of this existed.
+   */
+
+  /**
+   * Where this client's footage lives. Absent falls back to
+   * `benchmarks/footage.json`, which is how the five corpus reels still list.
+   */
+  videoFolder?: string;
+
+  /** Their logo, referenced where it sits. Nothing copies it. */
+  logoPath?: string;
+
+  /**
+   * Pictures the client supplied, each described in their words — "the clinic
+   * exterior". They are offered in the picture editor beside the generated
+   * candidates and **never sent anywhere**: a doctor's patient photograph does
+   * not go to an image model. See `core/src/client-pictures.ts`.
+   */
+  pictures?: ClientPicture[];
+
+  /**
+   * What is mostly spoken. It reaches transcription as context and decides
+   * which of the two faces carries most of the text. Absent means `mixed`,
+   * which is what every reel in the corpus is.
+   */
+  language?: ClientLanguage;
+
+  /**
+   * The subtitle baseline, in pixels from the top of the frame. Absent means
+   * the global `SUBTITLE_ANCHOR_BASELINE_Y`, which is where every build so far
+   * has put it; a client with a logo bug along the bottom needs it moved.
+   */
+  subtitleBaselineY?: number;
+
+  /**
+   * The shape their videos are delivered in. Absent means `vertical`, which is
+   * what everything built so far assumes — 2160 x 3840. **Recorded, not yet
+   * acted on**: placement, watermark inset and safe width are all derived from
+   * a vertical frame, and changing them is its own piece of work.
+   */
+  videoShape?: VideoShape;
+
+  /**
+   * Whether this client's videos carry the Framopia mark by default. Absent
+   * means yes, which is what every build has done. The per-video control from
+   * session 30 still overrides it either way.
+   */
+  watermarkByDefault?: boolean;
+}
+
+export const CLIENT_LANGUAGES = ['darija', 'french', 'english', 'mixed'] as const;
+export type ClientLanguage = (typeof CLIENT_LANGUAGES)[number];
+
+export const VIDEO_SHAPES = ['vertical', 'square', 'landscape'] as const;
+export type VideoShape = (typeof VIDEO_SHAPES)[number];
+
+/** A picture the client gave us, where they put it, in their own words. */
+export interface ClientPicture {
+  id: string;
+  /** Absolute, and left where it is. Nothing copies it into a cache. */
+  path: string;
+  /** "the clinic exterior" — what he would say if you asked him what it is. */
+  description: string;
 }
 
 export interface ModeValidationIssue {
@@ -577,11 +646,72 @@ export function validateMode(value: unknown): ModeValidationIssue[] {
       c.fail('imageCandidates', 'expected an integer between 2 and 4 (ARCHITECTURE §5.4)');
     }
   }
+  validateClientDetails(c, mode);
   validateVariationAgainstStyle(c, mode);
   if (mode.allowedTemplates !== undefined) validateTemplates(c, mode.allowedTemplates);
   if (mode.vocabulary !== undefined) c.stringArray('vocabulary', mode.vocabulary);
 
   return c.issues;
+}
+
+/**
+ * The client details, every one optional. A mode written before any of them
+ * existed passes untouched, which is the schema-fragility rule: a required
+ * addition makes every plan and every mode on disk unopenable.
+ */
+function validateClientDetails(c: Checker, mode: Record<string, unknown>): void {
+  if (mode.videoFolder !== undefined) {
+    const folder = c.string('videoFolder', mode.videoFolder);
+    if (folder !== null && !path.isAbsolute(folder)) {
+      c.fail('videoFolder', 'expected an absolute path');
+    }
+  }
+  if (mode.logoPath !== undefined) {
+    const logo = c.string('logoPath', mode.logoPath);
+    if (logo !== null && !path.isAbsolute(logo)) {
+      c.fail('logoPath', 'expected an absolute path');
+    }
+  }
+  if (mode.language !== undefined && !(CLIENT_LANGUAGES as readonly unknown[]).includes(mode.language)) {
+    c.fail('language', `expected one of ${CLIENT_LANGUAGES.join(', ')}`);
+  }
+  if (mode.videoShape !== undefined && !(VIDEO_SHAPES as readonly unknown[]).includes(mode.videoShape)) {
+    c.fail('videoShape', `expected one of ${VIDEO_SHAPES.join(', ')}`);
+  }
+  if (mode.watermarkByDefault !== undefined && typeof mode.watermarkByDefault !== 'boolean') {
+    c.fail('watermarkByDefault', 'expected true or false');
+  }
+  if (mode.subtitleBaselineY !== undefined) {
+    const y = mode.subtitleBaselineY;
+    if (typeof y !== 'number' || !Number.isFinite(y) || y < 0) {
+      c.fail('subtitleBaselineY', 'expected a number of pixels from the top of the frame');
+    }
+  }
+  if (mode.pictures !== undefined) {
+    if (!Array.isArray(mode.pictures)) {
+      c.fail('pictures', 'expected an array');
+      return;
+    }
+    const ids = new Set<string>();
+    mode.pictures.forEach((raw, i) => {
+      const picture = c.object(`pictures[${i}]`, raw);
+      if (picture === null) return;
+      const id = c.string(`pictures[${i}].id`, picture.id);
+      if (id !== null) {
+        if (ids.has(id)) c.fail(`pictures[${i}].id`, `duplicate id ${JSON.stringify(id)}`);
+        ids.add(id);
+      }
+      const file = c.string(`pictures[${i}].path`, picture.path);
+      if (file !== null && !path.isAbsolute(file)) {
+        c.fail(`pictures[${i}].path`, 'expected an absolute path');
+      }
+      const description = c.string(`pictures[${i}].description`, picture.description);
+      if (description !== null && description.trim() === '') {
+        // A picture nobody described is a picture nobody can choose between.
+        c.fail(`pictures[${i}].description`, 'expected a description in the client’s own words');
+      }
+    });
+  }
 }
 
 export const MODES_DIR = path.join(REPO_ROOT, 'modes');
