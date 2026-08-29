@@ -122,7 +122,21 @@ export interface ClientMode {
   /** Present only when the mode names its own fonts. */
   fonts?: { latin: string; arabic: string };
   /** What he wrote about them. Absent from a service older than this. */
-  note?: string;
+  about?: string;
+  /** What the client looks like. Absent from an older service; never assumed. */
+  look?: {
+    palette: { role: string; hex: string; what: string }[];
+    fonts: { latin: string; arabic: string; standard: boolean };
+    logoPath: string | null;
+  };
+  /** The values a build would use, and which of them he chose. */
+  standards?: {
+    language: string;
+    videoShape: string;
+    watermark: boolean;
+    subtitleBaselineY: number;
+    chosen: string[];
+  };
   /** Whether their videos come from a folder of their own. */
   hasFolder?: boolean;
 }

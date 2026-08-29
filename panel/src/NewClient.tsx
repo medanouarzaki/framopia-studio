@@ -46,7 +46,7 @@ export function NewClient({
     setError(null);
     try {
       const body: Record<string, unknown> = { name: name.trim() };
-      if (note.trim() !== '') body['note'] = note.trim();
+      if (note.trim() !== '') body['about'] = note.trim();
       if (permanent) {
         if (videoFolder.trim() !== '') body['videoFolder'] = videoFolder.trim();
         if (logoPath.trim() !== '') body['logoPath'] = logoPath.trim();

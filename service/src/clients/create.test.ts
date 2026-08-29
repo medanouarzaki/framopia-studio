@@ -28,7 +28,7 @@ describe('making a client', () => {
   it('keeps what he did fill in', () => {
     const client = buildClient({
       name: 'Dr Jenna',
-      note: 'Dermatologist, Casablanca',
+      about: 'Dermatologist, Casablanca',
       videoFolder: '/Volumes/T7 Shield/clients/jenna',
       fonts: { latin: 'Söhne', arabic: 'Cairo' },
       language: 'french',
@@ -37,7 +37,7 @@ describe('making a client', () => {
       watermarkByDefault: false,
     });
     expect(validateMode(client)).toEqual([]);
-    expect(client.note).toBe('Dermatologist, Casablanca');
+    expect(client.about).toBe('Dermatologist, Casablanca');
     expect(client.videoFolder).toBe('/Volumes/T7 Shield/clients/jenna');
     expect(client.fonts).toEqual({ status: 'set', latin: 'Söhne', arabic: 'Cairo' });
     expect(client.language).toBe('french');
@@ -45,7 +45,7 @@ describe('making a client', () => {
   });
 
   it('writes an empty note as nothing at all, not as an empty string', () => {
-    expect(buildClient({ name: 'X', note: '   ', videoFolder: '' }).note).toBeUndefined();
+    expect(buildClient({ name: 'X', about: '   ', videoFolder: '' }).about).toBeUndefined();
     expect(buildClient({ name: 'X', videoFolder: '' }).videoFolder).toBeUndefined();
   });
 

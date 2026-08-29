@@ -436,7 +436,28 @@ function stubRoutes(steps: unknown, resumeAt: string): string {
   const payload = {
     health: HEALTHY_PAYLOAD,
     reels: { reels: [{ label: 'vitasilk', present: true, durationS: 25.7, planPath: '/v/p.json', spentUsd: 1.550444 }] },
-    modes: { modes: [{ id: 'k2-syndicalia', name: 'K2 Syndicalia', version: 6, fontsStatus: 'tbd' }] },
+    modes: {
+      modes: [
+        {
+          id: 'k2-syndicalia', name: 'K2 Syndicalia', version: 6, fontsStatus: 'tbd',
+          about: 'Cosmetic clinic, Casablanca',
+          look: {
+            palette: [
+              { role: 'background', hex: '#1A0000', what: 'behind a cut-out picture' },
+              { role: 'primary', hex: '#820000', what: 'the deeper of the two frame colours' },
+              { role: 'accent', hex: '#C9A96E', what: 'the frame around a picture' },
+              { role: 'light', hex: '#F8F6F2', what: 'the lighter of the two frame colours' },
+            ],
+            fonts: { latin: 'Inter Semi-Bold', arabic: 'Almarai Bold', standard: true },
+            logoPath: null,
+          },
+          standards: {
+            language: 'mixed', videoShape: 'vertical', watermark: true,
+            subtitleBaselineY: 2480.4, chosen: [],
+          },
+        },
+      ],
+    },
     dry: {
       reel: 'vitasilk', videoPath: '/v/vitasilk.mov', modeId: 'k2-syndicalia',
       modeName: 'K2 Syndicalia', modeVersion: 6, planPath: '/v/p.json', spentUsd: 1.550444,
@@ -2281,6 +2302,90 @@ describe.skipIf(!built)('Build before anything is picked', () => {
       const pane = (await loaded.page.textContent('.buildpane')) ?? '';
       expect(pane).not.toContain('older than the Build control');
       expect(pane).toContain('Choose a client and a video');
+      expect(loaded.uncaught).toEqual([]);
+    } finally {
+      await loaded.page.close();
+    }
+  }, 30_000);
+});
+
+/*
+ * The panel used to print the mode file's own `note` under the client picker —
+ * "Stub. The palette is locked (PROJECT_SPEC §5); vocabulary is deliberately
+ * empty…" — which is developer prose on a motion designer's screen. That note
+ * is the maintainer's and stays in the file; what he sees is what the client
+ * looks like.
+ */
+describe.skipIf(!built)('what a client looks like', () => {
+  it('shows the colours, the type and his own line — not the file’s note', async () => {
+    const loaded = await loadFlow('build', 'build');
+    if (loaded === null) return;
+    try {
+      await loaded.page.waitForSelector('.clientcard', { timeout: 5000 });
+      const card = (await loaded.page.textContent('section.client')) ?? '';
+      expect(card).toContain('Cosmetic clinic, Casablanca');
+      expect(card).toContain('the frame around a picture');
+      expect(card).toContain('Inter Semi-Bold');
+      expect(card).toContain('Almarai Bold');
+      expect(card).toContain('no fonts of their own');
+      // The maintainer's prose, and every word from the schema.
+      expect(card).not.toContain('PROJECT_SPEC');
+      expect(card).not.toContain('vocabulary');
+      expect(card).not.toContain('allowedTemplates');
+      expect(card).not.toContain('imageVariation');
+      expect(loaded.uncaught).toEqual([]);
+    } finally {
+      await loaded.page.close();
+    }
+  }, 30_000);
+
+  it('paints four swatches in the client’s own colours', async () => {
+    const loaded = await loadFlow('build', 'build');
+    if (loaded === null) return;
+    try {
+      await loaded.page.waitForSelector('.clientcard .chip', { timeout: 5000 });
+      const colours = await loaded.page.$$eval('.clientcard .chip', (els) =>
+        els.map((e) => getComputedStyle(e).backgroundColor),
+      );
+      expect(colours).toEqual([
+        'rgb(26, 0, 0)',
+        'rgb(130, 0, 0)',
+        'rgb(201, 169, 110)',
+        'rgb(248, 246, 242)',
+      ]);
+      // PROJECT_SPEC §6 spends the brand red on Run pipeline alone; a client's
+      // palette styles the video, never the tool. These are the client's.
+      expect(colours).not.toContain('rgb(237, 28, 36)');
+    } finally {
+      await loaded.page.close();
+    }
+  }, 30_000);
+
+  it('says which values are the standard ones when he set none', async () => {
+    const loaded = await loadFlow('build', 'build');
+    if (loaded === null) return;
+    try {
+      await loaded.page.waitForSelector('.clientcard', { timeout: 5000 });
+      const card = (await loaded.page.textContent('.clientcard')) ?? '';
+      expect(card).toContain('a mix of languages');
+      expect(card).toContain('upright video');
+      expect(card).toContain('all standard, nothing set for this client');
+    } finally {
+      await loaded.page.close();
+    }
+  }, 30_000);
+
+  /* An older service sends none of it, and an absent card is not an empty one. */
+  it('shows nothing at all when the service does not describe the client', async () => {
+    const loaded = await loadFlow(
+      'build', 'build', 420,
+      'delete window.__payload.modes.modes[0].look;' +
+        'delete window.__payload.modes.modes[0].standards;',
+    );
+    if (loaded === null) return;
+    try {
+      await loaded.page.waitForSelector('section.client', { timeout: 5000 });
+      expect(await loaded.page.$$('.clientcard')).toHaveLength(0);
       expect(loaded.uncaught).toEqual([]);
     } finally {
       await loaded.page.close();

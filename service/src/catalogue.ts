@@ -1,6 +1,14 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { MODES_DIR, parseMode, REPO_ROOT } from '@framopia/core';
+import {
+  MODES_DIR,
+  PALETTE_ROLES,
+  REPO_ROOT,
+  STANDARD_FONTS,
+  clientDefaults,
+  parseMode,
+  type ClientMode,
+} from '@framopia/core';
 import { loadReels as loadFootageReels } from './frames/footage.js';
 import { VIDEO_EXTENSIONS, listClientVideos, type FolderListing } from './clients/videos.js';
 
@@ -31,8 +39,25 @@ export interface CatalogueMode {
   fontsResolved: boolean;
   /** Present only when the mode names its own; the panel says which will render. */
   fonts?: { latin: string; arabic: string };
-  /** What he wrote about them, so a name alone is not all there is in a year. */
-  note?: string;
+  /**
+   * What **he** wrote about them, so a name alone is not all there is in a
+   * year. The file's own `note` is the maintainer's and never leaves here.
+   */
+  about?: string;
+  /** What the client looks like, so the panel can show it rather than say it. */
+  look: {
+    palette: { role: string; hex: string; what: string }[];
+    fonts: { latin: string; arabic: string; standard: boolean };
+    logoPath: string | null;
+  };
+  /** The values a build would use, and whether each is theirs or the standard. */
+  standards: {
+    language: string;
+    videoShape: string;
+    watermark: boolean;
+    subtitleBaselineY: number;
+    chosen: string[];
+  };
   /** Whether their videos come from a folder of their own or from the old list. */
   hasFolder: boolean;
 }
@@ -52,6 +77,33 @@ export interface VideoListing {
   trouble: string | null;
   /** Files in the folder this tool will not offer, and why. Never hidden. */
   skipped: { name: string; why: string }[];
+}
+
+/**
+ * What each colour does in a build, so a swatch is not four hex codes.
+ *
+ * Roles, not names: `accent` is a word from the file, and what he needs to know
+ * is where he will see it.
+ */
+const PALETTE_MEANING: Record<(typeof PALETTE_ROLES)[number], string> = {
+  background: 'behind a cut-out picture',
+  primary: 'the deeper of the two frame colours',
+  accent: 'the frame around a picture',
+  light: 'the lighter of the two frame colours',
+};
+
+function standardsOf(mode: ClientMode): CatalogueMode['standards'] {
+  const d = clientDefaults(mode);
+  const chosen = Object.entries(d.source)
+    .filter(([, from]) => from === 'client')
+    .map(([field]) => field);
+  return {
+    language: d.language,
+    videoShape: d.videoShape,
+    watermark: d.watermark,
+    subtitleBaselineY: d.subtitleBaselineY,
+    chosen,
+  };
 }
 
 function planPathFor(videoPath: string): string {
@@ -167,11 +219,24 @@ export function listModes(): CatalogueMode[] {
           version: mode.version,
           fontsResolved: mode.fonts.status === 'set',
           hasFolder: mode.videoFolder !== undefined,
+          look: {
+            palette: PALETTE_ROLES.map((role) => ({
+              role,
+              hex: mode.palette[role],
+              what: PALETTE_MEANING[role],
+            })),
+            fonts:
+              mode.fonts.status === 'set'
+                ? { latin: mode.fonts.latin, arabic: mode.fonts.arabic, standard: false }
+                : { ...STANDARD_FONTS, standard: true },
+            logoPath: mode.logoPath ?? null,
+          },
+          standards: standardsOf(mode),
         };
         if (mode.fonts.status === 'set') {
           entry.fonts = { latin: mode.fonts.latin, arabic: mode.fonts.arabic };
         }
-        if (mode.note !== undefined) entry.note = mode.note;
+        if (mode.about !== undefined) entry.about = mode.about;
         return [entry];
       } catch {
         return [];

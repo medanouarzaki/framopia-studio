@@ -32,7 +32,8 @@ export class ClientWriteError extends Error {}
 
 export interface NewClient {
   name: string;
-  note?: string;
+  /** One line about them, in his words. Shown under the client picker. */
+  about?: string;
   videoFolder?: string;
   fonts?: { latin: string; arabic: string };
   palette?: { background: string; primary: string; accent: string; light: string };
@@ -95,7 +96,7 @@ export function buildClient(input: NewClient): ClientMode {
   };
   // Written only when given: an absent field is what makes the default apply,
   // and writing `undefined` would put a null in the file.
-  if (input.note !== undefined && input.note.trim() !== '') client.note = input.note.trim();
+  if (input.about !== undefined && input.about.trim() !== '') client.about = input.about.trim();
   if (input.videoFolder !== undefined && input.videoFolder !== '') {
     client.videoFolder = input.videoFolder;
   }

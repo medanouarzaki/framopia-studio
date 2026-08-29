@@ -13,6 +13,7 @@ import {
   type Connection,
 } from './service.js';
 import { Build } from './Build.js';
+import { ClientCard } from './ClientCard.js';
 import { NewClient } from './NewClient.js';
 import { Readiness } from './Readiness.js';
 import { panelBuiltAt, stalenessOf } from './staleness.js';
@@ -418,7 +419,7 @@ function Panel({
               <option value="__once">Just this video…</option>
             </select>
           </label>
-          {mode?.note == null ? null : <p className="say">{mode.note}</p>}
+          {mode === null ? null : <ClientCard client={mode} />}
         </section>
 
         <section className="video">

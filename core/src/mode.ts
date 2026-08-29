@@ -136,7 +136,19 @@ export interface ClientMode {
   imageScale?: number;
   allowedTemplates: Record<TemplateKind, string[]>;
   vocabulary: string[];
+  /**
+   * **The maintainer's note, and it never reaches the screen.** It explains the
+   * file to whoever edits it — "the palette is locked, vocabulary is
+   * deliberately empty" — and the panel showed it under the client picker for a
+   * session, which is developer prose on a motion designer's screen. What he
+   * writes about a client is `about`.
+   */
   note?: string;
+  /**
+   * One line about the client, in his words: "Dr Jenna, dermatologist,
+   * Casablanca". Optional, and the only text about a client the panel shows.
+   */
+  about?: string;
 
   /*
    * Everything below is a **client detail**, added 2026-08-29 when a client
@@ -613,6 +625,7 @@ export function validateMode(value: unknown): ModeValidationIssue[] {
     c.fail('version', 'expected an integer >= 1');
   }
   if (mode.note !== undefined) c.string('note', mode.note);
+  if (mode.about !== undefined) c.string('about', mode.about);
 
   for (const field of [
     'palette',
