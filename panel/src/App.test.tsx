@@ -183,9 +183,12 @@ describe('the pickers', () => {
       'vitasilk — 25.7s',
       'test-1 — 22.0s',
     ]);
+    // The two ways in to the client form sit at the foot of the same picker.
     expect([...select('Client').options].map((o) => o.textContent)).toEqual([
       'Choose a client…',
       'K2 Syndicalia',
+      'Set up a new client…',
+      'Just this video…',
     ]);
   });
 

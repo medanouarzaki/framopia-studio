@@ -121,6 +121,10 @@ export interface ClientMode {
   fontsResolved: boolean;
   /** Present only when the mode names its own fonts. */
   fonts?: { latin: string; arabic: string };
+  /** What he wrote about them. Absent from a service older than this. */
+  note?: string;
+  /** Whether their videos come from a folder of their own. */
+  hasFolder?: boolean;
 }
 
 export type ServiceState =
@@ -172,6 +176,17 @@ export interface StepState {
  * must land the user where the reel actually is, and only the plan survives
  * both.
  */
+/** The videos to choose from, and what the disk said if there are none. */
+export interface VideoListing {
+  reels: Reel[];
+  /** The client's folder, or null when the list came from the old catalogue. */
+  folder: string | null;
+  /** A fact about the disk, in words — an unplugged drive is the common case. */
+  trouble: string | null;
+  /** Files the tool will not offer, and why. Never hidden. */
+  skipped: { name: string; why: string }[];
+}
+
 export interface PlanSteps {
   reel: string;
   planPath: string | null;

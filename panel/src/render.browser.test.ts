@@ -223,10 +223,13 @@ describe.skipIf(!built)('the built panel in a real browser', () => {
       // No logo on disk in this stub, so the fallback mark is what renders.
       expect(await page.locator('header.brand .mark').count()).toBe(1);
 
-      // One screen in the order he works in: what he picks, what it costs,
-      // and what he comes back to change after watching the comp.
+      /*
+       * One screen in the order he works in. Client comes before Video from
+       * session 43: the client is what decides which videos there are, so
+       * asking for the video first asked a question out of order.
+       */
       const headings = await page.locator('section > h2').allTextContents();
-      expect(headings).toEqual(['Video', 'Client', 'Cost', 'Change something first']);
+      expect(headings).toEqual(['Client', 'Video', 'Cost', 'Change something first']);
     } finally {
       await page.close();
     }

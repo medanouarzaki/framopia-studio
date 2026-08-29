@@ -1,6 +1,6 @@
 import { NODE_NOT_FOUND_HELP } from '@framopia/core/node-path';
 import type {
-  ImagesView, WatermarkSize, BuildJob, ClientMode, DryRunPlan, HealthPayload, Reel, ServiceError, PlanSteps , ServiceOrigin , PipelineJob , TranscriptView, TranscriptWordView, TranscriptCardView , KeywordsView } from './types.js';
+  ImagesView, WatermarkSize, BuildJob, ClientMode, VideoListing, DryRunPlan, HealthPayload, Reel, ServiceError, PlanSteps , ServiceOrigin , PipelineJob , TranscriptView, TranscriptWordView, TranscriptCardView , KeywordsView } from './types.js';
 
 /**
  * The panel's half of the ARCHITECTURE §1.3 handshake: the service binds
@@ -243,10 +243,77 @@ async function getJson<T>(connection: Connection, route: string): Promise<T> {
  * Passing `undefined` through would crash the render one line later, which is
  * how it first showed up.
  */
-export async function fetchReels(connection: Connection): Promise<Reel[]> {
-  const body = await getJson<{ reels?: Reel[] }>(connection, '/reels');
+/**
+ * The videos to choose from, for a client or for nobody.
+ *
+ * A client with a folder gets what is in it; one without gets the hand-kept
+ * list, so nothing that worked before stops. Called again by Refresh — nothing
+ * watches the disk.
+ */
+export async function fetchVideos(
+  connection: Connection,
+  client: string | null,
+): Promise<VideoListing> {
+  const query = client === null || client === '' ? '' : `?client=${encodeURIComponent(client)}`;
+  const body = await getJson<Partial<VideoListing>>(connection, `/reels${query}`);
   if (!Array.isArray(body.reels)) throw new Error('the list of videos came back unreadable');
-  return body.reels;
+  return {
+    reels: body.reels,
+    folder: body.folder ?? null,
+    trouble: body.trouble ?? null,
+    skipped: body.skipped ?? [],
+  };
+}
+
+export async function fetchReels(connection: Connection): Promise<Reel[]> {
+  return (await fetchVideos(connection, null)).reels;
+}
+
+/** One video from anywhere, for footage outside a client's folder. */
+export async function openVideo(connection: Connection, filePath: string): Promise<Reel> {
+  const body = await getJson<{ reel?: Reel }>(
+    connection,
+    `/video?path=${encodeURIComponent(filePath)}`,
+  );
+  if (body.reel === undefined) throw new Error('that file could not be opened');
+  return body.reel;
+}
+
+/** Make a client. Returns the refreshed list, so the picker cannot lag behind. */
+export async function createClient(
+  connection: Connection,
+  client: Record<string, unknown>,
+): Promise<{ id: string; modes: ClientMode[] }> {
+  const res = await fetch(`http://127.0.0.1:${connection.port}/clients`, {
+    method: 'POST',
+    headers: { 'x-service-token': connection.token, 'content-type': 'application/json' },
+    body: JSON.stringify(client),
+  });
+  const body = (await res.json().catch(() => ({}))) as {
+    id?: string;
+    modes?: ClientMode[];
+    error?: string;
+  };
+  if (!res.ok || typeof body.id !== 'string') {
+    throw new Error(body.error ?? 'that client could not be saved');
+  }
+  return { id: body.id, modes: body.modes ?? [] };
+}
+
+/** Add one of the client's own pictures. Nothing is copied and nothing is sent. */
+export async function addClientPicture(
+  connection: Connection,
+  edit: { client: string; path: string; description: string },
+): Promise<void> {
+  const res = await fetch(`http://127.0.0.1:${connection.port}/clients/pictures`, {
+    method: 'POST',
+    headers: { 'x-service-token': connection.token, 'content-type': 'application/json' },
+    body: JSON.stringify(edit),
+  });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(body.error ?? 'that picture could not be added');
+  }
 }
 
 export async function fetchModes(connection: Connection): Promise<ClientMode[]> {

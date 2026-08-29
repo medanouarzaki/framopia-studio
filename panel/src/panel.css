@@ -523,3 +523,28 @@ button.ghost {
 
 .quibbles { margin-top: 10px; color: var(--muted); font-size: 0.85em; }
 .quibbles summary { cursor: pointer; }
+
+/* Video actions: Refresh, a path to open, and Open. */
+.videoactions { display: flex; gap: 8px; margin-top: 10px; align-items: center; }
+.videoactions .ghost { margin-top: 0; flex: 0 0 auto; }
+.videoactions input.browse {
+  flex: 1 1 0; min-width: 0;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 6px;
+  color: var(--text); font: inherit; font-size: 0.85em; padding: 6px 10px;
+}
+.videoactions input.browse:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+section.video .faint {
+  margin: 8px 0 0; color: var(--faint); font-size: 0.75em; overflow-wrap: anywhere;
+}
+section.client .say, section.video .say { margin: 8px 0 0; color: var(--muted); }
+
+/* Setting up a client. */
+.form { display: grid; gap: 14px; }
+.field.stacked { display: grid; gap: 4px; }
+.field.stacked input {
+  background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px;
+  color: var(--text); font: inherit; padding: 7px 10px; width: 100%;
+}
+.field.stacked input:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.field .hint { color: var(--faint); font-size: 0.75em; font-style: normal; line-height: 1.5; }
+.check { display: flex; align-items: center; gap: 8px; }

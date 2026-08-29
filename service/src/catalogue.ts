@@ -2,6 +2,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { MODES_DIR, parseMode, REPO_ROOT } from '@framopia/core';
 import { loadReels as loadFootageReels } from './frames/footage.js';
+import { VIDEO_EXTENSIONS, listClientVideos, type FolderListing } from './clients/videos.js';
 
 /**
  * What the panel offers the user to pick from.
@@ -30,10 +31,95 @@ export interface CatalogueMode {
   fontsResolved: boolean;
   /** Present only when the mode names its own; the panel says which will render. */
   fonts?: { latin: string; arabic: string };
+  /** What he wrote about them, so a name alone is not all there is in a year. */
+  note?: string;
+  /** Whether their videos come from a folder of their own or from the old list. */
+  hasFolder: boolean;
+}
+
+/**
+ * A client's videos, or the old hand-kept list when they have no folder.
+ *
+ * `benchmarks/footage.json` still works, so nothing that worked today stops:
+ * the five corpus reels have no client folder behind them and list exactly as
+ * they did.
+ */
+export interface VideoListing {
+  reels: CatalogueReel[];
+  /** The folder they came from, or null when they came from the old list. */
+  folder: string | null;
+  /** What the disk said, when it had nothing to give. */
+  trouble: string | null;
+  /** Files in the folder this tool will not offer, and why. Never hidden. */
+  skipped: { name: string; why: string }[];
 }
 
 function planPathFor(videoPath: string): string {
   return videoPath.replace(/\.[^.]+$/, '.editplan.json');
+}
+
+/**
+ * What a client's videos are, with everything the picker shows about each.
+ *
+ * A client with a folder gets the folder; a client without one — and every
+ * client written before folders existed — gets `footage.json`, which is why
+ * `k2-syndicalia` still lists the five corpus reels.
+ */
+export function listVideosFor(modeId: string | null): VideoListing {
+  if (modeId === null) {
+    return { reels: listReels(), folder: null, trouble: null, skipped: [] };
+  }
+  const listing: FolderListing = listClientVideos(modeId);
+  if (listing.folder === null) {
+    return { reels: listReels(), folder: null, trouble: null, skipped: [] };
+  }
+  return {
+    reels: listing.videos.map((video) => describe(video.label, video.path, null)),
+    folder: listing.folder,
+    trouble: listing.trouble,
+    skipped: listing.skipped,
+  };
+}
+
+function describe(label: string, videoPath: string, durationS: number | null): CatalogueReel {
+  const planPath = planPathFor(videoPath);
+  const hasPlan = existsSync(planPath);
+  let spentUsd: number | null = null;
+  if (hasPlan) {
+    try {
+      const plan = JSON.parse(readFileSync(planPath, 'utf8')) as { costs?: { spentUsd?: number } };
+      spentUsd = typeof plan.costs?.spentUsd === 'number' ? plan.costs.spentUsd : null;
+    } catch {
+      spentUsd = null;
+    }
+  }
+  return {
+    label,
+    videoPath,
+    planPath: hasPlan ? planPath : null,
+    durationS,
+    spentUsd,
+    present: existsSync(videoPath),
+  };
+}
+
+/**
+ * One video, named directly. Browse hands a path from anywhere on the disk, so
+ * this is the only entry point that does not come from a list — and the only
+ * one that has to say why a file will not do rather than leaving it out.
+ */
+export function describeVideo(videoPath: string): CatalogueReel {
+  if (!path.isAbsolute(videoPath)) {
+    throw new Error('give the full path to the file');
+  }
+  if (!existsSync(videoPath)) {
+    throw new Error(`there is nothing at ${videoPath}. If it is on an external disk, plug it in.`);
+  }
+  const extension = path.extname(videoPath).toLowerCase();
+  if (!VIDEO_EXTENSIONS.includes(extension)) {
+    throw new Error(`this tool does not open ${extension || 'files without an extension'}.`);
+  }
+  return describe(path.basename(videoPath).replace(/\.[^.]+$/, ''), videoPath, null);
 }
 
 export function listReels(): CatalogueReel[] {
@@ -80,10 +166,12 @@ export function listModes(): CatalogueMode[] {
           name: mode.name,
           version: mode.version,
           fontsResolved: mode.fonts.status === 'set',
+          hasFolder: mode.videoFolder !== undefined,
         };
         if (mode.fonts.status === 'set') {
           entry.fonts = { latin: mode.fonts.latin, arabic: mode.fonts.arabic };
         }
+        if (mode.note !== undefined) entry.note = mode.note;
         return [entry];
       } catch {
         return [];

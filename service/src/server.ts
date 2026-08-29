@@ -13,8 +13,9 @@ import { chooseCandidate, imagesView, ImageViewError } from './image-view.js';
 const WATERMARK_ASSET = path.join(REPO_ROOT, 'assets', 'watermark', 'intro.mov');
 import { WATERMARK_SIZES, type WatermarkSize, type Zone } from './editplan/types.js';
 import { DEFAULT_WATERMARK_SIZE } from './placement/constants.js';
-import { listModes, listReels } from './catalogue.js';
+import { describeVideo, listModes, listVideosFor } from './catalogue.js';
 import { dryRun, DryRunError } from './dry-run.js';
+import { addPicture, createClient, removePicture, type NewClient } from './clients/create.js';
 import { stepsFor, StepsError } from './steps.js';
 import {
   editCard,
@@ -126,8 +127,85 @@ export function createApp(token: string): http.Server {
         return;
       }
 
+      /*
+       * The videos to choose from. With a client, their own folder; without
+       * one, the hand-kept list, which is why nothing that worked today stops.
+       * Re-reading the folder is what Refresh does: nothing watches the disk.
+       */
       if (req.method === 'GET' && url.pathname === '/reels') {
-        sendJson(res, 200, { reels: listReels() });
+        sendJson(res, 200, listVideosFor(url.searchParams.get('client')));
+        return;
+      }
+
+      /* One video from anywhere, for footage outside a client's folder. */
+      if (req.method === 'GET' && url.pathname === '/video') {
+        const file = url.searchParams.get('path');
+        if (file === null || file === '') {
+          sendJson(res, 400, { error: 'name the file to open' });
+          return;
+        }
+        try {
+          sendJson(res, 200, { reel: describeVideo(file) });
+        } catch (error) {
+          sendJson(res, 400, { error: (error as Error).message });
+        }
+        return;
+      }
+
+      if (req.method === 'POST' && url.pathname === '/clients') {
+        let body: Record<string, unknown>;
+        try {
+          body = JSON.parse((await readBody(req)) || '{}') as Record<string, unknown>;
+        } catch {
+          sendJson(res, 400, { error: 'invalid JSON body' });
+          return;
+        }
+        try {
+          const created = createClient(body as unknown as NewClient);
+          sendJson(res, 200, { ...created, modes: listModes() });
+        } catch (error) {
+          sendJson(res, 400, { error: (error as Error).message });
+        }
+        return;
+      }
+
+      if (req.method === 'POST' && url.pathname === '/clients/pictures') {
+        let body: { client?: unknown; path?: unknown; description?: unknown };
+        try {
+          body = JSON.parse((await readBody(req)) || '{}') as typeof body;
+        } catch {
+          sendJson(res, 400, { error: 'invalid JSON body' });
+          return;
+        }
+        if (typeof body.client !== 'string' || typeof body.path !== 'string') {
+          sendJson(res, 400, { error: 'name the client and the picture' });
+          return;
+        }
+        try {
+          const picture = addPicture(body.client, {
+            path: body.path,
+            description: typeof body.description === 'string' ? body.description : '',
+          });
+          sendJson(res, 200, { picture });
+        } catch (error) {
+          sendJson(res, 400, { error: (error as Error).message });
+        }
+        return;
+      }
+
+      if (req.method === 'DELETE' && url.pathname === '/clients/pictures') {
+        const client = url.searchParams.get('client');
+        const picture = url.searchParams.get('picture');
+        if (client === null || picture === null) {
+          sendJson(res, 400, { error: 'name the client and the picture' });
+          return;
+        }
+        try {
+          removePicture(client, picture);
+          sendJson(res, 200, { ok: true });
+        } catch (error) {
+          sendJson(res, 400, { error: (error as Error).message });
+        }
         return;
       }
 

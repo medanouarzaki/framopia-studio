@@ -5,13 +5,15 @@ import {
   fetchDryRun,
   fetchJob,
   fetchModes,
-  fetchReels,
+  fetchVideos,
+  openVideo,
   fetchSteps,
   setWatermark,
   startPipeline,
   type Connection,
 } from './service.js';
 import { Build } from './Build.js';
+import { NewClient } from './NewClient.js';
 import { Readiness } from './Readiness.js';
 import { Transcript } from './Transcript.js';
 import { Images } from './Images.js';
@@ -107,6 +109,15 @@ function Panel({
    * something you open from it and close again.
    */
   const [editor, setEditor] = useState<EditorId | null>(null);
+  /** The client form, when it is open over the main screen. */
+  const [newClient, setNewClient] = useState<'permanent' | 'one-off' | null>(null);
+  /** What the disk said about the client's folder, and what it would not offer. */
+  const [videoNote, setVideoNote] = useState<{
+    folder: string | null;
+    trouble: string | null;
+    skipped: { name: string; why: string }[];
+  }>({ folder: null, trouble: null, skipped: [] });
+  const [browsePath, setBrowsePath] = useState('');
   /*
    * The run lives in the service; this is only the id of the job being watched
    * and the last progress read from it. Leaving step 1 does not stop it, and
@@ -172,9 +183,36 @@ function Panel({
       setModes([]);
       return;
     }
-    void fetchReels(connection).then(setReels, () => setReels([]));
     void fetchModes(connection).then(setModes, () => setModes([]));
   }, [connection]);
+
+  /*
+   * The videos, for whichever client is chosen. Re-read on Refresh and never
+   * on a timer: the T7 is not always plugged in, and a watcher would have to
+   * decide what to do every time it vanished.
+   */
+  const loadVideos = useCallback(async (): Promise<void> => {
+    if (connection === null) {
+      setReels([]);
+      return;
+    }
+    try {
+      const listing = await fetchVideos(connection, modeId === '' ? null : modeId);
+      setReels(listing.reels);
+      setVideoNote({
+        folder: listing.folder,
+        trouble: listing.trouble,
+        skipped: listing.skipped,
+      });
+    } catch {
+      setReels([]);
+      setVideoNote({ folder: null, trouble: null, skipped: [] });
+    }
+  }, [connection, modeId]);
+
+  useEffect(() => {
+    void loadVideos();
+  }, [loadVideos]);
 
   const reel = reels.find((r) => r.label === reelLabel) ?? null;
   const mode = modes.find((m) => m.id === modeId) ?? null;
@@ -292,6 +330,24 @@ function Panel({
 
   const buildStep = plan?.steps.find((x) => x.id === 'build') ?? null;
 
+  if (newClient !== null) {
+    return (
+      <div className="app">
+        <Brand logoSrc={logoSrc} service={service} />
+        <NewClient
+          connection={connection}
+          kind={newClient}
+          onCancel={() => setNewClient(null)}
+          onSaved={(id, next) => {
+            setModes(next);
+            setModeId(id);
+            setNewClient(null);
+          }}
+        />
+      </div>
+    );
+  }
+
   if (editor !== null) {
     return (
       <div className="app">
@@ -316,6 +372,44 @@ function Panel({
           resolvedNode={host.resolveNode()}
         />
 
+        {/*
+         * Client first: it is what decides which videos there are to choose
+         * from, so asking for the video first asked a question out of order.
+         */}
+        <section className="client">
+          <h2>Client</h2>
+          <label className="field">
+            <select
+              aria-label="Client"
+              value={modeId}
+              onChange={(e) => {
+                const picked = e.target.value;
+                if (picked === '__new') {
+                  setNewClient('permanent');
+                  return;
+                }
+                if (picked === '__once') {
+                  setNewClient('one-off');
+                  return;
+                }
+                setModeId(picked);
+              }}
+            >
+              <option value="">
+                {modes.length === 0 ? 'No clients set up yet' : 'Choose a client…'}
+              </option>
+              {modes.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name}
+                </option>
+              ))}
+              <option value="__new">Set up a new client…</option>
+              <option value="__once">Just this video…</option>
+            </select>
+          </label>
+          {mode?.note == null ? null : <p className="say">{mode.note}</p>}
+        </section>
+
         <section className="video">
           <h2>Video</h2>
           <label className="field">
@@ -334,27 +428,61 @@ function Panel({
               ))}
             </select>
           </label>
-        </section>
 
-        <section className="client">
-          <h2>Client</h2>
-          <label className="field">
-            <select
-              aria-label="Client"
-              value={modeId}
-              disabled={modes.length === 0}
-              onChange={(e) => setModeId(e.target.value)}
+          <div className="videoactions">
+            <button className="ghost" type="button" onClick={() => void loadVideos()}>
+              Refresh
+            </button>
+            <input
+              className="browse"
+              type="text"
+              aria-label="Open a video from anywhere"
+              placeholder="…or paste the full path to a video"
+              value={browsePath}
+              onChange={(e) => setBrowsePath(e.target.value)}
+            />
+            <button
+              className="ghost"
+              type="button"
+              disabled={browsePath.trim() === '' || connection === null}
+              onClick={() => {
+                if (connection === null) return;
+                void openVideo(connection, browsePath.trim()).then(
+                  (opened) => {
+                    setReels((prev) =>
+                      prev.some((r) => r.videoPath === opened.videoPath)
+                        ? prev
+                        : [...prev, opened],
+                    );
+                    setReelLabel(opened.label);
+                    setBrowsePath('');
+                    setVideoNote((n) => ({ ...n, trouble: null }));
+                  },
+                  (error: Error) => setVideoNote((n) => ({ ...n, trouble: error.message })),
+                );
+              }}
             >
-              <option value="">
-                {modes.length === 0 ? 'No clients set up yet' : 'Choose a client…'}
-              </option>
-              {modes.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.name}
-                </option>
+              Open
+            </button>
+          </div>
+
+          {videoNote.folder === null ? null : (
+            <p className="faint">From {videoNote.folder}</p>
+          )}
+          {videoNote.trouble === null ? null : (
+            <p className="say" role="status">
+              {videoNote.trouble}
+            </p>
+          )}
+          {videoNote.skipped.length === 0 ? null : (
+            <ul className="issues">
+              {videoNote.skipped.map((f) => (
+                <li key={f.name}>
+                  {f.name} — {f.why}
+                </li>
               ))}
-            </select>
-          </label>
+            </ul>
+          )}
         </section>
 
         {/* The only thing on this screen he cannot undo, so it stays prominent. */}
