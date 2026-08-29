@@ -9,6 +9,7 @@ import {
   watermarkMarginPx,
   WATERMARK_DURATION_S,
   WATERMARK_MARGIN_X,
+  WATERMARK_MARGIN_Y,
   WATERMARK_WIDTH_FRACTION,
 } from './constants.js';
 
@@ -132,19 +133,54 @@ describe('who decides whether a reel is marked', () => {
 
 /*
  * The two insets are the same number in different units, so a single constant
- * could not make them equal on screen: the mark sits 65 px from the side and
- * 205 px from the top. Splitting them changes nothing today and is what lets
- * the user rule on the figure.
+ * could not make them equal on screen — it put the mark 65 px from the side and
+ * 205 px from the top. The user ruled 108 px on both axes on 2026-08-29.
+ *
+ * Both pixel figures are asserted, not just the fractions: converting a width
+ * fraction to a height fraction by multiplying instead of dividing is the same
+ * mistake this block has now found four times, and a test on the fractions
+ * alone would not have caught any of them.
  */
 describe('the inset, per axis', () => {
-  it('reproduces exactly what the single constant produced', () => {
+  it('is 108 px from the side and 108 px from the top', () => {
     const px = watermarkMarginPx();
-    expect(px.x).toBeCloseTo(64.8, 1);
-    expect(px.y).toBeCloseTo(204.8, 1);
+    expect(px.x).toBeCloseTo(108, 6);
+    expect(px.y).toBeCloseTo(108, 6);
   });
 
-  it('would be equal in pixels only when y is x divided by the aspect', () => {
-    const equal = (WATERMARK_MARGIN_X / FRAME_ASPECT) * FRAME_HEIGHT;
-    expect(equal).toBeCloseTo(WATERMARK_MARGIN_X * FRAME_WIDTH, 6);
+  it('is equal in pixels because y is x divided by the aspect', () => {
+    expect(WATERMARK_MARGIN_Y * FRAME_HEIGHT).toBeCloseTo(WATERMARK_MARGIN_X * FRAME_WIDTH, 6);
+    expect(WATERMARK_MARGIN_Y).toBeCloseTo(WATERMARK_MARGIN_X / FRAME_ASPECT, 12);
+  });
+
+  /*
+   * The corner is a seeded draw over whichever corners are free, so the inset
+   * has to be the same figure whichever way the mark lands — measured from the
+   * near edge on each axis, not from the origin.
+   */
+  it('insets by 108 px on both axes in every corner', () => {
+    const source = { sourceWidth: 1924, sourceHeight: 2154 };
+    const corners = new Map<string, { side: number; top: number }>();
+    for (let i = 0; i < 60; i += 1) {
+      const p = placeWatermark({
+        ...source,
+        faceBox: { x: 0.05 + (i % 3) * 0.3, y: 0.3, w: 0.25, h: 0.25 },
+        occupied: [],
+        lastBeepEndS: 0.4,
+        seed: `corner-${i}`,
+      });
+      const fromSide = p.corner.endsWith('left')
+        ? p.rect.x * FRAME_WIDTH
+        : (1 - (p.rect.x + p.rect.w)) * FRAME_WIDTH;
+      const fromTop = p.corner.startsWith('top')
+        ? p.rect.y * FRAME_HEIGHT
+        : (1 - (p.rect.y + p.rect.h)) * FRAME_HEIGHT;
+      corners.set(p.corner, { side: fromSide, top: fromTop });
+    }
+    expect(corners.size).toBeGreaterThan(1);
+    for (const [corner, px] of corners) {
+      expect(`${corner} side ${px.side.toFixed(1)}`).toBe(`${corner} side 108.0`);
+      expect(`${corner} top ${px.top.toFixed(1)}`).toBe(`${corner} top 108.0`);
+    }
   });
 });

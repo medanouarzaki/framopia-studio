@@ -154,13 +154,19 @@ export const WATERMARK_GAIN_DB = -20;
  * by it instead, putting the mark 65 px from the side and **205 px** from the
  * top on a 2160x3840 frame.
  *
- * **Neither default is changed here.** `WATERMARK_MARGIN_Y` reproduces exactly
- * what the one constant produced, so the mark sits where it sat; making the two
- * settable independently is what lets the user rule on the number.
- * `benchmarks/RESULTS-block8-watermark-inset.md` is what he rules from.
+ * **The user's ruling, 2026-08-29: 108 px, equal on both axes.** He watched a
+ * build and the mark sat too close to the edge. Chosen from the candidates in
+ * `benchmarks/RESULTS-block8-watermark-inset.md` — 0.03 gave 65 px, 0.04 gave
+ * 86, 0.05 gives 108, 0.06 gave 130.
+ *
+ * A width fraction becomes a height fraction by **dividing** by the aspect
+ * ratio. The constant this replaced multiplied, which is why the mark used to
+ * sit 205 px from the top; the same mistake has now been found four times in
+ * this block, so both pixel figures are pinned by a test rather than derived
+ * again by whoever reads this next.
  */
-export const WATERMARK_MARGIN_X = 0.03;
-export const WATERMARK_MARGIN_Y = 0.03 * FRAME_ASPECT;
+export const WATERMARK_MARGIN_X = 0.05;
+export const WATERMARK_MARGIN_Y = 0.05 / FRAME_ASPECT;
 
 /** Both insets in source pixels, for reporting rather than for placement. */
 export function watermarkMarginPx(): { x: number; y: number } {

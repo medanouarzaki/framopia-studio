@@ -1,8 +1,8 @@
 # The watermark inset
 
-Measured 2026-08-29. Read-only; **no default was changed.** The mark sits
-exactly where it sat, and the two axes are now settable independently so the
-user can rule on the number.
+Measured 2026-08-29. Read-only when written; **the user has since ruled on it —
+see "Ruled" at the end.** The two axes were made settable independently so he
+could rule on the number, and the figures below are what he ruled from.
 
 ## What it is today
 
@@ -42,9 +42,21 @@ top. Any row above sets both to the same number; **0.05 (108 px) is the one I
 would try first**, close to splitting the difference between today's two values
 while staying clear of a 216 px mark reading as centred.
 
-## Nothing changed
+## Nothing changed when this was measured
 
-`WATERMARK_MARGIN_Y` is defined as `0.03 × FRAME_ASPECT`, which is precisely
+`WATERMARK_MARGIN_Y` was defined as `0.03 × FRAME_ASPECT`, which is precisely
 what the single constant produced, and a test asserts both pixel figures. The
 corner-selection logic, the width fraction, the duration and the gain are all
 untouched.
+
+## Ruled
+
+**108 px, equal on both axes** — the user's ruling later the same day, the row
+this document recommended. `WATERMARK_MARGIN_X` is **0.05** of frame width and
+`WATERMARK_MARGIN_Y` is **0.05 ÷ 1.7778 = 0.028125** of frame height, both
+108 px. The horizontal inset grows by 43 px and the vertical one falls by 97.
+
+The inset is measured from the **near** edge on each axis, so it is the same
+figure whichever corner the seeded draw lands on; a test walks every corner the
+draw can reach and asserts 108.0 px on both axes in each. Nothing else about
+the watermark changed.
