@@ -15,6 +15,7 @@
 function framopiaBuildReel(optionsPath, outPath) {
     var stage = 'start';
     var result;
+    var savedOwnOutput = null;
 
     function readOptions(p) {
         var f = new File(p);
@@ -77,6 +78,23 @@ function framopiaBuildReel(optionsPath, outPath) {
                 isDirty = app.project.dirty === true;
             } catch (eDirty) {
                 isDirty = true;
+            }
+            /*
+             * **A project this tool wrote is not someone's unsaved work.**
+             *
+             * The guard stopped the user four times running, and every time the
+             * file it refused to close was `.local/build/…` — the build's own
+             * previous output, open because the last build left it there. So a
+             * file under that directory is saved and the build proceeds, saying
+             * which one it saved. Anything else keeps the refusal, and a project
+             * that was never written to disk keeps it too: there is no file to
+             * save it to and no way to know what it holds.
+             */
+            var isOurs = openFile !== null && o.buildDir && openFile.fsName.indexOf(o.buildDir) === 0;
+            if (isDirty && isOurs) {
+                app.project.save();
+                savedOwnOutput = openFile.fsName;
+                isDirty = false;
             }
             if (isDirty) {
                 throw new Error(
@@ -360,6 +378,7 @@ function framopiaBuildReel(optionsPath, outPath) {
         result = {
             ok: true,
             aeVersion: app.version,
+            savedOwnOutput: savedOwnOutput,
             elementsBuilt: o.elements.length,
             masters: comps,
             imageMeasurements: measured,

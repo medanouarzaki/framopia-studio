@@ -456,6 +456,13 @@ console.log(
 
 const result = runBuildReel({
   footagePath: plan.source.videoPath,
+  /*
+   * Where this tool's own output lives. A project open from here is a previous
+   * build, not work the user would lose, so the build saves it and proceeds
+   * rather than refusing — the guard had stopped him four times running on his
+   * own last build.
+   */
+  buildDir: path.join(REPO_ROOT, '.local', 'build'),
   dialogueGainDb,
   templatesAepPath: AEP_PATH,
   masterWidth: plan.source.width,
@@ -488,6 +495,10 @@ const result = runBuildReel({
       : resolveUserPath(outArg),
 });
 const wallS = (Date.now() - startedAt) / 1000;
+
+if (result.ok && typeof result['savedOwnOutput'] === 'string') {
+  console.log(`\nsaved the previous build that was open: ${String(result['savedOwnOutput'])}`);
+}
 
 console.log(`\n${JSON.stringify(result, null, 2)}`);
 

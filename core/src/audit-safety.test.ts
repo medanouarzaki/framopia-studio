@@ -126,3 +126,73 @@ describe('the audit records easing', () => {
     expect(AUDIT).toContain('if (!ease || !ease.length) return null;');
   });
 });
+
+/**
+ * The build's own guard, narrowed to what it was built for.
+ *
+ * It stopped the user four times running, and every time the file it refused to
+ * close was `.local/build/vitasilk-full.aep` — **the build's own previous
+ * output**, open because the last build left it there. Refusing to touch that
+ * protects nothing and costs a round trip every time.
+ *
+ * Asserted against the source, like the audit above: the behaviour lives inside
+ * After Effects and no test here can run it.
+ */
+const BUILD_REEL = readFileSync(
+  path.join(REPO_ROOT, 'panel', 'jsx', 'build-reel.jsx'),
+  'utf8',
+);
+
+describe('the build’s unsaved-changes guard', () => {
+  it('saves a project this tool wrote, rather than refusing over it', () => {
+    expect(BUILD_REEL).toContain('var isOurs =');
+    expect(BUILD_REEL).toContain('o.buildDir');
+    // Saved, never discarded, and back to the file it came from: the guard's
+    // save takes no argument. The build's own final save to `savePath` does
+    // take one and is a different call.
+    expect(BUILD_REEL).toContain('app.project.save();');
+    const guardSave = BUILD_REEL.indexOf('app.project.save();');
+    expect(guardSave).toBeGreaterThan(BUILD_REEL.indexOf('var isOurs ='));
+    expect(guardSave).toBeLessThan(
+      BUILD_REEL.indexOf('the open After Effects project has unsaved changes'),
+    );
+  });
+
+  it('says which file it saved rather than doing it silently', () => {
+    expect(BUILD_REEL).toContain('savedOwnOutput = openFile.fsName');
+    expect(BUILD_REEL).toContain('savedOwnOutput: savedOwnOutput');
+  });
+
+  /*
+   * The narrowing must not reach anything else. A project somewhere the tool
+   * does not write, and one that was never written at all, keep the refusal.
+   */
+  it('still refuses any other project, and names it', () => {
+    const ours = BUILD_REEL.indexOf('var isOurs =');
+    const refusal = BUILD_REEL.indexOf('the open After Effects project has unsaved changes');
+    expect(refusal).toBeGreaterThan(ours);
+    expect(BUILD_REEL).toContain('Save or close it yourself, then run it again');
+  });
+
+  it('keeps refusing a project that was never written to disk', () => {
+    // `isOurs` needs a file to compare, so a null file can never satisfy it.
+    expect(BUILD_REEL).toContain('var isOurs = openFile !== null');
+    expect(BUILD_REEL).toContain('and has never been saved');
+  });
+
+  it('never closes a project it did not write', () => {
+    const closes = [...BUILD_REEL.matchAll(/app\.project\.close\(/g)];
+    expect(closes).toHaveLength(1);
+    const guard = BUILD_REEL.indexOf('if (isDirty) {');
+    expect((closes[0] as RegExpMatchArray).index).toBeGreaterThan(guard);
+  });
+
+  /* The other two scripts are unchanged: they write nothing to `.local/build`. */
+  it('leaves the other scripts’ guards alone', () => {
+    for (const file of ['build.jsx', 'measure-survey.jsx']) {
+      const source = readFileSync(path.join(REPO_ROOT, 'panel', 'jsx', file), 'utf8');
+      expect(source, file).toContain('the open After Effects project has unsaved changes');
+      expect(source, file).not.toContain('var isOurs');
+    }
+  });
+});
