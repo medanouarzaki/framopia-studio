@@ -104,7 +104,13 @@ export function buildRequirements(
       needed: slots > 0,
       present: disk.faceMasks,
       what: `the face masks for this reel (${slots} images are placed against them)`,
-      command: 'npm run frames -- --reel <label> then npm run segment -- --reel <label>',
+      // Run pipeline does this now — "Looking at the video" is a stage of it —
+      // so that is named first, because the panel is where this sentence is
+      // read. The two commands stay because they are still what a terminal
+      // runs and they still work.
+      command:
+        'press Run pipeline for this video; from a terminal, ' +
+        'npm run frames -- --reel <label> then npm run segment -- --reel <label>',
       consequence:
         'every image is placed against the frame instead of your face, which puts a ' +
         '2030 px picture across the speaker on a 2160 px frame',

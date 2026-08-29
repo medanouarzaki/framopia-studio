@@ -224,6 +224,12 @@ export interface PipelineStageReport {
   label: string;
   state: StageState;
   reason: string | null;
+  /**
+   * Where a long stage has got to. Optional: a service older than this sends
+   * nothing, and the row then shows what it always did rather than the panel
+   * inventing a step count.
+   */
+  detail?: string | null;
   costUsd: number;
   cacheEntryId: string | null;
   cacheProvenance: EntryProvenance | null;

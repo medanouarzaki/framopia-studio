@@ -550,7 +550,7 @@ async function loadFlow(
   return { page, uncaught };
 }
 
-function stubJob(state: 'running' | 'done' | 'failed' | 'all-skipped'): string {
+function stubJob(state: 'running' | 'done' | 'failed' | 'all-skipped' | 'looking'): string {
   const stage = (
     id: string,
     label: string,
@@ -565,10 +565,20 @@ function stubJob(state: 'running' | 'done' | 'failed' | 'all-skipped'): string {
     stage('transcription', 'Transcribe and correct', 'skipped', { reason: 'reusing an older guide' }),
     stage('analysis', 'Keywords and image slots', 'skipped', { reason: 'already on the plan' }),
     stage('images', 'Generate images', 'skipped', { reason: 'already on the plan' }),
-    stage('zones', 'Frame analysis (local, free)', 'skipped', { reason: 'already on the plan' }),
+    stage('zones', 'Looking at the video', 'skipped', { reason: 'already on the plan' }),
+  ];
+  const looking = [
+    stage('transcription', 'Transcribe and correct', 'skipped', { reason: 'already on the plan' }),
+    stage('analysis', 'Keywords and image slots', 'skipped', { reason: 'already on the plan' }),
+    stage('images', 'Generate images', 'skipped', { reason: 'already on the plan' }),
+    stage('zones', 'Looking at the video', 'running', {
+      detail: 'Finding you in the picture — frame 24 of 53',
+    }),
   ];
   const stages =
-    state === 'all-skipped'
+    state === 'looking'
+    ? looking
+    : state === 'all-skipped'
     ? allSkipped
     : state === 'running'
       ? [
@@ -579,7 +589,7 @@ function stubJob(state: 'running' | 'done' | 'failed' | 'all-skipped'): string {
           }),
           stage('analysis', 'Keywords and image slots', 'running'),
           stage('images', 'Generate images', 'waiting'),
-          stage('zones', 'Frame analysis (local, free)', 'waiting'),
+          stage('zones', 'Looking at the video', 'waiting'),
         ]
       : state === 'failed'
         ? [
@@ -592,23 +602,24 @@ function stubJob(state: 'running' | 'done' | 'failed' | 'all-skipped'): string {
               },
             }),
             stage('images', 'Generate images', 'waiting'),
-            stage('zones', 'Frame analysis (local, free)', 'waiting'),
+            stage('zones', 'Looking at the video', 'waiting'),
           ]
         : [
             stage('transcription', 'Transcribe and correct', 'skipped', { reason: 'reusing an older guide' }),
             stage('analysis', 'Keywords and image slots', 'done', { costUsd: 0.1835 }),
             stage('images', 'Generate images', 'skipped', { reason: 'no image slots on the plan' }),
-            stage('zones', 'Frame analysis (local, free)', 'skipped', { reason: 'already on the plan' }),
+            stage('zones', 'Looking at the video', 'skipped', { reason: 'already on the plan' }),
           ];
   const detail = {
     reel: 'vitasilk', modeId: 'k2-syndicalia', planPath: '/v/p.json', stages,
     percent: state === 'done' ? 1 : 0.25,
     spentUsd: state === 'done' ? 0.1835 : 0,
     planSpentUsd: 1.550444,
-    done: state !== 'running',
+    done: state !== 'running' && state !== 'looking',
     error: state === 'failed' ? (stages[1]?.['error'] ?? null) : null,
   };
-  const status = state === 'running' ? 'running' : state === 'failed' ? 'error' : 'done';
+  const status =
+    state === 'running' || state === 'looking' ? 'running' : state === 'failed' ? 'error' : 'done';
   return `window.__job = () => (${JSON.stringify({
     id: 'job-1',
     status,
@@ -650,7 +661,7 @@ const VITASILK_DRY_STAGES = [
   },
   {
     id: 'zones',
-    label: 'Frame analysis (local, free)',
+    label: 'Looking at the video',
     status: 'done',
     provenance: null,
     entryId: null,
@@ -1596,7 +1607,7 @@ describe.skipIf(!built)('the cost block and the run', () => {
 });
 
 describe.skipIf(!built)('a pipeline run', () => {
-  async function loadRun(state: 'running' | 'done' | 'failed'): Promise<Loaded | null> {
+  async function loadRun(state: 'running' | 'done' | 'failed' | 'looking'): Promise<Loaded | null> {
     if (browser === undefined) return null;
     const page = await browser.newPage({ viewport: { width: 420, height: 900 } });
     const uncaught: string[] = [];
@@ -1621,7 +1632,7 @@ describe.skipIf(!built)('a pipeline run', () => {
     const loaded = await loadRun('running');
     if (loaded === null) return;
     const text = (await loaded.page.textContent('main')) ?? '';
-    for (const label of ['Transcribe and correct', 'Keywords and image slots', 'Generate images', 'Frame analysis (local, free)']) {
+    for (const label of ['Transcribe and correct', 'Keywords and image slots', 'Generate images', 'Looking at the video']) {
       expect(text, label).toContain(label);
     }
     expect(text).toContain('running…');
@@ -1636,6 +1647,24 @@ describe.skipIf(!built)('a pipeline run', () => {
     const text = (await loaded.page.textContent('main')) ?? '';
     expect(text).toContain('skipped');
     expect(text).toContain('reusing an older guide');
+    await loaded.page.close();
+  });
+
+  /*
+   * Frame analysis is the one stage that takes minutes, so it is the one that
+   * has to say where it has got to. A single "running…" for a stage that sits
+   * there for a minute is indistinguishable from one that has hung.
+   */
+  it('shows how far the long stage has got, in his words', async () => {
+    const loaded = await loadRun('looking');
+    if (loaded === null) return;
+    const text = (await loaded.page.textContent('main')) ?? '';
+    expect(text).toContain('Looking at the video');
+    expect(text).toContain('Finding you in the picture — frame 24 of 53');
+    // A field name is not a label, and neither is a word from the codebase.
+    expect(text).not.toContain('segmentation');
+    expect(text).not.toContain('sidecar');
+    expect(loaded.uncaught).toEqual([]);
     await loaded.page.close();
   });
 
@@ -2168,7 +2197,9 @@ describe.skipIf(!built)('a reel that is not ready to build', () => {
     {
       id: 'face-masks',
       what: 'the face masks for this reel (5 images are placed against them)',
-      command: 'npm run frames -- --reel <label> then npm run segment -- --reel <label>',
+      command:
+        'press Run pipeline for this video; from a terminal, ' +
+        'npm run frames -- --reel <label> then npm run segment -- --reel <label>',
       consequence:
         'every image is placed against the frame instead of your face, which puts a ' +
         '2030 px picture across the speaker on a 2160 px frame',

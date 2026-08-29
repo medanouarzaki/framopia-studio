@@ -878,6 +878,12 @@ function DryRun({ plan }: { plan: DryRunPlan }): JSX.Element {
           </li>
         ))}
       </ul>
+      {plan.stages.some((stage) => stage.id === 'zones') ? (
+        <p className="note">
+          Looking at the video is done on this machine and costs nothing, but it can take a
+          few minutes the first time for a video.
+        </p>
+      ) : null}
       <div className="spend" style={{ marginTop: 12 }}>
         <div>
           <div className={`amount ${plan.estimateUsd >= SPEND_SOFT_ALARM_USD ? 'alarm' : ''}`}>
@@ -953,6 +959,9 @@ function RunProgress({ job }: { job: PipelineJob }): JSX.Element {
             <span className={`v ${stageToneOf(stage.state)}`} title={stage.reason ?? stage.label}>
               {stageWordOf(stage)}
               {stage.reason === null ? null : <em className="where">{stage.reason}</em>}
+              {stage.state === 'running' && stage.detail ? (
+                <em className="where">{stage.detail}</em>
+              ) : null}
             </span>
           </li>
         ))}
