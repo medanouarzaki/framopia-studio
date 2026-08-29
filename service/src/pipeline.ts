@@ -8,6 +8,7 @@ import { transcribeVideo } from './transcription/job.js';
 import { analyseKeywordsForPlan, planImageSlotsForPlan } from './analysis/job.js';
 import { generateImagesForPlan } from './images/job.js';
 import { resolveTranscriptionEntry } from './transcription/resolve-entry.js';
+import { analyseFrames, type FrameAnalysisProgress } from './frames/analyse.js';
 import type { EditPlan } from './editplan/types.js';
 
 /**
@@ -35,6 +36,12 @@ export interface StageReport {
   state: StageState;
   /** Why a stage was skipped, in the words the panel shows. */
   reason: string | null;
+  /**
+   * Where a long stage has got to, in the same words. Optional with a default
+   * of null: a stage that finishes in one step has nothing to say here, and a
+   * panel older than this reads it as absent rather than as empty.
+   */
+  detail?: string | null;
   /** What this stage actually billed, in dollars. Zero for a cache hit. */
   costUsd: number;
   /** The cache entry this stage resolved, when it resolved one. */
@@ -124,6 +131,15 @@ export interface RunPipelineOptions {
   modeId: string;
   /** Stages to run again even though the plan records them done. */
   redo?: PipelineStageId[];
+  /**
+   * Run only these stages; the rest are skipped without being looked at.
+   *
+   * Frame analysis is free while the three stages before it are not, so
+   * "re-do the frame analysis" has to be expressible without walking past a
+   * billable stage and hoping its cache still hits. Empty or absent means all
+   * of them, which is what pressing Run does.
+   */
+  only?: PipelineStageId[];
   ceilingUsd?: number;
   costsPath?: string;
   cacheRoot?: string;
@@ -139,7 +155,20 @@ export interface PipelineStageImpl {
   keywords: typeof analyseKeywordsForPlan;
   slots: typeof planImageSlotsForPlan;
   images: typeof generateImagesForPlan;
-  zones: (planPath: string) => Promise<{ skipped: string | null }>;
+  zones: (options: FrameAnalysisStageOptions) => Promise<{ skipped: string | null }>;
+}
+
+/**
+ * What the frame-analysis stage is given. It needs the video, not only the
+ * plan: the frames come out of the file, and the plan is where the zones land.
+ */
+export interface FrameAnalysisStageOptions {
+  reelLabel: string;
+  videoPath: string;
+  planPath: string;
+  force: boolean;
+  onProgress: (progress: FrameAnalysisProgress) => void;
+  log: (message: string) => void;
 }
 
 function blankStages(): StageReport[] {
@@ -148,6 +177,7 @@ function blankStages(): StageReport[] {
     label: spec.label,
     state: 'waiting' as StageState,
     reason: null,
+    detail: null,
     costUsd: 0,
     cacheEntryId: null,
     cacheProvenance: null,
@@ -158,17 +188,30 @@ function blankStages(): StageReport[] {
 }
 
 /**
- * Frame analysis is local and free, and it is the one stage this runner does
- * not drive: it needs sampled frames and the Python sidecar, which take minutes
- * and are driven by their own commands. Reporting it as skipped with the reason
- * is honest; pretending to have run it would not be.
+ * Frame analysis, driven.
+ *
+ * Block 8 shipped this stage reporting what the user should type instead of
+ * doing it, so a video that had never been through the sidecar could not go
+ * from footage to comp without leaving the panel — while image placement reads
+ * exactly the face masks it produces. `analyseFrames` is the same sampling,
+ * the same segmentation and the same zone derivation the three CLIs run; what
+ * this adds is that the runner calls it.
+ *
+ * It is local and free, and it is the slowest stage that costs nothing.
  */
-async function zonesNotDriven(planPath: string): Promise<{ skipped: string | null }> {
-  const plan = await readEditPlan(planPath);
-  if (plan.zones.zones.length > 0) {
-    return { skipped: `already on the plan: ${plan.zones.zones.length} zones` };
-  }
-  return { skipped: 'run npm run frames, segment and zones; the runner does not drive the sidecar' };
+async function driveFrameAnalysis(
+  options: FrameAnalysisStageOptions,
+): Promise<{ skipped: string | null }> {
+  const result = await analyseFrames({
+    reelLabel: options.reelLabel,
+    videoPath: options.videoPath,
+    planPath: options.planPath,
+    force: options.force,
+    onProgress: options.onProgress,
+    log: options.log,
+  });
+  if (result.skipped !== null) return { skipped: result.skipped };
+  return { skipped: null };
 }
 
 export async function runPipeline(options: RunPipelineOptions): Promise<PipelineProgress> {
@@ -176,6 +219,7 @@ export async function runPipeline(options: RunPipelineOptions): Promise<Pipeline
     reel: reelLabel,
     modeId,
     redo = [],
+    only = [],
     ceilingUsd = PIPELINE_CEILING_USD,
     costsPath,
     cacheRoot,
@@ -189,7 +233,7 @@ export async function runPipeline(options: RunPipelineOptions): Promise<Pipeline
     keywords: analyseKeywordsForPlan,
     slots: planImageSlotsForPlan,
     images: generateImagesForPlan,
-    zones: zonesNotDriven,
+    zones: driveFrameAnalysis,
     ...options.stages,
   };
 
@@ -262,6 +306,7 @@ export async function runPipeline(options: RunPipelineOptions): Promise<Pipeline
       const result = await body();
       stage.state = result.skipped === true ? 'skipped' : 'done';
       stage.reason = result.reason ?? null;
+      stage.detail = null;
       stage.costUsd = result.costUsd ?? 0;
       stage.finishedAt = now();
       await readPlanSpend();
@@ -285,8 +330,10 @@ export async function runPipeline(options: RunPipelineOptions): Promise<Pipeline
   };
 
   const wants = (id: PipelineStageId): boolean => redo.includes(id);
+  const asked = (id: PipelineStageId): boolean => only.length === 0 || only.includes(id);
 
   await run('transcription', async () => {
+    if (!asked('transcription')) return { skipped: true, reason: 'not part of this run' };
     const existing = await planIfAny();
     if (existing?.pipeline.transcription.status === 'done' && !wants('transcription')) {
       const entry = existing.pipeline.transcription;
@@ -328,6 +375,7 @@ export async function runPipeline(options: RunPipelineOptions): Promise<Pipeline
   });
 
   await run('analysis', async () => {
+    if (!asked('analysis')) return { skipped: true, reason: 'not part of this run' };
     const existing = await planIfAny();
     if (existing?.pipeline.analysis.status === 'done' && !wants('analysis')) {
       return { skipped: true, reason: 'already on the plan' };
@@ -344,6 +392,7 @@ export async function runPipeline(options: RunPipelineOptions): Promise<Pipeline
   });
 
   await run('images', async () => {
+    if (!asked('images')) return { skipped: true, reason: 'not part of this run' };
     const existing = await planIfAny();
     if (existing !== null && existing.images.slots.length === 0) {
       return { skipped: true, reason: 'no image slots on the plan' };
@@ -362,8 +411,19 @@ export async function runPipeline(options: RunPipelineOptions): Promise<Pipeline
   });
 
   await run('zones', async () => {
+    if (!asked('zones')) return { skipped: true, reason: 'not part of this run' };
     if (planPath === null) return { skipped: true, reason: 'no plan' };
-    const { skipped } = await impl.zones(planPath);
+    const { skipped } = await impl.zones({
+      reelLabel,
+      videoPath: reel.videoPath,
+      planPath,
+      force: wants('zones'),
+      onProgress: (frameProgress) => {
+        stageOf('zones').detail = frameProgress.message;
+        onProgress(progress());
+      },
+      log,
+    });
     return skipped === null ? {} : { skipped: true, reason: skipped };
   });
 
@@ -412,17 +472,18 @@ registerJobRunner(PIPELINE_JOB_TYPE, async (params, job) => {
   if (typeof modeId !== 'string' || modeId.length === 0) {
     throw new Error('pipeline job requires a mode');
   }
-  const redoRaw = params?.['redo'];
-  const redo = Array.isArray(redoRaw)
-    ? redoRaw.filter((id): id is PipelineStageId =>
-        PIPELINE_STAGES.some((s) => s.id === id),
-      )
-    : [];
+  const stageIds = (raw: unknown): PipelineStageId[] =>
+    Array.isArray(raw)
+      ? raw.filter((id): id is PipelineStageId => PIPELINE_STAGES.some((s) => s.id === id))
+      : [];
+  const redo = stageIds(params?.['redo']);
+  const only = stageIds(params?.['only']);
 
   return await runPipeline({
     reel,
     modeId,
     redo,
+    only,
     onProgress: (progress) => {
       job.progress = progress.percent;
       job.detail = progress;

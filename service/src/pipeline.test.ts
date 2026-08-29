@@ -353,3 +353,127 @@ describe('a compatible transcription resolution', () => {
     expect(result.transcript.cached).toBe(true);
   });
 });
+
+/**
+ * Frame analysis is driven now. Block 8 shipped a runner that named
+ * `npm run frames` and `npm run segment` instead of running them, so a video
+ * that had never been through the sidecar could not be taken from footage to
+ * comp without leaving the panel.
+ */
+describe('the frame-analysis stage', () => {
+  it('is given the video, not only the plan', async () => {
+    const zones = vi.fn(async () => ({ skipped: null }));
+    await runPipeline({
+      reel: 'vitasilk',
+      modeId: 'k2-syndicalia',
+      stages: fakeStages({ zones }),
+    });
+    expect(zones).toHaveBeenCalledTimes(1);
+    const call = zones.mock.calls[0]?.[0] as unknown as {
+      reelLabel: string;
+      videoPath: string;
+      planPath: string;
+    };
+    expect(call.reelLabel).toBe('vitasilk');
+    expect(call.videoPath).toContain('vitasilk.mov');
+    expect(call.planPath).toContain('vitasilk.editplan.json');
+  });
+
+  it('carries the stage’s own progress line onto the report while it runs', async () => {
+    const seen: (string | null | undefined)[] = [];
+    await runPipeline({
+      reel: 'vitasilk',
+      modeId: 'k2-syndicalia',
+      onProgress: (progress) => {
+        const stage = progress.stages.find((s) => s.id === 'zones');
+        if (stage?.state === 'running') seen.push(stage.detail);
+      },
+      stages: fakeStages({
+        zones: vi.fn(async (options) => {
+          options.onProgress({ percent: 0.5, message: 'Finding you in the picture — frame 4 of 8' });
+          return { skipped: null };
+        }),
+      }),
+    });
+    expect(seen).toContain('Finding you in the picture — frame 4 of 8');
+  });
+
+  it('clears its progress line when it finishes', async () => {
+    const progress = await runPipeline({
+      reel: 'vitasilk',
+      modeId: 'k2-syndicalia',
+      stages: fakeStages({
+        zones: vi.fn(async (options) => {
+          options.onProgress({ percent: 0.5, message: 'half way' });
+          return { skipped: null };
+        }),
+      }),
+    });
+    expect(progress.stages.find((s) => s.id === 'zones')?.detail).toBeNull();
+  });
+
+  it('fails the run, named, when the sidecar fails — and the panel gets the sentence', async () => {
+    const before = ledgerSha();
+    await expect(
+      runPipeline({
+        reel: 'vitasilk',
+        modeId: 'k2-syndicalia',
+        stages: fakeStages({
+          zones: vi.fn(async () => {
+            throw new Error('sidecar failed: could not load the model');
+          }),
+        }),
+      }),
+    ).rejects.toThrow(PipelineError);
+
+    let detail: { stage: string; cause: string } | null = null;
+    await runPipeline({
+      reel: 'vitasilk',
+      modeId: 'k2-syndicalia',
+      onProgress: (progress) => {
+        if (progress.error !== null) detail = progress.error;
+      },
+      stages: fakeStages({
+        zones: vi.fn(async () => {
+          throw new Error('sidecar failed: could not load the model');
+        }),
+      }),
+    }).catch(() => undefined);
+
+    expect(detail).not.toBeNull();
+    expect((detail as unknown as { stage: string }).stage).toBe('zones');
+    expect((detail as unknown as { cause: string }).cause).toContain('could not load the model');
+    expect(ledgerSha()).toBe(before);
+  });
+});
+
+describe('running one stage on its own', () => {
+  /*
+   * Frame analysis is free while the three stages before it are not, so
+   * "look at this video again" has to be expressible without walking past a
+   * billable stage and hoping its cache still hits.
+   */
+  it('skips the stages that were not asked for, and bills nothing', async () => {
+    const before = ledgerSha();
+    const zones = vi.fn(async () => ({ skipped: null }));
+    const progress = await runPipeline({
+      reel: 'vitasilk',
+      modeId: 'k2-syndicalia',
+      only: ['zones'],
+      stages: fakeStages({ zones }),
+    });
+
+    expect(zones).toHaveBeenCalledTimes(1);
+    expect(progress.spentUsd).toBe(0);
+    expect(progress.stages.map((s) => [s.id, s.state])).toEqual([
+      ['transcription', 'skipped'],
+      ['analysis', 'skipped'],
+      ['images', 'skipped'],
+      ['zones', 'done'],
+    ]);
+    for (const stage of progress.stages.filter((s) => s.id !== 'zones')) {
+      expect(stage.reason).toBe('not part of this run');
+    }
+    expect(ledgerSha()).toBe(before);
+  });
+});

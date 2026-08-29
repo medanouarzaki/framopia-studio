@@ -349,7 +349,12 @@ export async function dryRun(reelLabel: string, modeId: string): Promise<DryRunP
     );
   }
 
-  add('zones', null, null, 'local computer vision; free whether or not it re-runs');
+  add(
+    'zones',
+    null,
+    null,
+    'free, and done on this machine. It can take a few minutes the first time for a video.',
+  );
 
   return {
     reel: reel.label,
