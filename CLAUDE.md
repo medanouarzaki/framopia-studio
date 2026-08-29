@@ -6326,3 +6326,64 @@ highlights"* — and a proposed replacement is in
 `docs/DECISION-image-config.md` beside the fidelity defect. **Nothing was
 generated and no prompt was changed**; testing it is `test-1`'s 8 images at
 about $1.24, and needs the user's go-ahead.
+
+
+## Block 8 session 35 — the card is a border again, and there are more pictures
+
+**Spent $0.00.** Ledger 108 entries / sha `50ec3f57…` at both ends. **After
+Effects was not contacted**; 1 instance, 0 `aerender`.
+
+### A cut-out needs a ground, or the card is both frame and fill
+
+`img_float` has **two** layers: `IMG_MAIN` (1000 px, the picture) and `CARD`
+(1080 px behind it, showing as a 40 px border). For a whole picture the border
+sits against the picture and one colour is enough. **For a cut-out the picture
+is transparent, so `CARD` shows through the whole square — frame and fill are
+the same layer, their contrast is 1.00:1 by construction, and there is no border
+to see.** That is what the user saw on `img002`.
+
+So a cut-out is composited onto a ground of its own before it is placed
+(`flatten_cutout` in the sidecar), and **two** contrasts have to hold, both at
+WCAG's 3:1: the subject against the fill, and the frame against the fill.
+`cardColours` searches the palette for the pair maximising the **smaller** of
+the two. All ten `vitasilk` candidates clear both; `img002-c1` gets a dark
+ground and a **light frame, the same frame the other four have**. Nothing about
+the template changes and the cutout file is untouched.
+
+### Eight images per 30 seconds
+
+`IMAGE_SLOTS_PER_30S` 5.5 → **8** (user ruling), amending PROJECT_SPEC §5's
+5–6 band. `vitasilk` would plan **7** where it planned 5; the other four go
+4 → 6. It stays `imageSlotCountFor`, read by the planner and the dry run so the
+two cannot drift, and a mode may set its own `imageSlotsPer30s`.
+
+**Nothing was re-planned.** A stage the plan records as done is skipped, so
+`test-1`, `test-2` and `vitasilk` read **$0.00** and keep their slots;
+`ground-truth` and `test-3` would each cost **$2.17** for images at their first
+planning, corpus **$4.34**. Forcing `vitasilk` to 7 slots would generate 14
+images at about **$2.53** and **strand the 10 already generated** — the files
+survive, nothing points at them. `benchmarks/RESULTS-block8-image-density.md`.
+
+### All three image defects are the prompt
+
+`docs/DECISION-image-config.md` now carries three amendments that are one
+problem: **fidelity** (session 31), **darkness** (session 34) and
+**literalness** (this one). None is a threshold and none is fixable in the gate.
+
+The new one: **when she names something concrete the picture should be that
+thing, and when she does not it should carry the mood — decided per moment.**
+Measured over all nine planned slots, **five call for the concrete thing and
+four for the mood**, so neither is right as a blanket rule. Of the five,
+**three do not get it** — both mentions of the brand became a generic category.
+A pasteable prompt addition is written out. **Nothing generated, no prompt
+changed.** Block 9, and all three should be tested together because a prompt
+change is a billable re-generation.
+
+### The build saves its own previous output
+
+The unsaved-changes guard stopped the user four times running, and every time
+the file was `.local/build/vitasilk-full.aep` — the build's own last output. A
+project open from `.local/build/` is now **saved and proceeded past**, with the
+file named in the result. Anything else keeps the refusal, and a project that
+was never written to disk keeps it too. `build.jsx` and `measure-survey.jsx` are
+unchanged; both branches are pinned in `core/src/audit-safety.test.ts`.
