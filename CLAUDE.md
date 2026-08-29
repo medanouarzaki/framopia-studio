@@ -770,7 +770,48 @@ is an error, never created, because a typo would otherwise make one and report a
 successful backup into it. The default destination is `backupDir` in
 `.local/config.json`, machine-local like every other per-machine setting.
 
-53.3 MB without video, and it took **1.5 s** on this machine.
+53.3 MB without video, and it took **1.5 s** to a local disk.
+
+**A cloud destination refuses to receive a credential.** `secrets.ts` classifies
+each file by its **bytes**, not its name — a field whose name *ends* with
+`apiKey`/`token`/`secret`/`password`/`credential` **and** whose value is 16+
+unbroken characters of a credential alphabet, or a value in a shape a provider
+publishes (`AIza…`, `sk_…`, a PRIVATE KEY block). Only the first 64 KB is read
+and only if the bytes are valid UTF-8, so a key past that point in a binary
+would be missed. **A looser first draft flagged the hand-made alignment
+references**, which carry `draftTokenText` — the most irreplaceable file in the
+set would have been left out of the cloud copy. Exactly one file in the set is
+secret: `.local/config.json`. It is **named on screen when skipped**, never
+silently omitted.
+
+**Cloud is a path heuristic and `unknown` is a real answer.** `df` reports
+`~/Library/CloudStorage/GoogleDrive-…` as `/dev/disk3s1`, the machine's own data
+volume — a macOS FileProvider is not a mount — so **no filesystem fact separates
+a sync folder from a plain one before writing**. Known roots
+(`~/Library/CloudStorage`, `~/Library/Mobile Documents`, `~/Dropbox`,
+`~/Google Drive`, `~/OneDrive`) are cloud, `/Volumes/*` is local, and anything
+else **refuses and asks for `--cloud` or `--local`** rather than guessing local
+and copying a key into a shared folder.
+
+**Drive streams, so a cloud copy is verified as present locally.** Measured on
+this mount: an undownloaded Drive file reports `st_blocks` **0** against a
+6,298,543-byte size and carries macOS's `dataless` flag, while a file written
+into the same folder reports **3912** blocks for 2,000,000 bytes. `isMaterialised`
+reads `stats.blocks`, and the run fails if any copied file's bytes are not here.
+**It says the bytes are here now, not that Drive will keep them** — Drive evicts
+local copies to reclaim space. **Whether Google has finished uploading them is a
+separate claim this cannot check.**
+
+**The writable folder is found, not assumed.** Drive's account root is
+`dr-x------`; the tool looks inside for a writable directory, uses it when there
+is exactly one, and names the candidates when there is more than one. On this
+machine that is `My Drive`.
+
+**Run of record, 2026-08-29:** `backupDir` in `.local/config.json` is the Drive
+account root, so `npm run backup` alone repeats it. **94 files, 53.3 MB, 0.2 s
+of copying inside a 1.7 s run, every hash verified, every file materialised
+locally, `.local/config.json` skipped**, at
+`.../My Drive/framopia-studio/`.
 
 ### Build runs from the panel, through the same CLI a terminal runs
 
