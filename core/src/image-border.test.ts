@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  cardFrameColour, contrastRatio, frameReferenceLuminance, MIN_IMAGE_EDGE_CONTRAST,
-  parseHexColour, relativeLuminance, toAeColour,
+  cardColours, cardFrameColour, contrastRatio, frameReferenceLuminance,
+  MIN_IMAGE_EDGE_CONTRAST, parseHexColour, relativeLuminance, toAeColour,
 } from './image-border.js';
 
 const K2 = {
@@ -139,5 +139,115 @@ describe('which measurement the frame is chosen against', () => {
     expect(after.contrast).toBeGreaterThan(MIN_IMAGE_EDGE_CONTRAST);
     // What the old choice was really worth against what is on screen.
     expect(contrastRatio(relativeLuminance(K2.light), 0.464)).toBeLessThan(2);
+  });
+});
+
+/**
+ * `img_float` has two layers: the picture, and a card behind it showing as a
+ * 40 px border. For a whole picture the border sits against the picture and one
+ * colour is enough. **For a cut-out the picture is transparent**, so the card
+ * shows through the whole square, the frame and the fill become one layer, and
+ * the border cannot be seen — which is what the user saw beside four slots that
+ * had a clear white frame.
+ */
+describe('the two colours a framed picture needs', () => {
+  const K2 = {
+    background: parseHexColour('#1A0000'),
+    primary: parseHexColour('#820000'),
+    accent: parseHexColour('#C9A96E'),
+    light: parseHexColour('#F8F6F2'),
+  };
+
+  it('gives a whole picture one colour, because it is its own fill', () => {
+    const c = cardColours({
+      rendersAsCutout: false,
+      edgeLuminance: 0.0066,
+      subjectLitLuminance: 0.5,
+      palette: K2,
+    });
+    expect(c.fill).toBeNull();
+    expect(c.frame.role).toBe('light');
+    expect(c.meetsMinimum).toBe(true);
+  });
+
+  /* `vitasilk` `img002-c1`, the picture with no border. */
+  it('gives a cut-out a ground of its own, and a frame against that ground', () => {
+    const c = cardColours({
+      rendersAsCutout: true,
+      edgeLuminance: 0,
+      subjectLitLuminance: 0.464,
+      palette: K2,
+    });
+    expect(c.fill?.role).toBe('background');
+    expect(c.frame.role).toBe('light');
+    expect(c.fill?.contrast).toBeGreaterThan(MIN_IMAGE_EDGE_CONTRAST);
+    expect(c.frame.contrast).toBeGreaterThan(MIN_IMAGE_EDGE_CONTRAST);
+    expect(c.meetsMinimum).toBe(true);
+  });
+
+  /* A dark subject wants the opposite pair, which is the rule being per-image. */
+  it('turns the pair around for a dark subject', () => {
+    const c = cardColours({
+      rendersAsCutout: true,
+      edgeLuminance: 0,
+      subjectLitLuminance: 0.0389,
+      palette: K2,
+    });
+    expect(c.fill?.role).toBe('light');
+    expect(c.frame.role).toBe('background');
+  });
+
+  it('never gives the frame the same colour as the fill', () => {
+    for (const subject of [0, 0.05, 0.2, 0.464, 0.7, 0.95, 1]) {
+      const c = cardColours({
+        rendersAsCutout: true,
+        edgeLuminance: 0,
+        subjectLitLuminance: subject,
+        palette: K2,
+      });
+      expect(c.fill?.role, String(subject)).not.toBe(c.frame.role);
+    }
+  });
+
+  /*
+   * Maximising the smaller of the two: a design with one comfortable contrast
+   * and one that fails is a design that fails.
+   */
+  it('maximises the worse of the two contrasts, not their sum', () => {
+    const c = cardColours({
+      rendersAsCutout: true,
+      edgeLuminance: 0,
+      subjectLitLuminance: 0.464,
+      palette: K2,
+    });
+    // background + accent would give the border 8.99 where light gives 18.64;
+    // both clear the minimum, so the larger worse-case wins.
+    expect(Math.min(c.fill?.contrast ?? 0, c.frame.contrast)).toBeCloseTo(9.85, 1);
+  });
+
+  it('says so, and does not settle quietly, when no pair reaches the minimum', () => {
+    const flat = { a: { r: 120, g: 120, b: 120 }, b: { r: 130, g: 130, b: 130 } };
+    const c = cardColours({
+      rendersAsCutout: true,
+      edgeLuminance: 0,
+      subjectLitLuminance: 0.2,
+      palette: flat,
+    });
+    expect(c.meetsMinimum).toBe(false);
+    expect(c.fallback).toContain('best available');
+    // It still returns a pair: a build with no colours is worse than a build
+    // with the closest ones.
+    expect(c.fill).not.toBeNull();
+  });
+
+  it('refuses a palette that cannot supply two colours', () => {
+    expect(() =>
+      cardColours({
+        rendersAsCutout: true,
+        edgeLuminance: 0,
+        subjectLitLuminance: 0.4,
+        palette: { only: { r: 0, g: 0, b: 0 } },
+      }),
+    ).toThrow(/two colours/);
   });
 });

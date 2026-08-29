@@ -151,3 +151,28 @@ export interface SidecarEdgeLuminance {
 export function edgeLuminance(imagePath: string): Promise<SidecarEdgeLuminance> {
   return runSidecar<SidecarEdgeLuminance>({ task: 'edge_luminance', imagePath });
 }
+
+export interface SidecarFlattenedCutout {
+  cutoutPath: string;
+  outPath: string;
+  width: number;
+  height: number;
+  fillRgb: [number, number, number];
+  /** How much of the result is the ground rather than the subject. */
+  groundFraction: number;
+}
+
+/**
+ * Composite a cut-out over a solid colour so it has a ground of its own.
+ *
+ * Without one the card behind it shows through the whole square and the border
+ * cannot be seen — the frame and the fill are the same layer. See `cardColours`
+ * in `@framopia/core` for which colour and why.
+ */
+export function flattenCutout(options: {
+  cutoutPath: string;
+  fillRgb: [number, number, number];
+  outPath: string;
+}): Promise<SidecarFlattenedCutout> {
+  return runSidecar<SidecarFlattenedCutout>({ task: 'flatten_cutout', ...options });
+}

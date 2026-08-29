@@ -4,9 +4,8 @@ import path from 'node:path';
 import {
   REPO_ROOT,
   SUBTITLE_SAFE_WIDTH,
-  cardFrameColour,
+  cardColours,
   dialogueAttenuationDb,
-  frameReferenceLuminance,
   loudestBoundOffsetDb,
   loadMode,
   loadSfxIndex,
@@ -17,7 +16,7 @@ import {
   MIX_CEILING_DBFS,
   toAeColour,
 } from '@framopia/core';
-import { edgeLuminance } from '../images/sidecar.js';
+import { edgeLuminance, flattenCutout } from '../images/sidecar.js';
 import { readEditPlan } from '../editplan/io.js';
 import { runBuildReel } from './drive.js';
 import { imageSize } from './image-size.js';
@@ -314,19 +313,42 @@ if (modeId === undefined) {
   for (const e of built.elements) {
     if (e.kind !== 'image' || e.imagePath === undefined) continue;
     const slot = plan.images.slots.find((s) => s.id === e.id);
+    const rendersAsCutout = slot?.presentation === 'cutout';
     const measurement = await edgeLuminance(e.imagePath);
-    const reference = frameReferenceLuminance({
-      rendersAsCutout: slot?.presentation === 'cutout',
+    const colours = cardColours({
+      rendersAsCutout,
       edgeLuminance: measurement.meanLuminance,
       subjectLitLuminance: measurement.subjectLitLuminance,
+      palette,
     });
-    const frame = cardFrameColour({ edgeLuminance: reference.luminance, palette });
-    e.cardColor = toAeColour(frame.colour);
-    console.log(
-      `${e.id}: ${reference.measured} measures ${reference.luminance.toFixed(4)} -> ` +
-        `frame ${frame.role} at ${frame.contrast.toFixed(2)}:1` +
-        (frame.meetsMinimum ? '' : ' — BELOW the 3:1 minimum, best available'),
-    );
+    e.cardColor = toAeColour(colours.frame.colour);
+
+    /*
+     * A cut-out is composited onto its chosen ground before it is placed, so
+     * the card behind it stays a border instead of showing through the whole
+     * square. The flattened file is a build artefact beside the cutout; the
+     * cutout itself is untouched.
+     */
+    if (colours.fill !== null) {
+      const flat = await flattenCutout({
+        cutoutPath: e.imagePath,
+        fillRgb: [colours.fill.colour.r, colours.fill.colour.g, colours.fill.colour.b],
+        outPath: e.imagePath.replace(/\.png$/i, '.on-fill.png'),
+      });
+      e.imagePath = flat.outPath;
+      console.log(
+        `${e.id}: cut out, so it sits on ${colours.fill.role} at ` +
+          `${colours.fill.contrast.toFixed(2)}:1 and the frame is ${colours.frame.role} at ` +
+          `${colours.frame.contrast.toFixed(2)}:1` +
+          (colours.fallback === null ? '' : ` — ${colours.fallback}`),
+      );
+    } else {
+      console.log(
+        `${e.id}: the picture's own edge measures ${measurement.meanLuminance.toFixed(4)} -> ` +
+          `frame ${colours.frame.role} at ${colours.frame.contrast.toFixed(2)}:1` +
+          (colours.fallback === null ? '' : ` — ${colours.fallback}`),
+      );
+    }
   }
 }
 

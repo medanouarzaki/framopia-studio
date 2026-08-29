@@ -678,3 +678,56 @@ the voice where the rule says 3.00**.
 too quiet the number to move is `SFX_TARGET_OFFSET_DB.whoosh`, not the
 attenuation — and it is a single edit.
 
+### A cut-out needs a ground, or the card is both frame and fill — 2026-08-29
+
+**`img_float` has exactly two layers:** `IMG_MAIN`, the picture, 1000 px; and
+`CARD` behind it, 1080 px, which shows as a **40 px border**. The builder paints
+`CARD` with a Fill effect, and that is the frame.
+
+**For a whole picture that works.** The picture is opaque, so the border sits
+against it and one colour choice is enough.
+
+**For a cut-out it cannot.** The picture is transparent everywhere but the
+subject, so `CARD` shows through the whole 1080 px square: **the frame and the
+fill are the same layer**, their contrast is 1.00:1 by construction, and there
+is no border to see. That is what the user saw — `img002` a dark red square with
+a bottle on it and no border, beside four slots with a clear white frame.
+Session 34 chose a frame that contrasts with the subject, which satisfied one
+constraint of two.
+
+**So a cut-out is given a ground of its own**, composited before it is placed by
+the sidecar's `flatten_cutout`. `IMG_MAIN` is then opaque, `CARD` is a border
+again, and two contrasts have to hold — both WCAG 2.1's 3:1, unchanged:
+
+- the **subject** against its **fill**;
+- the **frame** against that **fill**.
+
+`cardColours` in `core/src/image-border.ts` searches the palette for the pair
+maximising the **smaller** of the two, because a design with one comfortable
+contrast and one that fails is a design that fails. Ties break on role name so
+the choice does not depend on the order the palette is written in. **Nothing
+about the template changes**, the cutout file on disk is untouched, and the
+flattened picture is a build artefact beside it.
+
+| candidate | renders | measured | fill | subject | frame | border |
+|---|---|---:|---|---:|---|---:|
+| img001-c1 | whole | 0.0066 | — | — | light | 17.18:1 |
+| img001-c2 | whole | 0.0027 | — | — | light | 18.44:1 |
+| **img002-c1** | **cut out** | **0.4640** | **background** | **9.85:1** | **light** | **18.64:1** |
+| img002-c2 | cut out | 0.0389 | light | 10.94:1 | background | 18.64:1 |
+| img003-c1 | whole | 0.0266 | — | — | light | 12.70:1 |
+| img003-c2 | whole | 0.0053 | — | — | light | 17.60:1 |
+| img004-c1 | whole | 0.0019 | — | — | light | 18.74:1 |
+| img004-c2 | whole | 0.0083 | — | — | light | 16.67:1 |
+| img005-c1 | whole | 0.0257 | — | — | light | 12.85:1 |
+| img005-c2 | whole | 0.0101 | — | — | light | 16.19:1 |
+
+**All ten clear both minimums.** The one that is built, `img002-c1`, gets a dark
+ground and a **light frame — the same frame the other four have**. `img002-c2`
+takes the pair the other way round because its subject is dark, which is the
+rule being per-image rather than per-slot.
+
+**When no pair reaches 3:1 on both**, the closest pair is used and
+`CardColours.fallback` says so in words rather than settling quietly. No
+candidate in this corpus needs it.
+

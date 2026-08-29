@@ -134,3 +134,97 @@ export function frameReferenceLuminance(options: {
   }
   return { luminance: options.edgeLuminance, measured: 'the picture’s own edge' };
 }
+
+export interface CardColours {
+  /**
+   * The ground the subject sits on, when the picture does not bring one — a
+   * cut-out. Null for a whole picture, which is its own fill.
+   */
+  fill: CardFrame | null;
+  /** The card's border. */
+  frame: CardFrame;
+  /** True when every contrast the design needs reaches the minimum. */
+  meetsMinimum: boolean;
+  /** Said out loud when it does not, rather than quietly settling. */
+  fallback: string | null;
+}
+
+/**
+ * The two colours a framed picture needs, and why there are two.
+ *
+ * `img_float` has exactly two layers: the picture, and a card behind it that
+ * shows as a 40 px border. **For a whole picture that reads as a frame** — the
+ * border sits against the picture, and one colour choice is enough.
+ *
+ * **For a cut-out it does not.** The picture is transparent, so the card shows
+ * through the whole square and the frame and the fill become the same layer;
+ * the border cannot be seen because there is nothing else in the square. That
+ * is what the user saw: a dark red square with a bottle on it and no border,
+ * beside four slots with a clear white frame. Choosing a frame that contrasts
+ * with the subject — Block 8 session 34 — satisfied one constraint of two.
+ *
+ * So a cut-out is given a ground of its own, and two contrasts have to hold:
+ * the **subject against the fill**, and the **frame against the fill**. Both
+ * are WCAG 2.1's 3:1 for a non-text boundary, unchanged. The pair is chosen to
+ * maximise the *smaller* of the two, because a design with one comfortable
+ * contrast and one that fails is a design that fails.
+ */
+export function cardColours(options: {
+  rendersAsCutout: boolean;
+  edgeLuminance: number;
+  subjectLitLuminance: number | null;
+  palette: Record<string, Rgb>;
+}): CardColours {
+  const reference = frameReferenceLuminance(options);
+
+  if (!options.rendersAsCutout || options.subjectLitLuminance === null) {
+    const frame = cardFrameColour({ edgeLuminance: reference.luminance, palette: options.palette });
+    return {
+      fill: null,
+      frame,
+      meetsMinimum: frame.meetsMinimum,
+      fallback: frame.meetsMinimum
+        ? null
+        : 'no colour in the palette separates from this picture; the closest is used',
+    };
+  }
+
+  const entries = Object.entries(options.palette);
+  if (entries.length < 2) throw new Error('cardColours: two colours are needed for a cut-out');
+
+  let best: { fill: CardFrame; frame: CardFrame; worst: number } | null = null;
+  for (const [fillRole, fillColour] of entries) {
+    const fillLuminance = relativeLuminance(fillColour);
+    const subject = contrastRatio(fillLuminance, options.subjectLitLuminance);
+    for (const [frameRole, frameColour] of entries) {
+      if (frameRole === fillRole) continue;
+      const border = contrastRatio(relativeLuminance(frameColour), fillLuminance);
+      const worst = Math.min(subject, border);
+      // Ties break on role name so the choice is total and does not depend on
+      // the order the palette happens to be written in.
+      const better =
+        best === null ||
+        worst > best.worst + 1e-9 ||
+        (Math.abs(worst - best.worst) <= 1e-9 &&
+          `${fillRole}/${frameRole}`.localeCompare(`${best.fill.role}/${best.frame.role}`) < 0);
+      if (!better) continue;
+      best = {
+        fill: { role: fillRole, colour: fillColour, contrast: subject, meetsMinimum: subject >= MIN_IMAGE_EDGE_CONTRAST },
+        frame: { role: frameRole, colour: frameColour, contrast: border, meetsMinimum: border >= MIN_IMAGE_EDGE_CONTRAST },
+        worst,
+      };
+    }
+  }
+
+  const chosen = best as { fill: CardFrame; frame: CardFrame; worst: number };
+  const meetsMinimum = chosen.worst >= MIN_IMAGE_EDGE_CONTRAST;
+  return {
+    fill: chosen.fill,
+    frame: chosen.frame,
+    meetsMinimum,
+    fallback: meetsMinimum
+      ? null
+      : `no pair in the palette gives both the subject and the border ${MIN_IMAGE_EDGE_CONTRAST}:1; ` +
+        `the best available is ${chosen.worst.toFixed(2)}:1`,
+  };
+}

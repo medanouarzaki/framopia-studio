@@ -98,6 +98,15 @@ def _detect_text(request: dict) -> dict:
     }
 
 
+def _flatten_cutout(request: dict) -> dict:
+    from .flatten_cutout import flatten_cutout
+
+    rgb = request["fillRgb"]
+    payload = flatten_cutout(request["cutoutPath"], (rgb[0], rgb[1], rgb[2]), request["outPath"])
+    payload.update({"ok": True, "task": "flatten_cutout"})
+    return payload
+
+
 def _edge_luminance(request: dict) -> dict:
     from .edge_luminance import edge_luminance
 
@@ -365,6 +374,7 @@ TASKS = {
     "remove_bg": _remove_bg,
     "detect_text": _detect_text,
     "edge_luminance": _edge_luminance,
+    "flatten_cutout": _flatten_cutout,
     "segment_person": _segment_person,
     "segment_overlay": _segment_overlay,
     "compute_zones": _compute_zones,

@@ -162,6 +162,7 @@ export {
   type SfxLevel,
 } from './sfx-level.js';
 export {
+  cardColours,
   cardFrameColour,
   contrastRatio,
   frameReferenceLuminance,
@@ -169,6 +170,7 @@ export {
   parseHexColour,
   relativeLuminance,
   toAeColour,
+  type CardColours,
   type CardFrame,
   type FrameReference,
   type Rgb,

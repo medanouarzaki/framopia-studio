@@ -2,8 +2,8 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import {
-  cardFrameColour, frameReferenceLuminance, loadMode, MIN_IMAGE_EDGE_CONTRAST,
-  parseHexColour, REPO_ROOT,
+  cardColours, cardFrameColour, frameReferenceLuminance, loadMode,
+  MIN_IMAGE_EDGE_CONTRAST, parseHexColour, REPO_ROOT,
 } from '@framopia/core';
 import { edgeLuminance, SIDECAR_PYTHON } from './images/sidecar.js';
 import { readEditPlan } from './editplan/io.js';
@@ -97,6 +97,35 @@ describe.skipIf(!existsSync(SIDECAR_PYTHON))('the frame colour, on the real pict
       cardFrameColour({ edgeLuminance: ref.luminance, palette: { light: palette['light'] as never } })
         .contrast,
     ).toBeLessThan(2);
+  });
+
+  /*
+   * The card is both the border and the ground for a cut-out, so a frame chosen
+   * only against the subject left no border to see. Two contrasts have to hold
+   * now: the subject against its ground, and the border against that ground.
+   */
+  it('gives every cut-out a ground and a border that both clear the minimum', () => {
+    for (const m of measured.filter((x) => x.rendersAsCutout)) {
+      const c = cardColours({ ...m, palette });
+      const where = `${m.slotId}/${m.candidateId}`;
+      expect(c.fill, where).not.toBeNull();
+      expect(c.fill?.role, where).not.toBe(c.frame.role);
+      expect(c.fill?.contrast, where).toBeGreaterThanOrEqual(MIN_IMAGE_EDGE_CONTRAST);
+      expect(c.frame.contrast, where).toBeGreaterThanOrEqual(MIN_IMAGE_EDGE_CONTRAST);
+      expect(c.meetsMinimum, where).toBe(true);
+      expect(c.fallback, where).toBeNull();
+    }
+  });
+
+  /* The one that is built, and the one he was looking at. */
+  it('puts the serum bottle on a dark ground inside a light frame', () => {
+    const m = measured.find((x) => x.candidateId === 'img002-c1') as Measured;
+    const c = cardColours({ ...m, palette });
+    expect(c.fill?.role).toBe('background');
+    expect(c.frame.role).toBe('light');
+    // Which is what the other four already look like.
+    const whole = measured.find((x) => !x.rendersAsCutout) as Measured;
+    expect(cardColours({ ...whole, palette }).frame.role).toBe('light');
   });
 
   it('leaves every whole picture on the frame it already had', () => {
