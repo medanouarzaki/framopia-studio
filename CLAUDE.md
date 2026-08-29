@@ -296,6 +296,10 @@ AI-generated contextual images, SFX, and a watermark. Full spec in
   analysis stage already wrote** (`keywords-prompt-v3-k2-syndicalia-v5`) rather
   than guessed. A plan whose analysis never ran is left null. Dry run by
   default; asserts it changed only `meta` and `clientMode`.
+- `tools/ae/measure-widths.jsx` — free, local, driven over `DoScript`. How wide a
+  given string sets in a given face at a given size, from `sourceRectAtTime`.
+  Takes an options file and writes a result file; shows no dialog. Adds one
+  temporary comp to the open project and removes it; **never saves**.
 - `tools/ae/measure-fonts.jsx` — free, local. A session drives it over
   AppleScript `DoScript` (`framopiaDriven` set, `quiet` true); a person can also
   run it from File > Scripts > Run Script File and gets a message box. Lists what After Effects has for each of the
@@ -924,8 +928,18 @@ x-height wins because **the corpus is lowercase** — one Arabizi or French word
 per card — and advance width, an independent measure of the same thing, lands
 within 1.2% of it. Cap height is the outlier because Cormorant is an old-style
 face whose capitals are large against its lowercase. Two measures agreeing
-against one is the reason. **The consistency gate passed**: the one-word and
-phrase samples are 1.234% apart, against a 3% limit.
+against one is the reason.
+
+**The gate is `chooseRatio` in `core/src/font-ratios.ts`, and it tests the
+quantity that is written.** Session 5 reported "one word 1.35622 against phrase
+1.37296, 1.234% apart, passed" beside a written value of 1.3479 — which lies
+outside both, because those are **advance widths** and the value is an
+**x-height**. The gate passed and had tested nothing about the number next to
+it. What it checks now: the chosen quantity is the same at both sizes, and an
+independent quantity agrees within 3%. x-height 1.34790 against advance 1.35622
+is **0.617% apart**. The same gate **refuses cap height**, 16.5% from advance,
+and refuses an advance corroboration taken on different strings — which is the
+Arabic case, where Inter was measured on `glow` and Almarai on `شنو`.
 
 **`ARABIC_SIZE_RATIO` stays 1.07 and was not overwritten.** The metrics do not
 reproduce it — cap height gives 1.0161 and x-height 1.0300 — but 1.07 came from
@@ -936,8 +950,56 @@ is sized against the ordinary Latin face, and an Arabic keyword takes
 `kw_slam_ar`, which is Almarai again, so the emphasis face never sits beside
 Arabic.
 
-**Nothing sets a font or a colour on a text layer yet.** Type still comes from
-the template comps.
+### The build sets the face and the colour on the placeholder
+
+**Since Block 9 session 6.** `textStyleFor` in `service/src/build/text-style.ts`
+is the one declaration; `framopiaSetText` in `panel/jsx/text-fit.jsx` writes
+`font`, `fontSize` and `fillColor` **in the same `setValue`** — a TextDocument
+read from a property is a copy, so writing it back twice discards the first
+write — and `applyFill` must be true or the colour is carried and not drawn.
+
+Populating a placeholder is what the ExtendScript contract already covers. The
+alternative is a hand-made copy of six comps per client, which is six chances
+for them to differ.
+
+| card | face | size | colour |
+|---|---|---|---|
+| ordinary Latin | `Inter-SemiBold` | the template's | crème `#F8F6F2` |
+| emphasized Latin | `CormorantGaramondItalic-SemiBoldItalic` | **template × `EMPHASIS_SIZE_RATIO`** | gold `#C9A96E` |
+| ordinary Arabic | `Almarai-Bold` | the template's | crème |
+| emphasized Arabic | `Almarai-Bold` | the template's | gold |
+
+**A size only travels when it has to.** The comps already carry 343 and 425, and
+367 and 455 for the `_ar` variants — which is `ARABIC_SIZE_RATIO` applied by
+hand when they were authored. The emphasis face is the one nothing anticipated,
+so it is the only case where the build overrides the size; without it Cormorant
+would render at Inter's nominal size and read smaller than the words around it.
+
+**The emphasis face is Latin and has no Arabic**, so an emphasized Arabic word
+is gold Almarai rather than gold Cormorant.
+
+**A client with no measured font names gets no style at all** and its templates'
+own type is left exactly as it was. Never a guessed name: After Effects accepts
+one it cannot resolve and substitutes silently, so a guess would not fail — it
+would set the wrong type. Pinned by `text-style.test.ts`.
+
+`--emphasis-ratio` on `npm run build:reel` overrides the ratio for one build, so
+one reel can be built at two of them and looked at side by side. Nothing in the
+pipeline passes it.
+
+### An empty untitled project holds no work
+
+`build-reel.jsx` refuses to replace a project with unsaved changes, and **any
+script that adds a temporary comp and removes it leaves the project modified** —
+the flag is read-only from a script and cannot be put back. Session 6's own font
+measurement put the user's empty project in that state and then could not build
+into it.
+
+So a project that is **dirty, has never been written to disk, and has
+`numItems === 0`** is proceeded past. This is not the "unreadable dirty counts
+as dirty" case: `numItems` is read, and an unreadable count is `-1`, which the
+condition cannot satisfy. One item, or a file on disk, keeps the refusal.
+`core/src/audit-safety.test.ts` pins it.
 
 ### No script the host evaluates may discard unsaved work
 
