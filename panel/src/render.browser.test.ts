@@ -599,7 +599,18 @@ function stubRoutes(steps: unknown, resumeAt: string): string {
       watermark: true, watermarkSize: 'medium',
       watermarkWidthsPx: { small: 216, medium: 324, large: 432 },
     },
-    steps: { reel: 'vitasilk', planPath: '/v/p.json', steps, resumeAt },
+    steps: {
+      reel: 'vitasilk', planPath: '/v/p.json', steps, resumeAt,
+      build: {
+        reel: 'vitasilk', planPath: '/v/p.json',
+        modeId: 'k2-syndicalia', modeName: 'K2 Syndicalia', modeSource: 'the plan',
+        outputPath: '/repo/.local/build/vitasilk-full.aep',
+        subtitleCards: 68, keywords: 3, images: 5, sfxEvents: 4,
+        watermark: { size: 'medium', widthPx: 324, heightPx: 363 },
+        fonts: { latin: 'Inter Semi-Bold', arabic: 'Almarai Bold', globalFallback: true },
+        free: true,
+      },
+    },
     keywords: {
       reel: 'vitasilk', planPath: '/v/p.json', keywords: [], promotable: [],
       emptyReason: 'Keyword analysis has not run for this reel yet.',
@@ -2339,6 +2350,169 @@ describe.skipIf(!built)('watermark size', () => {
       expect(await loaded.page.$$('.watermark .sizes button')).toHaveLength(0);
       expect(await loaded.page.$$('.watermark input[type="checkbox"]')).toHaveLength(1);
       expect(loaded.uncaught).toEqual([]);
+    } finally {
+      await loaded.page.close();
+    }
+  }, 30_000);
+});
+
+/*
+ * Step 5, the Build control. It drives the After Effects the panel is running
+ * inside, so nothing here presses it against a real service — these assert what
+ * the pane says before, during and after, which is what the user reads.
+ */
+function stubBuildJob(state: 'running' | 'done' | 'refused'): string {
+  const stages = [
+    { id: 'prepare', label: 'Read the plan and resolve everything it names', state: 'done' },
+    { id: 'after-effects', label: 'Build the composition in After Effects', state: state === 'running' ? 'running' : 'done' },
+    { id: 'check', label: 'Check the built comp against the plan', state: state === 'done' ? 'done' : 'waiting' },
+  ];
+  const detail = {
+    reel: 'vitasilk', planPath: '/v/p.json', stages,
+    percent: state === 'done' ? 1 : 0.33,
+    done: state === 'done',
+    savePath: state === 'done' ? '/repo/.local/build/vitasilk-full.aep' : null,
+    savedOwnOutput: state === 'done' ? '/repo/.local/build/vitasilk-full.aep' : null,
+    wallS: state === 'done' ? 1.3 : null,
+    error: null,
+  };
+  const job = {
+    id: 'job-1',
+    status: state === 'running' ? 'running' : state === 'done' ? 'done' : 'error',
+    progress: detail.percent,
+    detail,
+    ...(state === 'refused'
+      ? {
+          error:
+            'build refused at start: the open After Effects project has unsaved changes: ' +
+            '/Users/x/mine.aep. This will not close it. Save or close it yourself, then run it again.',
+        }
+      : {}),
+  };
+  return `window.__job = () => (${JSON.stringify(job)});`;
+}
+
+describe.skipIf(!built)('the Build step', () => {
+  async function openBuild(jobState?: 'running' | 'done' | 'refused'): Promise<Loaded | null> {
+    const loaded = await loadFlow(
+      'build',
+      'build',
+      420,
+      jobState === undefined ? undefined : stubBuildJob(jobState),
+    );
+    if (loaded === null) return null;
+    await loaded.page.click('nav.rail li:nth-child(5) button');
+    await loaded.page.waitForSelector('.buildpane', { timeout: 5000 });
+    return loaded;
+  }
+
+  it('says what will be built, where it goes, and that it is free', async () => {
+    const loaded = await openBuild();
+    if (loaded === null) return;
+    try {
+      const text = (await loaded.page.textContent('.buildpane')) ?? '';
+      expect(text).toContain('K2 Syndicalia');
+      expect(text).toContain('the client recorded on the plan');
+      expect(text).toContain('68 subtitle cards');
+      expect(text).toContain('3 emphasised keywords');
+      expect(text).toContain('5 images');
+      expect(text).toContain('4 sounds');
+      expect(text).toContain('Watermark medium, 324 × 363 px');
+      expect(text).toContain('Inter Semi-Bold');
+      expect(text).toContain('/repo/.local/build/vitasilk-full.aep');
+      expect(text).toContain('Building is free');
+      // A field name is not a label.
+      expect(text).not.toContain('planPath');
+      expect(text).not.toContain('savePath');
+      expect(loaded.uncaught).toEqual([]);
+    } finally {
+      await loaded.page.close();
+    }
+  }, 30_000);
+
+  it('runs the build and shows the stages going past', async () => {
+    const loaded = await openBuild('running');
+    if (loaded === null) return;
+    try {
+      await loaded.page.click('button.build-now');
+      await loaded.page.waitForSelector('.buildpane ol.stages li.running', { timeout: 5000 });
+      const labels = await loaded.page.$$eval('.buildpane ol.stages li', (els) =>
+        els.map((e) => `${e.className}|${e.textContent ?? ''}`),
+      );
+      expect(labels).toEqual([
+        'done|Read the plan and resolve everything it names',
+        'running|Build the composition in After Effects',
+        'waiting|Check the built comp against the plan',
+      ]);
+      expect(await loaded.page.textContent('button.build-now')).toContain('Building');
+      expect(loaded.uncaught).toEqual([]);
+    } finally {
+      await loaded.page.close();
+    }
+  }, 30_000);
+
+  it('names the file it wrote, and does not offer to open it', async () => {
+    const loaded = await openBuild('done');
+    if (loaded === null) return;
+    try {
+      await loaded.page.click('button.build-now');
+      await loaded.page.waitForSelector('.buildpane [role="status"]', { timeout: 5000 });
+      const text = (await loaded.page.textContent('.buildpane')) ?? '';
+      expect(text).toContain('Built in 1.3s');
+      expect(text).toContain('Saved to /repo/.local/build/vitasilk-full.aep');
+      expect(text).toContain('Nothing was rendered');
+      expect(text).toContain('your previous build was open'.replace('your', 'Your'));
+      expect(loaded.uncaught).toEqual([]);
+    } finally {
+      await loaded.page.close();
+    }
+  }, 30_000);
+
+  /* The guard's refusal is an instruction, and reaches him as one. */
+  it('shows the unsaved-changes refusal as a sentence he can act on', async () => {
+    const loaded = await openBuild('refused');
+    if (loaded === null) return;
+    try {
+      await loaded.page.click('button.build-now');
+      await loaded.page.waitForSelector('.buildpane [role="alert"]', { timeout: 5000 });
+      const text = (await loaded.page.textContent('.buildpane [role="alert"]')) ?? '';
+      expect(text).toContain('unsaved changes');
+      expect(text).toContain('/Users/x/mine.aep');
+      expect(text).toContain('Save or close it yourself');
+      expect(loaded.uncaught).toEqual([]);
+    } finally {
+      await loaded.page.close();
+    }
+  }, 30_000);
+
+  /* A service older than the preview must not have one invented for it. */
+  it('says so when the service is too old to describe the build', async () => {
+    const loaded = await loadFlow(
+      'build', 'build', 420, 'delete window.__payload.steps.build;',
+    );
+    if (loaded === null) return;
+    try {
+      await loaded.page.click('nav.rail li:nth-child(5) button');
+      await loaded.page.waitForSelector('.buildpane', { timeout: 5000 });
+      const text = (await loaded.page.textContent('.buildpane')) ?? '';
+      expect(text).toContain('older than the Build control');
+      expect(await loaded.page.$eval('button.build-now', (b) => (b as HTMLButtonElement).disabled)).toBe(true);
+      expect(loaded.uncaught).toEqual([]);
+    } finally {
+      await loaded.page.close();
+    }
+  }, 30_000);
+
+  /* PROJECT_SPEC §6 spends the brand red on Run pipeline alone. */
+  it('does not paint Build in the brand accent', async () => {
+    const loaded = await openBuild();
+    if (loaded === null) return;
+    try {
+      const colours = await loaded.page.$eval('button.build-now', (el) => {
+        const s = getComputedStyle(el);
+        return `${s.backgroundColor}|${s.borderTopColor}|${s.color}`;
+      });
+      expect(colours).not.toContain('237, 28, 36');
     } finally {
       await loaded.page.close();
     }

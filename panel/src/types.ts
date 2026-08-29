@@ -176,6 +176,8 @@ export interface PlanSteps {
   reel: string;
   planPath: string | null;
   steps: StepState[];
+  /** Absent from a service older than the Build control. Never assumed. */
+  build?: BuildPreview;
 }
 
 /** How a pipeline stage is going, as the service reports it. */
@@ -223,6 +225,54 @@ export interface PipelineJob {
   progress: number;
   error?: string;
   detail?: PipelineProgress;
+}
+
+/** A build job, the same shape as a pipeline job with its own detail. */
+export interface BuildJob {
+  id: string;
+  status: 'pending' | 'running' | 'done' | 'error';
+  progress: number;
+  error?: string;
+  detail?: BuildProgress;
+}
+
+export interface BuildStageReport {
+  id: string;
+  label: string;
+  state: 'waiting' | 'running' | 'done';
+}
+
+export interface BuildProgress {
+  reel: string;
+  planPath: string;
+  stages: BuildStageReport[];
+  percent: number;
+  done: boolean;
+  savePath: string | null;
+  savedOwnOutput: string | null;
+  wallS: number | null;
+  error: string | null;
+}
+
+/**
+ * What pressing Build would do. Optional: a service older than this sends
+ * nothing, and the pane then shows what it always did rather than inventing an
+ * output path or a cost.
+ */
+export interface BuildPreview {
+  reel: string;
+  planPath: string;
+  modeId: string;
+  modeName: string;
+  modeSource: 'the plan' | 'the picker';
+  outputPath: string;
+  subtitleCards: number;
+  keywords: number;
+  images: number;
+  sfxEvents: number;
+  watermark: { size: WatermarkSize; widthPx: number; heightPx: number } | null;
+  fonts: { latin: string; arabic: string; globalFallback: boolean };
+  free: true;
 }
 
 export interface TranscriptWordView {

@@ -1,6 +1,6 @@
 import { NODE_NOT_FOUND_HELP } from '@framopia/core/node-path';
 import type {
-  ImagesView, WatermarkSize, ClientMode, DryRunPlan, HealthPayload, Reel, ServiceError, PlanSteps , ServiceOrigin , PipelineJob , TranscriptView, TranscriptWordView, TranscriptCardView , KeywordsView } from './types.js';
+  ImagesView, WatermarkSize, BuildJob, ClientMode, DryRunPlan, HealthPayload, Reel, ServiceError, PlanSteps , ServiceOrigin , PipelineJob , TranscriptView, TranscriptWordView, TranscriptCardView , KeywordsView } from './types.js';
 
 /**
  * The panel's half of the ARCHITECTURE §1.3 handshake: the service binds
@@ -288,6 +288,32 @@ export async function startPipeline(
 
 export async function fetchJob(connection: Connection, id: string): Promise<PipelineJob> {
   return await getJson<PipelineJob>(connection, `/jobs/${encodeURIComponent(id)}`);
+}
+
+/**
+ * Build the reel. The service spawns the same CLI a terminal would, which
+ * drives the running After Effects; this returns as soon as the job exists.
+ */
+export async function startBuild(
+  connection: Connection,
+  params: { reel: string; planPath: string; mode?: string },
+): Promise<string> {
+  const res = await fetch(`http://127.0.0.1:${connection.port}/jobs`, {
+    method: 'POST',
+    headers: { 'x-service-token': connection.token, 'content-type': 'application/json' },
+    body: JSON.stringify({ type: 'build', params }),
+  });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as Partial<ServiceError>;
+    throw new Error(body.cause ?? body.error ?? `HTTP ${res.status} starting the build`);
+  }
+  const body = (await res.json()) as { id?: string };
+  if (typeof body.id !== 'string') throw new Error('the service started a build without an id');
+  return body.id;
+}
+
+export async function fetchBuildJob(connection: Connection, id: string): Promise<BuildJob> {
+  return await getJson<BuildJob>(connection, `/jobs/${encodeURIComponent(id)}`);
 }
 
 export async function fetchTranscript(

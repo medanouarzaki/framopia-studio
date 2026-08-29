@@ -11,6 +11,7 @@ import {
   startPipeline,
   type Connection,
 } from './service.js';
+import { Build } from './Build.js';
 import { nodeMatch } from './node-match.js';
 import { isWide, observeWidth } from './panel-width.js';
 import { Transcript } from './Transcript.js';
@@ -461,7 +462,7 @@ function Panel({
           view={views.find((v) => v.id === step) as StepView}
           onBack={() => goTo(previousStep(step))}
         >
-          {stepContent(step, connection, reel?.label ?? null)}
+          {stepContent(step, connection, reel?.label ?? null, plan, views)}
         </StepPane>
       )}
     </div>
@@ -516,10 +517,23 @@ function stepContent(
   step: StepId,
   connection: Connection | null,
   reel: string | null,
+  plan: PlanSteps | null,
+  views: StepView[],
 ): JSX.Element | null {
   if (step === 'transcript') return <Transcript connection={connection} reel={reel} />;
   if (step === 'keywords') return <Keywords connection={connection} reel={reel} />;
   if (step === 'images') return <Images connection={connection} reel={reel} />;
+  if (step === 'build') {
+    const view = views.find((v) => v.id === 'build');
+    return (
+      <Build
+        connection={connection}
+        preview={plan?.build}
+        disabled={view?.available !== true}
+        disabledReason={view?.reason ?? null}
+      />
+    );
+  }
   return null;
 }
 
@@ -529,9 +543,14 @@ function previousStep(step: StepId): StepId {
 }
 
 /**
- * A step that is not built yet. It says what will live there and shows the
- * real figures the plan already carries — never a mock of the screen to come,
- * which would read as a feature that exists and does nothing.
+ * A step's frame: its heading, a Back control, and the step itself when there is
+ * one to show.
+ *
+ * When a step cannot be opened it shows what will live there and the real
+ * figures the plan already carries — never a mock of the screen to come, which
+ * would read as a feature that exists and does nothing. **All five steps are
+ * built as of session 38**, so this state means "not ready for this reel", and
+ * the reason says why.
  */
 function StepPane({
   view,
@@ -579,7 +598,6 @@ function StepPane({
               ))}
             </ul>
           )}
-          <p className="note">This step is not built yet.</p>
         </div>
         <button className="back" type="button" onClick={onBack}>
           Back

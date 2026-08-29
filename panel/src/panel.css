@@ -466,3 +466,59 @@ ol.keywords { list-style: none; margin: 14px 0 0; padding: 0; }
 .where .wactions {
   margin-top: 4px;
 }
+
+/* Step 5, the Build pane. */
+.buildpane .card {
+  margin-bottom: 12px;
+}
+
+.buildpane button.build-now {
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  padding: 8px 16px;
+}
+
+.buildpane button.build-now:disabled {
+  color: var(--faint);
+  cursor: default;
+}
+
+.buildpane button.build-now:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+
+.buildpane ol.stages {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+}
+
+.buildpane ol.stages li {
+  align-items: center;
+  color: var(--faint);
+  display: flex;
+  font-size: 12px;
+  gap: 8px;
+  padding: 3px 0;
+}
+
+.buildpane ol.stages li.running,
+.buildpane ol.stages li.done {
+  color: var(--text);
+}
+
+.buildpane ol.stages .state {
+  background: var(--line);
+  border-radius: 50%;
+  flex: none;
+  height: 8px;
+  width: 8px;
+}
+
+.buildpane ol.stages li.running .state { background: var(--warn); }
+.buildpane ol.stages li.done .state { background: var(--ok); }

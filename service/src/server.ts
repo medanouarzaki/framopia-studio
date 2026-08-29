@@ -28,8 +28,9 @@ import {
   KeywordViewError,
   removeKeyword,
 } from './keyword-view.js';
-// Imported for its side effect: registering the pipeline job runner.
+// Imported for their side effect: registering the pipeline and build job runners.
 import './pipeline.js';
+import './build/job.js';
 import { health } from './health.js';
 import { clearHandshake, inspectLock, SERVICE_JSON_PATH, writeHandshake } from './lock.js';
 

@@ -19,6 +19,7 @@ import {
 import { edgeLuminance, flattenCutout } from '../images/sidecar.js';
 import { readEditPlan } from '../editplan/io.js';
 import { runBuildReel } from './drive.js';
+import { emitBuildStage } from './stages.js';
 import { imageSize } from './image-size.js';
 import { canvasScalePercent, contentBoxes } from './content-box.js';
 import { assertAllPlaced, assertPathsPresent, type PathRef } from './preflight.js';
@@ -55,6 +56,7 @@ if (planArg === undefined) {
 const planPath = resolveUserPath(planArg);
 const outArg = flag('out');
 
+emitBuildStage('prepare');
 const plan = await readEditPlan(planPath);
 const reel = path.basename(planPath).replace('.editplan.json', '').replace(/\s+/g, '_');
 const audit = (JSON.parse(readFileSync(AUDIT_PATH, 'utf8')) as { comps?: AuditComp[] }).comps ?? [];
@@ -471,6 +473,7 @@ console.log(
       `${dialogueGainDb.toFixed(2)} dB, leaving ${MIX_CEILING_DBFS} dBFS for the mix`,
 );
 
+emitBuildStage('after-effects');
 const result = runBuildReel({
   footagePath: plan.source.videoPath,
   /*
@@ -512,6 +515,7 @@ const result = runBuildReel({
       : resolveUserPath(outArg),
 });
 const wallS = (Date.now() - startedAt) / 1000;
+emitBuildStage('check');
 
 if (result.ok && typeof result['savedOwnOutput'] === 'string') {
   console.log(`\nsaved the previous build that was open: ${String(result['savedOwnOutput'])}`);
@@ -581,4 +585,12 @@ if (result.ok) {
 }
 
 console.log(`\nbuild wall clock ${wallS.toFixed(1)}s`);
-if (!result.ok) process.exit(1);
+if (!result.ok) {
+  /*
+   * One clean sentence on stderr as well as the JSON above. The unsaved-changes
+   * refusal is written for a person to act on, and until now it reached one
+   * only inside a pretty-printed object; the panel shows this line verbatim.
+   */
+  console.error(`\nbuild refused at ${result.stage}: ${result.message}`);
+  process.exit(1);
+}
