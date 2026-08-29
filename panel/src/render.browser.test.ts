@@ -682,6 +682,24 @@ const VITASILK_DRY_STAGES = [
   },
 ];
 
+/*
+ * Real files, and that is load-bearing.
+ *
+ * `Images.tsx` removes the picture from the DOM when the browser fails to load
+ * it — `onError` sets `unreadable` and the "could not display it" sentence
+ * replaces the `img`. Fixtures pointing at `/v/…`, which is nowhere, therefore
+ * raced that removal: the assertions passed only when they ran before the error
+ * arrived, and on an idle machine two runs in three failed. These are files
+ * that exist, so the error never fires and the ready branch is what is under
+ * test. The path has spaces in it, which is also the real case.
+ */
+const CUTOUTS = path.join(REPO, 'my files', 'test videos', 'cutouts');
+const REAL_C1 = path.join(CUTOUTS, 'img001-c1.cutout.png');
+const REAL_C2 = path.join(CUTOUTS, 'img001-c2.cutout.png');
+const REAL_CUT = path.join(CUTOUTS, 'img002-c1.cutout.png');
+const urlOf = (p: string): string =>
+  `file://${p.split('/').map(encodeURIComponent).join('/')}`;
+
 const IMAGES = {
   reel: 'vitasilk',
   planPath: '/v/vitasilk.editplan.json',
@@ -716,11 +734,11 @@ const IMAGES = {
       candidates: [
         {
           id: 'img001-c1',
-          imagePath: '/v/img001-c1.jpg',
+          imagePath: REAL_C1,
           imageExists: true,
-          cutoutPath: '/v/img001-c1.cutout.png',
+          cutoutPath: REAL_C1,
           cutoutExists: true,
-          renderedPath: '/v/img001-c1.jpg',
+          renderedPath: REAL_C1,
           renderedExists: true,
           modelId: 'gemini-3-pro-image',
           resolution: '2K',
@@ -738,11 +756,11 @@ const IMAGES = {
         },
         {
           id: 'img001-c2',
-          imagePath: '/v/img001-c2.jpg',
+          imagePath: REAL_C2,
           imageExists: true,
           cutoutPath: null,
           cutoutExists: false,
-          renderedPath: '/v/img001-c2.jpg',
+          renderedPath: REAL_C2,
           renderedExists: true,
           modelId: 'gemini-3-pro-image',
           resolution: '2K',
@@ -777,11 +795,11 @@ const IMAGES = {
       candidates: [
         {
           id: 'img002-c1',
-          imagePath: '/v/img002-c1.jpg',
+          imagePath: REAL_CUT,
           imageExists: true,
-          cutoutPath: '/v/img002-c1.cutout.png',
+          cutoutPath: REAL_CUT,
           cutoutExists: true,
-          renderedPath: '/v/img002-c1.cutout.png',
+          renderedPath: REAL_CUT,
           renderedExists: true,
           modelId: 'gemini-3-pro-image',
           resolution: '2K',
@@ -1793,10 +1811,10 @@ describe('the image candidate picker', () => {
       els.map((e) => (e as HTMLImageElement).getAttribute('src')),
     );
     // The card slot's own picture, and the cutout slot's cut-out.
-    expect(built).toContain('file:///v/img001-c1.jpg');
-    expect(built).toContain('file:///v/img002-c1.cutout.png');
+    expect(built).toContain(urlOf(REAL_C1));
+    expect(built).toContain(urlOf(REAL_CUT));
     // A card slot shows one picture, not the same file twice.
-    expect(built.filter((s) => s === 'file:///v/img001-c1.jpg')).toHaveLength(1);
+    expect(built.filter((s) => s === urlOf(REAL_C1))).toHaveLength(1);
     await loaded.page.close();
   }, 30_000);
 
@@ -1851,8 +1869,8 @@ describe('the image candidate picker', () => {
     );
     // Three candidates, each falling back to the rule the builder uses.
     expect(shown).toHaveLength(3);
-    expect(shown).toContain('file:///v/img001-c1.jpg');
-    expect(shown).toContain('file:///v/img002-c1.cutout.png');
+    expect(shown).toContain(urlOf(REAL_C1));
+    expect(shown).toContain(urlOf(REAL_CUT));
     await loaded.page.close();
   }, 30_000);
 
@@ -1888,18 +1906,21 @@ describe('the image candidate picker', () => {
     await loaded.page.close();
   }, 30_000);
 
-  /* Every cutout in the corpus lives under `my files/test videos/`. */
+  /*
+   * Every cutout in the corpus lives under `my files/test videos/`, so a space
+   * in the path is the normal case rather than an edge one. The fixture already
+   * points at a real one, and this asserts the encoding on it.
+   */
   it('encodes the spaces in a real path', async () => {
-    const spaced = JSON.parse(JSON.stringify(IMAGES)) as typeof IMAGES;
-    (spaced.slots[0]?.candidates[0] as Record<string, unknown>)['renderedPath'] =
-      '/Volumes/T7 Shield/my files/test videos/cutouts/a.png';
-    const loaded = await loadImages(spaced);
+    const loaded = await loadImages();
     if (loaded === null) return;
-    await loaded.page.waitForSelector('ol.slots li', { timeout: 5000 });
+    await loaded.page.waitForSelector('img.shot.built', { timeout: 5000 });
     const shown = await loaded.page.$$eval('img.shot.built', (els) =>
       els.map((e) => (e as HTMLImageElement).getAttribute('src')),
     );
-    expect(shown).toContain('file:///Volumes/T7%20Shield/my%20files/test%20videos/cutouts/a.png');
+    expect(REAL_C1).toContain(' ');
+    expect(shown).toContain(urlOf(REAL_C1));
+    expect(shown.some((s) => (s ?? '').includes('%20'))).toBe(true);
     await loaded.page.close();
   }, 30_000);
 
