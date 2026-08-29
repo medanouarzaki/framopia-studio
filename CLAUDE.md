@@ -825,6 +825,55 @@ of copying inside a 1.7 s run, every hash verified, every file materialised
 locally, `.local/config.json` skipped**, at
 `.../My Drive/framopia-studio/`.
 
+### The panel can see a service running older code than itself
+
+**Four sessions in a row lost time to a stale service**, and nothing could see
+it: `serviceVersion` and `appVersion` both come **from the service**, so they
+agree with each other by construction and say nothing about the bundle. The one
+thing the two sides do not share is *when* each came into being. `build.mjs`
+injects `__PANEL_BUILT_AT__`; `stalenessOf` compares it against the service's
+`process.startedAt` with a minute of slack, and a service that started before
+the bundle was built is named as such on the main screen.
+
+It answers one question — is this service running the code that was on disk when
+the panel was built — and **cannot tell a service that is behind from one that
+is broken**. Either timestamp missing means it says nothing.
+
+**"This service is older than the Build control" was wrong, and the evidence is
+recorded.** The running service was queried directly and does send `build`; the
+pane showed the message because **nothing had been picked yet** — with no video
+and no client there is no plan, so `plan.build` is absent. It told him to
+restart a service he had just restarted. Three states now: nothing picked, a
+service that really did not answer, and a stale one.
+
+### A file dialog is looked for, never assumed
+
+A browser `<input type="file">` yields a sandboxed `File` with no path, and
+every stage here needs an absolute one. CEP's own
+`window.cep.fs.showOpenDialogEx` returns one — and `window.cep` is injected by
+CEP itself, **not** `CSInterface`, which this extension has never loaded.
+`fileDialogSupport()` looks for it and reports what it found in the readiness
+details; **Browse renders only when the call is really there**, because a button
+that opens nothing is worse than no button. The path field stays either way.
+`panel/src/video-extensions.ts` mirrors the service's accepted list and a test
+pins them equal — a dialog offering a file the folder listing would refuse is a
+dialog that hands him an error.
+
+### The client's `note` is the maintainer's and never reaches the screen
+
+The panel printed it under the client picker for a session: *"Stub. The palette
+is locked (PROJECT_SPEC §5); vocabulary is deliberately empty…"* — developer
+prose on a motion designer's screen. `note` stays in the file for whoever edits
+it; **`about` is his line** — "Dr Jenna, dermatologist, Casablanca" — and is the
+only text about a client the panel shows.
+
+**What he sees instead is the client.** `ClientCard` paints the four palette
+colours as swatches labelled by what each does in a build, the two fonts set in
+their own face, the logo when there is one, and a line saying which values are
+his and which are the standard ones — read from `clientDefaults`, which already
+told them apart. It sits between two pickers, so it stays four swatches, two
+lines of type and one line of text.
+
 ### A client is a person, and their folder is where the videos come from
 
 **User ruling, 2026-08-29.** A client was a palette; it is now who the agency
