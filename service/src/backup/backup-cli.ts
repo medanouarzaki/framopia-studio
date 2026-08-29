@@ -19,6 +19,7 @@ import {
 } from './set.js';
 import { classifyDestination, isMaterialised, type DestinationKind } from './destination.js';
 import { classifyFile } from './secrets.js';
+import { checkSyncClient } from './sync-client.js';
 
 /**
  * Copy what cannot be got back, and prove the copy is the same.
@@ -141,6 +142,19 @@ if (kind === 'unknown') {
   );
   process.exit(1);
 }
+/*
+ * Session 40 copied 94 files into a Drive folder nothing was serving and
+ * reported every hash verified. All of it was true and none of it was a backup.
+ */
+if (kind === 'cloud') {
+  const sync = checkSyncClient(writable);
+  if (!sync.running) {
+    console.error(`nothing is syncing ${writable}.\n${sync.detail}`);
+    process.exit(1);
+  }
+  console.log(`\n${sync.detail}, so this folder is being synced.`);
+}
+
 console.log(
   `\nDestination: ${writable}\n  treated as ${kind === 'cloud' ? 'a cloud folder' : 'a local disk'}` +
     `${declared === null ? '' : ' (you said so)'}` +
