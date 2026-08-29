@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { watermarkEnabled, assertBeepsFitWatermark, placeWatermark, WatermarkBeepsRunLongError } from './watermark.js';
+import {
+  watermarkEnabled,
+  watermarkSizeOf,
+  assertBeepsFitWatermark,
+  placeWatermark,
+  WatermarkBeepsRunLongError,
+} from './watermark.js';
+import type { WatermarkSize } from '../editplan/types.js';
 import { insideFrame, type Rect } from './geometry.js';
 import {
   FRAME_ASPECT,
@@ -65,12 +72,21 @@ describe('assertBeepsFitWatermark', () => {
     expect(() => assertBeepsFitWatermark(null)).not.toThrow();
   });
 
-  it('is a tenth of the frame wide and keeps the artwork aspect', () => {
-    const r = placeWatermark({ ...base, seed: 'r' }).rect;
-    expect(r.w).toBeCloseTo(WATERMARK_WIDTH_FRACTION, 10);
-    expect(r.w * FRAME_WIDTH).toBeCloseTo(216, 6);
+  /*
+   * A tenth of the frame is `small` now, not the default. The user ruled three
+   * sizes on 2026-08-29 and `medium`, 1.5x, is what a plan takes when it says
+   * nothing — so this asserts both the base width and the default that scales it.
+   */
+  it('is a tenth of the frame wide at small, and half again at the default', () => {
+    const small = placeWatermark({ ...base, size: 'small', seed: 'r' }).rect;
+    expect(small.w).toBeCloseTo(WATERMARK_WIDTH_FRACTION, 10);
+    expect(small.w * FRAME_WIDTH).toBeCloseTo(216, 6);
     // 216 px wide at 1924 x 2154 is 241.8 px tall.
-    expect(r.h * FRAME_WIDTH * FRAME_ASPECT).toBeCloseTo((216 * 2154) / 1924, 4);
+    expect(small.h * FRAME_WIDTH * FRAME_ASPECT).toBeCloseTo((216 * 2154) / 1924, 4);
+
+    const dflt = placeWatermark({ ...base, seed: 'r' }).rect;
+    expect(dflt.w * FRAME_WIDTH).toBeCloseTo(324, 6);
+    expect(dflt.h / dflt.w).toBeCloseTo(small.h / small.w, 10);
   });
 
   it('never leaves the frame, for any seed', () => {
@@ -182,5 +198,84 @@ describe('the inset, per axis', () => {
       expect(`${corner} side ${px.side.toFixed(1)}`).toBe(`${corner} side 108.0`);
       expect(`${corner} top ${px.top.toFixed(1)}`).toBe(`${corner} top 108.0`);
     }
+  });
+});
+
+/*
+ * Three sizes, the user's per-reel choice. `small` is what every build before
+ * 2026-08-29 placed, so the size he has already seen is the one he can go back
+ * to; `medium` is the default, which means an existing plan's next build shows
+ * a mark half again as large as its last one.
+ */
+describe('the three sizes', () => {
+  const source = { sourceWidth: 1924, sourceHeight: 2154 };
+  const sizes: WatermarkSize[] = ['small', 'medium', 'large'];
+
+  it('is 216, 324 and 432 px across, with the artwork’s own height', () => {
+    const seen = sizes.map((size) => {
+      const p = placeWatermark({
+        ...source, faceBox: null, occupied: [], lastBeepEndS: 0.4, size, seed: 'sizes',
+      });
+      return `${size} ${(p.rect.w * FRAME_WIDTH).toFixed(0)}x${(p.rect.h * FRAME_HEIGHT).toFixed(0)}`;
+    });
+    expect(seen).toEqual(['small 216x242', 'medium 324x363', 'large 432x484']);
+  });
+
+  it('takes medium when the plan says nothing', () => {
+    expect(watermarkSizeOf(null)).toBe('medium');
+    expect(watermarkSizeOf({})).toBe('medium');
+    expect(watermarkSizeOf({ size: 'small' })).toBe('small');
+  });
+
+  /*
+   * The inset is measured from the near edge, so a larger mark must eat into
+   * the frame rather than into the 108 px the user ruled. Asserted at every
+   * size in every corner the seeded draw can reach, because the two bottom
+   * corners measure from the far edge and are where an error would hide.
+   */
+  it('holds the 108 px inset at every size, in every corner', () => {
+    for (const size of sizes) {
+      const corners = new Map<string, string>();
+      for (let i = 0; i < 60; i += 1) {
+        const p = placeWatermark({
+          ...source,
+          faceBox: { x: 0.05 + (i % 3) * 0.3, y: 0.3, w: 0.25, h: 0.25 },
+          occupied: [],
+          lastBeepEndS: 0.4,
+          size,
+          seed: `size-${size}-${i}`,
+        });
+        const side = p.corner.endsWith('left')
+          ? p.rect.x * FRAME_WIDTH
+          : (1 - (p.rect.x + p.rect.w)) * FRAME_WIDTH;
+        const top = p.corner.startsWith('top')
+          ? p.rect.y * FRAME_HEIGHT
+          : (1 - (p.rect.y + p.rect.h)) * FRAME_HEIGHT;
+        corners.set(p.corner, `${side.toFixed(1)} / ${top.toFixed(1)}`);
+        expect(p.rect.x).toBeGreaterThanOrEqual(0);
+        expect(p.rect.y).toBeGreaterThanOrEqual(0);
+        expect(p.rect.x + p.rect.w).toBeLessThanOrEqual(1);
+        expect(p.rect.y + p.rect.h).toBeLessThanOrEqual(1);
+      }
+      expect(corners.size).toBeGreaterThan(1);
+      for (const [corner, inset] of corners) {
+        expect(`${size} ${corner} ${inset}`).toBe(`${size} ${corner} 108.0 / 108.0`);
+      }
+    }
+  });
+
+  /*
+   * `clampToFrame` would move a mark that did not fit, and a silently moved
+   * watermark is a wrong inset nobody would notice. Large is 432 x 484 inside
+   * 2160 x 3840, so there is no question today — this is what says so if the
+   * artwork or the sizes ever change.
+   */
+  it('fits inside the frame at large without being clamped', () => {
+    const p = placeWatermark({
+      ...source, faceBox: null, occupied: [], lastBeepEndS: 0.4, size: 'large', seed: 'fit',
+    });
+    const m = watermarkMarginPx();
+    expect(p.rect.w * FRAME_WIDTH + 2 * m.x).toBeLessThan(FRAME_WIDTH);
+    expect(p.rect.h * FRAME_HEIGHT + 2 * m.y).toBeLessThan(FRAME_HEIGHT);
   });
 });

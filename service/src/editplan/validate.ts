@@ -1,6 +1,7 @@
 import {
   EDIT_PLAN_SCHEMA_VERSION,
   PIPELINE_STAGES,
+  WATERMARK_SIZES,
   type EditPlan,
   type PipelineStageName,
 } from './types.js';
@@ -39,6 +40,7 @@ export class EditPlanVersionError extends Error {
 
 type Rec = Record<string, unknown>;
 
+const WATERMARK_SIZE_SET = new Set<string>(WATERMARK_SIZES);
 const STATUSES = new Set(['pending', 'running', 'done', 'error']);
 const LANGS = new Set(['darija', 'msa', 'fr', 'en', 'mixed']);
 const SCRIPTS = new Set(['latin', 'arabic']);
@@ -649,6 +651,9 @@ function checkContainers(c: Checker, plan: Rec): void {
       c.string('watermark.assetPath', watermark.assetPath);
       c.number('watermark.startS', watermark.startS);
       c.nullableNumber('watermark.durationS', watermark.durationS);
+      if (watermark.size !== undefined) {
+        c.oneOf('watermark.size', watermark.size, WATERMARK_SIZE_SET);
+      }
     }
   }
 

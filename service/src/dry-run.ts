@@ -9,7 +9,9 @@ import { IMAGE_CACHE_STAGE } from './images/cache.js';
 import { imageFingerprintInputs, imageFingerprintOf } from './images/fingerprint.js';
 import { cacheEntryDir, CACHE_ROOT } from './transcription/cache.js';
 import { DEFAULT_IMAGE_CONFIG } from './images/config.js';
-import { watermarkEnabled } from './placement/watermark.js';
+import { watermarkEnabled, watermarkSizeOf } from './placement/watermark.js';
+import { WATERMARK_SIZES, type WatermarkSize } from './editplan/types.js';
+import { FRAME_WIDTH, watermarkWidthFraction } from './placement/constants.js';
 
 /**
  * What a run *would* do, before any of it is paid for.
@@ -65,6 +67,13 @@ export interface DryRunPlan {
   stages: DryRunStage[];
   /** Whether this reel is built with the intro watermark. */
   watermark: boolean;
+  /** How large the mark is drawn. Absent on the plan means the default. */
+  watermarkSize: WatermarkSize;
+  /**
+   * What each size is in source pixels across, so the panel can label the
+   * choice without doing placement arithmetic of its own.
+   */
+  watermarkWidthsPx: Record<WatermarkSize, number>;
   /**
    * The client the plan itself records, and the version it was built at. Null
    * on a plan whose analysis has never run, which is the only honest answer:
@@ -102,7 +111,7 @@ interface PlanLike {
   source?: { sha256?: string; durationS?: number };
   transcript?: { words?: PlanLikeWord[] };
   images?: { slots?: PlanLikeSlot[] };
-  watermark?: { enabled?: boolean } | null;
+  watermark?: { enabled?: boolean; size?: WatermarkSize } | null;
   clientMode?: { id?: string; version?: number } | null;
 }
 
@@ -165,6 +174,7 @@ export async function dryRun(reelLabel: string, modeId: string): Promise<DryRunP
   let words: PlanLikeWord[] = [];
   let slots: PlanLikeSlot[] = [];
   let watermark = true;
+  let watermarkSize: WatermarkSize = watermarkSizeOf(null);
   let planClientMode: { id: string; version: number } | null = null;
   if (reel.planPath !== null && existsSync(reel.planPath)) {
     try {
@@ -176,6 +186,7 @@ export async function dryRun(reelLabel: string, modeId: string): Promise<DryRunP
       words = plan.transcript?.words ?? [];
       slots = plan.images?.slots ?? [];
       watermark = watermarkEnabled(plan.watermark ?? null);
+      watermarkSize = watermarkSizeOf(plan.watermark ?? null);
       planClientMode =
         typeof plan.clientMode?.id === 'string' && typeof plan.clientMode.version === 'number'
           ? { id: plan.clientMode.id, version: plan.clientMode.version }
@@ -350,6 +361,10 @@ export async function dryRun(reelLabel: string, modeId: string): Promise<DryRunP
     spentUsd,
     stages,
     watermark,
+    watermarkSize,
+    watermarkWidthsPx: Object.fromEntries(
+      WATERMARK_SIZES.map((size) => [size, Math.round(watermarkWidthFraction(size) * FRAME_WIDTH)]),
+    ) as Record<WatermarkSize, number>,
     planClientMode,
     estimateUsd: stages.reduce((sum, s) => sum + (s.estimateUsd ?? 0), 0),
     reusesOlderGuide: stages.some((s) => s.provenance === 'compatible'),

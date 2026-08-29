@@ -254,3 +254,59 @@ describe('humanFlaggedItems', () => {
     expect(humanFlaggedItems(enriched(words))).toEqual([]);
   });
 });
+
+/*
+ * The brief for this change asked that the watermark size be a human-flagged
+ * marker, "the same treatment the on/off control has". Neither is flagged, and
+ * neither needs to be: `clearBlocks` clears keywords, images and sfx and never
+ * touches `plan.watermark`, so a re-run cannot lose either setting. Flagging
+ * them would be worse than useless — `PlanMergeBlockedError` throws whenever a
+ * flag is present, so any reel whose watermark had been set would refuse an
+ * ordinary re-transcription until it was forced.
+ *
+ * This is the test that says the protection is real, since it is a property of
+ * the merge rather than a field anyone can point at.
+ */
+describe('the watermark survives a re-run', () => {
+  it('keeps enabled and size through a transcript change that clears everything else', () => {
+    const existing = enriched(words);
+    existing.watermark = {
+      assetPath: 'assets/watermark/intro.mov',
+      startS: 0,
+      durationS: 1,
+      enabled: false,
+      size: 'large',
+    };
+    const changed = words.map((w, i) => (i === 0 ? { ...w, text: 'different' } : w));
+    const result = mergeIntoExistingPlan({
+      existing,
+      fresh: freshFrom(changed),
+      force: true,
+    });
+
+    expect(result.transcriptChanged).toBe(true);
+    expect(result.cleared).toContain('images');
+    expect(result.plan.watermark).toEqual({
+      assetPath: 'assets/watermark/intro.mov',
+      startS: 0,
+      durationS: 1,
+      enabled: false,
+      size: 'large',
+    });
+  });
+
+  it('is not a human-flagged item, so setting it cannot block a re-run', () => {
+    const existing = enriched(words);
+    existing.keywords.items = [];
+    existing.images.slots = [];
+    existing.keywords.removedWordIds = [];
+    existing.watermark = {
+      assetPath: 'a.mov',
+      startS: 0,
+      durationS: 1,
+      enabled: false,
+      size: 'small',
+    };
+    expect(humanFlaggedItems(existing)).toEqual([]);
+  });
+});

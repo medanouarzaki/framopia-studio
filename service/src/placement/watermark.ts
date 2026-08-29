@@ -4,8 +4,10 @@ import {
   WATERMARK_DURATION_S,
   WATERMARK_MARGIN_X,
   WATERMARK_MARGIN_Y,
-  WATERMARK_WIDTH_FRACTION,
+  watermarkWidthFraction,
+  DEFAULT_WATERMARK_SIZE,
 } from './constants.js';
+import type { WatermarkSize } from '../editplan/types.js';
 import { type Rect } from './geometry.js';
 import { unitStream } from './solve.js';
 
@@ -41,6 +43,8 @@ export interface WatermarkInput {
   /** Measured, and only checked against the duration — it no longer sets it. */
   lastBeepEndS: number | null;
   durationS?: number;
+  /** The reel's own choice of how large the mark is drawn; default `medium`. */
+  size?: WatermarkSize;
   seed: string;
 }
 
@@ -95,7 +99,7 @@ const overlaps = (a: Rect, b: Rect): boolean =>
  * though neither is wrong on its own.
  */
 export function placeWatermark(input: WatermarkInput): WatermarkPlacement {
-  const w = WATERMARK_WIDTH_FRACTION;
+  const w = watermarkWidthFraction(input.size);
   // Height in frame-height fractions, from the artwork's own aspect ratio.
   const h = ((w * input.sourceHeight) / input.sourceWidth) / FRAME_ASPECT;
   const m = WATERMARK_MARGIN_X;
@@ -159,4 +163,16 @@ export function placeWatermark(input: WatermarkInput): WatermarkPlacement {
  */
 export function watermarkEnabled(watermark: { enabled?: boolean } | null): boolean {
   return watermark?.enabled !== false;
+}
+
+/**
+ * How large a plan asks the mark to be drawn.
+ *
+ * Absent means `medium`, which is **not** the size every build before this
+ * shipped — that was `small`. A plan written before the choice existed recorded
+ * nothing, and nothing is not a preference; the default is the one the user
+ * ruled, so an old plan's next build shows a larger mark than its last one.
+ */
+export function watermarkSizeOf(watermark: { size?: WatermarkSize } | null): WatermarkSize {
+  return watermark?.size ?? DEFAULT_WATERMARK_SIZE;
 }

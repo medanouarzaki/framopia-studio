@@ -46,6 +46,7 @@ import type {
   ServiceState,
   StepId,
   ToolState,
+  WatermarkSize,
 } from './types.js';
 
 /**
@@ -419,10 +420,17 @@ function Panel({
           {dry === null || dry.planPath === null ? null : (
             <WatermarkToggle
               enabled={dry.watermark}
+              size={dry.watermarkSize}
+              widthsPx={dry.watermarkWidthsPx}
               onChange={async (enabled) => {
                 if (connection === null || dry.planPath === null) return;
                 await setWatermark(connection, { planPath: dry.planPath, enabled });
                 setDry({ ...dry, watermark: enabled });
+              }}
+              onResize={async (size) => {
+                if (connection === null || dry.planPath === null) return;
+                await setWatermark(connection, { planPath: dry.planPath, size });
+                setDry({ ...dry, watermarkSize: size });
               }}
             />
           )}
@@ -658,22 +666,57 @@ function HostUnavailable({
  */
 function WatermarkToggle({
   enabled,
+  size,
+  widthsPx,
   onChange,
+  onResize,
 }: {
   enabled: boolean;
+  size: WatermarkSize | undefined;
+  widthsPx: Record<WatermarkSize, number> | undefined;
   onChange: (enabled: boolean) => void | Promise<void>;
+  onResize: (size: WatermarkSize) => void | Promise<void>;
 }): JSX.Element {
   return (
-    <label className="watermark">
-      <input
-        type="checkbox"
-        checked={enabled}
-        onChange={(event) => void onChange(event.target.checked)}
-      />
-      <span>Watermark this reel</span>
-    </label>
+    <div className="watermark">
+      <label>
+        <input
+          type="checkbox"
+          checked={enabled}
+          onChange={(event) => void onChange(event.target.checked)}
+        />
+        <span>Watermark this reel</span>
+      </label>
+      {/*
+        A service older than the size choice sends nothing, and nothing is not a
+        preference — the buttons stay away rather than show a guess the user
+        could press and have ignored.
+      */}
+      {!enabled || size === undefined ? null : (
+        <div className="sizes" role="group" aria-label="Watermark size">
+          {WATERMARK_SIZE_LABELS.map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              className={value === size ? 'chosen' : ''}
+              aria-pressed={value === size}
+              onClick={() => void onResize(value)}
+            >
+              {label}
+              {widthsPx === undefined ? '' : ` · ${widthsPx[value]} px`}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
+
+const WATERMARK_SIZE_LABELS: [WatermarkSize, string][] = [
+  ['small', 'Small'],
+  ['medium', 'Medium'],
+  ['large', 'Large'],
+];
 
 function FontsNote({ mode }: { mode: ClientMode }): JSX.Element | null {
   const fonts = buildFonts({

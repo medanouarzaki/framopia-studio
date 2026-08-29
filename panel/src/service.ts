@@ -1,6 +1,6 @@
 import { NODE_NOT_FOUND_HELP } from '@framopia/core/node-path';
 import type {
-  ImagesView, ClientMode, DryRunPlan, HealthPayload, Reel, ServiceError, PlanSteps , ServiceOrigin , PipelineJob , TranscriptView, TranscriptWordView, TranscriptCardView , KeywordsView } from './types.js';
+  ImagesView, WatermarkSize, ClientMode, DryRunPlan, HealthPayload, Reel, ServiceError, PlanSteps , ServiceOrigin , PipelineJob , TranscriptView, TranscriptWordView, TranscriptCardView , KeywordsView } from './types.js';
 
 /**
  * The panel's half of the ARCHITECTURE §1.3 handshake: the service binds
@@ -377,7 +377,7 @@ export async function chooseImage(
 
 export async function setWatermark(
   connection: Connection,
-  edit: { planPath: string; enabled: boolean },
+  edit: { planPath: string; enabled?: boolean; size?: WatermarkSize },
 ): Promise<void> {
   await postJson(connection, '/watermark', edit);
 }

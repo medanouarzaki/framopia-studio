@@ -473,6 +473,9 @@ export interface Sfx {
   events: SfxEvent[];
 }
 
+export const WATERMARK_SIZES = ['small', 'medium', 'large'] as const;
+export type WatermarkSize = (typeof WATERMARK_SIZES)[number];
+
 export interface Watermark {
   assetPath: string;
   startS: number;
@@ -487,6 +490,16 @@ export interface Watermark {
    * which is what the builder used to decide it by.
    */
   enabled?: boolean;
+  /**
+   * How large the mark is drawn. **Schema addition, optional with a default of
+   * `medium`**, so no plan needs migrating.
+   *
+   * The user's per-reel choice, like `enabled` beside it: `small` is the width
+   * this project shipped until now, `medium` is 1.5x it and `large` 2x. A plan
+   * written before this existed has no size and takes the default, so its next
+   * build shows a mark half again as large as its last one.
+   */
+  size?: WatermarkSize;
 }
 
 export interface Costs {

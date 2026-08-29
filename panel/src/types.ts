@@ -1,3 +1,5 @@
+export type WatermarkSize = 'small' | 'medium' | 'large';
+
 /**
  * The service's wire shapes, declared once. The panel never invents a field:
  * anything it shows has to arrive from the service or from ExtendScript, per
@@ -75,6 +77,13 @@ export interface DryRunPlan {
   stages: DryRunStage[];
   /** Whether this reel is built with the intro watermark. */
   watermark: boolean;
+  /**
+   * How large the mark is drawn. A service older than this field sends nothing,
+   * and the panel must not read that as a choice — see `watermarkSizeOf`.
+   */
+  watermarkSize?: WatermarkSize;
+  /** What each size is across, in the video's own pixels. */
+  watermarkWidthsPx?: Record<WatermarkSize, number>;
   /**
    * The client the plan itself records, and the version it was built at. Null
    * on a plan whose analysis has never run, which is the only honest answer:

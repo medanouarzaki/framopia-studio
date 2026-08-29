@@ -596,6 +596,8 @@ function stubRoutes(steps: unknown, resumeAt: string): string {
       reel: 'vitasilk', videoPath: '/v/vitasilk.mov', modeId: 'k2-syndicalia',
       modeName: 'K2 Syndicalia', modeVersion: 6, planPath: '/v/p.json', spentUsd: 1.550444,
       stages: [], estimateUsd: 0, reusesOlderGuide: false,
+      watermark: true, watermarkSize: 'medium',
+      watermarkWidthsPx: { small: 216, medium: 324, large: 432 },
     },
     steps: { reel: 'vitasilk', planPath: '/v/p.json', steps, resumeAt },
     keywords: {
@@ -651,13 +653,20 @@ function stepsThrough(upTo: string): unknown[] {
 }
 
 /** Opens the panel with a reel and a mode chosen, as a user would. */
-async function loadFlow(upTo: string, resumeAt: string, width = 420): Promise<Loaded | null> {
+async function loadFlow(
+  upTo: string,
+  resumeAt: string,
+  width = 420,
+  /** Runs after the route stub, for a test that needs a different payload. */
+  amendPayload?: string,
+): Promise<Loaded | null> {
   if (browser === undefined) return null;
   const page = await browser.newPage({ viewport: { width, height: 900 } });
   const uncaught: string[] = [];
   page.on('pageerror', (error: Error) => uncaught.push(error.message));
   await page.addInitScript(stubHost(HANDSHAKE));
   await page.addInitScript(stubRoutes(stepsThrough(upTo), resumeAt));
+  if (amendPayload !== undefined) await page.addInitScript(amendPayload);
   await page.goto(`file://${INDEX}`);
   await page.waitForSelector('nav.rail', { timeout: 10_000 });
   await page.selectOption('select[aria-label="Reel"]', 'vitasilk');
@@ -2267,4 +2276,71 @@ describe('the image candidate picker', () => {
     expect(loaded.uncaught).toEqual([]);
     await loaded.page.close();
   });
+});
+
+/*
+ * Three watermark sizes, the user's per-reel choice. Driven through the built
+ * bundle because that is the only place a CEP-shaped engine sees them, and
+ * because the size arrives from the service — a bundle newer than the service
+ * it talks to must not invent a choice.
+ */
+describe.skipIf(!built)('watermark size', () => {
+  it('offers three sizes with the reel’s own marked', async () => {
+    const loaded = await loadFlow('build', 'build');
+    if (loaded === null) return;
+    try {
+      await loaded.page.waitForSelector('.watermark .sizes', { timeout: 5000 });
+      const labels = await loaded.page.$$eval('.watermark .sizes button', (els) =>
+        els.map((e) => `${e.textContent ?? ''}|${e.getAttribute('aria-pressed') ?? ''}`),
+      );
+      expect(labels).toEqual([
+        'Small · 216 px|false',
+        'Medium · 324 px|true',
+        'Large · 432 px|false',
+      ]);
+      expect(loaded.uncaught).toEqual([]);
+    } finally {
+      await loaded.page.close();
+    }
+  }, 30_000);
+
+  it('moves the mark when another size is pressed', async () => {
+    const loaded = await loadFlow('build', 'build');
+    if (loaded === null) return;
+    try {
+      await loaded.page.waitForSelector('.watermark .sizes', { timeout: 5000 });
+      await loaded.page.click('.watermark .sizes button:nth-child(3)');
+      await loaded.page.waitForFunction(
+        () =>
+          document
+            .querySelector('.watermark .sizes button:nth-child(3)')
+            ?.getAttribute('aria-pressed') === 'true',
+        undefined,
+        { timeout: 5000 },
+      );
+      expect(loaded.uncaught).toEqual([]);
+    } finally {
+      await loaded.page.close();
+    }
+  }, 30_000);
+
+  /* A service too old to send the size must not have one invented for it. */
+  it('shows no sizes when the service does not offer them', async () => {
+    const loaded = await loadFlow(
+      'build',
+      'build',
+      420,
+      'delete window.__payload.dry.watermarkSize;' +
+        'delete window.__payload.dry.watermarkWidthsPx;',
+    );
+    if (loaded === null) return;
+    try {
+      await loaded.page.waitForSelector('.watermark', { timeout: 5000 });
+      expect(await loaded.page.$$('.watermark .sizes button')).toHaveLength(0);
+      expect(await loaded.page.$$('.watermark input[type="checkbox"]')).toHaveLength(1);
+      expect(loaded.uncaught).toEqual([]);
+    } finally {
+      await loaded.page.close();
+    }
+  }, 30_000);
 });

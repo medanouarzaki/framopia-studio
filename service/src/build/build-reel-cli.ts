@@ -28,7 +28,7 @@ import {
   WATERMARK_GAIN_DB,
   WATERMARK_DURATION_S,
 } from '../placement/constants.js';
-import { assertBeepsFitWatermark, placeWatermark, watermarkEnabled } from '../placement/watermark.js';
+import { assertBeepsFitWatermark, placeWatermark, watermarkEnabled, watermarkSizeOf } from '../placement/watermark.js';
 import { placementIsSafe, reelPlacements } from '../placement/top-left.js';
 import {
   buildReel,
@@ -414,6 +414,7 @@ if (!watermarkEnabled(plan.watermark)) {
     sourceWidth: watermarkFacts.width,
     sourceHeight: watermarkFacts.height,
     lastBeepEndS: watermarkFacts.lastBeepEndS,
+    size: watermarkSizeOf(plan.watermark),
     seed: plan.meta.id,
   });
   // Width is what is fitted; the artwork is 1924 x 2154 so the height follows
@@ -429,7 +430,8 @@ if (!watermarkEnabled(plan.watermark)) {
     gainDb: WATERMARK_GAIN_DB,
   };
   console.log(
-    `watermark: ${placed.corner}, ${(placed.rect.w * plan.source.width).toFixed(0)} x ` +
+    `watermark: ${watermarkSizeOf(plan.watermark)}, ${placed.corner}, ` +
+      `${(placed.rect.w * plan.source.width).toFixed(0)} x ` +
       `${(placed.rect.h * plan.source.height).toFixed(0)} px from ${watermarkFacts.width}x${watermarkFacts.height} ` +
       `-> scale ${scalePercent.toFixed(4)}%; out at ${placed.outPointS.toFixed(3)}s = ` +
       `frame ${(placed.outPointS * (30000 / 1001)).toFixed(2)} of ${watermarkFacts.frames}; ` +

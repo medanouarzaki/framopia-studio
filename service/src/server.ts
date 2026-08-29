@@ -11,7 +11,8 @@ import { chooseCandidate, imagesView, ImageViewError } from './image-view.js';
 
 /** The one intro overlay this agency has; Block 7 session 1 measured it. */
 const WATERMARK_ASSET = path.join(REPO_ROOT, 'assets', 'watermark', 'intro.mov');
-import type { Zone } from './editplan/types.js';
+import { WATERMARK_SIZES, type WatermarkSize, type Zone } from './editplan/types.js';
+import { DEFAULT_WATERMARK_SIZE } from './placement/constants.js';
 import { listModes, listReels } from './catalogue.js';
 import { dryRun, DryRunError } from './dry-run.js';
 import { stepsFor, StepsError } from './steps.js';
@@ -433,7 +434,7 @@ export function createApp(token: string): http.Server {
        * every reel; the plan decides it now and this is what writes it.
        */
       if (req.method === 'POST' && url.pathname === '/watermark') {
-        let body: { planPath?: unknown; enabled?: unknown };
+        let body: { planPath?: unknown; enabled?: unknown; size?: unknown };
         try {
           body = JSON.parse((await readBody(req)) || '{}') as typeof body;
         } catch {
@@ -444,17 +445,32 @@ export function createApp(token: string): http.Server {
           sendJson(res, 400, { error: '"planPath" is required' });
           return;
         }
-        if (typeof body.enabled !== 'boolean') {
+        if (body.enabled !== undefined && typeof body.enabled !== 'boolean') {
           sendJson(res, 400, { error: '"enabled" must be true or false' });
           return;
         }
-        const enabled = body.enabled;
+        if (
+          body.size !== undefined &&
+          !(WATERMARK_SIZES as readonly string[]).includes(body.size as string)
+        ) {
+          sendJson(res, 400, { error: `"size" must be one of ${WATERMARK_SIZES.join(', ')}` });
+          return;
+        }
+        if (body.enabled === undefined && body.size === undefined) {
+          sendJson(res, 400, { error: 'send "enabled", "size", or both' });
+          return;
+        }
+        // Either half may be sent alone, so setting the size does not silently
+        // turn a mark back on and switching it off does not forget the size.
+        const { enabled, size } = body as { enabled?: boolean; size?: WatermarkSize };
         await withPlan(res, body.planPath, (plan) => {
+          const current = plan.watermark;
           plan.watermark = {
-            assetPath: plan.watermark?.assetPath ?? WATERMARK_ASSET,
-            startS: plan.watermark?.startS ?? 0,
-            durationS: plan.watermark?.durationS ?? null,
-            enabled,
+            assetPath: current?.assetPath ?? WATERMARK_ASSET,
+            startS: current?.startS ?? 0,
+            durationS: current?.durationS ?? null,
+            enabled: enabled ?? current?.enabled ?? true,
+            size: size ?? current?.size ?? DEFAULT_WATERMARK_SIZE,
           };
         });
         return;

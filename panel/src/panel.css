@@ -336,10 +336,40 @@ ol.keywords { list-style: none; margin: 14px 0 0; padding: 0; }
 
 /* The watermark decision sits at Build, beside the other build-time facts. */
 .watermark {
+  margin: 0 0 12px;
+}
+
+.watermark label {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin: 0 0 12px;
+}
+
+.watermark .sizes {
+  display: flex;
+  gap: 6px;
+  margin: 8px 0 0 24px;
+}
+
+.watermark .sizes button {
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  padding: 4px 10px;
+}
+
+.watermark .sizes button.chosen {
+  border-color: var(--text);
+  color: var(--text);
+}
+
+.watermark .sizes button:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
 }
 
 /* Step 4, the image candidate picker. */

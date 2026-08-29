@@ -108,6 +108,7 @@ depends on the client fonts Block 9 collects.
 
 ### Watermark
 - One QuickTime file **with an alpha channel** (not MP4 — corrected during foundation), same for all clients, stored in the repo, overlaid starting at frame 0, fixed duration.
+- **Three sizes, picked per reel: `small` 216 x 242 px, `medium` 324 x 363, `large` 432 x 484** on a 2160 x 3840 frame (user ruling, 2026-08-29). `small` is the width every build before that date placed, so the size he has already seen is the one he can go back to; **`medium` is the default**, which means a plan written before the choice existed shows a mark half again as large on its next build. It is a per-reel field on the Edit Plan beside the on/off control, surfaced in the panel's Build step. The 108 px inset is measured from the near edge, so it holds at every size in every corner — asserted, not assumed.
 - TODO (Block 7 start): confirm exact codec (ProRes 4444 / Animation), alpha interpretation (straight vs premultiplied), and duration from the file the user provides. ExtendScript must set alpha interpretation accordingly on import.
 
 ### Client modes

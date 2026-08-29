@@ -1,3 +1,4 @@
+import type { WatermarkSize } from '../editplan/types.js';
 import {
   LINE_SPACING,
   MAX_SUBTITLE_LINES,
@@ -124,6 +125,27 @@ export const TOP_LEFT_POSITION_JITTER = 0.02;
  * change it is his eye on a built comp.
  */
 export const WATERMARK_WIDTH_FRACTION = 0.1;
+
+/**
+ * The three sizes the user picks from per reel, as multiples of the width
+ * above. **CHOSEN, NOT MEASURED** — his ruling, 2026-08-29, after seeing the
+ * mark on a built reel and finding it small.
+ *
+ * `small` is the width every build until now used, so the option he has already
+ * seen is the one he can go back to. On a 2160-wide frame and the 1924 x 2154
+ * artwork that is 216 x 242 px, 324 x 363 at `medium` and 432 x 484 at `large`.
+ */
+export const WATERMARK_SIZE_SCALES: Record<WatermarkSize, number> = {
+  small: 1,
+  medium: 1.5,
+  large: 2,
+};
+
+export const DEFAULT_WATERMARK_SIZE: WatermarkSize = 'medium';
+
+export function watermarkWidthFraction(size: WatermarkSize = DEFAULT_WATERMARK_SIZE): number {
+  return WATERMARK_WIDTH_FRACTION * WATERMARK_SIZE_SCALES[size];
+}
 
 /**
  * How long the watermark is on screen, from t=0.
