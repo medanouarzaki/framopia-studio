@@ -42,44 +42,51 @@ export const ARABIC_SIZE_RATIO = 1.07;
 /**
  * The emphasis face's size against the ordinary Latin one.
  *
- * **Measured 2026-08-29 in After Effects 26.0x67 on the user's machine**,
- * through `sourceRectAtTime` on real text — `tools/ae/measure-fonts.jsx`, and
- * the run is `.local/build/font-measurements.json`. Inter-SemiBold is the
- * reference and CormorantGaramondItalic-SemiBoldItalic is the emphasis face.
+ * **RULED BY THE USER, 2026-08-30.** He was built `vitasilk` twice from one
+ * plan, once at 1.3479 and once at 1.1641, differing in this number and nothing
+ * else, and he chose the smaller. **Where a measurement and the user's eye
+ * disagree, his eye decides** — the same principle that settled
+ * `IMPACT_THRESHOLD` in Block 8, where the measured crossing was 5.25 frames
+ * and he said the word lands at 4.
  *
- * **Derived from the x-height proxy**, the rendered height of a lowercase `x`.
- * The three candidate quantities do not agree, and which one is right is a
- * question about what the eye reads as "the same size":
+ * Measured 2026-08-29 in After Effects 26.0x67 on his machine, through
+ * `sourceRectAtTime` on real text — `tools/ae/measure-fonts.jsx`, and the run
+ * is `.local/build/font-measurements.json`. Inter-SemiBold is the reference and
+ * CormorantGaramondItalic-SemiBoldItalic is the emphasis face. The three
+ * candidate quantities do not agree, and which one is right was never a
+ * question the measurement could answer:
  *
- * | quantity | ratio |
- * |---|---|
- * | cap height, rendered `H` | 1.1641 |
- * | **x-height, rendered `x`** | **1.3479** |
- * | advance width, one word and a phrase | 1.3562 and 1.3730 |
+ * | quantity | ratio | |
+ * |---|---|---|
+ * | **cap height, rendered `H`** | **1.1641** | **ruled** |
+ * | x-height, rendered `x` | 1.3479 | what the derivation preferred |
+ * | advance width, one word and a phrase | 1.3562 and 1.3730 | |
  *
- * x-height wins because **the corpus is lowercase**: subtitle cards are one
- * Arabizi or French word each, and apparent size in lowercase text is governed
- * by the x-height rather than by the capitals. Advance width, an independent
- * measure of the same thing, lands within 1.2% of it; cap height is the
- * outlier, and it is low because Cormorant is an old-style face whose capitals
- * are large relative to its lowercase. Two measures agreeing against one is the
- * reason, not a preference.
+ * The derivation preferred x-height because the corpus is lowercase and advance
+ * width corroborated it within 0.617%, while cap height sits 16.5% away from
+ * both. **That reasoning was sound and it lost to a person looking at the
+ * screen**, which is what it was always for: the two builds existed so he could
+ * decide, and 1.3479 was never more than the best guess available until he did.
  *
- * Identical at 343 and at 425 to five decimal places, so the ratio is a
- * property of the faces rather than of a size.
+ * Every one of these is identical at 343 and at 425 to five decimal places, so
+ * the ratio is a property of the faces rather than of a size.
  *
- * **The gate that justifies it is `chooseRatio` in `font-ratios.ts`**, and it
- * tests this quantity: x-height is the same at both sizes, and advance width —
- * an independent reading, valid here because both faces were given the same
- * string — agrees within **0.617%**. Session 5 reported a gate over the two
- * advance samples instead, which is a different quantity from the one it
- * wrote; that gate passed and had tested nothing about this number.
- *
- * **It is still a judgement the user can overturn by looking at a build.** If
- * an emphasized word reads too large, cap height's 1.1641 is the other end of
- * the range and the number to try.
+ * `chooseRatio` in `font-ratios.ts` still refuses cap height on the numbers
+ * alone, and is still right to: **it exists to stop an underived number
+ * reaching the code, not to overrule a ruling.** `RULED_EMPHASIS_QUANTITY`
+ * below is the named way past it, and nothing else has one.
  */
-export const EMPHASIS_SIZE_RATIO = 1.3479;
+export const EMPHASIS_SIZE_RATIO = 1.1641;
+
+/**
+ * Which quantity the ruled ratio above is taken from.
+ *
+ * Named rather than implied, so a reader can see that a person chose this and
+ * that the gate did not. `font-ratios.test.ts` pins the constant against a
+ * derivation from this quantity, which is what keeps the number honest: the
+ * ruling settles *which* measure to use, not what the measurement said.
+ */
+export const RULED_EMPHASIS_QUANTITY = 'capHeight' as const;
 
 export const SUBTITLE_FONT_SIZE = 343;
 export const KEYWORD_FONT_SIZE = 425;

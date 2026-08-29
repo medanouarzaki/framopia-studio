@@ -3,7 +3,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { chooseRatio, ratioTable, type FaceMeasurement } from './font-ratios.js';
 import { REPO_ROOT } from './paths.js';
-import { EMPHASIS_SIZE_RATIO } from './typography.js';
+import { EMPHASIS_SIZE_RATIO, RULED_EMPHASIS_QUANTITY } from './typography.js';
 
 /* The real numbers, from After Effects 26.0x67 on 2026-08-29. */
 const INTER: FaceMeasurement = {
@@ -116,7 +116,13 @@ describe('chooseRatio', () => {
     expect(verdict.reason).toContain('oneWordAdvance');
   });
 
-  it('refuses cap height, which no other measure supports', () => {
+  /*
+   * Cap height is what the user ruled, and the gate still refuses it on the
+   * numbers alone — correctly. The gate stops an underived number reaching the
+   * code; it was never a vote. `RULED_EMPHASIS_QUANTITY` is the named way past
+   * it, and the test below pins the constant against that quantity.
+   */
+  it('still refuses cap height on the numbers alone, which a ruling overrides', () => {
     const verdict = chooseRatio(ratioTable(INTER, CORMORANT), 'capHeight', 'oneWordAdvance');
 
     expect(verdict.passed).toBe(false);
@@ -158,10 +164,16 @@ describe('chooseRatio', () => {
  * gitignored, so a second machine — Block 10's golden run — has no such file
  * and must not fail for it.
  */
-describe('EMPHASIS_SIZE_RATIO against the measurement on disk', () => {
+describe('EMPHASIS_SIZE_RATIO, ruled, against the measurement on disk', () => {
   const file = path.join(REPO_ROOT, '.local', 'build', 'font-measurements.json');
 
-  it('is what the gated derivation produces', () => {
+  /*
+   * The ruling settles **which** measure to use; it does not settle what the
+   * measurement said. So the constant is pinned against a derivation from the
+   * ruled quantity, and a re-measurement that moved cap height would fail here
+   * rather than leave a stale number in place.
+   */
+  it('is what the ruled quantity gives on the measurement on disk', () => {
     if (!existsSync(file)) {
       console.warn(`font ratios: skipping — ${file} is not on this machine`);
       return;
@@ -176,10 +188,16 @@ describe('EMPHASIS_SIZE_RATIO against the measurement on disk', () => {
       throw new Error('the measurement on disk has no latin or no emphasis face');
     }
 
-    const verdict = chooseRatio(ratioTable(reference, emphasis), 'xHeight', 'oneWordAdvance');
+    const row = ratioTable(reference, emphasis).rows.find(
+      (r) => r.quantity === RULED_EMPHASIS_QUANTITY,
+    );
+    if (row === undefined) throw new Error(`no ${RULED_EMPHASIS_QUANTITY} row`);
+    const mean = (row.atSubtitleSize + row.atKeywordSize) / 2;
 
-    expect(verdict.passed).toBe(true);
-    expect(verdict.ratio).not.toBeNull();
-    expect(Number((verdict.ratio as number).toFixed(4))).toBe(EMPHASIS_SIZE_RATIO);
+    expect(RULED_EMPHASIS_QUANTITY).toBe('capHeight');
+    expect(Number(mean.toFixed(4))).toBe(EMPHASIS_SIZE_RATIO);
+    // The ruled quantity is still the same at both sizes, which is the one
+    // property a ruling cannot excuse.
+    expect(row.sizeDisagreement).toBeLessThan(1e-4);
   });
 });

@@ -75,14 +75,14 @@ describe('buildFonts', () => {
   });
 
   /*
-   * Measured in After Effects 26.0x67 on 2026-08-29 from the x-height of real
-   * text: Inter-SemiBold against CormorantGaramondItalic-SemiBoldItalic, the
-   * same at 343 and at 425. Pinned so a change to it is a deliberate one with
-   * this test in the diff, rather than a number quietly moving every build.
+   * Ruled by the user on 2026-08-30 from two builds of the same reel: cap
+   * height, the smaller of the two. Pinned so a change to it is a deliberate
+   * one with this test in the diff, rather than a number quietly moving every
+   * build.
    */
-  it('reports the measured emphasis ratio', () => {
-    expect(EMPHASIS_SIZE_RATIO).toBe(1.3479);
-    expect(buildFonts({ name: 'x', fonts: { status: 'tbd' } }).emphasisSizeRatio).toBe(1.3479);
+  it('reports the ruled emphasis ratio', () => {
+    expect(EMPHASIS_SIZE_RATIO).toBe(1.1641);
+    expect(buildFonts({ name: 'x', fonts: { status: 'tbd' } }).emphasisSizeRatio).toBe(1.1641);
   });
 
   it('falls back with an emphasis face too, so the field is never absent', () => {

@@ -34,7 +34,8 @@ describe('textStyleFor', () => {
     expect(style?.font).toBe('CormorantGaramondItalic-SemiBoldItalic');
     // #C9A96E, the palette's accent.
     expect(style?.fillColor.map((v) => Math.round(v * 255))).toEqual([201, 169, 110]);
-    expect(style?.fontSize).toBe(572.858);
+    // 425 x EMPHASIS_SIZE_RATIO, the ruled 1.1641.
+    expect(style?.fontSize).toBe(494.742);
   });
 
   /*
@@ -64,16 +65,21 @@ describe('textStyleFor', () => {
     expect(subtitle?.fillColor.map((v) => Math.round(v * 255))).toEqual([248, 246, 242]);
   });
 
+  /*
+   * The override is what built the same reel at two ratios for the user to
+   * choose between. 1.3479 is the one he did not choose, kept here because it
+   * has to differ from the ruled default for the test to prove anything.
+   */
   it('takes an overridden ratio, which is how one reel is built at two of them', () => {
     const style = textStyleFor({
       kind: 'keyword',
       templateId: 'kw_slam',
       templateFontSize: 425,
       snapshot: K2,
-      emphasisSizeRatio: 1.1641,
+      emphasisSizeRatio: 1.3479,
     });
 
-    expect(style?.fontSize).toBe(494.742);
+    expect(style?.fontSize).toBe(572.858);
   });
 
   /*
