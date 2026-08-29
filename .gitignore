@@ -43,3 +43,6 @@ __pycache__/
 
 # The panel bundle is built from panel/src; CEP loads it from here.
 panel/dist/
+
+# session 35 flattens a cutout beside it at build time
+*.on-fill.png
