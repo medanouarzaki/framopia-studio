@@ -6379,6 +6379,13 @@ A pasteable prompt addition is written out. **Nothing generated, no prompt
 changed.** Block 9, and all three should be tested together because a prompt
 change is a billable re-generation.
 
+### The pytest count in these reports was the wrong number
+
+`npm run check` prints **149** for the sidecar's pytest suite. The **166** that
+session reports have quoted as the pytest count is the **benchmarks workspace's
+TypeScript** count, misread from the check's four `Tests` lines and repeated
+since. Corrected here rather than carried again.
+
 ### The build saves its own previous output
 
 The unsaved-changes guard stopped the user four times running, and every time

@@ -216,9 +216,13 @@ commit follows.
 | `framopia-benchmarks` | 166 |
 | `framopia-panel` | 155 passed, 2 skipped |
 | **TypeScript total** | **1775** |
-| pytest (sidecar) | **169** |
+| pytest (sidecar) | **149** |
 
-Session 34 closed at 1755 TS and 166 pytest.
+**Session 34 closed at 1755 TS and 146 pytest, not 166.** The 166 these reports
+have been quoting as the pytest count is the **benchmarks workspace's TypeScript
+count**, misread from the check's output and carried forward. `npm run check`
+prints `149 passed` for pytest today, and 3 of those are this session's
+`flatten_cutout` tests.
 
 **The capability denylist passes against the built bundle**: no CSS feature
 Chromium 99 would drop, no JavaScript API it lacks, no container query, and the
