@@ -1,5 +1,14 @@
 import { createHash } from 'node:crypto';
-import { copyFileSync, existsSync, mkdirSync, readFileSync, statSync } from 'node:fs';
+import {
+  accessSync,
+  constants,
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  statSync,
+} from 'node:fs';
 import path from 'node:path';
 import { REPO_ROOT, resolveUserPath } from '@framopia/core';
 import {
@@ -8,7 +17,7 @@ import {
   surveyGroups,
   type GroupSurvey,
 } from './set.js';
-import { classifyDestination, type DestinationKind } from './destination.js';
+import { classifyDestination, isMaterialised, type DestinationKind } from './destination.js';
 import { classifyFile } from './secrets.js';
 
 /**
@@ -49,6 +58,50 @@ function printSurvey(groups: GroupSurvey[], withVideo: boolean): void {
   console.log(`Total to copy: ${humanBytes(total)}`);
 }
 
+/**
+ * The folder inside a destination that can actually be written to.
+ *
+ * Google Drive's mount root is `dr-x------`: the account folder itself refuses
+ * everything and the writable folder sits inside it. Which one it is is not
+ * fixed — this looks for it rather than assuming `My Drive`, because a
+ * hardcoded name is wrong on an account in another language and on a
+ * Shared-drives-only setup.
+ */
+function writableFolder(dir: string): string | null {
+  const canWrite = (p: string): boolean => {
+    try {
+      accessSync(p, constants.W_OK);
+      return statSync(p).isDirectory();
+    } catch {
+      return false;
+    }
+  };
+  if (canWrite(dir)) return dir;
+
+  const inside = readdirSync(dir, { withFileTypes: true })
+    .filter((e) => e.isDirectory() && !e.name.startsWith('.'))
+    .map((e) => path.join(dir, e.name))
+    .filter(canWrite);
+
+  if (inside.length === 1) {
+    console.log(`${dir} is read-only; using the writable folder inside it.`);
+    return inside[0] as string;
+  }
+  if (inside.length === 0) {
+    console.error(
+      `nothing under ${dir} can be written to. If this is a cloud folder, it may still be ` +
+        'setting itself up, or the account may be signed out.',
+    );
+    return null;
+  }
+  console.error(
+    `${dir} is read-only and more than one folder inside it can be written to, so this tool ` +
+      'will not choose for you. Pass one of these to --to:',
+  );
+  for (const p of inside) console.error(`  ${p}`);
+  return null;
+}
+
 const groups = surveyGroups();
 const withVideo = has('with-video');
 const destinationArg = flag('to');
@@ -73,7 +126,9 @@ if (!existsSync(destination)) {
   process.exit(1);
 }
 
-const writable = destination;
+const writable = writableFolder(destination);
+if (writable === null) process.exit(1);
+
 const declared: DestinationKind | null = has('cloud') ? 'cloud' : has('local') ? 'local' : null;
 const kind = declared ?? classifyDestination(writable);
 if (kind === 'unknown') {
@@ -101,6 +156,7 @@ let already = 0;
 let bytes = 0;
 const failures: string[] = [];
 const skipped: { file: string; reason: string }[] = [];
+const inCloudOnly: string[] = [];
 const startedAt = Date.now();
 
 for (const group of groups) {
@@ -129,6 +185,7 @@ for (const group of groups) {
     const want = sha256(source);
     if (existsSync(target) && sha256(target) === want) {
       already += 1;
+      if (kind === 'cloud' && !isMaterialised(target)) inCloudOnly.push(relative);
       continue;
     }
     copyFileSync(source, target);
@@ -138,6 +195,7 @@ for (const group of groups) {
       failures.push(relative);
       continue;
     }
+    if (kind === 'cloud' && !isMaterialised(target)) inCloudOnly.push(relative);
     copied += 1;
     bytes += statSync(source).size;
   }
@@ -168,3 +226,25 @@ if (failures.length > 0) {
   process.exit(1);
 }
 console.log('\nEvery file was re-read from the destination and matched by sha256.');
+
+if (kind === 'cloud') {
+  /*
+   * Google Drive streams: a file in the mount can be a name whose bytes live
+   * only on Google's servers. Measured on this machine, an undownloaded Drive
+   * file reports zero blocks against a six-megabyte size, and a file written
+   * into the same folder reports real ones — so this can be checked rather than
+   * hoped for. It says the bytes are here **now**; Drive may evict them later.
+   */
+  if (inCloudOnly.length === 0) {
+    console.log(
+      'Every copied file has its bytes on this machine as well as in Drive, checked file by file.',
+    );
+  } else {
+    console.error(
+      `\n${inCloudOnly.length} file(s) are in Drive but their bytes are NOT on this machine, so ` +
+        'this copy could not be confirmed end to end:',
+    );
+    for (const f of inCloudOnly.slice(0, 10)) console.error(`  ${f}`);
+    process.exit(1);
+  }
+}
