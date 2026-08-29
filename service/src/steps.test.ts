@@ -42,12 +42,17 @@ describe('stepsFor', () => {
     expect(summary).toBe('5 slots, 10 candidates, 10 on disk.');
   });
 
-  it('names the fonts a build would use', () => {
+  /*
+   * K2 supplied its own faces at Block 9 session 2, so this client no longer
+   * takes the global fallback. That they happen to be the same two faces is
+   * why the fallback flag, not the names, is what says which branch ran.
+   */
+  it('names the fonts a build would use, and they are the client’s own', () => {
     const summary = stepsFor('vitasilk', 'k2-syndicalia').steps.find(
       (s) => s.id === 'build',
     )?.summary;
     expect(summary).toContain('Inter Semi-Bold');
-    expect(summary).toContain('global fallback');
+    expect(summary).not.toContain('global fallback');
   });
 
   it('refuses an unknown reel and an unknown mode by name', () => {
@@ -247,10 +252,24 @@ describe('the build preview', () => {
     expect(preview?.watermark).toEqual({ size: 'medium', widthPx: 324, heightPx: 363 });
   });
 
-  it('names the faces a build would set the type in', () => {
+  it('names the faces a build would set the type in, including emphasis', () => {
     const preview = stepsFor('vitasilk', 'k2-syndicalia').build;
     expect(preview?.fonts.latin).toBe('Inter Semi-Bold');
     expect(preview?.fonts.arabic).toBe('Almarai Bold');
-    expect(preview?.fonts.globalFallback).toBe(true);
+    expect(preview?.fonts.emphasis).toBe('Cormorant Garamond SemiBold Italic');
+    expect(preview?.fonts.globalFallback).toBe(false);
+  });
+
+  /*
+   * The reel is built against the copy of the client saved with it, so the
+   * preview has to say which look it will use — and, when the client has moved
+   * on, that this reel is deliberately not following.
+   */
+  it('says the build uses the client’s look as saved for this video', () => {
+    const preview = stepsFor('vitasilk', 'k2-syndicalia').build;
+    expect(preview?.client?.source).toBe('plan');
+    expect(preview?.client?.name).toBe('K2 Syndicalia');
+    expect(preview?.client?.behind).toBe(false);
+    expect(preview?.client?.note).toContain('as it was saved for this video');
   });
 });

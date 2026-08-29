@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import http, { type IncomingMessage, type ServerResponse } from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { REPO_ROOT } from '@framopia/core';
+import { REPO_ROOT, loadMode, snapshotOfMode } from '@framopia/core';
 import { createJob, getJob, UnknownJobTypeError } from './jobs.js';
 import { readEditPlan, writeEditPlan } from './editplan/io.js';
 import { clearManualZone, ManualZoneError, setManualZone } from './frames/plan-zones.js';
@@ -78,6 +78,18 @@ function readBody(req: IncomingMessage): Promise<string> {
  * Read a plan, apply one edit, write it back. A plan that will not open is a
  * 404 rather than a 500: the caller supplied the path.
  */
+/**
+ * An edit the caller asked for that this plan cannot take — a 400, not a 500.
+ * `ManualZoneError` was the only such case and was matched by its own class;
+ * this is the general one, so the next edit does not need a third branch.
+ */
+export class PlanEditError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'PlanEditError';
+  }
+}
+
 async function withPlan(
   res: ServerResponse,
   planPath: string,
@@ -93,7 +105,7 @@ async function withPlan(
   try {
     edit(plan);
   } catch (err) {
-    if (err instanceof ManualZoneError) {
+    if (err instanceof ManualZoneError || err instanceof PlanEditError) {
       sendJson(res, 400, { error: err.message });
       return;
     }
@@ -563,6 +575,38 @@ export function createApp(token: string): http.Server {
             enabled: enabled ?? current?.enabled ?? true,
             size: size ?? current?.size ?? DEFAULT_WATERMARK_SIZE,
           };
+        });
+        return;
+      }
+
+      /*
+       * Moves a reel to the client's look as it stands now.
+       *
+       * Deliberately a control someone presses, never something a run does on
+       * its own: a reel is built against the copy saved with it precisely so a
+       * mode file edited later cannot change what was approved, and re-pinning
+       * automatically would give that back.
+       */
+      if (req.method === 'POST' && url.pathname === '/client-snapshot') {
+        let body: { planPath?: unknown };
+        try {
+          body = JSON.parse((await readBody(req)) || '{}') as typeof body;
+        } catch {
+          sendJson(res, 400, { error: 'invalid JSON body' });
+          return;
+        }
+        if (typeof body.planPath !== 'string') {
+          sendJson(res, 400, { error: '"planPath" is required' });
+          return;
+        }
+        await withPlan(res, body.planPath, (plan) => {
+          const id = plan.clientMode?.id;
+          if (id === undefined) {
+            throw new PlanEditError(
+              'this video has no client yet, so there is nothing to bring it up to date with',
+            );
+          }
+          plan.clientSnapshot = snapshotOfMode(loadMode(id), new Date().toISOString());
         });
         return;
       }

@@ -489,6 +489,20 @@ export async function chooseImage(
   return await postJson(connection, '/images/choose', edit);
 }
 
+/**
+ * Brings a video up to the client's look as it stands now.
+ *
+ * Only ever from a control someone presses. A video is built against the copy
+ * saved with it so that editing a client later cannot change a video that was
+ * already approved, and doing this automatically would give that back.
+ */
+export async function updateClientLook(
+  connection: Connection,
+  edit: { planPath: string },
+): Promise<void> {
+  await postJson(connection, '/client-snapshot', edit);
+}
+
 export async function setWatermark(
   connection: Connection,
   edit: { planPath: string; enabled?: boolean; size?: WatermarkSize },

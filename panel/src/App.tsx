@@ -562,6 +562,10 @@ function Panel({
             disabled={buildStep?.available !== true}
             disabledReason={buildStep?.reason ?? null}
             issues={buildStep?.issues ?? []}
+            onClientLookUpdated={() => {
+              if (connection === null || reel === null || mode === null) return;
+              void fetchSteps(connection, reel.label, mode.id).then(setPlan, () => undefined);
+            }}
           />
         </section>
 

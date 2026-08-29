@@ -439,7 +439,7 @@ function stubRoutes(steps: unknown, resumeAt: string): string {
     modes: {
       modes: [
         {
-          id: 'k2-syndicalia', name: 'K2 Syndicalia', version: 6, fontsStatus: 'tbd',
+          id: 'k2-syndicalia', name: 'K2 Syndicalia', version: 8, fontsStatus: 'set',
           about: 'Cosmetic clinic, Casablanca',
           look: {
             palette: [
@@ -473,7 +473,14 @@ function stubRoutes(steps: unknown, resumeAt: string): string {
         outputPath: '/repo/.local/build/vitasilk-full.aep',
         subtitleCards: 68, keywords: 3, images: 5, sfxEvents: 4,
         watermark: { size: 'medium', widthPx: 324, heightPx: 363 },
-        fonts: { latin: 'Inter Semi-Bold', arabic: 'Almarai Bold', globalFallback: true },
+        fonts: {
+          latin: 'Inter Semi-Bold', arabic: 'Almarai Bold',
+          emphasis: 'Cormorant Garamond SemiBold Italic', globalFallback: false,
+        },
+        client: {
+          name: 'K2 Syndicalia', source: 'plan', behind: false,
+          note: 'using K2 Syndicalia as it was saved for this video',
+        },
         free: true, missing: [],
       },
     },
@@ -2070,6 +2077,51 @@ describe.skipIf(!built)('the Build step', () => {
     await loaded.page.waitForSelector('.buildpane', { timeout: 5000 });
     return loaded;
   }
+
+  /*
+   * A video is built with the client's look as it was when the video was set
+   * up, not as the client file stands today. That is only safe if the panel
+   * says so — and only useful if there is one control that moves it forward.
+   */
+  it('says the video keeps the client’s look as it was set up', async () => {
+    const loaded = await openBuild();
+    if (loaded === null) return;
+    try {
+      const text = (await loaded.page.textContent('.buildpane')) ?? '';
+      expect(text).toContain('K2 Syndicalia’s look as it was when this video was set up');
+      expect(text).toContain('Cormorant Garamond SemiBold Italic');
+      // No version numbers on screen: "as it was set up" is the state he picks.
+      expect(text).not.toContain('v8');
+      expect(text).not.toContain('clientSnapshot');
+      // Nothing to update to, so no control offering it.
+      expect(await loaded.page.$('.buildpane button.ghost')).toBeNull();
+      expect(loaded.uncaught).toEqual([]);
+    } finally {
+      await loaded.page.close();
+    }
+  });
+
+  it('offers one control when the client has changed since, and never presses it', async () => {
+    const loaded = await loadFlow(
+      'build',
+      'build',
+      420,
+      'window.__payload.steps.build.client.behind = true;',
+    );
+    if (loaded === null) return;
+    try {
+      await loaded.page.waitForSelector('.buildpane', { timeout: 5000 });
+      const text = (await loaded.page.textContent('.buildpane')) ?? '';
+      expect(text).toContain('K2 Syndicalia has changed since');
+      expect(text).toContain('keeps the older look until you say otherwise');
+      const button = await loaded.page.$('.buildpane button.ghost');
+      expect(button).not.toBeNull();
+      expect(await button?.textContent()).toBe('Use the client’s look as it is now');
+      expect(loaded.uncaught).toEqual([]);
+    } finally {
+      await loaded.page.close();
+    }
+  });
 
   it('says what will be built, where it goes, and that it is free', async () => {
     const loaded = await openBuild();

@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { REPO_ROOT, buildFonts, loadMode, loadTemplateManifest, templatesById } from '@framopia/core';
+import { resolveClientIdentity, type ClientIdentitySource } from './build/client-identity.js';
 import { listReels } from './catalogue.js';
 import { checkBuildability } from './analysis/buildability.js';
 import {
@@ -94,7 +95,28 @@ export interface BuildPreview {
   images: number;
   sfxEvents: number;
   watermark: { size: WatermarkSize; widthPx: number; heightPx: number } | null;
-  fonts: { latin: string; arabic: string; globalFallback: boolean };
+  fonts: {
+    latin: string;
+    arabic: string;
+    /** Optional: a service older than Block 9 session 2 sends no emphasis face. */
+    emphasis?: string;
+    globalFallback: boolean;
+  };
+  /**
+   * The client's look this build will use, and where it came from.
+   *
+   * Optional with a default so an older panel renders what it always did. A
+   * reel is built against the copy saved with it, not the client file as it
+   * stands, so the panel has to be able to say which — and to offer the one
+   * control that moves it forward.
+   */
+  client?: {
+    name: string;
+    source: ClientIdentitySource;
+    note: string;
+    /** True when the client has changed since this video was set up. */
+    behind: boolean | null;
+  };
   /**
    * Always true, and said out loud: every other control in this panel that runs
    * something can spend money, so silence about cost would be read as a cost.
@@ -234,7 +256,8 @@ export function stepsFor(reelLabel: string, modeId: string): PlanSteps {
   let buildSummary: string | null = null;
   let buildIssues: string[] = [];
   let buildPreview: BuildPreview | undefined;
-  const fonts = buildFonts(mode);
+  const identity = resolveClientIdentity(plan, {});
+  const fonts = buildFonts(identity.snapshot ?? mode);
   try {
     const report = checkBuildability(plan, templatesById(loadTemplateManifest()));
     buildAvailable = report.checked.subtitleGroups > 0;
@@ -307,7 +330,14 @@ export function stepsFor(reelLabel: string, modeId: string): PlanSteps {
         fonts: {
           latin: fonts.latin,
           arabic: fonts.arabic,
+          emphasis: fonts.emphasis,
           globalFallback: fonts.source === 'global',
+        },
+        client: {
+          name: identity.snapshot?.name ?? buildMode.name,
+          source: identity.source,
+          note: identity.note,
+          behind: identity.behind,
         },
         free: true,
         missing,

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { fetchBuildJob, startBuild, type Connection } from './service.js';
+import { fetchBuildJob, startBuild, updateClientLook, type Connection } from './service.js';
 import type { BuildJob, BuildPreview, BuildProgress } from './types.js';
 
 /**
@@ -18,6 +18,7 @@ export function Build({
   issues,
   ready,
   stale,
+  onClientLookUpdated,
 }: {
   connection: Connection | null;
   preview: BuildPreview | undefined;
@@ -29,6 +30,8 @@ export function Build({
   stale: string | null;
   /** Cards the builder will have to squeeze, named rather than counted. */
   issues: string[];
+  /** Called after the video is brought up to the client's current look. */
+  onClientLookUpdated?: () => void;
 }): JSX.Element {
   const [job, setJob] = useState<BuildJob | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -99,7 +102,11 @@ export function Build({
               'The companion service did not say what this build would contain. Quit After Effects and open it again.')}
         </p>
       ) : (
-        <BuildPreviewCard preview={preview} />
+        <BuildPreviewCard
+          preview={preview}
+          connection={connection}
+          {...(onClientLookUpdated === undefined ? {} : { onClientLookUpdated })}
+        />
       )}
 
       {missing.length === 0 ? null : (
@@ -159,7 +166,15 @@ export function Build({
   );
 }
 
-function BuildPreviewCard({ preview }: { preview: BuildPreview }): JSX.Element {
+function BuildPreviewCard({
+  preview,
+  connection,
+  onClientLookUpdated,
+}: {
+  preview: BuildPreview;
+  connection: Connection | null;
+  onClientLookUpdated?: () => void;
+}): JSX.Element {
   const parts = [
     `${preview.subtitleCards} subtitle cards`,
     `${preview.keywords} emphasised ${preview.keywords === 1 ? 'keyword' : 'keywords'}`,
@@ -180,8 +195,16 @@ function BuildPreviewCard({ preview }: { preview: BuildPreview }): JSX.Element {
       </p>
       <p className="detail">
         Type set in {preview.fonts.latin} and {preview.fonts.arabic}
+        {preview.fonts.emphasis === undefined || preview.fonts.emphasis === preview.fonts.latin
+          ? ''
+          : `, with ${preview.fonts.emphasis} for emphasised words`}
         {preview.fonts.globalFallback ? ', the standard pair' : ''}.
       </p>
+      <ClientLook
+        preview={preview}
+        connection={connection}
+        onClientLookUpdated={onClientLookUpdated}
+      />
       <p className="detail">
         Writes {preview.outputPath}, replacing what is there.
       </p>
@@ -191,6 +214,73 @@ function BuildPreviewCard({ preview }: { preview: BuildPreview }): JSX.Element {
       */}
       <p className="detail">Building is free. It calls nothing and bills nothing.</p>
     </div>
+  );
+}
+
+/**
+ * Which of the client's looks this video is built with.
+ *
+ * A video keeps the look the client had when it was set up, so a video approved
+ * months ago rebuilds as it was approved. That is only safe if the panel says
+ * so, and only useful if there is one control that moves it forward — which is
+ * a thing a person presses, never something a run does.
+ *
+ * No version numbers on screen: "as it was set up" and "as it is now" are the
+ * two states, and they are what he is actually choosing between.
+ */
+function ClientLook({
+  preview,
+  connection,
+  onClientLookUpdated,
+}: {
+  preview: BuildPreview;
+  connection: Connection | null;
+  onClientLookUpdated?: () => void;
+}): JSX.Element | null {
+  const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState<string | null>(null);
+  const client = preview.client;
+  if (client === undefined) return null;
+  if (client.source === 'none') {
+    return <p className="detail">No client saved for this video yet.</p>;
+  }
+  if (client.source === 'live-mode') {
+    return (
+      <p className="detail">
+        This video has no saved copy of {client.name}’s look, so it follows whatever the
+        client says today. Running the pipeline saves one.
+      </p>
+    );
+  }
+  return (
+    <>
+      <p className="detail">
+        Built with {client.name}’s look as it was when this video was set up.
+      </p>
+      {client.behind === true ? (
+        <p className="detail">
+          {client.name} has changed since. This video keeps the older look until you say
+          otherwise.{' '}
+          <button
+            type="button"
+            className="ghost"
+            disabled={busy || connection === null}
+            onClick={() => {
+              if (connection === null) return;
+              setBusy(true);
+              setFailed(null);
+              void updateClientLook(connection, { planPath: preview.planPath })
+                .then(() => onClientLookUpdated?.())
+                .catch((e: unknown) => setFailed(e instanceof Error ? e.message : String(e)))
+                .finally(() => setBusy(false));
+            }}
+          >
+            {busy ? 'Updating…' : 'Use the client’s look as it is now'}
+          </button>
+        </p>
+      ) : null}
+      {failed === null ? null : <p className="detail">{failed}</p>}
+    </>
   );
 }
 

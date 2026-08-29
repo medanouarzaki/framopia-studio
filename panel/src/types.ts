@@ -306,7 +306,18 @@ export interface BuildPreview {
   images: number;
   sfxEvents: number;
   watermark: { size: WatermarkSize; widthPx: number; heightPx: number } | null;
-  fonts: { latin: string; arabic: string; globalFallback: boolean };
+  fonts: { latin: string; arabic: string; emphasis?: string; globalFallback: boolean };
+  /**
+   * The client's look this build will use, and where it came from. Optional: a
+   * service older than this sends nothing, and the pane then shows what it
+   * always did rather than the panel inventing a provenance.
+   */
+  client?: {
+    name: string;
+    source: 'plan' | 'live-mode' | 'override' | 'none';
+    note: string;
+    behind: boolean | null;
+  };
   free: true;
   /** Absent from a service older than the requirements check. Never assumed. */
   missing?: BuildRequirementView[];
