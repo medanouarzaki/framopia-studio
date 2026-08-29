@@ -6,7 +6,8 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
-    "test": "vitest",
+    "test": "vitest --run",
+    "test:watch": "vitest",
     "build": "tsc",
     "bench": "tsx src/run.ts",
     "tag": "tsx src/tag-cli.ts",

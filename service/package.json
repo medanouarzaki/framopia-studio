@@ -6,7 +6,8 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
-    "test": "vitest",
+    "test": "vitest --run",
+    "test:watch": "vitest",
     "build": "tsc",
     "start": "node dist/server.js",
     "service": "node dist/service.js",
@@ -45,7 +46,8 @@
     "timing-budget": "tsx src/analysis/timing-budget-cli.ts",
     "probe:audio-start": "tsx src/build/audio-start-probe-cli.ts",
     "migrate:client-mode": "tsx src/editplan/migrate-client-mode-cli.ts",
-    "place:images": "tsx src/placement/place-images-cli.ts"
+    "place:images": "tsx src/placement/place-images-cli.ts",
+    "migrate:client-snapshot": "tsx src/editplan/migrate-client-snapshot-cli.ts"
   },
   "dependencies": {
     "@framopia/core": "*",

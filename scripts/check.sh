@@ -14,7 +14,9 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.."
 npm run build:core
 npm run typecheck --workspaces --if-present
 npm run lint --workspaces --if-present
-npm run test --workspaces --if-present -- --run
+# `--run` is not appended here: every workspace's own `test` script carries it,
+# and vitest refuses the flag twice. `test:watch` is the watching one.
+npm run test --workspaces --if-present
 npm run validate:modes --workspace @framopia/core
 
 # TEMPLATE_LIBRARY_GUIDE §9: the manifest against what is really in the .aep.

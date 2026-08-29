@@ -6,7 +6,8 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
-    "test": "node scripts/build.mjs && vitest",
+    "test": "node scripts/build.mjs && vitest --run",
+    "test:watch": "node scripts/build.mjs && vitest",
     "build": "node scripts/build.mjs",
     "dev": "node scripts/build.mjs --watch",
     "install:cep": "node scripts/install.mjs"
