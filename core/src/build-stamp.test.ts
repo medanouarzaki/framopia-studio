@@ -25,6 +25,25 @@ describe('compareBuildStamps', () => {
     expect(compareBuildStamps(stamp, stamp).verdict).toBe('match');
   });
 
+  /*
+   * The commit moves when nothing about the code does — committing a report is
+   * enough. Comparing the whole stamp made two artifacts built from identical
+   * source compare unequal, which is the false alarm this check replaced.
+   */
+  it('ignores the commit and compares the code', () => {
+    const compared = compareBuildStamps('aaaaaaaaaa+0011223344556677', 'bbbbbbbbbb+0011223344556677');
+
+    expect(compared.verdict).toBe('match');
+    expect(compared.detail).toBeNull();
+  });
+
+  it('says the code is the same when only the commit differs', () => {
+    const said = describeBuildStamps('aaaaaaaaaa+00112233', 'bbbbbbbbbb+00112233');
+
+    expect(said).toContain('same code as this panel');
+    expect(said).toContain('different commits');
+  });
+
   it('names a service genuinely one build behind, and what to do', () => {
     const compared = compareBuildStamps('abc1234567+aaaa', 'abc1234567+bbbb');
 

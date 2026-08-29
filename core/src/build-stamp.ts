@@ -42,6 +42,20 @@ export interface BuildStampComparison {
  */
 export const REBUILD_COMMAND = 'npm run service -- --force';
 
+/**
+ * The half that decides: the content hash, not the commit.
+ *
+ * A stamp is `<commit>+<content hash>`, and **the commit moves when nothing
+ * about the code does**. Committing a report is enough to make an artifact
+ * built a minute earlier compare unequal to one built a minute later from
+ * identical source — which is a false alarm of exactly the kind this whole
+ * check replaced. The commit is for a human to read; the hash is the claim.
+ */
+function sourceHalf(stamp: string): string {
+  const at = stamp.lastIndexOf('+');
+  return at === -1 ? stamp : stamp.slice(at + 1);
+}
+
 export function compareBuildStamps(
   panelStamp: string | null,
   serviceStamp: string | null | undefined,
@@ -58,7 +72,7 @@ export function compareBuildStamps(
       detail: null,
     };
   }
-  if (panelStamp === serviceStamp) return { verdict: 'match', detail: null };
+  if (sourceHalf(panelStamp) === sourceHalf(serviceStamp)) return { verdict: 'match', detail: null };
   return {
     verdict: 'different',
     detail:
@@ -80,7 +94,13 @@ export function describeBuildStamps(
   serviceStamp: string | null | undefined,
 ): string {
   const compared = compareBuildStamps(panelStamp, serviceStamp);
-  if (compared.verdict === 'match') return `same build as this panel (${panelStamp})`;
+  if (compared.verdict === 'match') {
+    return panelStamp === serviceStamp
+      ? `same build as this panel (${panelStamp ?? 'unknown'})`
+      : `same code as this panel (panel ${panelStamp ?? 'unknown'}, service ${
+          serviceStamp ?? 'unknown'
+        } — the same source at different commits)`;
+  }
   if (compared.verdict === 'different') {
     return `built from different code: panel ${panelStamp ?? 'unknown'}, service ${
       serviceStamp ?? 'unknown'
