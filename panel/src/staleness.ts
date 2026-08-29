@@ -1,63 +1,62 @@
+/*
+ * The subpath, never the barrel. The panel is bundled for CEP's Chromium and
+ * `@framopia/core`'s index reaches `node:fs` through the config loader, which
+ * esbuild cannot resolve for a browser target. `build-stamp.ts` imports
+ * nothing, so its own graph is clean — the same reason `align-review` has a
+ * subpath of its own.
+ */
+import {
+  compareBuildStamps,
+  describeBuildStamps,
+  type BuildStampComparison,
+} from '@framopia/core/build-stamp';
+
 /**
- * Whether the companion service is running older code than this panel.
+ * Whether the companion service was built from the same code as this panel.
  *
  * The two are deployed separately — the bundle is reloaded by closing and
  * reopening the panel, the service is a long-running process — so a rebuilt
- * panel talking to an old service is the normal way to break things here. It
- * has confused what is on screen in four separate sessions: a field the new
- * panel reads and the old service does not send reads as a fact about the
- * user's work rather than as a version gap.
+ * panel talking to a service built from other code is the normal way to break
+ * things here. A field the new panel reads and the old service does not send
+ * reads as a fact about the user's work rather than as a version gap.
  *
- * Nothing else can see it. Both `serviceVersion` and `appVersion` come **from
- * the service**, so they agree with each other by construction and say nothing
- * about the bundle. The one thing the two sides do not share is *when* each
- * came into being: the bundle knows when it was built, and the service reports
- * when it started.
+ * **This used to compare clocks and it was wrong.** The bundle stamped the time
+ * it was built and the service reported when its process started; a service
+ * started before the bundle was built was accused of running older code even
+ * when it was running exactly the same code, and the user could not clear the
+ * banner by any means because nothing about the code was being measured. Both
+ * limits were recorded in `handoffs/block-8.md` §9 before they cost a session.
+ *
+ * Both sides now carry one build stamp, and the rule that compares them lives
+ * in `@framopia/core` so the panel and the service read the same one.
  */
-declare const __PANEL_BUILT_AT__: string | undefined;
+declare const __PANEL_BUILD_STAMP__: string | undefined;
 
-/** Injected at build time. Absent in tests and in a watch build. */
-export function panelBuiltAt(): string | null {
+/** Injected at build time by `panel/scripts/build.mjs`. Absent in tests. */
+export function panelBuildStamp(): string | null {
   try {
-    return typeof __PANEL_BUILT_AT__ === 'string' ? __PANEL_BUILT_AT__ : null;
+    return typeof __PANEL_BUILD_STAMP__ === 'string' ? __PANEL_BUILD_STAMP__ : null;
   } catch {
     return null;
   }
 }
 
-export interface Staleness {
-  stale: boolean;
-  /** What to say, when there is something to say. */
-  detail: string | null;
-}
+export type Staleness = BuildStampComparison;
 
 /**
- * A service older than the bundle, in wall-clock terms.
+ * Behind, unknown and down are three different states.
  *
- * It answers "is this service running the code that was on disk when the panel
- * was built" and nothing more — it cannot tell a service that is *behind* from
- * one that is *broken*, and it says nothing when either timestamp is missing.
- * A minute of slack, because building the service and starting it are two
- * commands and the second follows the first.
+ * This answers only the first two: a service that does not answer at all is not
+ * this function's business and is reported by the connection itself. `detail`
+ * is null unless there is something to act on, so the main screen stays quiet
+ * when the two agree **and** when they cannot be compared — the details pane
+ * carries the difference between those two, through `describeBuildStamps`.
  */
-const SLACK_MS = 60_000;
-
 export function stalenessOf(
-  builtAt: string | null,
-  serviceStartedAt: string | undefined,
+  panelStamp: string | null,
+  serviceStamp: string | null | undefined,
 ): Staleness {
-  if (builtAt === null || serviceStartedAt === undefined) {
-    return { stale: false, detail: null };
-  }
-  const built = Date.parse(builtAt);
-  const started = Date.parse(serviceStartedAt);
-  if (Number.isNaN(built) || Number.isNaN(started)) return { stale: false, detail: null };
-  if (built <= started + SLACK_MS) return { stale: false, detail: null };
-  return {
-    stale: true,
-    detail:
-      'This panel was rebuilt after the companion service started, so the service is running ' +
-      'older code. Quit After Effects and open it again, or run npm run service:build and ' +
-      'reopen the panel.',
-  };
+  return compareBuildStamps(panelStamp, serviceStamp);
 }
+
+export { describeBuildStamps };

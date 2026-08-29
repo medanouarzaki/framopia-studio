@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { describeBuildStamps, panelBuildStamp } from './staleness.js';
 import { nodeMatch } from './node-match.js';
 import type { ServiceState, ToolState } from './types.js';
 
@@ -137,6 +138,12 @@ export function Readiness({
           */}
           <p className="faint">{originLine(state)}</p>
           <p className="faint">Version {health.serviceVersion}</p>
+          {/*
+            Said out loud even when it agrees. The main screen stays quiet on a
+            match, so without this line "I cannot tell" and "they agree" would
+            look identical — and they are different answers.
+          */}
+          <p className="faint">{describeBuildStamps(panelBuildStamp(), health.buildStamp)}</p>
           {/* Reported whichever way it went, so he can tell me what his host has. */}
           <p className="faint">{fileDialog}</p>
           <p className="faint attempt" data-attempt={attempt}>

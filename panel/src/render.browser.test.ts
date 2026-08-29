@@ -103,10 +103,10 @@ const HEALTHY_PAYLOAD = {
 };
 
 /** Replaces fetch before the bundle runs, so the first health call is the stub. */
-function stubFetch(mode: 'healthy' | 'hang'): string {
+function stubFetch(mode: 'healthy' | 'hang', health: unknown = HEALTHY_PAYLOAD): string {
   return mode === 'hang'
     ? 'window.fetch = () => new Promise(() => {});'
-    : `window.fetch = () => Promise.resolve({ ok: true, json: () => Promise.resolve(${JSON.stringify(HEALTHY_PAYLOAD)}) });`;
+    : `window.fetch = () => Promise.resolve({ ok: true, json: () => Promise.resolve(${JSON.stringify(health)}) });`;
 }
 
 let browser: Browser | undefined;
@@ -146,6 +146,8 @@ async function load(
     repo?: string;
     width?: number;
     height?: number;
+    /** Replaces the health payload, for a test about what the service reports. */
+    health?: unknown;
   } = {},
 ): Promise<Loaded | null> {
   if (browser === undefined) return null;
@@ -165,7 +167,9 @@ async function load(
     uncaught.push(msg.text());
   });
   await page.addInitScript(stubHost(options.files ?? HANDSHAKE, options.repo));
-  if (options.fetch != null) await page.addInitScript(stubFetch(options.fetch));
+  if (options.fetch != null) {
+    await page.addInitScript(stubFetch(options.fetch, options.health ?? HEALTHY_PAYLOAD));
+  }
   await page.goto(`file://${INDEX}`);
   await page.waitForSelector('header.brand', { timeout: 10_000 });
   return { page, uncaught };
@@ -2542,3 +2546,83 @@ describe.skipIf(!built)('Browse, when the host has a dialog', () => {
     }
   }, 30_000);
 });
+
+/*
+ * The banner the user could not clear.
+ *
+ * It compared the bundle's build time against the moment the service process
+ * started, so a service running exactly the right code was accused of being
+ * behind, and no amount of restarting anything cleared it — nothing about the
+ * code was being measured. Both sides carry a build stamp now, and equal means
+ * equal whoever started first.
+ *
+ * The match case reads the stamp from `scripts/build-stamp.mjs`, the same
+ * function the bundle was stamped with a moment ago by the test script. So it
+ * asserts the stamp is really compiled into `panel/dist`, not merely that two
+ * strings compare.
+ */
+describe.skipIf(!built)('the build-stamp check', () => {
+  async function loadWithStamp(stamp: string | null): Promise<Loaded | null> {
+    return await load({
+      files: { ...HANDSHAKE, ...SERVICE_BUILT },
+      fetch: 'healthy',
+      health: stamp === null ? HEALTHY_PAYLOAD : { ...HEALTHY_PAYLOAD, buildStamp: stamp },
+    });
+  }
+
+  it('says nothing when the service is the build this bundle was made from', async () => {
+    const loaded = await loadWithStamp(await realStamp());
+    if (loaded === null) return;
+    try {
+      const text = (await loaded.page.textContent('main')) ?? '';
+      expect(text).not.toContain('built from different code');
+      expect(text).not.toContain('older code');
+      await loaded.page.click('button.link');
+      const details = (await loaded.page.textContent('.details')) ?? '';
+      expect(details).toContain('same build as this panel');
+      expect(loaded.uncaught).toEqual([]);
+    } finally {
+      await loaded.page.close();
+    }
+  }, 30_000);
+
+  it('names a service built from other code, and gives a command that works', async () => {
+    const loaded = await loadWithStamp('0000000000+ffffffffffffffff');
+    if (loaded === null) return;
+    try {
+      const text = (await loaded.page.textContent('main')) ?? '';
+      expect(text).toContain('built from different code than this panel');
+      // The remedy has to be the one that works: plain `npm run service`
+      // exits 1 while a service is running, which is always the case here.
+      expect(text).toContain('npm run service -- --force');
+      expect(loaded.uncaught).toEqual([]);
+    } finally {
+      await loaded.page.close();
+    }
+  }, 30_000);
+
+  it('does not accuse a service too old to carry a stamp', async () => {
+    const loaded = await loadWithStamp(null);
+    if (loaded === null) return;
+    try {
+      const text = (await loaded.page.textContent('main')) ?? '';
+      expect(text).not.toContain('built from different code');
+      await loaded.page.click('button.link');
+      const details = (await loaded.page.textContent('.details')) ?? '';
+      expect(details).toContain('cannot be compared');
+      expect(loaded.uncaught).toEqual([]);
+    } finally {
+      await loaded.page.close();
+    }
+  }, 30_000);
+});
+
+async function realStamp(): Promise<string> {
+  // The build script is plain ESM with no types of its own; importing it here
+  // is the point — the test has to stamp with the same function the bundle was
+  // stamped with, not with a copy of the rule.
+  const mod: unknown = await import(
+    /* @vite-ignore */ path.join(REPO, 'scripts', 'build-stamp.mjs')
+  );
+  return (mod as { buildStamp: () => string }).buildStamp();
+}

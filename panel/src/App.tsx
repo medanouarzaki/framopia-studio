@@ -16,7 +16,7 @@ import { Build } from './Build.js';
 import { ClientCard } from './ClientCard.js';
 import { NewClient } from './NewClient.js';
 import { Readiness } from './Readiness.js';
-import { panelBuiltAt, stalenessOf } from './staleness.js';
+import { panelBuildStamp, stalenessOf } from './staleness.js';
 import { fileDialogSupport, pickVideoFile } from './file-dialog.js';
 import { Transcript } from './Transcript.js';
 import { Images } from './Images.js';
@@ -350,14 +350,15 @@ function Panel({
 
   const buildStep = plan?.steps.find((x) => x.id === 'build') ?? null;
   /*
-   * A service running older code than this bundle is the normal way things
-   * break here, and until now nothing could see it: both versions on the health
-   * payload come from the service, so they agree by construction.
+   * A service built from different code than this bundle is the normal way
+   * things break here, and nothing else can see it: both versions on the health
+   * payload come from the service, so they agree by construction. Compared by
+   * build stamp, never by clock — see `staleness.ts`.
    */
   const dialog = fileDialogSupport();
   const stale = stalenessOf(
-    panelBuiltAt(),
-    service.kind === 'healthy' ? service.health.process?.startedAt : undefined,
+    panelBuildStamp(),
+    service.kind === 'healthy' ? service.health.buildStamp : undefined,
   );
 
   if (newClient !== null) {

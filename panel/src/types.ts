@@ -36,6 +36,14 @@ export interface HealthPayload {
   sidecar: { venv: ToolState; pythonPath: string };
   /** The service process that answered. Optional so an older payload parses. */
   process?: { pid: number; startedAt: string };
+  /**
+   * Which build the service process is running.
+   *
+   * Optional with a default: a service older than this sends nothing, and the
+   * panel reports that it **cannot tell** rather than that the service is
+   * behind. Those are different states and only one of them has a remedy.
+   */
+  buildStamp?: string | null;
   templates: { valid: boolean; issues: string[]; count: number };
   /** Where the repo really is, so the panel need not derive it twice. */
   repoRoot: string;

@@ -1,39 +1,32 @@
 import { describe, expect, it } from 'vitest';
 import { stalenessOf } from './staleness.js';
 
-/*
- * A rebuilt panel talking to a service started before the rebuild is the normal
- * way things break here, and until session 44 nothing could see it: both
- * versions on the health payload come **from the service**, so they agree with
- * each other by construction and say nothing about the bundle.
+/**
+ * The panel's side of the build-stamp rule. The rule itself is pinned in
+ * `@framopia/core`; this asserts the panel reads it and that the shape the
+ * screen consumes is the shape it gets.
+ *
+ * The clock comparison this replaced is gone, not flagged off: it stamped the
+ * bundle's build time and compared it against the service's start time, which
+ * accused a service running exactly the right code and could not be cleared by
+ * restarting anything.
  */
-describe('a service running older code than the panel', () => {
-  const started = '2026-08-29T17:24:45.000Z';
+describe('stalenessOf', () => {
+  const stamp = 'abc1234567+0011223344556677';
 
-  it('is noticed when the bundle was built after the service started', () => {
-    const stale = stalenessOf('2026-08-29T17:31:00.000Z', started);
-    expect(stale.stale).toBe(true);
-    expect(stale.detail).toContain('running older code');
-    expect(stale.detail).toContain('open it again');
+  it('says nothing when the service is the same build', () => {
+    expect(stalenessOf(stamp, stamp)).toEqual({ verdict: 'match', detail: null });
   });
 
-  it('is not claimed when the service started after the build', () => {
-    expect(stalenessOf('2026-08-29T17:00:00.000Z', started).stale).toBe(false);
+  it('says so, with a remedy, when the service is a different build', () => {
+    const stale = stalenessOf(stamp, 'abc1234567+ffff');
+
+    expect(stale.verdict).toBe('different');
+    expect(stale.detail).toContain('npm run service -- --force');
   });
 
-  /* Building the service and starting it are two commands, in that order. */
-  it('allows a minute of slack, so a normal restart is not called stale', () => {
-    expect(stalenessOf('2026-08-29T17:25:30.000Z', started).stale).toBe(false);
-    expect(stalenessOf('2026-08-29T17:26:30.000Z', started).stale).toBe(true);
-  });
-
-  /* It says nothing rather than guessing — the rule about a field that may not arrive. */
-  it('says nothing when either time is missing or unreadable', () => {
-    expect(stalenessOf(null, started)).toEqual({ stale: false, detail: null });
-    expect(stalenessOf('2026-08-29T17:31:00.000Z', undefined)).toEqual({
-      stale: false,
-      detail: null,
-    });
-    expect(stalenessOf('not a date', started).stale).toBe(false);
+  it('is quiet, and not an accusation, when either side cannot say', () => {
+    expect(stalenessOf(stamp, undefined)).toEqual({ verdict: 'unknown', detail: null });
+    expect(stalenessOf(null, stamp)).toEqual({ verdict: 'unknown', detail: null });
   });
 });
