@@ -15,6 +15,7 @@ import {
 import { Build } from './Build.js';
 import { NewClient } from './NewClient.js';
 import { Readiness } from './Readiness.js';
+import { panelBuiltAt, stalenessOf } from './staleness.js';
 import { Transcript } from './Transcript.js';
 import { Images } from './Images.js';
 import { Keywords } from './Keywords.js';
@@ -329,6 +330,15 @@ function Panel({
   };
 
   const buildStep = plan?.steps.find((x) => x.id === 'build') ?? null;
+  /*
+   * A service running older code than this bundle is the normal way things
+   * break here, and until now nothing could see it: both versions on the health
+   * payload come from the service, so they agree by construction.
+   */
+  const stale = stalenessOf(
+    panelBuiltAt(),
+    service.kind === 'healthy' ? service.health.process?.startedAt : undefined,
+  );
 
   if (newClient !== null) {
     return (
@@ -370,6 +380,7 @@ function Panel({
           attemptedAt={attemptedAt}
           onRetry={onRedetect}
           resolvedNode={host.resolveNode()}
+          stale={stale.detail}
         />
 
         {/*
@@ -534,6 +545,8 @@ function Panel({
           <Build
             connection={connection}
             preview={plan?.build}
+            ready={reel !== null && mode !== null}
+            stale={stale.detail}
             disabled={buildStep?.available !== true}
             disabledReason={buildStep?.reason ?? null}
             issues={buildStep?.issues ?? []}

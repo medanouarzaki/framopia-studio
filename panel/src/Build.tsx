@@ -16,11 +16,17 @@ export function Build({
   disabled,
   disabledReason,
   issues,
+  ready,
+  stale,
 }: {
   connection: Connection | null;
   preview: BuildPreview | undefined;
   disabled: boolean;
   disabledReason: string | null;
+  /** Whether a video and a client have been picked at all. */
+  ready: boolean;
+  /** Set when the service is running older code than this panel. */
+  stale: string | null;
   /** Cards the builder will have to squeeze, named rather than counted. */
   issues: string[];
 }): JSX.Element {
@@ -80,9 +86,17 @@ export function Build({
 
   return (
     <div className="buildpane">
+      {/*
+        Three different reasons there is no preview, and they used to be one
+        sentence. The user restarted the service, reopened the panel, and was
+        told the service was old — because he had not picked a video yet.
+      */}
       {preview === undefined ? (
         <p className="note" role="status">
-          This service is older than the Build control. Restart it and reopen the panel.
+          {!ready
+            ? 'Choose a client and a video above, and this will say what the composition will contain.'
+            : (stale ??
+              'The companion service did not say what this build would contain. Quit After Effects and open it again.')}
         </p>
       ) : (
         <BuildPreviewCard preview={preview} />

@@ -2101,7 +2101,7 @@ describe.skipIf(!built)('the Build step', () => {
   }, 30_000);
 
   /* A service older than the preview must not have one invented for it. */
-  it('says so when the service is too old to describe the build', async () => {
+  it('says the service did not answer, once a video and a client are picked', async () => {
     const loaded = await loadFlow(
       'build', 'build', 420, 'delete window.__payload.steps.build;',
     );
@@ -2110,7 +2110,10 @@ describe.skipIf(!built)('the Build step', () => {
       // Build and the main screen are one screen now.
       await loaded.page.waitForSelector('.buildpane', { timeout: 5000 });
       const text = (await loaded.page.textContent('.buildpane')) ?? '';
-      expect(text).toContain('older than the Build control');
+      // Rewritten in session 44: "older than the Build control" fired for a
+      // panel with nothing picked yet, and told him to restart a service he had
+      // just restarted. With both picked it is a real gap, and says so.
+      expect(text).toContain('did not say what this build would contain');
       expect(await loaded.page.$eval('button.build-now', (b) => (b as HTMLButtonElement).disabled)).toBe(true);
       expect(loaded.uncaught).toEqual([]);
     } finally {
@@ -2252,6 +2255,32 @@ describe.skipIf(!built)('the client’s own pictures', () => {
     try {
       await loaded.page.waitForSelector('ol.slots li', { timeout: 5000 });
       expect(await loaded.page.$$('.ownpics')).toHaveLength(0);
+      expect(loaded.uncaught).toEqual([]);
+    } finally {
+      await loaded.page.close();
+    }
+  }, 30_000);
+});
+
+/*
+ * The message the user saw after restarting the service and reopening the
+ * panel, which should have made it impossible.
+ *
+ * It was not stale: the running service was queried directly and does send
+ * `build`. The panel showed it because **nothing had been picked yet** — with
+ * no video and no client there is no plan, so `plan.build` is absent, and the
+ * pane read that as an old service and told him to do the thing he had just
+ * done.
+ */
+describe.skipIf(!built)('Build before anything is picked', () => {
+  it('asks for a video rather than blaming the service', async () => {
+    const loaded = await load({ files: { ...HANDSHAKE, ...SERVICE_BUILT }, fetch: 'healthy' });
+    if (loaded === null) return;
+    try {
+      await loaded.page.waitForSelector('.dot.healthy', { timeout: 15_000 });
+      const pane = (await loaded.page.textContent('.buildpane')) ?? '';
+      expect(pane).not.toContain('older than the Build control');
+      expect(pane).toContain('Choose a client and a video');
       expect(loaded.uncaught).toEqual([]);
     } finally {
       await loaded.page.close();

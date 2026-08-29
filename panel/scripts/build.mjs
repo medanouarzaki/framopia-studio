@@ -28,7 +28,16 @@ const options = {
   sourcemap: watch ? 'inline' : false,
   minify: !watch,
   logLevel: 'info',
-  define: { 'process.env.NODE_ENV': watch ? '"development"' : '"production"' },
+  define: {
+    'process.env.NODE_ENV': watch ? '"development"' : '"production"',
+    /*
+     * When this bundle was built. The panel compares it against the time the
+     * companion service started: a service that started before the bundle was
+     * built is running older code, which has confused what is on screen in four
+     * separate sessions and was never checkable until now.
+     */
+    __PANEL_BUILT_AT__: JSON.stringify(new Date().toISOString()),
+  },
 };
 
 function copyStatic() {

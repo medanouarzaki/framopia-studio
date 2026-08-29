@@ -21,12 +21,15 @@ export function Readiness({
   attemptedAt,
   onRetry,
   resolvedNode,
+  stale,
 }: {
   state: ServiceState;
   attempt: number;
   attemptedAt: string;
   onRetry: () => void;
   resolvedNode: { path: string } | null;
+  /** Set when the service is running older code than this panel. */
+  stale: string | null;
 }): JSX.Element {
   const [open, setOpen] = useState(false);
 
@@ -72,6 +75,9 @@ export function Readiness({
   }
   const mismatch = nodeMatch(health, resolvedNode).warning;
   if (mismatch !== null) trouble.push(mismatch);
+  // A service behind the panel is not broken, but it is why a control can look
+  // like it is lying, so it belongs where a real problem goes.
+  if (stale !== null) trouble.push(stale);
 
   return (
     <section className={trouble.length === 0 ? 'readiness' : 'readiness warn'}>
