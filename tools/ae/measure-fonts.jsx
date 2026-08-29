@@ -26,7 +26,14 @@
  * Array.indexOf, no trailing commas. JSON comes from the repo's json2 shim.
  */
 
-function framopiaMeasureFonts() {
+/*
+ * `quiet` suppresses the message box. A person running this from
+ * File > Scripts > Run Script File wants one; a session driving it over
+ * AppleScript `DoScript` must not get one, because `DoScript` is synchronous
+ * and a modal alert would block After Effects until someone walked over to the
+ * machine and clicked it.
+ */
+function framopiaMeasureFonts(quiet) {
     var HERE = new File($.fileName).parent;
     var REPO = HERE.parent.parent;
 
@@ -81,7 +88,8 @@ function framopiaMeasureFonts() {
         if (app.project === null) throw new Error('no project is open');
 
         stage = 'list-fonts';
-        var installed = framopiaListFonts(FACES);
+        var installedNames = framopiaInstalledNames();
+        var installed = framopiaListFonts(FACES, installedNames);
 
         stage = 'make-comp';
         app.beginUndoGroup('Framopia font measurement');
@@ -97,22 +105,32 @@ function framopiaMeasureFonts() {
             var candidates = framopiaCandidatesFor(face, installed);
             var tried = [];
             for (j = 0; j < candidates.length; j++) {
-                tried.push(framopiaTryFont(layer, candidates[j]));
+                var row = framopiaTryFont(layer, candidates[j]);
+                row.installed = framopiaIsInstalled(candidates[j], installedNames);
+                tried.push(row);
             }
             naming.push({ role: face.role, family: face.family, style: face.style, tried: tried });
         }
 
         stage = 'unresolvable-name';
-        var nonsense = 'Framopia No Such Face ZZQX';
+        /*
+         * No spaces: a name with one is rejected for the space before After
+         * Effects ever looks for the face, which answers a different question.
+         */
+        var nonsense = 'FramopiaNoSuchFaceZZQX';
         var beforeNonsense = framopiaReadFont(layer);
         var nonsenseResult = framopiaTryFont(layer, nonsense);
+        nonsenseResult.installed = framopiaIsInstalled(nonsense, installedNames);
         nonsenseResult.fontBeforeTheAttempt = beforeNonsense;
+        nonsenseResult.verdict = nonsenseResult.threw !== null
+            ? 'After Effects threw for a name it does not have'
+            : 'After Effects accepted a name it does not have and reported it back unchanged';
 
         stage = 'measure';
         var measurements = [];
         for (i = 0; i < FACES.length; i++) {
             var f = FACES[i];
-            var name = framopiaBestName(f, naming);
+            var name = framopiaBestName(f, naming, installedNames);
             if (name === null) {
                 measurements.push({ role: f.role, resolved: false, reason: 'no name round-tripped' });
                 continue;
@@ -164,85 +182,127 @@ function framopiaMeasureFonts() {
         OUT.write(JSON.stringify(result, null, 2));
         OUT.close();
     } catch (writeError) {
-        alert('Framopia: could not write the result file: ' + String(writeError));
-        return 'error';
+        if (!quiet) alert('Framopia: could not write the result file: ' + String(writeError));
+        return 'could not write the result file: ' + String(writeError);
     }
 
     /* One line, not a dialog he has to dismiss for every step. */
-    alert(
-        result.ok
-            ? 'Framopia: font measurement done.\nWritten to ' + OUT.fsName +
-              '\n\nThe project is marked modified because a temporary composition was added ' +
-              'and removed. Do not save; undo if you like.'
-            : 'Framopia: font measurement failed at "' + result.stage + '".\n' +
-              result.message + '\nWritten to ' + OUT.fsName
-    );
+    if (!quiet) {
+        alert(
+            result.ok
+                ? 'Framopia: font measurement done.\nWritten to ' + OUT.fsName +
+                  '\n\nThe project is marked modified because a temporary composition was added ' +
+                  'and removed. Do not save; undo if you like.'
+                : 'Framopia: font measurement failed at "' + result.stage + '".\n' +
+                  result.message + '\nWritten to ' + OUT.fsName
+        );
+    }
+
     return result.ok ? 'ok' : 'error';
 }
 
-/* Every installed face whose family looks like one we are asking about. */
-function framopiaListFonts(faces) {
-    var out = { available: false, reason: null, families: [] };
-    if (typeof app.fonts === 'undefined' || app.fonts === null) {
-        out.reason = 'this After Effects has no app.fonts; nothing can be listed';
-        return out;
-    }
+/*
+ * Every installed face whose family looks like one we are asking about.
+ *
+ * **`app.fonts.allFonts` is not an array of font objects.** Reading
+ * `familyName` off an entry returns undefined; each entry stringifies to that
+ * family's PostScript names joined by commas — `Inter-Thin,Inter-ExtraLight,…`
+ * — and a single-face family is one name. Measured on AE 26.0x67. So the list
+ * is flattened on commas and the family and style are recovered from each name.
+ */
+function framopiaInstalledNames() {
+    var names = [];
     var all;
     try {
         all = app.fonts.allFonts;
     } catch (e) {
-        out.reason = 'app.fonts.allFonts threw: ' + String(e);
+        return null;
+    }
+    if (!all || typeof all.length !== 'number') return null;
+    var i;
+    var j;
+    for (i = 0; i < all.length; i++) {
+        var group = String(all[i]).split(',');
+        for (j = 0; j < group.length; j++) {
+            var name = framopiaTrim(group[j]);
+            if (name !== '') names.push(name);
+        }
+    }
+    return names;
+}
+
+/* ES3 has no String.trim. */
+function framopiaTrim(text) {
+    return String(text).replace(/^\s+/, '').replace(/\s+$/, '');
+}
+
+function framopiaListFonts(faces, names) {
+    var out = { available: false, reason: null, installedCount: 0, families: [] };
+    if (typeof app.fonts === 'undefined' || app.fonts === null) {
+        out.reason = 'this After Effects has no app.fonts; nothing can be listed';
+        return out;
+    }
+    if (names === null) {
+        out.reason = 'app.fonts.allFonts is not a list';
         return out;
     }
     out.available = true;
+    out.installedCount = names.length;
     var i;
     var j;
     for (i = 0; i < faces.length; i++) {
-        var wanted = faces[i].family.toLowerCase();
+        var wanted = framopiaKey(faces[i].family);
         var found = [];
-        for (j = 0; j < all.length; j++) {
-            var font = all[j];
-            var family;
-            try {
-                family = String(font.familyName);
-            } catch (familyError) {
-                continue;
-            }
-            if (family.toLowerCase().indexOf(wanted) === -1) continue;
-            found.push({
-                familyName: family,
-                styleName: String(font.styleName),
-                postScriptName: String(font.postScriptName)
-            });
+        for (j = 0; j < names.length; j++) {
+            var parts = framopiaSplitPostScript(names[j]);
+            if (framopiaKey(parts.base).indexOf(wanted) !== 0) continue;
+            found.push({ postScriptName: names[j], base: parts.base, suffix: parts.suffix });
         }
         out.families.push({ role: faces[i].role, asked: faces[i].family, found: found });
     }
     return out;
 }
 
-/* The strings worth trying, most likely first. */
+/* Lowercased with spaces and hyphens gone, so "Semi Bold" meets "SemiBold". */
+function framopiaKey(text) {
+    return String(text).toLowerCase().replace(/[ \-]/g, '');
+}
+
+/*
+ * A PostScript name splits at the first hyphen into a family part and a style
+ * part — `CormorantGaramondItalic-SemiBoldItalic`. A name with no hyphen is all
+ * family and its style is the regular one.
+ */
+function framopiaSplitPostScript(name) {
+    var at = String(name).indexOf('-');
+    if (at === -1) return { base: String(name), suffix: '' };
+    return { base: String(name).slice(0, at), suffix: String(name).slice(at + 1) };
+}
+
+/*
+ * The strings worth trying, most likely first.
+ *
+ * **After Effects rejects any font name containing a space**: writing one to
+ * `TextDocument.font` throws `Unable to set "font". Contains invalid character
+ * 32`. Measured, not assumed — the family-and-style strings the repo stores
+ * ("Inter Semi-Bold") all fail that way. So the candidates are PostScript
+ * names, and the repo's own string is tried last only to record what it does.
+ */
 function framopiaCandidatesFor(face, installed) {
     var candidates = [];
     var i;
     var j;
+    var styleKey = framopiaKey(face.style);
     for (i = 0; i < installed.families.length; i++) {
         if (installed.families[i].role !== face.role) continue;
         var found = installed.families[i].found;
         for (j = 0; j < found.length; j++) {
-            if (framopiaSameStyle(found[j].styleName, face.style)) {
-                candidates.push(found[j].postScriptName);
-            }
+            if (framopiaKey(found[j].suffix) === styleKey) candidates.push(found[j].postScriptName);
         }
     }
+    candidates.push(face.family.replace(/ /g, '') + '-' + face.style.replace(/ /g, ''));
     candidates.push(face.repoString);
-    candidates.push(face.family + '-' + face.style.replace(/ /g, ''));
-    candidates.push(face.family + ' ' + face.style);
     return candidates;
-}
-
-function framopiaSameStyle(a, b) {
-    return String(a).toLowerCase().replace(/[ \-]/g, '') ===
-        String(b).toLowerCase().replace(/[ \-]/g, '');
 }
 
 function framopiaReadFont(layer) {
@@ -272,18 +332,34 @@ function framopiaTryFont(layer, name) {
     return row;
 }
 
-/* The first candidate that round-tripped, or null. */
-function framopiaBestName(face, naming) {
+/*
+ * The first candidate that round-tripped **and is really installed**.
+ *
+ * Round-tripping alone proves nothing: After Effects accepts a font name it
+ * does not have, stores it verbatim and reads it back unchanged — measured, on
+ * a name invented for the purpose. So a name that is not in `allFonts` is not
+ * a resolved face however cleanly it comes back.
+ */
+function framopiaBestName(face, naming, names) {
     var i;
     var j;
     for (i = 0; i < naming.length; i++) {
         if (naming[i].role !== face.role) continue;
         var tried = naming[i].tried;
         for (j = 0; j < tried.length; j++) {
-            if (tried[j].roundTripped) return tried[j].asked;
+            if (tried[j].roundTripped && tried[j].installed) return tried[j].asked;
         }
     }
     return null;
+}
+
+function framopiaIsInstalled(name, names) {
+    var i;
+    if (names === null) return null;
+    for (i = 0; i < names.length; i++) {
+        if (names[i] === name) return true;
+    }
+    return false;
 }
 
 /*
@@ -321,4 +397,11 @@ function framopiaMeasureAt(layer, comp, font, size, sample) {
     };
 }
 
-framopiaMeasureFonts();
+/*
+ * Runs on evaluation, which is what File > Scripts > Run Script File needs. A
+ * session driving it sets `framopiaDriven` first and calls the function itself
+ * with `quiet`, so the file can be `$.evalFile`-d without a modal appearing.
+ */
+if (typeof framopiaDriven === 'undefined') {
+    framopiaMeasureFonts(false);
+}
