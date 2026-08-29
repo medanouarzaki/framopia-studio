@@ -2,6 +2,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { modePathFor, REPO_ROOT } from '@framopia/core';
 import { readEditPlan, writeEditPlan } from './io.js';
+import { assertOnlyChangedKeys } from './migrate-guard.js';
 import { modeFromConfigLabel } from '../analysis/job.js';
 
 /**
@@ -24,21 +25,6 @@ const dir = path.join(REPO_ROOT, 'my files', 'test videos');
 const apply = process.argv.includes('--apply');
 
 const WRITABLE_KEYS = new Set(['meta', 'clientMode']);
-
-function assertOnlyChanged(before: string, after: string, planPath: string): void {
-  const a = JSON.parse(before) as Record<string, unknown>;
-  const b = JSON.parse(after) as Record<string, unknown>;
-  const changed = [...new Set([...Object.keys(a), ...Object.keys(b)])].filter(
-    (k) => JSON.stringify(a[k]) !== JSON.stringify(b[k]),
-  );
-  const illegal = changed.filter((k) => !WRITABLE_KEYS.has(k));
-  if (illegal.length > 0) {
-    throw new Error(
-      `${planPath}: this migration may only change ${[...WRITABLE_KEYS].join(', ')}, ` +
-        `and it changed ${illegal.join(', ')}`,
-    );
-  }
-}
 
 let written = 0;
 let unknown = 0;
@@ -78,7 +64,7 @@ for (const file of readdirSync(dir).filter((f) => f.endsWith('.editplan.json')).
   };
   plan.meta.updatedAt = new Date().toISOString();
   await writeEditPlan(planPath, plan);
-  assertOnlyChanged(before, readFileSync(planPath, 'utf8'), planPath);
+  assertOnlyChangedKeys(before, readFileSync(planPath, 'utf8'), WRITABLE_KEYS, planPath);
   const reread = await readEditPlan(planPath);
   console.log(
     `    written and reopened: clientMode ${reread.clientMode?.id} v${reread.clientMode?.version}`,
