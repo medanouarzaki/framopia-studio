@@ -50,17 +50,6 @@ header.brand .version {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
-/*
- * The panel is a container, not a viewport: a docked CEP panel's window is the
- * size of the screen while its panel is a column wide, so a media query lays
- * out for the wrong thing.
- *
- * This was a container query until Block 8 session 10. CEP 12 runs Chromium 99
- * and the property it needs shipped in Chrome 105, so the whole at-rule block
- * was dead text and the panel rendered one column at 1572 px. The `wide` class
- * is toggled from a measured width instead — see panel-width.ts.
- */
-
 .promise { margin: 0; color: var(--muted); }
 .issues {
   margin: 10px 0 0; padding-left: 18px;
