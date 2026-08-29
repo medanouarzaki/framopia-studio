@@ -107,6 +107,31 @@ function framopiaBuildReel(optionsPath, outPath) {
         }
         app.newProject();
 
+        /*
+         * Before a single card is placed. After Effects accepts a font name it
+         * cannot resolve and renders a substitute without saying so, so a face
+         * that is missing from this machine produces a comp that looks built
+         * and is set in the wrong type. `o.requiredFonts` is empty until a
+         * build actually names its faces, and an empty list checks nothing.
+         */
+        stage = 'check-fonts';
+        if (o.requiredFonts && o.requiredFonts.length > 0) {
+            var installedNames = framopiaInstalledFontNames();
+            if (installedNames === null) {
+                return { ok: false, stage: 'check-fonts',
+                         message: 'this After Effects cannot list its fonts, so the faces this ' +
+                                  'build needs cannot be confirmed present' };
+            }
+            var missingFonts = framopiaMissingFonts(o.requiredFonts, installedNames);
+            if (missingFonts.length > 0) {
+                return { ok: false, stage: 'check-fonts',
+                         message: 'this machine does not have ' + missingFonts.join(', ') +
+                                  '. After Effects would substitute another face without saying ' +
+                                  'so, so the build stops instead. Install the font and run it ' +
+                                  'again.' };
+            }
+        }
+
         stage = 'import-footage';
         var footage = importOnce(o.footagePath, imports);
 

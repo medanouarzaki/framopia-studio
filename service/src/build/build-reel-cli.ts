@@ -26,6 +26,7 @@ import { imageSize } from './image-size.js';
 import { contentBoxes } from './content-box.js';
 import { assertAllPlaced, assertPathsPresent, type PathRef } from './preflight.js';
 import { resolveClientIdentity } from './client-identity.js';
+import { requiredFonts } from './required-fonts.js';
 import {
   assertRequirementsMet,
   buildRequirements,
@@ -564,6 +565,11 @@ const result = runBuildReel({
   frameRate: 30000 / 1001,
   safeWidth: SUBTITLE_SAFE_WIDTH,
   elements: built.elements,
+  /*
+   * Checked inside After Effects before a card is placed. Empty today, because
+   * nothing sets a font yet — type comes from the template comps.
+   */
+  requiredFonts: requiredFonts(identity.snapshot),
   masters: [
     { name: 'master_final', placements: built.placementsC, audio: built.audio, watermark },
     {

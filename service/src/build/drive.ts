@@ -109,6 +109,7 @@ function runJsx(
   const script = [
     `$.evalFile("${path.join(JSX_DIR, 'json2.jsx')}");`,
     `$.evalFile("${path.join(JSX_DIR, 'text-fit.jsx')}");`,
+    `$.evalFile("${path.join(JSX_DIR, 'fonts.jsx')}");`,
     `$.evalFile("${path.join(JSX_DIR, file)}");`,
     `${entry}("${optionsPath}", "${resultPath}");`,
   ]
