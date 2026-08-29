@@ -19,6 +19,11 @@ npm run lint --workspaces --if-present
 npm run test --workspaces --if-present
 npm run validate:modes --workspace @framopia/core
 
+# Every .jsx, parsed before it can reach After Effects. ExtendScript's reserved
+# word list is Java's, and a file that will not parse measures nothing — which
+# is how `short` and `long` as object keys reached the user's hands.
+node scripts/check-extendscript.mjs
+
 # TEMPLATE_LIBRARY_GUIDE §9: the manifest against what is really in the .aep.
 # Validates the committed audit, and refuses it if the .aep has changed since.
 npx tsx tools/validate-templates/cli.ts
