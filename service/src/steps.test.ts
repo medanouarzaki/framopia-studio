@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import path from 'node:path';
+import { REPO_ROOT } from '@framopia/core';
 import { stepsFor, STEP_IDS, StepsError } from './steps.js';
 
 /**
@@ -205,5 +207,50 @@ describe('the estimate for a reel with nothing planned', () => {
     );
     expect(source).toContain('imageSlotCountFor');
     expect(source).not.toContain('5.5');
+  });
+});
+
+/*
+ * What the Build pane says before he presses it. Read from the real plans, so
+ * a figure here is one the build would actually produce.
+ */
+describe('the build preview', () => {
+  it('names the reel, the client, the output and what the comp holds', () => {
+    const preview = stepsFor('vitasilk', 'k2-syndicalia').build;
+    expect(preview?.reel).toBe('vitasilk');
+    expect(preview?.modeId).toBe('k2-syndicalia');
+    expect(preview?.modeSource).toBe('the plan');
+    expect(preview?.outputPath).toBe(
+      path.join(REPO_ROOT, '.local', 'build', 'vitasilk-full.aep'),
+    );
+    expect(preview?.subtitleCards).toBe(73);
+    expect(preview?.keywords).toBe(3);
+    expect(preview?.images).toBe(5);
+    expect(preview?.sfxEvents).toBeGreaterThan(0);
+    expect(preview?.free).toBe(true);
+  });
+
+  /*
+   * `plan.clientMode` is null on a reel whose analysis has never run, and the
+   * build then falls back to the picker — so the preview has to say which one
+   * it landed on rather than echo the picker back as if it were the plan's.
+   */
+  it('says when the client came from the picker rather than the plan', () => {
+    const preview = stepsFor('ground-truth', 'k2-syndicalia').build;
+    expect(preview?.modeSource).toBe('the picker');
+    expect(preview?.keywords).toBe(0);
+    expect(preview?.images).toBe(0);
+  });
+
+  it('reports the watermark the plan asks for, at its real size', () => {
+    const preview = stepsFor('vitasilk', 'k2-syndicalia').build;
+    expect(preview?.watermark).toEqual({ size: 'medium', widthPx: 324, heightPx: 363 });
+  });
+
+  it('names the faces a build would set the type in', () => {
+    const preview = stepsFor('vitasilk', 'k2-syndicalia').build;
+    expect(preview?.fonts.latin).toBe('Inter Semi-Bold');
+    expect(preview?.fonts.arabic).toBe('Almarai Bold');
+    expect(preview?.fonts.globalFallback).toBe(true);
   });
 });

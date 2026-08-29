@@ -1,8 +1,32 @@
 import { existsSync, readFileSync } from 'node:fs';
-import { buildFonts, loadMode, loadTemplateManifest, templatesById } from '@framopia/core';
+import path from 'node:path';
+import { REPO_ROOT, buildFonts, loadMode, loadTemplateManifest, templatesById } from '@framopia/core';
 import { listReels } from './catalogue.js';
 import { checkBuildability } from './analysis/buildability.js';
-import type { EditPlan } from './editplan/types.js';
+import { watermarkEnabled, watermarkSizeOf } from './placement/watermark.js';
+import { FRAME_HEIGHT, FRAME_WIDTH, watermarkWidthFraction } from './placement/constants.js';
+import type { EditPlan, WatermarkSize } from './editplan/types.js';
+
+/**
+ * Where `build-reel-cli.ts` writes when nothing overrides it. A second copy of
+ * that rule, so it is pinned equal to the builder's own by a test — a preview
+ * naming the wrong file would be worse than one naming none.
+ */
+export function buildOutputPath(planPath: string): string {
+  const reel = path.basename(planPath).replace('.editplan.json', '').replace(/\s+/g, '_');
+  return path.join(REPO_ROOT, '.local', 'build', `${reel}-full.aep`);
+}
+
+function watermarkPreview(size: WatermarkSize): {
+  size: WatermarkSize;
+  widthPx: number;
+  heightPx: number;
+} {
+  const w = watermarkWidthFraction(size);
+  // The artwork is 1924 x 2154: the width is fitted and the height follows.
+  const h = (w * 2154) / 1924 / (FRAME_HEIGHT / FRAME_WIDTH);
+  return { size, widthPx: Math.round(w * FRAME_WIDTH), heightPx: Math.round(h * FRAME_HEIGHT) };
+}
 
 /**
  * Where a reel actually is, derived from the Edit Plan on disk.
@@ -39,6 +63,37 @@ export interface PlanSteps {
   reel: string;
   planPath: string | null;
   steps: StepState[];
+  /**
+   * What pressing Build would do. Absent when the reel has no plan, or when the
+   * template manifest did not load — the step's `reason` says why in that case.
+   */
+  build?: BuildPreview;
+}
+
+/**
+ * The answer to "what happens if I press this", assembled from the plan rather
+ * than described in prose the builder could drift away from.
+ */
+export interface BuildPreview {
+  reel: string;
+  planPath: string;
+  /** The client whose palette and scale the build uses, and where it came from. */
+  modeId: string;
+  modeName: string;
+  modeSource: 'the plan' | 'the picker';
+  /** Where the .aep is written. The build overwrites it. */
+  outputPath: string;
+  subtitleCards: number;
+  keywords: number;
+  images: number;
+  sfxEvents: number;
+  watermark: { size: WatermarkSize; widthPx: number; heightPx: number } | null;
+  fonts: { latin: string; arabic: string; globalFallback: boolean };
+  /**
+   * Always true, and said out loud: every other control in this panel that runs
+   * something can spend money, so silence about cost would be read as a cost.
+   */
+  free: true;
 }
 
 export class StepsError extends Error {}
@@ -166,6 +221,7 @@ export function stepsFor(reelLabel: string, modeId: string): PlanSteps {
   let buildReason: string | null = null;
   let buildSummary: string | null = null;
   let buildIssues: string[] = [];
+  let buildPreview: BuildPreview | undefined;
   const fonts = buildFonts(mode);
   try {
     const report = checkBuildability(plan, templatesById(loadTemplateManifest()));
@@ -193,10 +249,47 @@ export function stepsFor(reelLabel: string, modeId: string): PlanSteps {
       (willNot.length === 0 ? '' : `; no ${willNot.join(' and no ')}`) +
       `. Fonts: ${fonts.latin} and ${fonts.arabic}` +
       `${fonts.source === 'global' ? ' (global fallback)' : ''}.`;
+
+    /*
+     * The mode a build uses is the plan's own, with the picker as an override —
+     * `build-reel-cli.ts` reads `plan.clientMode` and takes `--mode` above it,
+     * so the preview says which one it landed on rather than echoing the picker
+     * back at the user.
+     */
+    const planMode = plan.clientMode;
+    const buildMode = planMode === null ? mode : loadMode(planMode.id);
+    if (planPath !== null) {
+      buildPreview = {
+        reel: reel.label,
+        planPath,
+        modeId: buildMode.id,
+        modeName: buildMode.name,
+        modeSource: planMode === null ? 'the picker' : 'the plan',
+        outputPath: buildOutputPath(planPath),
+        subtitleCards: report.checked.subtitleGroups,
+        keywords: plan.keywords.items.length,
+        images: candidates.present > 0 ? slots : 0,
+        sfxEvents: plan.sfx.events.length,
+        watermark: watermarkEnabled(plan.watermark)
+          ? watermarkPreview(watermarkSizeOf(plan.watermark))
+          : null,
+        fonts: {
+          latin: fonts.latin,
+          arabic: fonts.arabic,
+          globalFallback: fonts.source === 'global',
+        },
+        free: true,
+      };
+    }
   } catch (error) {
     buildReason = `The template manifest did not load: ${(error as Error).message}`;
   }
   push('build', buildAvailable, buildReason, buildSummary, buildIssues);
 
-  return { reel: reel.label, planPath, steps };
+  return {
+    reel: reel.label,
+    planPath,
+    steps,
+    ...(buildPreview === undefined ? {} : { build: buildPreview }),
+  };
 }
