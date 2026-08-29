@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { buildFonts } from '@framopia/core/build-fonts';
 import {
   connect,
@@ -12,21 +12,11 @@ import {
   type Connection,
 } from './service.js';
 import { Build } from './Build.js';
-import { nodeMatch } from './node-match.js';
-import { isWide, observeWidth } from './panel-width.js';
+import { Readiness } from './Readiness.js';
 import { Transcript } from './Transcript.js';
 import { Images } from './Images.js';
 import { Keywords } from './Keywords.js';
-import {
-  openingStep,
-  readLastSteps,
-  reconcileStep,
-  stepViews,
-  STEP_ORDER,
-  STEP_PROMISE,
-  writeLastSteps,
-  type StepView,
-} from './steps.js';
+
 
 /** How often to notice a service that has gone away. Chosen, not measured. */
 const HEARTBEAT_MS = 5000;
@@ -46,7 +36,6 @@ import type {
   Reel,
   ServiceState,
   StepId,
-  ToolState,
   WatermarkSize,
 } from './types.js';
 
@@ -100,19 +89,6 @@ function Panel({
   onRedetect: () => void;
 }): JSX.Element {
   const { host, logoSrc } = env;
-  const shell = useRef<HTMLDivElement>(null);
-  const [wide, setWide] = useState(false);
-
-  /*
-   * The two-column switch. A class toggled from a measured width, not a
-   * container query: CEP runs Chromium 99 and container queries shipped in 105,
-   * so the query was dead text and the panel stayed one column at 1572 px.
-   */
-  useEffect(() => {
-    const element = shell.current;
-    if (element === null) return;
-    return observeWidth(element, (width) => setWide(isWide(width)));
-  }, []);
   const [service, setService] = useState<ServiceState>({ kind: 'starting' });
   const [reels, setReels] = useState<Reel[]>([]);
   const [modes, setModes] = useState<ClientMode[]>([]);
@@ -122,15 +98,15 @@ function Panel({
   const [dry, setDry] = useState<DryRunPlan | null>(null);
   const [dryError, setDryError] = useState<string | null>(null);
   const [plan, setPlan] = useState<PlanSteps | null>(null);
-  const [step, setStep] = useState<StepId>('reel');
   /*
-   * The step last viewed per reel. A view preference, not a fact about the
-   * plan, so it lives here and never reaches the Edit Plan — two people opening
-   * the same reel are entitled to be looking at different steps.
+   * Which editor is open over the main screen, or none.
+   *
+   * There is no remembered step any more. He does not fill in a form: he
+   * presses Run, presses Build, watches the comp and comes back to change the
+   * one thing that bothered him — so the panel is one screen, and an editor is
+   * something you open from it and close again.
    */
-  const [lastStep, setLastStep] = useState<Record<string, StepId>>(() => readLastSteps());
-  /** Which reel `step` belongs to, so a new reel's plan can restore its own. */
-  const [stepReel, setStepReel] = useState<string | null>(null);
+  const [editor, setEditor] = useState<EditorId | null>(null);
   /*
    * The run lives in the service; this is only the id of the job being watched
    * and the last progress read from it. Leaving step 1 does not stop it, and
@@ -254,31 +230,15 @@ function Panel({
   }, [connection, reel, mode]);
 
   /*
-   * Selecting a reel or a mode does **not** navigate. It used to jump to the
-   * furthest step the plan supported, which hid every step in between and left
-   * Build open on a reel that had no keywords.
+   * Picking a video always shows the main screen.
    *
-   * Two cases, and the distinction is which reel the current step belongs to.
-   * A plan for a *different* reel restores that reel's remembered step — done
-   * here rather than on the picker's change event, because the plan has not
-   * arrived yet at that moment and the remembered step cannot be checked
-   * against it. A plan for the *same* reel only ever moves the user off a step
-   * it no longer supports.
+   * The panel used to remember the step last viewed per reel, so choosing a
+   * video could land him on Build with no way of seeing what he had skipped.
+   * That behaviour is gone and must not come back in another form.
    */
   useEffect(() => {
-    if (plan === null) {
-      setStep('reel');
-      setStepReel(null);
-      return;
-    }
-    const remembered = lastStep[plan.reel] ?? null;
-    setStep((current) =>
-      plan.reel === stepReel ? reconcileStep(plan, current, remembered) : openingStep(plan, remembered),
-    );
-    setStepReel(plan.reel);
-    // `lastStep` is read but deliberately not a dependency: recording a step
-    // must not feed back into choosing one.
-  }, [plan, stepReel]);
+    setEditor(null);
+  }, [reelLabel, modeId]);
 
   /* Polls the job while it is unfinished. The service owns the run. */
   useEffect(() => {
@@ -330,34 +290,25 @@ function Panel({
     );
   };
 
-  const views = stepViews(plan, step, { reel: reel !== null, mode: mode !== null });
-  const goTo = (id: StepId): void => {
-    setStep(id);
-    if (reelLabel === '') return;
-    setLastStep((prev) => {
-      const next = { ...prev, [reelLabel]: id };
-      writeLastSteps(next);
-      return next;
-    });
-  };
+  const buildStep = plan?.steps.find((x) => x.id === 'build') ?? null;
+
+  if (editor !== null) {
+    return (
+      <div className="app">
+        <Brand logoSrc={logoSrc} service={service} />
+        <Editor id={editor} onClose={() => setEditor(null)}>
+          {editorContent(editor, connection, reel?.label ?? null)}
+        </Editor>
+      </div>
+    );
+  }
 
   return (
-    <div className={wide ? 'app wide' : 'app'} ref={shell}>
-      <header className="brand">
-        {logoSrc === null ? <div className="mark" aria-hidden="true" /> : <img src={logoSrc} alt="" />}
-        <div className="name">
-          Framopia <em>Studio</em>
-        </div>
-        {service.kind === 'healthy' ? (
-          <div className="version">v{service.health.appVersion}</div>
-        ) : null}
-      </header>
+    <div className="app">
+      <Brand logoSrc={logoSrc} service={service} />
 
-      <StepRail views={views} onGo={goTo} />
-
-      {step === 'reel' ? (
       <main>
-        <ServiceCard
+        <Readiness
           state={service}
           attempt={attempt}
           attemptedAt={attemptedAt}
@@ -367,56 +318,73 @@ function Panel({
 
         <section className="video">
           <h2>Video</h2>
-          <div className="card">
-            <label className="field">
-              <span>Reel</span>
-              <select
-                aria-label="Reel"
-                value={reelLabel}
-                disabled={reels.length === 0}
-                onChange={(e) => setReelLabel(e.target.value)}
-              >
-                <option value="">
-                  {reels.length === 0 ? 'No videos found' : 'Select a video…'}
+          <label className="field">
+            <select
+              aria-label="Video"
+              value={reelLabel}
+              disabled={reels.length === 0}
+              onChange={(e) => setReelLabel(e.target.value)}
+            >
+              <option value="">{reels.length === 0 ? 'No videos found' : 'Choose a video…'}</option>
+              {reels.map((r) => (
+                <option key={r.label} value={r.label}>
+                  {r.label}
+                  {r.durationS === null ? '' : ` — ${r.durationS.toFixed(1)}s`}
                 </option>
-                {reels.map((r) => (
-                  <option key={r.label} value={r.label}>
-                    {r.label}
-                    {r.durationS === null ? '' : ` — ${r.durationS.toFixed(1)}s`}
-                  </option>
-                ))}
-              </select>
-            </label>
-            {reel === null ? null : <Spend reel={reel} />}
-          </div>
+              ))}
+            </select>
+          </label>
         </section>
 
-        <section className="mode">
-          <h2>Client mode</h2>
-          <div className="card">
-            <label className="field">
-              <span>Mode</span>
-              <select
-                aria-label="Client mode"
-                value={modeId}
-                disabled={modes.length === 0}
-                onChange={(e) => setModeId(e.target.value)}
-              >
-                <option value="">
-                  {modes.length === 0 ? 'No clients set up yet' : 'Select a client…'}
+        <section className="client">
+          <h2>Client</h2>
+          <label className="field">
+            <select
+              aria-label="Client"
+              value={modeId}
+              disabled={modes.length === 0}
+              onChange={(e) => setModeId(e.target.value)}
+            >
+              <option value="">
+                {modes.length === 0 ? 'No clients set up yet' : 'Choose a client…'}
+              </option>
+              {modes.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name}
                 </option>
-                {modes.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.name} — v{m.version}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
+              ))}
+            </select>
+          </label>
         </section>
 
-        <section className="build">
-          <h2>Build</h2>
+        {/* The only thing on this screen he cannot undo, so it stays prominent. */}
+        <section className="cost">
+          <h2>Cost</h2>
+          {reel === null ? null : <Spend reel={reel} />}
+          {dry === null ? null : <DryRun plan={dry} />}
+          {dryError === null ? null : (
+            <p className="say" role="status">
+              {dryError}
+            </p>
+          )}
+        </section>
+
+        <section className="do">
+          <button className="run" type="button" disabled={!gate.enabled} onClick={onRun}>
+            {running ? 'Running…' : 'Run pipeline'}
+          </button>
+          {gate.reason === null ? null : (
+            <p className="say" role="status">
+              {gate.reason}
+            </p>
+          )}
+          {startError === null ? null : (
+            <p className="say" role="status">
+              {startError}
+            </p>
+          )}
+          {job === null ? null : <RunProgress job={job} />}
+
           {mode === null ? null : <FontsNote mode={mode} />}
           {dry === null || dry.planPath === null ? null : (
             <WatermarkToggle
@@ -435,176 +403,125 @@ function Panel({
               }}
             />
           )}
-          {dry === null ? null : <DryRun plan={dry} />}
-          {dryError === null ? null : (
-            <p className="reason" role="status">
-              {dryError}
-            </p>
-          )}
-          <button className="run" type="button" disabled={!gate.enabled} onClick={onRun}>
-            {running ? 'Running…' : 'Run pipeline'}
-          </button>
-          {startError === null ? null : (
-            <p className="reason" role="status">
-              {startError}
-            </p>
-          )}
-          {job === null ? null : <RunProgress job={job} />}
-          {gate.reason === null ? null : (
-            <p className="reason" role="status">
-              {gate.reason}
-            </p>
-          )}
+          <Build
+            connection={connection}
+            preview={plan?.build}
+            disabled={buildStep?.available !== true}
+            disabledReason={buildStep?.reason ?? null}
+            issues={buildStep?.issues ?? []}
+          />
+        </section>
+
+        {/*
+         * How he actually works: press Run, press Build, watch it, then come
+         * back and change the one thing that bothered him. These are that
+         * third move, and nothing more.
+         */}
+        <section className="change">
+          <h2>Change something first</h2>
+          <div className="three">
+            {EDITORS.map((e) => {
+              const step = plan?.steps.find((x) => x.id === e.step) ?? null;
+              const count = countFor(e.id, plan);
+              return (
+                <button
+                  key={e.id}
+                  type="button"
+                  className="opener"
+                  disabled={step?.available !== true}
+                  title={step?.reason ?? undefined}
+                  onClick={() => setEditor(e.id)}
+                >
+                  <span className="what">{e.label}</span>
+                  <span className="count">{count === null ? '—' : count}</span>
+                </button>
+              );
+            })}
+          </div>
         </section>
       </main>
-      ) : (
-        <StepPane
-          view={views.find((v) => v.id === step) as StepView}
-          onBack={() => goTo(previousStep(step))}
-        >
-          {stepContent(step, connection, reel?.label ?? null, plan, views)}
-        </StepPane>
-      )}
     </div>
   );
 }
 
+export type EditorId = 'words' | 'emphasis' | 'pictures';
+
+const EDITORS: { id: EditorId; label: string; step: StepId }[] = [
+  { id: 'words', label: 'Words', step: 'transcript' },
+  { id: 'emphasis', label: 'Emphasis', step: 'keywords' },
+  { id: 'pictures', label: 'Pictures', step: 'images' },
+];
+
 /**
- * The rail. Five entries always, so the shape of the job is visible on an
- * empty panel; a step the plan does not support is not a button, and its
- * reason is on the element rather than hidden behind a hover only a mouse can
- * reach.
- *
- * The current marker is deliberately **not** brand red. PROJECT_SPEC §6 spends
- * `#ED1C24` on one thing, and the user ruled that thing is Run pipeline.
+ * The number on each opener, read from the build preview rather than parsed out
+ * of a sentence. Absent when the service has not sent one, which is not the
+ * same as zero.
  */
-function StepRail({
-  views,
-  onGo,
+export function countFor(id: EditorId, plan: PlanSteps | null): number | null {
+  const preview = plan?.build;
+  if (preview === undefined) return null;
+  if (id === 'words') return preview.subtitleCards;
+  if (id === 'emphasis') return preview.keywords;
+  return preview.images;
+}
+
+function Brand({
+  logoSrc,
+  service,
 }: {
-  views: StepView[];
-  onGo: (id: StepId) => void;
+  logoSrc: string | null;
+  service: ServiceState;
 }): JSX.Element {
   return (
-    <nav className="rail" aria-label="Pipeline steps">
-      <ol>
-        {views.map((view, i) => {
-          const classes = ['step'];
-          if (view.current) classes.push('current');
-          if (!view.available) classes.push('locked');
-          return (
-            <li key={view.id} className={classes.join(' ')}>
-              <button
-                type="button"
-                disabled={!view.available}
-                aria-current={view.current ? 'step' : undefined}
-                title={view.available ? (view.summary ?? view.label) : (view.reason ?? view.label)}
-                onClick={() => onGo(view.id)}
-              >
-                <span className="n">{i + 1}</span>
-                <span className="l">{view.label}</span>
-              </button>
-            </li>
-          );
-        })}
-      </ol>
-    </nav>
+    <header className="brand">
+      {logoSrc === null ? <div className="mark" aria-hidden="true" /> : <img src={logoSrc} alt="" />}
+      <div className="name">
+        Framopia <em>Studio</em>
+      </div>
+      {service.kind === 'healthy' ? (
+        <div className="version">v{service.health.appVersion}</div>
+      ) : null}
+    </header>
   );
 }
 
-/** The step that is built, or nothing — which is what makes it an empty state. */
-function stepContent(
-  step: StepId,
-  connection: Connection | null,
-  reel: string | null,
-  plan: PlanSteps | null,
-  views: StepView[],
-): JSX.Element | null {
-  if (step === 'transcript') return <Transcript connection={connection} reel={reel} />;
-  if (step === 'keywords') return <Keywords connection={connection} reel={reel} />;
-  if (step === 'images') return <Images connection={connection} reel={reel} />;
-  if (step === 'build') {
-    const view = views.find((v) => v.id === 'build');
-    return (
-      <Build
-        connection={connection}
-        preview={plan?.build}
-        disabled={view?.available !== true}
-        disabledReason={view?.reason ?? null}
-      />
-    );
-  }
-  return null;
-}
+const EDITOR_TITLE: Record<EditorId, string> = {
+  words: 'Words',
+  emphasis: 'Emphasis',
+  pictures: 'Pictures',
+};
 
-function previousStep(step: StepId): StepId {
-  const i = STEP_ORDER.indexOf(step);
-  return STEP_ORDER[Math.max(0, i - 1)] as StepId;
-}
-
-/**
- * A step's frame: its heading, a Back control, and the step itself when there is
- * one to show.
- *
- * When a step cannot be opened it shows what will live there and the real
- * figures the plan already carries — never a mock of the screen to come, which
- * would read as a feature that exists and does nothing. **All five steps are
- * built as of session 38**, so this state means "not ready for this reel", and
- * the reason says why.
- */
-function StepPane({
-  view,
-  onBack,
+/** An editor opened over the main screen, with the way back always in reach. */
+function Editor({
+  id,
+  onClose,
   children,
 }: {
-  view: StepView;
-  onBack: () => void;
-  children?: JSX.Element | null;
+  id: EditorId;
+  onClose: () => void;
+  children: JSX.Element | null;
 }): JSX.Element {
-  /* A step that is built renders itself; the empty state is for the rest. */
-  if (children != null && view.available) {
-    return (
-      <main>
-        <section>
-          <h2>{view.label}</h2>
-          {children}
-          <button className="back" type="button" onClick={onBack}>
-            Back
-          </button>
-        </section>
-      </main>
-    );
-  }
   return (
-    <main>
-      <section>
-        <h2>{view.label}</h2>
-        <div className="card">
-          <p className="promise">{STEP_PROMISE[view.id]}</p>
-          {view.summary === null ? null : (
-            <p className="detail" role="status">
-              {view.summary}
-            </p>
-          )}
-          {view.reason === null ? null : (
-            <p className="reason" role="status">
-              {view.reason}
-            </p>
-          )}
-          {view.issues.length === 0 ? null : (
-            <ul className="issues">
-              {view.issues.map((issue) => (
-                <li key={issue}>{issue}</li>
-              ))}
-            </ul>
-          )}
-        </div>
-        <button className="back" type="button" onClick={onBack}>
+    <main className="editor">
+      <div className="editorhead">
+        <button className="back" type="button" onClick={onClose}>
           Back
         </button>
-      </section>
+        <h2>{EDITOR_TITLE[id]}</h2>
+      </div>
+      {children}
     </main>
   );
+}
+
+function editorContent(
+  id: EditorId,
+  connection: Connection | null,
+  reel: string | null,
+): JSX.Element | null {
+  if (id === 'words') return <Transcript connection={connection} reel={reel} />;
+  if (id === 'emphasis') return <Keywords connection={connection} reel={reel} />;
+  return <Images connection={connection} reel={reel} />;
 }
 
 /**
@@ -782,9 +699,9 @@ function stageTone(stage: DryRunStage): string {
 }
 
 /**
- * The dry run: what a run would do, read before anything is spent. Every
- * figure comes from the service, which resolves each stage against the cache
- * on disk — the panel computes none of them.
+ * What a run would do, read before anything is spent. Every figure comes from
+ * the service, which resolves each stage against the cache on disk — the panel
+ * computes none of them.
  */
 function DryRun({ plan }: { plan: DryRunPlan }): JSX.Element {
   return (
@@ -846,122 +763,6 @@ function Spend({ reel }: { reel: Reel }): JSX.Element {
       ) : null}
       {reel.planPath === null ? <p className="spend note">No edit plan yet.</p> : null}
     </div>
-  );
-}
-
-function ServiceCard({
-  state,
-  attempt,
-  attemptedAt,
-  onRetry,
-  resolvedNode,
-}: {
-  state: ServiceState;
-  attempt: number;
-  attemptedAt: string;
-  onRetry: () => void;
-  resolvedNode: { path: string } | null;
-}): JSX.Element {
-  const mismatch =
-    state.kind === 'healthy' ? nodeMatch(state.health, resolvedNode).warning : null;
-  return (
-    <section className="service">
-      <h2>Service</h2>
-      <div className="card">
-        <Attempt attempt={attempt} attemptedAt={attemptedAt} />
-        {state.kind === 'starting' ? (
-          <div className="status">
-            <div className="dot starting" />
-            <div>
-              <div className="headline">Starting…</div>
-              <div className="detail">Looking for the companion service on this machine.</div>
-            </div>
-          </div>
-        ) : null}
-
-        {state.kind === 'unreachable' ? (
-          <>
-            <div className="status">
-              <div className="dot unreachable" />
-              <div>
-                <div className="headline">Not reachable</div>
-                {/* ARCHITECTURE §8: the cause is shown as the service worded it. */}
-                <div className="detail">{state.error.cause}</div>
-              </div>
-            </div>
-            {/*
-              `stage: service-lost` and `retryable: yes` were two of the words
-              the user had to ask about. Neither answers anything he can act on:
-              the cause above says what happened and the button says what to do.
-            */}
-            {state.error.retryable ? (
-              <p className="reason" role="status">
-                This usually clears on its own. Press Try again.
-              </p>
-            ) : null}
-            <button className="retry" type="button" onClick={onRetry}>
-              Try again
-            </button>
-          </>
-        ) : null}
-
-        {state.kind === 'healthy' ? (
-          <>
-            <div className="status">
-              <div className={`dot ${state.health.ok ? 'healthy' : 'unreachable'}`} />
-              <div>
-                <div className="headline">{state.health.ok ? 'Ready' : 'Running, with problems'}</div>
-                <div className="detail">Version {state.health.serviceVersion}</div>
-                {/*
-                 * Which process answered. A service started in a terminal
-                 * inherits a shell PATH and one this panel spawned does not, so
-                 * the two can disagree about what the machine has — and did,
-                 * over ffmpeg, invisibly, for a whole session.
-                 */}
-                <div className="detail">{serviceOriginLine(state)}</div>
-              </div>
-            </div>
-            <ul className="facts">
-              <Fact label="ffmpeg" tool={state.health.ffmpeg} />
-              <Fact label="ffprobe" tool={state.health.ffprobe} />
-              <Fact label="CV sidecar" tool={state.health.sidecar.venv} />
-              <li>
-                <span className="k">node</span>
-                {/* Optional so an older service cannot blank the panel. */}
-                <span className={`v ${state.health.node?.path == null ? 'bad' : ''}`}>
-                  {state.health.node?.path == null
-                    ? 'not reported'
-                    : `${state.health.node.path} (${state.health.node.source})`}
-                </span>
-              </li>
-              <li>
-                <span className="k">templates</span>
-                <span className={`v ${state.health.templates.valid ? 'good' : 'bad'}`}>
-                  {state.health.templates.valid
-                    ? `${state.health.templates.count} valid`
-                    : `${state.health.templates.issues.length} problem(s)`}
-                </span>
-              </li>
-            </ul>
-            {mismatch === null ? null : (
-              <p className="reason" role="status">
-                {mismatch}
-              </p>
-            )}
-            {state.health.templates.issues.length > 0 ? (
-              <ul className="issues">
-                {state.health.templates.issues.map((issue) => (
-                  <li key={issue}>{issue}</li>
-                ))}
-              </ul>
-            ) : null}
-            <button className="retry" type="button" onClick={onRetry}>
-              Re-check
-            </button>
-          </>
-        ) : null}
-      </div>
-    </section>
   );
 }
 
@@ -1045,15 +846,6 @@ function stageToneOf(state: PipelineStageReport['state']): string {
   return '';
 }
 
-/** One quiet, factual line: who started this service, its pid, and when. */
-function serviceOriginLine(state: Extract<ServiceState, { kind: 'healthy' }>): string {
-  const started = state.origin === 'spawned' ? 'Started by the panel' : 'Was already running';
-  const process = state.health.process;
-  if (process === undefined) return `${started} · pid unknown`;
-  const when = new Date(process.startedAt);
-  const at = Number.isNaN(when.getTime()) ? process.startedAt : when.toLocaleTimeString();
-  return `${started} · pid ${process.pid} · since ${at}`;
-}
 
 function Attempt({ attempt, attemptedAt }: { attempt: number; attemptedAt: string }): JSX.Element {
   return (
@@ -1063,22 +855,3 @@ function Attempt({ attempt, attemptedAt }: { attempt: number; attemptedAt: strin
   );
 }
 
-/**
- * A tool's state, and **which binary answered**. The panel reported
- * `ffmpeg version 8.0.1` and `missing` eight minutes apart with nothing changed
- * on the machine: the first came from a service started in a terminal, which
- * inherits a shell PATH, and the second from one After Effects spawned, which
- * does not. Showing the path makes that impossible to misread.
- */
-function Fact({ label, tool }: { label: string; tool: ToolState }): JSX.Element {
-  const where = tool.path === undefined ? null : `${tool.path}${tool.source === undefined ? '' : ` (${tool.source})`}`;
-  return (
-    <li>
-      <span className="k">{label}</span>
-      <span className={`v ${tool.present ? 'good' : 'bad'}`} title={tool.detail}>
-        {tool.present ? tool.detail : 'missing'}
-        {where === null ? null : <em className="where">{where}</em>}
-      </span>
-    </li>
-  );
-}

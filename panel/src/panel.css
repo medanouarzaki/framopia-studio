@@ -27,7 +27,7 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
-  font: 13px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif;
+  font: 17px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -43,10 +43,10 @@ header.brand .mark {
   width: 14px; height: 14px; border-radius: 3px;
   background: var(--accent); flex: 0 0 auto;
 }
-header.brand .name { font-size: 14px; font-weight: 600; letter-spacing: -0.01em; }
+header.brand .name { font-size: 0.85em; font-weight: 600; letter-spacing: -0.01em; }
 header.brand .name em { font-style: normal; color: var(--accent); }
 header.brand .version {
-  margin-left: auto; color: var(--faint); font-size: 11px;
+  margin-left: auto; color: var(--faint); font-size: 0.65em;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
@@ -61,102 +61,35 @@ header.brand .version {
  * is toggled from a measured width instead — see panel-width.ts.
  */
 
-/*
- * The step rail. Flex with `gap` (Chrome 84) and nothing newer: no container
- * query, no parent selector, no colour mixing — CEP runs Chromium 99 and drops
- * what it does not know without a word. The denylist in core names the features
- * and the versions; naming them literally here would put the very strings the
- * gate looks for into the shipped stylesheet.
- *
- * The current marker is a white underline and white text, never brand red.
- * PROJECT_SPEC §6 spends #ED1C24 on one thing and the user ruled that thing is
- * Run pipeline; a red rail would put four more of them on screen.
- *
- * `flex-wrap: nowrap` is deliberate. Docked at the manifest's 420px the labels
- * do not fit, so they are hidden and the numbers carry the rail — a second row
- * would push the content down on the narrowest layout, which is the one that
- * can least afford it.
- */
-.rail {
-  flex: 0 0 auto;
-  border-bottom: 1px solid var(--line);
-  background: var(--panel);
-  padding: 0 12px;
-}
-
-.rail ol {
-  display: flex; flex-wrap: nowrap; gap: 2px;
-  margin: 0; padding: 0; list-style: none;
-}
-
-.rail li { flex: 0 1 auto; min-width: 0; }
-
-.rail button {
-  display: flex; align-items: center; gap: 7px;
-  width: auto; padding: 11px 10px;
-  background: none; border: none; border-bottom: 2px solid transparent;
-  color: var(--muted); font: inherit; cursor: pointer;
-  white-space: nowrap;
-}
-
-.rail button:disabled { color: var(--faint); cursor: not-allowed; }
-.rail button:enabled:hover { color: var(--text); }
-.rail button:focus { outline: none; border-bottom-color: var(--muted); }
-
-.rail .n {
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 18px; height: 18px; flex: 0 0 18px;
-  border: 1px solid var(--line); border-radius: 50%;
-  font-size: 10.5px; font-variant-numeric: tabular-nums;
-}
-
-.rail .l { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-
-.rail .step.current button { color: #fff; border-bottom-color: #fff; }
-.rail .step.current .n { border-color: #fff; color: #fff; }
-.rail .step.locked .n { border-style: dashed; }
-
-/*
- * Docked at 420px five labels do not fit, so only the current step keeps its
- * name. `.app.wide` is the measured two-column class; below it the rail is
- * numbers plus one label, which is what the brief asks for instead of wrapping
- * or scrolling sideways.
- */
-.rail .step .l { display: none; }
-.rail .step.current .l { display: inline; }
-.app.wide .rail .step .l { display: inline; }
-
 .promise { margin: 0; color: var(--muted); }
 .issues {
   margin: 10px 0 0; padding-left: 18px;
-  color: var(--muted); font-size: 12px; line-height: 1.6;
+  color: var(--muted); font-size: 0.72em; line-height: 1.6;
   overflow-wrap: anywhere;
 }
 .detail { margin: 10px 0 0; color: var(--text); overflow-wrap: anywhere; }
-.card > .note { margin: 10px 0 0; color: var(--warn); font-size: 12px; line-height: 1.5; }
+.card > .note { margin: 10px 0 0; color: var(--warn); font-size: 0.72em; line-height: 1.5; }
 
 button.back { width: auto; margin-top: 14px; cursor: pointer; }
 button.back:hover:enabled { border-color: #3a4049; }
 
+/*
+ * One column, at every width. The two-column layout above 830px is retired
+ * (2026-08-29): the screen is short enough now not to need it, and a docked
+ * panel is a column — reading down it beats reading across two.
+ */
 main {
   flex: 1 1 auto; overflow-y: auto; padding: 20px;
   display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px; align-content: start;
 }
 
-/*
- * The breakpoint itself lives in panel-width.ts, which is what decides the
- * class; 830px, measured in session 9. Below it a second column would be
- * narrower than the single column already is when docked.
- */
-.app.wide main { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
-.app.wide main > section.service { grid-column: 1; grid-row: 1 / span 2; }
-.app.wide main > section.video { grid-column: 2; grid-row: 1; }
-.app.wide main > section.mode { grid-column: 2; grid-row: 2; }
-.app.wide main > section.build { grid-column: 1 / -1; }
+main.editor { gap: 14px; }
+.editorhead { display: flex; align-items: center; gap: 12px; }
+.editorhead h2 { margin: 0; }
 
 section > h2 {
   margin: 0 0 10px;
-  font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.1em;
+  font-size: 0.62em; text-transform: uppercase; letter-spacing: 0.1em;
   color: var(--faint); font-weight: 600;
 }
 
@@ -166,7 +99,7 @@ section > h2 {
 }
 
 .attempt {
-  color: var(--faint); font-size: 11px;
+  color: var(--faint); font-size: 0.65em;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   margin-bottom: 10px;
 }
@@ -185,7 +118,7 @@ section > h2 {
 /* A long path or an ffmpeg banner wraps rather than widening the card. */
 .facts .v {
   color: var(--text); font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 11.5px; min-width: 0; overflow-wrap: anywhere;
+  font-size: 0.68em; min-width: 0; overflow-wrap: anywhere;
 }
 .facts .v.bad { color: var(--accent); }
 .facts .v.good { color: var(--ok); }
@@ -193,7 +126,7 @@ section > h2 {
 /* Which binary answered, under the version it reported. Quiet by design. */
 .facts .v .where {
   display: block; margin-top: 2px;
-  color: var(--faint); font-style: normal; font-size: 11px;
+  color: var(--faint); font-style: normal; font-size: 0.65em;
   overflow-wrap: anywhere;
 }
 
@@ -203,7 +136,7 @@ section > h2 {
 label.field { display: block; }
 label.field > span {
   display: block; margin-bottom: 6px;
-  font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--faint); font-weight: 600;
+  font-size: 0.62em; text-transform: uppercase; letter-spacing: 0.1em; color: var(--faint); font-weight: 600;
 }
 
 select, button {
@@ -236,10 +169,10 @@ button.run:disabled { background: var(--panel-2); border-color: var(--line); col
 .spend { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
 .spend .amount {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 17px; font-variant-numeric: tabular-nums;
+  font-size: 1.05em; font-variant-numeric: tabular-nums;
 }
 .spend .amount.alarm { color: var(--accent); }
-.spend .cap { color: var(--faint); font-size: 11.5px; }
+.spend .cap { color: var(--faint); font-size: 0.68em; }
 .spend .note { margin-top: 6px; color: var(--faint); }
 
 .empty { color: var(--faint); }
@@ -254,7 +187,7 @@ button.run:disabled { background: var(--panel-2); border-color: var(--line); col
 button.chip {
   width: auto; padding: 5px 9px; cursor: pointer;
   background: var(--panel-2); border: 1px solid var(--line); border-radius: 999px;
-  color: var(--muted); font: inherit; font-size: 12px;
+  color: var(--muted); font: inherit; font-size: 0.72em;
 }
 button.chip:hover:enabled { color: var(--text); border-color: #3a4049; }
 button.chip.on { color: var(--text); border-color: var(--focus); }
@@ -269,7 +202,7 @@ ol.words { list-style: none; margin: 14px 0 0; padding: 0; }
 
 .wid {
   flex: 0 0 auto; width: 46px;
-  color: var(--faint); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px;
+  color: var(--faint); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.65em;
 }
 
 /*
@@ -280,11 +213,11 @@ ol.words { list-style: none; margin: 14px 0 0; padding: 0; }
 button.wtext {
   width: auto; padding: 2px 4px; cursor: text;
   background: none; border: 1px solid transparent; border-radius: 4px;
-  color: var(--text); font: inherit; font-size: 15px;
+  color: var(--text); font: inherit; font-size: 0.9em;
 }
 button.wtext:hover { border-color: var(--line); }
 input.wtext {
-  width: auto; padding: 2px 4px; font-size: 15px;
+  width: auto; padding: 2px 4px; font-size: 0.9em;
   background: var(--panel-2); border: 1px solid var(--focus); border-radius: 4px; color: var(--text);
 }
 
@@ -300,7 +233,7 @@ input.wtext {
 
 .wmeta {
   flex: 1 1 auto; min-width: 0;
-  color: var(--faint); font-size: 11px; overflow-wrap: anywhere;
+  color: var(--faint); font-size: 0.65em; overflow-wrap: anywhere;
 }
 .wmeta .src { display: inline-block; margin-left: 8px; color: var(--muted); font-style: normal; }
 .wmeta .tag {
@@ -317,13 +250,13 @@ ul.instances > li {
   display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px;
   padding: 5px 0; border-top: 1px solid var(--line); min-width: 0;
 }
-.itext { font-size: 14px; color: var(--text); }
-.idetail { flex: 1 1 200px; min-width: 0; color: var(--faint); font-size: 11px; overflow-wrap: anywhere; }
+.itext { font-size: 0.85em; color: var(--text); }
+.idetail { flex: 1 1 200px; min-width: 0; color: var(--faint); font-size: 0.65em; overflow-wrap: anywhere; }
 .iparts { display: flex; flex-wrap: wrap; gap: 6px; }
 .iparts em {
   display: inline-flex; align-items: baseline; gap: 5px;
   padding: 1px 6px; border: 1px solid var(--line); border-radius: 3px;
-  color: var(--muted); font-style: normal; font-size: 11px;
+  color: var(--muted); font-style: normal; font-size: 0.65em;
 }
 
 /* Step 3. Same row shape as the transcript, so the two read as one tool. */
@@ -332,7 +265,7 @@ ol.keywords { list-style: none; margin: 14px 0 0; padding: 0; }
   display: flex; align-items: baseline; gap: 10px;
   padding: 7px 0; border-bottom: 1px solid var(--line); min-width: 0;
 }
-.ktext { font-size: 17px; color: var(--text); }
+.ktext { font-size: 1.05em; color: var(--text); }
 
 /* The watermark decision sits at Build, beside the other build-time facts. */
 .watermark {
@@ -358,7 +291,7 @@ ol.keywords { list-style: none; margin: 14px 0 0; padding: 0; }
   color: var(--muted);
   cursor: pointer;
   font: inherit;
-  font-size: 12px;
+  font-size: 0.72em;
   padding: 4px 10px;
 }
 
@@ -502,7 +435,7 @@ ol.keywords { list-style: none; margin: 14px 0 0; padding: 0; }
   align-items: center;
   color: var(--faint);
   display: flex;
-  font-size: 12px;
+  font-size: 0.72em;
   gap: 8px;
   padding: 3px 0;
 }
@@ -538,13 +471,66 @@ ol.keywords { list-style: none; margin: 14px 0 0; padding: 0; }
 .buildpane .card.missing .what {
   color: var(--text);
   display: block;
-  font-size: 13px;
+  font-size: 0.78em;
 }
 
 .buildpane .card.missing code {
   color: var(--muted);
   display: block;
-  font-size: 11px;
+  font-size: 0.65em;
   margin-top: 4px;
   overflow-wrap: anywhere;
 }
+
+/*
+ * The readiness line. One word and a dot while everything works; the machine
+ * facts sit behind Details, and a real problem comes forward as a sentence.
+ */
+.readiness .line { display: flex; align-items: center; flex-wrap: wrap; gap: 9px; margin: 0; }
+.readiness .word { min-width: 0; overflow-wrap: anywhere; }
+.readiness .word { font-weight: 600; }
+.readiness .line .dot { margin-top: 0; }
+.readiness .say { margin: 8px 0 0; color: var(--warn); overflow-wrap: anywhere; }
+.readiness.bad .say { color: var(--text); }
+.readiness .faint {
+  margin: 8px 0 0; color: var(--faint); font-size: 0.8em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.readiness .details {
+  margin-top: 12px; padding: 12px 14px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 9px;
+}
+button.link {
+  margin-left: auto; padding: 0; background: none; border: none;
+  color: var(--muted); font: inherit; font-size: 0.85em; cursor: pointer;
+  text-decoration: underline; text-underline-offset: 3px;
+}
+button.link:hover { color: var(--text); }
+button.ghost {
+  width: auto; margin-top: 10px; padding: 6px 14px;
+  background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px;
+  color: var(--text); font: inherit; cursor: pointer;
+}
+
+/* Run and Build, one under the other: the two things he actually presses. */
+.do { display: grid; gap: 10px; }
+.do .say { margin: 0; color: var(--muted); overflow-wrap: anywhere; }
+
+/* The third move: come back and change the one thing that bothered him. */
+.change .three { display: flex; gap: 8px; }
+.change .opener {
+  flex: 1 1 0; min-width: 0;
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+  padding: 10px 12px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 9px;
+  color: var(--text); font: inherit; cursor: pointer; text-align: left;
+}
+.change .opener:enabled:hover { border-color: #3a4049; }
+.change .opener:disabled { color: var(--faint); cursor: not-allowed; }
+.change .opener .count {
+  color: var(--muted); font-size: 0.85em; font-variant-numeric: tabular-nums;
+}
+.change .opener:disabled .count { color: var(--faint); }
+
+.quibbles { margin-top: 10px; color: var(--muted); font-size: 0.85em; }
+.quibbles summary { cursor: pointer; }

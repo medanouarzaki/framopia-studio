@@ -49,7 +49,7 @@ export function runGate(options: {
     };
   }
   if (running) {
-    return { enabled: false, reason: 'A run is already going. It continues if you leave this step.' };
+    return { enabled: false, reason: 'A run is already going. It continues if you leave and come back.' };
   }
 
   /*

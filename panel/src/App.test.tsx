@@ -114,15 +114,27 @@ afterEach(() => {
 });
 
 describe('service state', () => {
-  it('shows healthy with the payload read as words, not raw JSON', async () => {
+  /*
+   * The machine facts moved behind Details in session 42: none of them changes
+   * what he does next while everything works, and he is a motion designer, not
+   * the person who installed ffmpeg. One word on the main screen; the facts
+   * when he asks for them.
+   */
+  it('says one word on the main screen and keeps the facts behind Details', async () => {
     vi.stubGlobal('fetch', serviceFetch());
     await render(hostThatAnswers());
 
     expect(text()).toContain('Ready');
-    expect(text()).toContain('Version 0.1.0');
+    expect(text()).not.toContain('ffmpeg version 8.0.1');
+    expect(text()).not.toContain('Python 3.11.14');
+
+    await act(async () => {
+      (container.querySelector('button.link') as HTMLElement).click();
+    });
     expect(text()).toContain('ffmpeg version 8.0.1');
     expect(text()).toContain('Python 3.11.14');
-    expect(text()).toContain('6 valid');
+    expect(text()).toContain('6 ready');
+    expect(text()).toContain('Version 0.1.0');
     expect(text()).not.toContain('{');
   });
 
@@ -130,7 +142,7 @@ describe('service state', () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('connect ECONNREFUSED')));
     await render(hostThatAnswers());
 
-    expect(text()).toContain('Not reachable');
+    expect(text()).toContain('Not working');
     expect(text()).toContain('connect ECONNREFUSED');
     expect(text()).toContain('Try again');
     expect(text()).toContain('This usually clears on its own');
@@ -142,7 +154,7 @@ describe('service state', () => {
     await render(hostThatAnswers());
 
     expect(text()).toContain('Starting');
-    expect(text()).toContain('Looking for the companion service');
+    expect(text()).toContain('Starting…');
   });
 
   it('reports problems without claiming the machine is ready', async () => {
@@ -155,7 +167,7 @@ describe('service state', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => broken }));
     await render(hostThatAnswers());
 
-    expect(text()).toContain('Running, with problems');
+    expect(text()).toContain('Ready, with problems');
     expect(text()).toContain('missing');
     expect(text()).toContain('sub_pop: comp missing');
   });
@@ -166,14 +178,14 @@ describe('the pickers', () => {
     vi.stubGlobal('fetch', serviceFetch());
     await render(hostThatAnswers());
 
-    expect([...select('Reel').options].map((o) => o.textContent)).toEqual([
-      'Select a video…',
+    expect([...select('Video').options].map((o) => o.textContent)).toEqual([
+      'Choose a video…',
       'vitasilk — 25.7s',
       'test-1 — 22.0s',
     ]);
-    expect([...select('Client mode').options].map((o) => o.textContent)).toEqual([
-      'Select a client…',
-      'K2 Syndicalia — v6',
+    expect([...select('Client').options].map((o) => o.textContent)).toEqual([
+      'Choose a client…',
+      'K2 Syndicalia',
     ]);
   });
 
@@ -184,7 +196,7 @@ describe('the pickers', () => {
 
     expect(text()).toContain('No videos found');
     expect(text()).toContain('No clients set up yet');
-    expect(select('Reel').disabled).toBe(true);
+    expect(select('Video').disabled).toBe(true);
   });
 
   it('shows the reel’s cumulative spend once one is picked', async () => {
@@ -193,8 +205,8 @@ describe('the pickers', () => {
 
     expect(text()).not.toContain('spent on this reel');
     await act(async () => {
-      select('Reel').value = 'vitasilk';
-      select('Reel').dispatchEvent(new Event('change', { bubbles: true }));
+      select('Video').value = 'vitasilk';
+      select('Video').dispatchEvent(new Event('change', { bubbles: true }));
     });
 
     expect(text()).toContain('$1.5504');
@@ -206,8 +218,8 @@ describe('the pickers', () => {
     vi.stubGlobal('fetch', serviceFetch());
     await render(hostThatAnswers());
     await act(async () => {
-      select('Reel').value = 'test-1';
-      select('Reel').dispatchEvent(new Event('change', { bubbles: true }));
+      select('Video').value = 'test-1';
+      select('Video').dispatchEvent(new Event('change', { bubbles: true }));
     });
 
     expect(text()).toContain('not run yet');
@@ -236,8 +248,8 @@ describe('the Run control', () => {
     vi.stubGlobal('fetch', serviceFetch());
     await render(hostThatAnswers());
     await act(async () => {
-      select('Reel').value = 'vitasilk';
-      select('Reel').dispatchEvent(new Event('change', { bubbles: true }));
+      select('Video').value = 'vitasilk';
+      select('Video').dispatchEvent(new Event('change', { bubbles: true }));
     });
 
     expect(text()).toContain('Pick a client mode.');
@@ -304,7 +316,7 @@ describe('runGate', () => {
       running: true,
     });
     expect(gate.enabled).toBe(false);
-    expect(gate.reason).toContain('continues if you leave this step');
+    expect(gate.reason).toContain('continues if you leave');
   });
 
   it('names a reel the catalogue lists but the machine does not have', () => {
@@ -447,7 +459,7 @@ describe('host detection', () => {
     await renderEnv(env);
 
     // It mounted the real screen, not the unavailable one.
-    expect(text()).toContain('Service');
+    expect(text()).toContain('Not working');
     expect(text()).toContain('Video');
     expect(text()).not.toContain('is not providing');
   });
@@ -574,7 +586,7 @@ describe('the dry run', () => {
                     reel: 'vitasilk',
                     planPath: '/v/p.json',
                     steps: [
-                      { id: 'reel', label: 'Reel', available: true, reason: null, summary: null },
+                      { id: 'reel', label: 'Video', available: true, reason: null, summary: null },
                       { id: 'transcript', label: 'Transcript', available: false, reason: 'not yet', summary: null },
                       { id: 'keywords', label: 'Keywords', available: false, reason: 'not yet', summary: null },
                       { id: 'images', label: 'Images', available: false, reason: 'not yet', summary: null },
@@ -628,12 +640,12 @@ describe('the dry run', () => {
     await render(hostThatAnswers());
 
     await act(async () => {
-      select('Reel').value = 'vitasilk';
-      select('Reel').dispatchEvent(new Event('change', { bubbles: true }));
+      select('Video').value = 'vitasilk';
+      select('Video').dispatchEvent(new Event('change', { bubbles: true }));
     });
     await act(async () => {
-      select('Client mode').value = 'k2-syndicalia';
-      select('Client mode').dispatchEvent(new Event('change', { bubbles: true }));
+      select('Client').value = 'k2-syndicalia';
+      select('Client').dispatchEvent(new Event('change', { bubbles: true }));
     });
 
     expect(text()).toContain('Transcribe and correct');
@@ -664,7 +676,7 @@ describe('the dry run', () => {
                     reel: 'vitasilk',
                     planPath: '/v/p.json',
                     steps: [
-                      { id: 'reel', label: 'Reel', available: true, reason: null, summary: null },
+                      { id: 'reel', label: 'Video', available: true, reason: null, summary: null },
                       { id: 'transcript', label: 'Transcript', available: false, reason: 'not yet', summary: null },
                       { id: 'keywords', label: 'Keywords', available: false, reason: 'not yet', summary: null },
                       { id: 'images', label: 'Images', available: false, reason: 'not yet', summary: null },
@@ -698,12 +710,12 @@ describe('the dry run', () => {
     );
     await render(hostThatAnswers());
     await act(async () => {
-      select('Reel').value = 'vitasilk';
-      select('Reel').dispatchEvent(new Event('change', { bubbles: true }));
+      select('Video').value = 'vitasilk';
+      select('Video').dispatchEvent(new Event('change', { bubbles: true }));
     });
     await act(async () => {
-      select('Client mode').value = 'k2-syndicalia';
-      select('Client mode').dispatchEvent(new Event('change', { bubbles: true }));
+      select('Client').value = 'k2-syndicalia';
+      select('Client').dispatchEvent(new Event('change', { bubbles: true }));
     });
 
     expect(text()).toContain('will run, about $0.18');
@@ -780,6 +792,9 @@ describe('retry', () => {
   it('marks the first check as such rather than as attempt 1', async () => {
     vi.stubGlobal('fetch', serviceFetch());
     await render(hostThatAnswers());
+    await act(async () => {
+      (container.querySelector('button.link') as HTMLElement).click();
+    });
     expect(text()).toContain('first check');
   });
 
@@ -797,7 +812,7 @@ describe('retry', () => {
       expect(spawnService).toHaveBeenCalledTimes(1);
 
       await act(async () => {
-        (container.querySelector('button.retry') as HTMLElement).click();
+        (container.querySelector('button.ghost') as HTMLElement).click();
       });
       expect(spawnService).toHaveBeenCalledTimes(2);
     } finally {
@@ -829,8 +844,8 @@ describe('the fonts gate', () => {
     vi.stubGlobal('fetch', serviceFetch());
     await render(hostThatAnswers());
     await act(async () => {
-      select('Client mode').value = 'k2-syndicalia';
-      select('Client mode').dispatchEvent(new Event('change', { bubbles: true }));
+      select('Client').value = 'k2-syndicalia';
+      select('Client').dispatchEvent(new Event('change', { bubbles: true }));
     });
 
     expect(text()).toContain('has no fonts of its own yet');
@@ -847,8 +862,8 @@ describe('the fonts gate', () => {
     );
     await render(hostThatAnswers());
     await act(async () => {
-      select('Client mode').value = 'k2-syndicalia';
-      select('Client mode').dispatchEvent(new Event('change', { bubbles: true }));
+      select('Client').value = 'k2-syndicalia';
+      select('Client').dispatchEvent(new Event('change', { bubbles: true }));
     });
 
     expect(text()).not.toContain('has no fonts of its own yet');
@@ -946,7 +961,7 @@ describe('a service that is already running, or goes away', () => {
         await vi.advanceTimersByTimeAsync(6000);
       });
 
-      expect(text()).toContain('Not reachable');
+      expect(text()).toContain('Not working');
       expect(text()).toContain('stopped answering');
       expect(text()).not.toContain('Ready');
     } finally {

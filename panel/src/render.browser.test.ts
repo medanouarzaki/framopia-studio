@@ -211,7 +211,7 @@ describe.skipIf(!built)('the built panel in a real browser', () => {
     }
   });
 
-  it('renders the brand mark and the three sections', async () => {
+  it('renders the brand mark and one screen, top to bottom', async () => {
     const loaded = await load();
     if (loaded === null) return;
     const { page } = loaded;
@@ -223,8 +223,10 @@ describe.skipIf(!built)('the built panel in a real browser', () => {
       // No logo on disk in this stub, so the fallback mark is what renders.
       expect(await page.locator('header.brand .mark').count()).toBe(1);
 
+      // One screen in the order he works in: what he picks, what it costs,
+      // and what he comes back to change after watching the comp.
       const headings = await page.locator('section > h2').allTextContents();
-      expect(headings).toEqual(['Service', 'Video', 'Client mode', 'Build']);
+      expect(headings).toEqual(['Video', 'Client', 'Cost', 'Change something first']);
     } finally {
       await page.close();
     }
@@ -236,7 +238,7 @@ describe.skipIf(!built)('the built panel in a real browser', () => {
     const { page } = loaded;
     try {
       expect(await page.locator('.dot.starting').count()).toBe(1);
-      expect(await page.locator('.card').first().textContent()).toContain('Starting');
+      expect(await page.locator('section.readiness').textContent()).toContain('Starting');
     } finally {
       await page.close();
     }
@@ -248,23 +250,31 @@ describe.skipIf(!built)('the built panel in a real browser', () => {
     const { page } = loaded;
     try {
       await page.waitForSelector('.dot.unreachable', { timeout: 10_000 });
-      const card = (await page.locator('.card').first().textContent()) ?? '';
-      expect(card).toContain('Not reachable');
-      expect(card).toContain('Try again');
+      const line = (await page.locator('section.readiness').textContent()) ?? '';
+      expect(line).toContain('Not working');
       expect(await page.getByRole('button', { name: 'Try again' }).count()).toBe(1);
     } finally {
       await page.close();
     }
   });
 
-  it('renders healthy with the payload read as words', async () => {
+  /*
+   * One word while it works. The machine facts moved behind Details in session
+   * 42 — none of them changes what he does next, and he is a motion designer,
+   * not the person who installed ffmpeg.
+   */
+  it('renders healthy as one line, with the facts behind Details', async () => {
     const loaded = await load({ files: HANDSHAKE, fetch: 'healthy' });
     if (loaded === null) return;
     const { page } = loaded;
     try {
       await page.waitForSelector('.dot.healthy', { timeout: 10_000 });
-      const card = (await page.locator('.card').first().textContent()) ?? '';
-      expect(card).toContain('Ready');
+      const line = (await page.locator('section.readiness').textContent()) ?? '';
+      expect(line).toContain('Ready');
+      expect(line).not.toContain('ffmpeg version 8.0.1');
+
+      await page.getByRole('button', { name: 'Details' }).click();
+      const card = (await page.locator('section.readiness').textContent()) ?? '';
       expect(card).toContain('ffmpeg version 8.0.1');
       expect(card).toContain('Version 0.1.0');
       expect(card).not.toContain('{');
@@ -310,7 +320,7 @@ describe.skipIf(!built)('the built panel in a real browser', () => {
     try {
       const run = page.getByRole('button', { name: 'Run pipeline' });
       expect(await run.isDisabled()).toBe(true);
-      const reason = await page.locator('p.reason').first().textContent();
+      const reason = await page.locator('section.do p.say').first().textContent();
       expect(reason ?? '').not.toBe('');
     } finally {
       await page.close();
@@ -364,7 +374,7 @@ describe.skipIf(!built)('the spawn path in a real browser', () => {
     const { page } = loaded;
     try {
       await page.waitForSelector('.dot.unreachable', { timeout: 15_000 });
-      const card = (await page.locator('.card').first().textContent()) ?? '';
+      const card = (await page.locator('section.readiness').textContent()) ?? '';
 
       expect(card).toContain('not built');
       expect(card).toContain(`${REPO}/service/dist/service.js`);
@@ -385,7 +395,7 @@ describe.skipIf(!built)('the spawn path in a real browser', () => {
     const { page } = loaded;
     try {
       await page.waitForSelector('.dot.healthy', { timeout: 15_000 });
-      const card = (await page.locator('.card').first().textContent()) ?? '';
+      const card = (await page.locator('section.readiness').textContent()) ?? '';
       expect(card).toContain('Ready');
       expect(card).not.toContain('not built');
     } finally {
@@ -405,11 +415,11 @@ describe.skipIf(!built)('the spawn path in a real browser', () => {
     try {
       await page.waitForSelector('.attempt', { timeout: 15_000 });
       expect(await page.locator('.attempt').first().getAttribute('data-attempt')).toBe('0');
-      const first = (await page.locator('.card').first().textContent()) ?? '';
+      const first = (await page.locator('section.readiness').textContent()) ?? '';
 
       await page.getByRole('button', { name: 'Try again' }).first().click();
       await page.waitForSelector('.attempt[data-attempt="1"]', { timeout: 15_000 });
-      const second = (await page.locator('.card').first().textContent()) ?? '';
+      const second = (await page.locator('section.readiness').textContent()) ?? '';
 
       expect(second).not.toBe(first);
       expect(second).toContain('attempt 2');
@@ -419,174 +429,6 @@ describe.skipIf(!built)('the spawn path in a real browser', () => {
   }, 30_000);
 });
 
-/**
- * The layout at the two widths that matter: docked into an After Effects
- * workspace at the manifest's 420px, and floating wide.
- *
- * The breakpoint is a container query on the panel, not a media query: a
- * docked CEP panel's window is the size of the screen while its panel is the
- * width of a column, so a viewport query would lay out for the wrong thing.
- */
-describe.skipIf(!built)('the responsive layout', () => {
-  const columnCount = async (page: Page): Promise<number> =>
-    page.evaluate(
-      () =>
-        new Set(
-          [...document.querySelectorAll('main > section')].map((s) =>
-            Math.round(s.getBoundingClientRect().left),
-          ),
-        ).size,
-    );
-
-  const overflowing = async (page: Page): Promise<string[]> =>
-    page.evaluate(() =>
-      [...document.querySelectorAll('*')]
-        .filter((el) => el.scrollWidth > el.clientWidth + 1)
-        .map((el) => `${el.tagName}.${el.className}`),
-    );
-
-  it('is one column when docked at 420px, and nothing overflows', async () => {
-    const loaded = await load({ files: { ...HANDSHAKE, ...SERVICE_BUILT }, fetch: 'healthy', width: 420 });
-    if (loaded === null) return;
-    const { page } = loaded;
-    try {
-      await page.waitForSelector('.dot.healthy', { timeout: 15_000 });
-      expect(await columnCount(page)).toBe(1);
-      expect(await overflowing(page)).toEqual([]);
-    } finally {
-      await page.close();
-    }
-  }, 30_000);
-
-  it('is two columns when floating wide, and nothing overflows', async () => {
-    const loaded = await load({ files: { ...HANDSHAKE, ...SERVICE_BUILT }, fetch: 'healthy', width: 1200 });
-    if (loaded === null) return;
-    const { page } = loaded;
-    try {
-      await page.waitForSelector('.dot.healthy', { timeout: 15_000 });
-      expect(await columnCount(page)).toBe(2);
-      expect(await overflowing(page)).toEqual([]);
-
-      // Service beside Video and Client mode; Build spanning both beneath.
-      const boxes = await page.evaluate(() =>
-        Object.fromEntries(
-          ['service', 'video', 'mode', 'build'].map((c) => {
-            const el = document.querySelector(`main > section.${c}`) as HTMLElement;
-            const r = el.getBoundingClientRect();
-            return [c, { left: Math.round(r.left), top: Math.round(r.top), width: Math.round(r.width) }];
-          }),
-        ),
-      );
-      expect(boxes.service?.left).toBeLessThan(boxes.video?.left as number);
-      expect(boxes.video?.left).toBe(boxes.mode?.left);
-      expect(boxes.video?.top).toBeLessThan(boxes.mode?.top as number);
-      expect(boxes.build?.left).toBe(boxes.service?.left);
-      expect(boxes.build?.width).toBeGreaterThan((boxes.service?.width as number) * 1.8);
-      expect(boxes.build?.top).toBeGreaterThan(boxes.mode?.top as number);
-    } finally {
-      await page.close();
-    }
-  }, 30_000);
-
-  /*
-   * The breakpoint itself. Below it a second column would be narrower than the
-   * single column already is when docked, which would make the panel worse
-   * rather than wider.
-   */
-  /*
-   * The mechanism, not just the outcome: the class has to be on the element,
-   * because a container query left it empty and the layout never switched.
-   */
-  it('carries the wide class only above the breakpoint', async () => {
-    const loaded = await load({ files: { ...HANDSHAKE, ...SERVICE_BUILT }, fetch: 'healthy', width: 1200 });
-    if (loaded === null) return;
-    const { page } = loaded;
-    try {
-      await page.waitForSelector('.dot.healthy', { timeout: 15_000 });
-      expect(await page.locator('div.app').getAttribute('class')).toBe('app wide');
-    } finally {
-      await page.close();
-    }
-  }, 30_000);
-
-  it('has no class at the docked width', async () => {
-    const loaded = await load({ files: { ...HANDSHAKE, ...SERVICE_BUILT }, fetch: 'healthy', width: 420 });
-    if (loaded === null) return;
-    const { page } = loaded;
-    try {
-      await page.waitForSelector('.dot.healthy', { timeout: 15_000 });
-      expect(await page.locator('div.app').getAttribute('class')).toBe('app');
-    } finally {
-      await page.close();
-    }
-  }, 30_000);
-
-  /*
-   * Re-evaluated on resize, not once at mount. A width read during the first
-   * render is taken before layout and is the other common way a breakpoint
-   * never fires.
-   */
-  it('switches when the panel is resized, without a reload', async () => {
-    const loaded = await load({ files: { ...HANDSHAKE, ...SERVICE_BUILT }, fetch: 'healthy', width: 420 });
-    if (loaded === null) return;
-    const { page } = loaded;
-    try {
-      await page.waitForSelector('.dot.healthy', { timeout: 15_000 });
-      expect(await columnCount(page)).toBe(1);
-
-      await page.setViewportSize({ width: 1200, height: 900 });
-      await page.waitForFunction(() => document.querySelector('div.app')?.classList.contains('wide'), null, {
-        timeout: 10_000,
-      });
-      expect(await columnCount(page)).toBe(2);
-
-      await page.setViewportSize({ width: 420, height: 900 });
-      await page.waitForFunction(() => !document.querySelector('div.app')?.classList.contains('wide'), null, {
-        timeout: 10_000,
-      });
-      expect(await columnCount(page)).toBe(1);
-      expect(await overflowing(page)).toEqual([]);
-    } finally {
-      await page.close();
-    }
-  }, 40_000);
-
-  it('stays single-column one pixel below the breakpoint', async () => {
-    const loaded = await load({ files: { ...HANDSHAKE, ...SERVICE_BUILT }, fetch: 'healthy', width: 829 });
-    if (loaded === null) return;
-    const { page } = loaded;
-    try {
-      await page.waitForSelector('.dot.healthy', { timeout: 15_000 });
-      expect(await columnCount(page)).toBe(1);
-    } finally {
-      await page.close();
-    }
-  }, 30_000);
-
-  it('splits at the breakpoint', async () => {
-    const loaded = await load({ files: { ...HANDSHAKE, ...SERVICE_BUILT }, fetch: 'healthy', width: 830 });
-    if (loaded === null) return;
-    const { page } = loaded;
-    try {
-      await page.waitForSelector('.dot.healthy', { timeout: 15_000 });
-      expect(await columnCount(page)).toBe(2);
-      expect(await overflowing(page)).toEqual([]);
-    } finally {
-      await page.close();
-    }
-  }, 30_000);
-});
-
-/**
- * A route-aware fetch stub. `stubFetch('healthy')` answers every URL with the
- * health payload, which leaves the pickers empty — fine for the startup checks
- * and useless for the flow, which needs a reel, a mode and a plan.
- *
- * `steps` is the service's own derivation from the Edit Plan. It is stubbed
- * here rather than read off disk because this file drives the built bundle,
- * not the service; `service/src/steps.ts` has its own tests against the real
- * plans.
- */
 function stubRoutes(steps: unknown, resumeAt: string): string {
   const payload = {
     health: HEALTHY_PAYLOAD,
@@ -647,7 +489,6 @@ function stubRoutes(steps: unknown, resumeAt: string): string {
   };`;
 }
 
-/** Five steps with everything through `upTo` available, the rest locked. */
 function stepsThrough(upTo: string): unknown[] {
   const order = ['reel', 'transcript', 'keywords', 'images', 'build'];
   const labels: Record<string, string> = {
@@ -663,7 +504,6 @@ function stepsThrough(upTo: string): unknown[] {
   }));
 }
 
-/** Opens the panel with a reel and a mode chosen, as a user would. */
 async function loadFlow(
   upTo: string,
   resumeAt: string,
@@ -679,18 +519,13 @@ async function loadFlow(
   await page.addInitScript(stubRoutes(stepsThrough(upTo), resumeAt));
   if (amendPayload !== undefined) await page.addInitScript(amendPayload);
   await page.goto(`file://${INDEX}`);
-  await page.waitForSelector('nav.rail', { timeout: 10_000 });
-  await page.selectOption('select[aria-label="Reel"]', 'vitasilk');
-  await page.selectOption('select[aria-label="Client mode"]', 'k2-syndicalia');
-  await page.waitForFunction(
-    () => document.querySelector('nav.rail .step.current .l') !== null,
-    undefined,
-    { timeout: 10_000 },
-  );
+  await page.waitForSelector('section.video', { timeout: 10_000 });
+  await page.selectOption('select[aria-label="Video"]', 'vitasilk');
+  await page.selectOption('select[aria-label="Client"]', 'k2-syndicalia');
+  await page.waitForSelector('section.change .opener', { timeout: 10_000 });
   return { page, uncaught };
 }
 
-/** A pipeline job the stub serves, in whatever state the test wants. */
 function stubJob(state: 'running' | 'done' | 'failed' | 'all-skipped'): string {
   const stage = (
     id: string,
@@ -758,12 +593,6 @@ function stubJob(state: 'running' | 'done' | 'failed' | 'all-skipped'): string {
   })});`;
 }
 
-/**
- * The exact pair that disagreed on the user's machine: `vitasilk`'s analysis
- * stage, whose cache misses (`provenance: 'none'`, no estimate) while the plan
- * already records it done. The cost block read "to run" and the run beneath it
- * read "skipped".
- */
 const VITASILK_DRY_STAGES = [
   {
     id: 'transcription',
@@ -807,97 +636,294 @@ const VITASILK_DRY_STAGES = [
   },
 ];
 
+const IMAGES = {
+  reel: 'vitasilk',
+  planPath: '/v/vitasilk.editplan.json',
+  generationEstimateUsd: 1.45,
+  generationNote: 'a run would generate 8, budgeted at most $1.45',
+  reelSpentUsd: 1.550444,
+  cardFrameForced: true,
+  source: {
+    clientMode: 'k2-syndicalia',
+    clientModeVersion: 5,
+    stageStatus: 'done',
+    cacheEntryId: 'images-699c0a38a9c512ff',
+    cacheProvenance: 'exact',
+  },
+  slots: [
+    {
+      id: 'img001',
+      start: 0.099,
+      end: 1.599,
+      idea: 'A single cosmetic bottle on a dark podium',
+      presentation: 'card',
+      rendersAsCutout: false,
+      nothingIsMeasured: true,
+      templateId: 'img_float',
+      zoneId: 'z_left_4',
+      chosenCandidateId: null,
+      overriddenFailures: [],
+      placedSidePx: 912,
+      placementLimit: 'the space above the speaker',
+      buildsWith: 'img001-c1',
+      buildsWithReason: 'first candidate, nothing chosen',
+      candidates: [
+        {
+          id: 'img001-c1',
+          imagePath: '/v/img001-c1.jpg',
+          imageExists: true,
+          cutoutPath: '/v/img001-c1.cutout.png',
+          cutoutExists: true,
+          renderedPath: '/v/img001-c1.jpg',
+          renderedExists: true,
+          modelId: 'gemini-3-pro-image',
+          resolution: '2K',
+          generatedAt: '2026-08-25T17:43:32.870Z',
+          costUsd: 0,
+          metrics: { alphaEdgeNoise: 0, holeRatio: 0, foregroundArea: 0.3178, edgeHalo: 0.1004 },
+          cutoutQuality: 0,
+          qualityApplies: false,
+          backgroundCameAwayCleanly: null,
+          problems: [],
+          gatePassed: false,
+          gateFailures: ['edge_halo 0.1004 > 0.1'],
+          unexpectedText: [],
+          chosen: false,
+        },
+        {
+          id: 'img001-c2',
+          imagePath: '/v/img001-c2.jpg',
+          imageExists: true,
+          cutoutPath: null,
+          cutoutExists: false,
+          renderedPath: '/v/img001-c2.jpg',
+          renderedExists: true,
+          modelId: 'gemini-3-pro-image',
+          resolution: '2K',
+          generatedAt: '2026-08-25T17:44:02.870Z',
+          costUsd: 0,
+          metrics: { alphaEdgeNoise: 0, holeRatio: 0, foregroundArea: 0.31, edgeHalo: 0.1187 },
+          cutoutQuality: 0,
+          qualityApplies: false,
+          backgroundCameAwayCleanly: null,
+          problems: [],
+          gatePassed: false,
+          gateFailures: ['edge_halo 0.1187 > 0.1'],
+          unexpectedText: ['SERUM'],
+          chosen: false,
+        },
+      ],
+    },
+    {
+      id: 'img002',
+      start: 6.259,
+      end: 8.859,
+      idea: 'A salon interior',
+      presentation: 'cutout',
+      rendersAsCutout: true,
+      nothingIsMeasured: false,
+      templateId: 'img_slide_left',
+      zoneId: 'z_left_2',
+      chosenCandidateId: null,
+      overriddenFailures: [],
+      buildsWith: 'img002-c1',
+      buildsWithReason: 'first candidate, nothing chosen',
+      candidates: [
+        {
+          id: 'img002-c1',
+          imagePath: '/v/img002-c1.jpg',
+          imageExists: true,
+          cutoutPath: '/v/img002-c1.cutout.png',
+          cutoutExists: true,
+          renderedPath: '/v/img002-c1.cutout.png',
+          renderedExists: true,
+          modelId: 'gemini-3-pro-image',
+          resolution: '2K',
+          generatedAt: '2026-08-25T17:45:02.870Z',
+          costUsd: 0,
+          metrics: { alphaEdgeNoise: 0, holeRatio: 0, foregroundArea: 0.2, edgeHalo: 0.08 },
+          cutoutQuality: 0.174,
+          qualityApplies: true,
+          backgroundCameAwayCleanly: true,
+          problems: [],
+          gatePassed: true,
+          gateFailures: [],
+          unexpectedText: [],
+          chosen: false,
+        },
+      ],
+    },
+    {
+      id: 'img003',
+      start: 11.6,
+      end: 13.9,
+      idea: 'A close-up of hair',
+      presentation: null,
+      rendersAsCutout: false,
+      nothingIsMeasured: true,
+      templateId: null,
+      zoneId: null,
+      chosenCandidateId: null,
+      overriddenFailures: [],
+      buildsWith: null,
+      buildsWithReason: 'no candidates',
+      candidates: [],
+    },
+  ],
+};
+
+async function loadImages(payload: unknown = IMAGES): Promise<Loaded | null> {
+  if (browser === undefined) return null;
+  const page = await browser.newPage({ viewport: { width: 1000, height: 900 } });
+  const uncaught: string[] = [];
+  page.on('pageerror', (error: Error) => uncaught.push(error.message));
+  await page.addInitScript(stubHost(HANDSHAKE));
+  await page.addInitScript(stubRoutes(stepsThrough('build'), 'build'));
+  await page.addInitScript(`
+    window.__images = ${JSON.stringify(payload)};
+    const realFetch = window.fetch;
+    window.fetch = (url, init) => {
+      const u = String(url);
+      if (u.indexOf('/images/choose') !== -1) {
+        const body = JSON.parse(init.body);
+        window.__images = Object.assign({}, window.__images, {
+          slots: window.__images.slots.map((s) => {
+            if (s.id !== body.slotId) return s;
+            const picked = s.candidates.find((c) => c.id === body.candidateId) || null;
+            return Object.assign({}, s, {
+              chosenCandidateId: body.candidateId,
+              buildsWith: body.candidateId || (s.candidates[0] && s.candidates[0].id) || null,
+              buildsWithReason: body.candidateId ? 'chosen' : 'first candidate, nothing chosen',
+              overriddenFailures:
+                picked && picked.gatePassed === false ? picked.gateFailures : [],
+              candidates: s.candidates.map((c) =>
+                Object.assign({}, c, { chosen: c.id === body.candidateId }),
+              ),
+            });
+          }),
+        });
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(window.__images) });
+      }
+      if (u.indexOf('/images') !== -1) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(window.__images) });
+      }
+      return realFetch(url, init);
+    };
+  `);
+  await page.goto(`file://${INDEX}`);
+  await page.waitForSelector('section.video', { timeout: 10_000 });
+  await page.selectOption('select[aria-label="Video"]', 'vitasilk');
+  await page.selectOption('select[aria-label="Client"]', 'k2-syndicalia');
+  await page.click('section.change .opener:nth-child(3)');
+  await page.waitForSelector('main.editor', { timeout: 5000 });
+  return { page, uncaught };
+}
+
+/** Distinct left edges among the top-level sections: 1 means one column. */
+async function columnCount(page: Page): Promise<number> {
+  return await page.evaluate(
+    () =>
+      new Set(
+        [...document.querySelectorAll('main > section')].map((sec) =>
+          Math.round(sec.getBoundingClientRect().left),
+        ),
+      ).size,
+  );
+}
+
+/** Anything scrolling sideways, which a docked panel can least afford. */
+async function overflowing(page: Page): Promise<string[]> {
+  return await page.evaluate(() =>
+    [...document.querySelectorAll('*')]
+      .filter((el) => el.scrollWidth > el.clientWidth + 1)
+      .map((el) => `${el.tagName}.${el.className}`),
+  );
+}
+
 /*
- * The mode picker drew a **red outline when focused**, and no test saw it
- * because tests do not tab through controls. The accent belongs to Run
- * pipeline; a focus ring is not exempt.
+ * One column, at every width.
+ *
+ * The two-column layout above 830px is retired (2026-08-29, user ruling): the
+ * screen is short enough now not to need it, and a docked panel is a column —
+ * reading down beats reading across two. What still has to hold at every width
+ * is that nothing overflows sideways.
  */
-/*
- * Session 17 claimed a completed run unlocks the steps the new plan supports.
- * The user's run skipped every stage, so nothing changed and nothing was
- * proven. This drives a run that **completes a stage that was pending** and
- * asserts the rail follows the plan, with no manual reload.
- */
-describe.skipIf(!built)('the rail after a run', () => {
-  it('unlocks a step the finished run made available', async () => {
-    if (browser === undefined) return;
-    const page = await browser.newPage({ viewport: { width: 1000, height: 900 } });
-    const uncaught: string[] = [];
-    page.on('pageerror', (error: Error) => uncaught.push(error.message));
-    await page.addInitScript(stubHost(HANDSHAKE));
-    // Before: transcribed and nothing else, so Keywords is locked.
-    await page.addInitScript(stubRoutes(stepsThrough('transcript'), 'transcript'));
-    await page.addInitScript(stubJob('done'));
-    /*
-     * The service answers /steps differently once the run has finished, which
-     * is what a real run does to the plan. The panel must re-ask rather than
-     * keep the answer it had when the reel was picked.
-     */
-    await page.addInitScript(`
-      window.__stepsAfterRun = ${JSON.stringify(
-        ['reel', 'transcript', 'keywords', 'images', 'build'].map((id, i) => ({
-          id,
-          label: `${id.charAt(0).toUpperCase()}${id.slice(1)}`,
-          available: i <= 2,
-          reason: i <= 2 ? null : 'not yet',
-          summary: i <= 2 ? `${id} summary from the plan` : null,
-          issues: [],
-        })),
-      )};
-      window.__runFinished = false;
-      const realFetch = window.fetch;
-      window.fetch = (url, init) => {
-        const u = String(url);
-        if (u.indexOf('/jobs/') !== -1) window.__runFinished = true;
-        if (u.indexOf('/steps') !== -1 && window.__runFinished) {
-          return Promise.resolve({
-            ok: true,
-            json: () =>
-              Promise.resolve({
-                reel: 'vitasilk',
-                planPath: '/v/p.json',
-                steps: window.__stepsAfterRun,
-              }),
-          });
-        }
-        return realFetch(url, init);
-      };
-    `);
-    await page.goto(`file://${INDEX}`);
-    await page.waitForSelector('nav.rail', { timeout: 10_000 });
-    await page.selectOption('select[aria-label="Reel"]', 'vitasilk');
-    await page.selectOption('select[aria-label="Client mode"]', 'k2-syndicalia');
+describe.skipIf(!built)('the layout', () => {
+  it('is one column and never overflows, from docked to full screen', async () => {
+    for (const width of [380, 420, 700, 830, 1200, 1920]) {
+      const loaded = await load({
+        files: { ...HANDSHAKE, ...SERVICE_BUILT },
+        fetch: 'healthy',
+        width,
+      });
+      if (loaded === null) return;
+      const { page } = loaded;
+      try {
+        await page.waitForSelector('.dot.healthy', { timeout: 15_000 });
+        expect(await columnCount(page), `at ${width}px`).toBe(1);
+        expect(await overflowing(page), `at ${width}px`).toEqual([]);
+      } finally {
+        await page.close();
+      }
+    }
+  }, 120_000);
 
-    const lockedBefore = await page.$$eval('nav.rail li button', (els) =>
-      els.map((e) => (e as HTMLButtonElement).disabled),
-    );
-    expect(lockedBefore).toEqual([false, false, true, true, true]);
-
-    await page.click('button.run');
-    await page.waitForFunction(
-      () =>
-        [...document.querySelectorAll('nav.rail li button')].map(
-          (e) => (e as HTMLButtonElement).disabled,
-        )[2] === false,
-      undefined,
-      { timeout: 8000 },
-    );
-
-    const lockedAfter = await page.$$eval('nav.rail li button', (els) =>
-      els.map((e) => (e as HTMLButtonElement).disabled),
-    );
-    expect(lockedAfter).toEqual([false, false, false, true, true]);
-    expect(uncaught).toEqual([]);
-    await page.close();
-  }, 20_000);
+  it('carries no width class of its own any more', async () => {
+    const loaded = await load({ files: HANDSHAKE, fetch: 'healthy', width: 1200 });
+    if (loaded === null) return;
+    try {
+      expect(await loaded.page.locator('.app.wide').count()).toBe(0);
+    } finally {
+      await loaded.page.close();
+    }
+  }, 30_000);
 });
 
 /**
- * Step 2, driven in a real engine over the built bundle. The transcript is
- * stubbed rather than read from disk — this file drives the panel, and
- * `service/src/transcript-view.test.ts` covers the derivation against the real
- * plans.
+ * A finished run changes what can be edited, and the main screen has to notice
+ * without a reload. It used to be a locked step in a rail; it is an opener now.
  */
+describe.skipIf(!built)('after a run', () => {
+  it('enables an editor the finished run made available', async () => {
+    if (browser === undefined) return;
+    const page = await browser.newPage({ viewport: { width: 420, height: 900 } });
+    try {
+      await page.addInitScript(stubHost(HANDSHAKE));
+      await page.addInitScript(stubRoutes(stepsThrough('reel'), 'reel'));
+      await page.addInitScript(stubJob('done'));
+      await page.goto(`file://${INDEX}`);
+      await page.waitForSelector('section.video', { timeout: 10_000 });
+      await page.selectOption('select[aria-label="Video"]', 'vitasilk');
+      await page.selectOption('select[aria-label="Client"]', 'k2-syndicalia');
+      await page.waitForSelector('section.change .opener', { timeout: 10_000 });
+
+      const before = await page.$$eval('section.change .opener', (els) =>
+        els.map((e) => (e as HTMLButtonElement).disabled),
+      );
+      expect(before).toEqual([true, true, true]);
+
+
+      // The run finishes and the panel re-reads what the video now supports.
+      await page.evaluate(`
+        window.__payload.steps.steps = window.__payload.steps.steps.map(function (s) {
+          return Object.assign({}, s, { available: true, reason: null });
+        });
+      `);
+      await page.click('button.run');
+      await page.waitForFunction(
+        () =>
+          [...document.querySelectorAll('section.change .opener')].every(
+            (e) => !(e as HTMLButtonElement).disabled,
+          ),
+        undefined,
+        { timeout: 10_000 },
+      );
+    } finally {
+      await page.close();
+    }
+  }, 30_000);
+});
+
 const TRANSCRIPT = {
   reel: 'vitasilk',
   planPath: '/v/p.json',
@@ -980,10 +1006,10 @@ describe.skipIf(!built)('the transcript editor', () => {
       };
     `);
     await page.goto(`file://${INDEX}`);
-    await page.waitForSelector('nav.rail', { timeout: 10_000 });
-    await page.selectOption('select[aria-label="Reel"]', 'vitasilk');
-    await page.selectOption('select[aria-label="Client mode"]', 'k2-syndicalia');
-    await page.click('nav.rail li:nth-child(2) button');
+    await page.waitForSelector('section.video', { timeout: 10_000 });
+    await page.selectOption('select[aria-label="Video"]', 'vitasilk');
+    await page.selectOption('select[aria-label="Client"]', 'k2-syndicalia');
+    await page.click('section.change .opener:nth-child(1)');
     await page.waitForSelector('ol.words li', { timeout: 5000 });
     return { page, uncaught };
   }
@@ -1268,10 +1294,10 @@ describe.skipIf(!built)('the keyword picker', () => {
       };
     `);
     await page.goto(`file://${INDEX}`);
-    await page.waitForSelector('nav.rail', { timeout: 10_000 });
-    await page.selectOption('select[aria-label="Reel"]', 'vitasilk');
-    await page.selectOption('select[aria-label="Client mode"]', 'k2-syndicalia');
-    await page.click('nav.rail li:nth-child(3) button');
+    await page.waitForSelector('section.video', { timeout: 10_000 });
+    await page.selectOption('select[aria-label="Video"]', 'vitasilk');
+    await page.selectOption('select[aria-label="Client"]', 'k2-syndicalia');
+    await page.click('section.change .opener:nth-child(2)');
     await page.waitForSelector('main h2', { timeout: 5000 });
     return { page, uncaught };
   }
@@ -1449,7 +1475,7 @@ describe.skipIf(!built)('focus', () => {
     const loaded = await loadFlow('build', 'build');
     if (loaded === null) return;
     const ring = await loaded.page.evaluate(() => {
-      const el = document.querySelector('select[aria-label="Client mode"]') as HTMLSelectElement;
+      const el = document.querySelector('select[aria-label="Client"]') as HTMLSelectElement;
       const before = getComputedStyle(el).borderTopColor;
       el.focus();
       return { before, after: getComputedStyle(el).borderTopColor };
@@ -1472,9 +1498,9 @@ describe.skipIf(!built)('the cost block and the run', () => {
     );
     await page.addInitScript(stubJob('all-skipped'));
     await page.goto(`file://${INDEX}`);
-    await page.waitForSelector('nav.rail', { timeout: 10_000 });
-    await page.selectOption('select[aria-label="Reel"]', 'vitasilk');
-    await page.selectOption('select[aria-label="Client mode"]', 'k2-syndicalia');
+    await page.waitForSelector('section.video', { timeout: 10_000 });
+    await page.selectOption('select[aria-label="Video"]', 'vitasilk');
+    await page.selectOption('select[aria-label="Client"]', 'k2-syndicalia');
     await page.waitForFunction(
       () =>
         (document.querySelector('main') as HTMLElement).textContent?.includes(
@@ -1509,12 +1535,17 @@ describe.skipIf(!built)('the cost block and the run', () => {
     if (loaded === null) return;
     await loaded.page.click('button.run');
     await loaded.page.waitForFunction(
-      () => document.querySelectorAll('section.build ul.facts').length >= 2,
+      () =>
+        document.querySelectorAll('section.cost ul.facts').length >= 1 &&
+        document.querySelectorAll('section.do ul.facts').length >= 1,
       undefined,
       { timeout: 5000 },
     );
     const rows = await loaded.page.evaluate(() => {
-      const lists = [...document.querySelectorAll('section.build ul.facts')];
+      const lists = [
+        document.querySelector('section.cost ul.facts'),
+        document.querySelector('section.do ul.facts'),
+      ];
       const read = (ul: Element): Record<string, string> =>
         Object.fromEntries(
           [...ul.querySelectorAll('li')].map((li) => [
@@ -1550,9 +1581,9 @@ describe.skipIf(!built)('a pipeline run', () => {
     await page.addInitScript(stubRoutes(stepsThrough('build'), 'build'));
     await page.addInitScript(stubJob(state));
     await page.goto(`file://${INDEX}`);
-    await page.waitForSelector('nav.rail', { timeout: 10_000 });
-    await page.selectOption('select[aria-label="Reel"]', 'vitasilk');
-    await page.selectOption('select[aria-label="Client mode"]', 'k2-syndicalia');
+    await page.waitForSelector('section.video', { timeout: 10_000 });
+    await page.selectOption('select[aria-label="Video"]', 'vitasilk');
+    await page.selectOption('select[aria-label="Client"]', 'k2-syndicalia');
     await page.click('button.run');
     await page.waitForFunction(
       () => (document.querySelector('main') as HTMLElement).textContent?.includes('Transcribe and correct') === true,
@@ -1606,12 +1637,13 @@ describe.skipIf(!built)('a pipeline run', () => {
    * The job lives in the service. Walking to another step and back must not
    * stop it or lose it — the panel is a viewer.
    */
-  it('survives leaving step one and coming back', async () => {
+  it('survives opening an editor and coming back', async () => {
     const loaded = await loadRun('running');
     if (loaded === null) return;
-    await loaded.page.click('nav.rail li:nth-child(3) button');
-    expect(await loaded.page.textContent('main h2')).toBe('Keywords');
-    await loaded.page.click('nav.rail li:nth-child(1) button');
+    await loaded.page.click('section.change .opener:nth-child(2)');
+    expect(await loaded.page.textContent('main.editor h2')).toBe('Emphasis');
+    await loaded.page.click('button.back');
+    await loaded.page.waitForSelector('section.do', { timeout: 5000 });
     const text = (await loaded.page.textContent('main')) ?? '';
     expect(text).toContain('Keywords and image slots');
     expect(text).toContain('running…');
@@ -1627,449 +1659,10 @@ describe.skipIf(!built)('a pipeline run', () => {
     });
     expect(state.disabled).toBe(true);
     expect(state.label).toBe('Running…');
-    expect((await loaded.page.textContent('main')) ?? '').toContain('continues if you leave this step');
+    expect((await loaded.page.textContent('main')) ?? '').toContain('continues if you leave');
     await loaded.page.close();
   });
 });
-
-describe.skipIf(!built)('the step rail', () => {
-  it('shows all five steps before any reel is picked', async () => {
-    const loaded = await load({ fetch: 'healthy' });
-    if (loaded === null) return;
-    const labels = await loaded.page.$$eval('nav.rail li .l', (els) =>
-      els.map((e) => e.textContent),
-    );
-    expect(labels).toEqual(['Reel', 'Transcript', 'Keywords', 'Images', 'Build']);
-    await loaded.page.close();
-  });
-
-  it('locks every step past Reel with no reel chosen, and says why', async () => {
-    const loaded = await load({ fetch: 'healthy' });
-    if (loaded === null) return;
-    const state = await loaded.page.$$eval('nav.rail li button', (els) =>
-      els.map((e) => ({
-        disabled: (e as HTMLButtonElement).disabled,
-        title: e.getAttribute('title'),
-      })),
-    );
-    expect(state[0]?.disabled).toBe(false);
-    expect(state.slice(1).every((s) => s.disabled)).toBe(true);
-    expect(state[1]?.title).toContain('Pick a video');
-    await loaded.page.close();
-  });
-
-  /*
-   * Selecting a reel used to jump to the furthest step the plan supported,
-   * which hid every step in between and left Build open on a reel that had no
-   * keywords. The user ruled that picking a video must not navigate: the rail
-   * updates availability and he chooses where to go.
-   */
-  it('does not navigate when a reel and a mode are picked', async () => {
-    const loaded = await loadFlow('keywords', 'keywords');
-    if (loaded === null) return;
-    expect(await loaded.page.textContent('nav.rail .step.current .l')).toBe('Reel');
-    expect(await loaded.page.textContent('main section.video h2')).toBe('Video');
-    await loaded.page.close();
-  });
-
-  it('restores the step last viewed for a reel after the panel is reopened', async () => {
-    const loaded = await loadFlow('keywords', 'keywords');
-    if (loaded === null) return;
-    await loaded.page.click('nav.rail li:nth-child(3) button');
-    expect(await loaded.page.textContent('main h2')).toBe('Keywords');
-
-    // Closing a CEP panel unloads the page, so this is what "reopen" is.
-    await loaded.page.reload();
-    await loaded.page.waitForSelector('nav.rail', { timeout: 10_000 });
-    await loaded.page.selectOption('select[aria-label="Reel"]', 'vitasilk');
-    await loaded.page.selectOption('select[aria-label="Client mode"]', 'k2-syndicalia');
-    await loaded.page.waitForFunction(
-      () => document.querySelector('main h2')?.textContent === 'Keywords',
-      undefined,
-      { timeout: 5000 },
-    );
-    await loaded.page.close();
-    // Two page loads: past vitest's 5s default because the journey is long,
-    // not because anything retries.
-  }, 20_000);
-
-  it('leaves a step the plan does not support unreachable', async () => {
-    const loaded = await loadFlow('keywords', 'keywords');
-    if (loaded === null) return;
-    const disabled = await loaded.page.$$eval('nav.rail li button', (els) =>
-      els.map((e) => (e as HTMLButtonElement).disabled),
-    );
-    expect(disabled).toEqual([false, false, false, true, true]);
-    await loaded.page.close();
-  });
-
-  it('navigates back to a completed step, and Back returns one step', async () => {
-    const loaded = await loadFlow('keywords', 'keywords');
-    if (loaded === null) return;
-    await loaded.page.click('nav.rail li:nth-child(2) button');
-    expect(await loaded.page.textContent('main h2')).toBe('Transcript');
-    await loaded.page.click('button.back');
-    // Back from Transcript is step one, which is the original screen.
-    expect(await loaded.page.textContent('main section.video h2')).toBe('Video');
-    await loaded.page.close();
-  });
-
-  /*
-   * The user's ruling: Run pipeline is the one red thing on screen. Session 16
-   * could only assert this by removing the `disabled` attribute in the page,
-   * because the gate reported "the pipeline runner is not built yet" and the
-   * control could never be enabled. The runner exists now, so this reads the
-   * real enabled control.
-   */
-  it('paints the enabled Run pipeline in the brand accent', async () => {
-    const loaded = await loadFlow('build', 'build');
-    if (loaded === null) return;
-    const run = await loaded.page.evaluate(() => {
-      const el = document.querySelector('button.run') as HTMLButtonElement;
-      return {
-        disabled: el.disabled,
-        label: el.textContent,
-        background: getComputedStyle(el).backgroundColor.replace(/\s/g, ''),
-      };
-    });
-    expect(run.disabled).toBe(false);
-    expect(run.label).toBe('Run pipeline');
-    expect(run.background).toBe('rgb(237,28,36)');
-    await loaded.page.close();
-  });
-
-  it('does not paint Run in the accent while it is disabled', async () => {
-    // No reel picked, so the gate is off and the control must not claim it.
-    const loaded = await load({ fetch: 'healthy' });
-    if (loaded === null) return;
-    const run = await loaded.page.evaluate(() => {
-      const el = document.querySelector('button.run') as HTMLButtonElement;
-      return {
-        disabled: el.disabled,
-        background: getComputedStyle(el).backgroundColor.replace(/\s/g, ''),
-      };
-    });
-    expect(run.disabled).toBe(true);
-    expect(run.background).not.toBe('rgb(237,28,36)');
-    await loaded.page.close();
-  });
-
-  /*
-   * Scoped to the rail and the pane, not the whole page: the brand header is
-   * identity rather than flow, and PROJECT_SPEC §6 puts the accent in the
-   * wordmark and the logo by design.
-   */
-  it('spends the accent on nothing else in the flow', async () => {
-    const loaded = await loadFlow('build', 'build');
-    if (loaded === null) return;
-    const painted = await loaded.page.evaluate(() => {
-      const norm = (c: string): string => c.replace(/\s/g, '');
-      const accent = 'rgb(237,28,36)';
-      return [...document.querySelectorAll('nav.rail *, main *')]
-        .filter((node) => {
-          const s = getComputedStyle(node);
-          return (
-            norm(s.backgroundColor) === accent ||
-            norm(s.color) === accent ||
-            norm(s.borderBottomColor) === accent ||
-            norm(s.borderTopColor) === accent
-          );
-        })
-        .map((node) => `${node.tagName.toLowerCase()}.${node.className}`);
-    });
-    expect(painted).toEqual(['button.run']);
-    await loaded.page.close();
-  });
-
-  it('keeps step one intact, with Run pipeline still the one red control', async () => {
-    const loaded = await loadFlow('build', 'build');
-    if (loaded === null) return;
-    await loaded.page.click('nav.rail li:nth-child(1) button');
-    const red = await loaded.page.evaluate(() => {
-      const norm = (c: string): string => c.replace(/\s/g, '');
-      const target = 'rgb(237,28,36)';
-      return [...document.querySelectorAll('*')]
-        .filter((el) => {
-          const s = getComputedStyle(el);
-          return (
-            norm(s.backgroundColor) === target ||
-            norm(s.color) === target ||
-            norm(s.borderBottomColor) === target
-          );
-        })
-        .map((el) => el.tagName.toLowerCase() + '.' + el.className);
-    });
-    // Run is disabled here, so it is not painted red either; what matters is
-    // that the rail's current marker never is.
-    expect(red.filter((r) => r.includes('rail'))).toEqual([]);
-    expect(await loaded.page.textContent('button.run')).toBe('Run pipeline');
-    await loaded.page.close();
-  });
-
-  it('fits the rail on one row when docked at the manifest width', async () => {
-    const loaded = await loadFlow('build', 'build', 420);
-    if (loaded === null) return;
-    const rail = await loaded.page.evaluate(() => {
-      const nav = document.querySelector('nav.rail') as HTMLElement;
-      const items = [...nav.querySelectorAll('li')] as HTMLElement[];
-      const tops = new Set(items.map((li) => li.offsetTop));
-      return {
-        rows: tops.size,
-        overflows: nav.scrollWidth > nav.clientWidth,
-        labelsShown: [...nav.querySelectorAll('.l')].filter(
-          (l) => getComputedStyle(l).display !== 'none',
-        ).length,
-      };
-    });
-    expect(rail.rows).toBe(1);
-    expect(rail.overflows).toBe(false);
-    // Numbers plus the current step's name, as the brief requires at 420px.
-    expect(rail.labelsShown).toBe(1);
-    await loaded.page.close();
-  });
-
-  it('shows every label once there is room for two columns', async () => {
-    const loaded = await loadFlow('build', 'build', 1000);
-    if (loaded === null) return;
-    const shown = await loaded.page.evaluate(
-      () =>
-        [...document.querySelectorAll('nav.rail .l')].filter(
-          (l) => getComputedStyle(l).display !== 'none',
-        ).length,
-    );
-    expect(shown).toBe(5);
-    await loaded.page.close();
-  });
-
-  /*
-   * Keywords was the example until session 20 built it, then Images until
-   * session 30. **Every step is built now**, so the empty state has no step
-   * left to demonstrate — what is asserted instead is that a step which is
-   * built renders its own content rather than the placeholder, which is the
-   * property the old test was really protecting.
-   */
-  it('renders a built step rather than the not-built-yet placeholder', async () => {
-    const loaded = await loadFlow('build', 'build');
-    if (loaded === null) return;
-    await loaded.page.click('nav.rail li:nth-child(4) button');
-    const text = (await loaded.page.textContent('main')) ?? '';
-    expect(text).not.toContain('This step is not built yet.');
-    await loaded.page.close();
-  });
-
-  /*
-   * The user saw "Pick a video and a client mode first" with both already
-   * picked: the panel was talking to a service too old to have the /steps
-   * route, so no plan arrived and every step fell back to a sentence about a
-   * choice he had made.
-   */
-  it('never tells a user to pick a video they have already picked', async () => {
-    const loaded = await loadFlow('build', 'build');
-    if (loaded === null) return;
-    await loaded.page.click('nav.rail li:nth-child(5) button');
-    const text = (await loaded.page.textContent('main')) ?? '';
-    expect(text).not.toContain('Pick a video and a client mode first');
-    await loaded.page.close();
-  });
-
-  it('renders the whole flow with no uncaught errors', async () => {
-    const loaded = await loadFlow('build', 'build');
-    if (loaded === null) return;
-    await loaded.page.click('nav.rail li:nth-child(4) button');
-    await loaded.page.click('nav.rail li:nth-child(5) button');
-    expect(loaded.uncaught).toEqual([]);
-    await loaded.page.close();
-  });
-});
-
-/*
- * Step 4, the image candidate picker. The fixture mirrors `vitasilk` as the
- * service reports it: one slot whose two candidates the gate rejected, one it
- * passed, and one with nothing generated. The rejections are the point — the
- * gate's yield on the real reel is 2 of 10.
- */
-const IMAGES = {
-  reel: 'vitasilk',
-  planPath: '/v/vitasilk.editplan.json',
-  generationEstimateUsd: 1.45,
-  generationNote: 'a run would generate 8, budgeted at most $1.45',
-  reelSpentUsd: 1.550444,
-  cardFrameForced: true,
-  source: {
-    clientMode: 'k2-syndicalia',
-    clientModeVersion: 5,
-    stageStatus: 'done',
-    cacheEntryId: 'images-699c0a38a9c512ff',
-    cacheProvenance: 'exact',
-  },
-  slots: [
-    {
-      id: 'img001',
-      start: 0.099,
-      end: 1.599,
-      idea: 'A single cosmetic bottle on a dark podium',
-      presentation: 'card',
-      rendersAsCutout: false,
-      nothingIsMeasured: true,
-      templateId: 'img_float',
-      zoneId: 'z_left_4',
-      chosenCandidateId: null,
-      overriddenFailures: [],
-      placedSidePx: 912,
-      placementLimit: 'the space above the speaker',
-      buildsWith: 'img001-c1',
-      buildsWithReason: 'first candidate, nothing chosen',
-      candidates: [
-        {
-          id: 'img001-c1',
-          imagePath: '/v/img001-c1.jpg',
-          imageExists: true,
-          cutoutPath: '/v/img001-c1.cutout.png',
-          cutoutExists: true,
-          renderedPath: '/v/img001-c1.jpg',
-          renderedExists: true,
-          modelId: 'gemini-3-pro-image',
-          resolution: '2K',
-          generatedAt: '2026-08-25T17:43:32.870Z',
-          costUsd: 0,
-          metrics: { alphaEdgeNoise: 0, holeRatio: 0, foregroundArea: 0.3178, edgeHalo: 0.1004 },
-          cutoutQuality: 0,
-          qualityApplies: false,
-          backgroundCameAwayCleanly: null,
-          problems: [],
-          gatePassed: false,
-          gateFailures: ['edge_halo 0.1004 > 0.1'],
-          unexpectedText: [],
-          chosen: false,
-        },
-        {
-          id: 'img001-c2',
-          imagePath: '/v/img001-c2.jpg',
-          imageExists: true,
-          cutoutPath: null,
-          cutoutExists: false,
-          renderedPath: '/v/img001-c2.jpg',
-          renderedExists: true,
-          modelId: 'gemini-3-pro-image',
-          resolution: '2K',
-          generatedAt: '2026-08-25T17:44:02.870Z',
-          costUsd: 0,
-          metrics: { alphaEdgeNoise: 0, holeRatio: 0, foregroundArea: 0.31, edgeHalo: 0.1187 },
-          cutoutQuality: 0,
-          qualityApplies: false,
-          backgroundCameAwayCleanly: null,
-          problems: [],
-          gatePassed: false,
-          gateFailures: ['edge_halo 0.1187 > 0.1'],
-          unexpectedText: ['SERUM'],
-          chosen: false,
-        },
-      ],
-    },
-    {
-      id: 'img002',
-      start: 6.259,
-      end: 8.859,
-      idea: 'A salon interior',
-      presentation: 'cutout',
-      rendersAsCutout: true,
-      nothingIsMeasured: false,
-      templateId: 'img_slide_left',
-      zoneId: 'z_left_2',
-      chosenCandidateId: null,
-      overriddenFailures: [],
-      buildsWith: 'img002-c1',
-      buildsWithReason: 'first candidate, nothing chosen',
-      candidates: [
-        {
-          id: 'img002-c1',
-          imagePath: '/v/img002-c1.jpg',
-          imageExists: true,
-          cutoutPath: '/v/img002-c1.cutout.png',
-          cutoutExists: true,
-          renderedPath: '/v/img002-c1.cutout.png',
-          renderedExists: true,
-          modelId: 'gemini-3-pro-image',
-          resolution: '2K',
-          generatedAt: '2026-08-25T17:45:02.870Z',
-          costUsd: 0,
-          metrics: { alphaEdgeNoise: 0, holeRatio: 0, foregroundArea: 0.2, edgeHalo: 0.08 },
-          cutoutQuality: 0.174,
-          qualityApplies: true,
-          backgroundCameAwayCleanly: true,
-          problems: [],
-          gatePassed: true,
-          gateFailures: [],
-          unexpectedText: [],
-          chosen: false,
-        },
-      ],
-    },
-    {
-      id: 'img003',
-      start: 11.6,
-      end: 13.9,
-      idea: 'A close-up of hair',
-      presentation: null,
-      rendersAsCutout: false,
-      nothingIsMeasured: true,
-      templateId: null,
-      zoneId: null,
-      chosenCandidateId: null,
-      overriddenFailures: [],
-      buildsWith: null,
-      buildsWithReason: 'no candidates',
-      candidates: [],
-    },
-  ],
-};
-
-async function loadImages(payload: unknown = IMAGES): Promise<Loaded | null> {
-  if (browser === undefined) return null;
-  const page = await browser.newPage({ viewport: { width: 1000, height: 900 } });
-  const uncaught: string[] = [];
-  page.on('pageerror', (error: Error) => uncaught.push(error.message));
-  await page.addInitScript(stubHost(HANDSHAKE));
-  await page.addInitScript(stubRoutes(stepsThrough('build'), 'build'));
-  await page.addInitScript(`
-    window.__images = ${JSON.stringify(payload)};
-    const realFetch = window.fetch;
-    window.fetch = (url, init) => {
-      const u = String(url);
-      if (u.indexOf('/images/choose') !== -1) {
-        const body = JSON.parse(init.body);
-        window.__images = Object.assign({}, window.__images, {
-          slots: window.__images.slots.map((s) => {
-            if (s.id !== body.slotId) return s;
-            const picked = s.candidates.find((c) => c.id === body.candidateId) || null;
-            return Object.assign({}, s, {
-              chosenCandidateId: body.candidateId,
-              buildsWith: body.candidateId || (s.candidates[0] && s.candidates[0].id) || null,
-              buildsWithReason: body.candidateId ? 'chosen' : 'first candidate, nothing chosen',
-              overriddenFailures:
-                picked && picked.gatePassed === false ? picked.gateFailures : [],
-              candidates: s.candidates.map((c) =>
-                Object.assign({}, c, { chosen: c.id === body.candidateId }),
-              ),
-            });
-          }),
-        });
-        return Promise.resolve({ ok: true, json: () => Promise.resolve(window.__images) });
-      }
-      if (u.indexOf('/images') !== -1) {
-        return Promise.resolve({ ok: true, json: () => Promise.resolve(window.__images) });
-      }
-      return realFetch(url, init);
-    };
-  `);
-  await page.goto(`file://${INDEX}`);
-  await page.waitForSelector('nav.rail', { timeout: 10_000 });
-  await page.selectOption('select[aria-label="Reel"]', 'vitasilk');
-  await page.selectOption('select[aria-label="Client mode"]', 'k2-syndicalia');
-  await page.click('nav.rail li:nth-child(4) button');
-  await page.waitForSelector('main h2', { timeout: 5000 });
-  return { page, uncaught };
-}
 
 describe('the image candidate picker', () => {
   it('shows every candidate, including the ones the gate did not like', async () => {
@@ -2420,7 +2013,7 @@ describe.skipIf(!built)('the Build step', () => {
       jobState === undefined ? undefined : stubBuildJob(jobState),
     );
     if (loaded === null) return null;
-    await loaded.page.click('nav.rail li:nth-child(5) button');
+    // Build and the main screen are one screen now.
     await loaded.page.waitForSelector('.buildpane', { timeout: 5000 });
     return loaded;
   }
@@ -2511,7 +2104,7 @@ describe.skipIf(!built)('the Build step', () => {
     );
     if (loaded === null) return;
     try {
-      await loaded.page.click('nav.rail li:nth-child(5) button');
+      // Build and the main screen are one screen now.
       await loaded.page.waitForSelector('.buildpane', { timeout: 5000 });
       const text = (await loaded.page.textContent('.buildpane')) ?? '';
       expect(text).toContain('older than the Build control');
@@ -2563,7 +2156,7 @@ describe.skipIf(!built)('a reel that is not ready to build', () => {
       `window.__payload.steps.build.missing = ${JSON.stringify(missing)};`,
     );
     if (loaded === null) return null;
-    await loaded.page.click('nav.rail li:nth-child(5) button');
+    // Build and the main screen are one screen now.
     await loaded.page.waitForSelector('.buildpane', { timeout: 5000 });
     return loaded;
   }
@@ -2604,7 +2197,7 @@ describe.skipIf(!built)('a reel that is not ready to build', () => {
     );
     if (loaded === null) return;
     try {
-      await loaded.page.click('nav.rail li:nth-child(5) button');
+      // Build and the main screen are one screen now.
       await loaded.page.waitForSelector('.buildpane', { timeout: 5000 });
       expect(await loaded.page.$$('.buildpane .card.missing')).toHaveLength(0);
       expect(

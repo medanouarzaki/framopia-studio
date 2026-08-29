@@ -15,11 +15,14 @@ export function Build({
   preview,
   disabled,
   disabledReason,
+  issues,
 }: {
   connection: Connection | null;
   preview: BuildPreview | undefined;
   disabled: boolean;
   disabledReason: string | null;
+  /** Cards the builder will have to squeeze, named rather than counted. */
+  issues: string[];
 }): JSX.Element {
   const [job, setJob] = useState<BuildJob | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -117,6 +120,19 @@ export function Build({
           {disabledReason}
         </p>
       ) : null}
+
+      {issues.length === 0 ? null : (
+        <details className="quibbles">
+          <summary>
+            {issues.length} {issues.length === 1 ? 'card is' : 'cards are'} too short to hold
+          </summary>
+          <ul className="issues">
+            {issues.map((issue) => (
+              <li key={issue}>{issue}</li>
+            ))}
+          </ul>
+        </details>
+      )}
 
       {detail === undefined ? null : <BuildStages detail={detail} />}
       {job?.status === 'done' && detail !== undefined ? <BuildDone detail={detail} /> : null}
