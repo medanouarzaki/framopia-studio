@@ -735,6 +735,40 @@ re-run: it closes the open After Effects project without saving**
 `npm run audit:templates` runs, `impactFrameOf` returns null with a reason for
 all six comps and the 0.13 s offset stays.
 
+### Every picture in a reel is one size, and the watermark has three
+
+**A reel picks one image size and it is the smallest any of its slots can hold**
+(user ruling, 2026-08-29). Session 36 removed size jitter and `vitasilk` still
+came out 937/837/905/925/913 px, because `img002` is bounded by the space
+*beside* the speaker where the other four are bounded by the space *above* him.
+That is real geometry and it does not matter — on screen it reads as
+inconsistency. `reelPlacements` in `service/src/placement/top-left.ts` is the one
+declaration, read by the builder, `npm run place:images` and the panel's image
+picker, so the three cannot disagree about the size a build will place.
+**`vitasilk` is five pictures at 837 px; `test-1` is four at 917.** The risk is
+that one tight slot shrinks the whole reel, so the report prints each slot's own
+maximum beside the common size and what each gives up.
+
+**Positional jitter is unchanged and still holds by construction** at the common
+size: a slot bounded above may move right, one bounded beside may move down, and
+the second axis is measured after the first.
+
+**The watermark has three sizes — `small` 216 x 242 px, `medium` 324 x 363,
+`large` 432 x 484 — and `medium` is the default.** `small` is what every build
+before this ruling placed. `Watermark.size` is a **schema addition, optional
+with a default**; `POST /watermark` takes `enabled`, `size`, or both, and the
+panel's Build step shows three buttons beside the checkbox. **An existing plan
+records no size, so its next build shows a mark 1.5x the last one.** The 108 px
+inset is measured from the near edge and holds at every size in every corner,
+asserted by test.
+
+**Neither watermark field is a human-flagged item, and neither needs to be.**
+`clearBlocks` clears keywords, images and sfx and never touches
+`plan.watermark`, so a re-run cannot lose either setting. Flagging them would be
+worse than useless: `PlanMergeBlockedError` throws whenever a flag is present,
+so any reel whose watermark had been set would refuse an ordinary
+re-transcription until it was forced. A merge test pins the survival.
+
 ### A removed keyword stays removed
 
 `keywords.removedWordIds` — **schema addition, optional with a default** —
