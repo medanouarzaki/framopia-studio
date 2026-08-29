@@ -735,6 +735,64 @@ re-run: it closes the open After Effects project without saving**
 `npm run audit:templates` runs, `impactFrameOf` returns null with a reason for
 all six comps and the 0.13 s offset stays.
 
+### Build runs from the panel, through the same CLI a terminal runs
+
+`POST /jobs {type:"build", params:{reel, planPath, mode}}`, polled like the
+pipeline. `service/src/build/job.ts` **spawns
+`service/dist/build/build-reel-cli.js`** rather than importing it: `runBuildReel`
+blocks synchronously on AppleScript, so running it in-process would freeze the
+service's event loop for the whole build and `GET /jobs/:id` could not be
+answered until it finished. Spawning also settles the drift question — the panel
+and the terminal do not run equivalent code, they run **the same file**.
+
+**Progress comes from the build's own output, not from matching its prose.**
+`service/src/build/stages.ts` declares three stages — `prepare`,
+`after-effects`, `check` — and the CLI emits a marker per stage **only when
+`FRAMOPIA_BUILD_STAGES=1`**, which the job sets and a terminal does not, so
+stdout in a terminal is unchanged. A test pins that the CLI emits every declared
+stage in order.
+
+**A failure reaches the user as the sentence the build meant him to read.** The
+CLI now prints `build refused at <stage>: <message>` to stderr as well as the
+JSON; `failureMessage` prefers that, then a thrown error's message, and only
+then the last line — because an uncaught throw ends with a stack and a Node
+version banner, and taking the last line would put `Node.js v24.14.1` on screen
+as the reason a build failed.
+
+**The reentrancy question is NOT settled.** The panel runs inside After Effects
+and the build drives that same After Effects over AppleScript `DoScript`. The
+reasoning says it should work — the panel's JS is in `CEPHtmlEngine`, the
+service is a separate Node process, and the blocking `execFileSync` is in a
+spawned child, so nothing the panel depends on is waiting on AE's main thread —
+but **whether AE accepts a `DoScript` Apple event while a CEP extension is open
+has never been observed.** Session 38 could not test it without running a build.
+If a build ever hangs, `pkill -f build-reel-cli` frees the service without
+touching After Effects.
+
+`plan.build` on `GET /steps` is the **build preview**: reel, client and where it
+came from, the output path, what the comp will contain, the watermark and its
+size, the fonts, and that building is free. `buildOutputPath` in `steps.ts` is a
+second copy of the builder's own naming rule and is pinned equal to it by a test.
+
+### Frame analysis is the hole in the end-to-end path
+
+**A reel that has never been through the CV sidecar builds a wrong comp, and
+nothing says so.** Image placement has read the **face masks** rather than zones
+since session 33; `faceBoxesFor` returns an empty map when
+`.local/cv/<video>/masks-2fps/` is absent, placement then falls back to the frame
+alone, and a slot is placed at **2030 px on a 2160 px frame** — nearly the full
+width, straight over the speaker. `placementIsSafe` passes it, because with no
+face box there is no face to clear. All five corpus reels have masks, so this has
+never been seen.
+
+The pipeline runner **reports** frame analysis and never drives it
+(`zonesNotDriven`), naming `npm run frames`, `segment` and `zones`. Two more
+measurements are terminal-only and reach a build the same way: `.local/build/
+watermark.json` (`npm run watermark:measure`), without which the builder places
+no watermark at all, and `plan.source.dialogueLufs`, which **only
+`npm run migrate:sfx-placement` ever writes** — so a new reel gets no dialogue
+loudness and the mix attenuates nothing.
+
 ### Every picture in a reel is one size, and the watermark has three
 
 **A reel picks one image size and it is the smallest any of its slots can hold**
