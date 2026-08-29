@@ -22,6 +22,7 @@ export function Readiness({
   onRetry,
   resolvedNode,
   stale,
+  fileDialog,
 }: {
   state: ServiceState;
   attempt: number;
@@ -30,6 +31,8 @@ export function Readiness({
   resolvedNode: { path: string } | null;
   /** Set when the service is running older code than this panel. */
   stale: string | null;
+  /** Whether this host offers a file dialog, in one line. */
+  fileDialog: string;
 }): JSX.Element {
   const [open, setOpen] = useState(false);
 
@@ -134,6 +137,8 @@ export function Readiness({
           */}
           <p className="faint">{originLine(state)}</p>
           <p className="faint">Version {health.serviceVersion}</p>
+          {/* Reported whichever way it went, so he can tell me what his host has. */}
+          <p className="faint">{fileDialog}</p>
           <p className="faint attempt" data-attempt={attempt}>
             {attempt === 0 ? 'first check' : `attempt ${attempt + 1}`} at {attemptedAt}
           </p>

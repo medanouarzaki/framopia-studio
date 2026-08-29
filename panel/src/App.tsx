@@ -17,6 +17,7 @@ import { ClientCard } from './ClientCard.js';
 import { NewClient } from './NewClient.js';
 import { Readiness } from './Readiness.js';
 import { panelBuiltAt, stalenessOf } from './staleness.js';
+import { fileDialogSupport, pickVideoFile } from './file-dialog.js';
 import { Transcript } from './Transcript.js';
 import { Images } from './Images.js';
 import { Keywords } from './Keywords.js';
@@ -336,6 +337,7 @@ function Panel({
    * break here, and until now nothing could see it: both versions on the health
    * payload come from the service, so they agree by construction.
    */
+  const dialog = fileDialogSupport();
   const stale = stalenessOf(
     panelBuiltAt(),
     service.kind === 'healthy' ? service.health.process?.startedAt : undefined,
@@ -382,6 +384,7 @@ function Panel({
           onRetry={onRedetect}
           resolvedNode={host.resolveNode()}
           stale={stale.detail}
+          fileDialog={dialog.detail}
         />
 
         {/*
@@ -445,6 +448,24 @@ function Panel({
             <button className="ghost" type="button" onClick={() => void loadVideos()}>
               Refresh
             </button>
+            {/*
+              Only when the host really has a dialog. A button that opens
+              nothing is worse than no button, and whether CEP's own dialog is
+              here is a claim about the host this project has been wrong about
+              five times — so it is looked for, not assumed.
+            */}
+            {dialog.available ? (
+              <button
+                className="ghost"
+                type="button"
+                onClick={() => {
+                  const picked = pickVideoFile(videoNote.folder ?? '');
+                  if (picked !== null) setBrowsePath(picked);
+                }}
+              >
+                Browse…
+              </button>
+            ) : null}
             <input
               className="browse"
               type="text"

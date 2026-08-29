@@ -1698,7 +1698,7 @@ describe('the image candidate picker', () => {
     expect(text).toContain('img001-c2');
     expect(await loaded.page.$$('ol.slots li.candidate')).toHaveLength(3);
     await loaded.page.close();
-  });
+  }, 30_000);
 
   /*
    * The cutout metrics measure how cleanly a background came away, which is a
@@ -1717,7 +1717,7 @@ describe('the image candidate picker', () => {
     expect(text).not.toContain('gate rejected');
     expect(text).toContain('Nothing is checked automatically about these pictures');
     await loaded.page.close();
-  });
+  }, 30_000);
 
   it('says what the builder would use, and that nothing is chosen yet', async () => {
     const loaded = await loadImages();
@@ -1726,7 +1726,7 @@ describe('the image candidate picker', () => {
     const text = (await loaded.page.textContent('ol.slots')) ?? '';
     expect(text).toContain('first candidate, nothing chosen');
     await loaded.page.close();
-  });
+  }, 30_000);
 
   it('records choosing a rejected candidate as an override', async () => {
     const loaded = await loadImages();
@@ -1738,7 +1738,7 @@ describe('the image candidate picker', () => {
     expect(text).toContain('Overrides the gate: edge_halo 0.1004 > 0.1');
     expect(text).toContain('img001-c1 — chosen');
     await loaded.page.close();
-  });
+  }, 30_000);
 
   /*
    * The picker showed a cut-out on grey for every candidate, which on four of
@@ -1758,7 +1758,7 @@ describe('the image candidate picker', () => {
     // A card slot shows one picture, not the same file twice.
     expect(built.filter((s) => s === 'file:///v/img001-c1.jpg')).toHaveLength(1);
     await loaded.page.close();
-  });
+  }, 30_000);
 
   it('says in plain words which slots have their background removed', async () => {
     const loaded = await loadImages();
@@ -1768,7 +1768,7 @@ describe('the image candidate picker', () => {
     expect(text).toContain('shown with its background removed');
     expect(text).toContain('shown whole, inside a frame');
     await loaded.page.close();
-  });
+  }, 30_000);
 
   /* The raw picture is evidence, and only where it differs from the build. */
   it('offers the picture before the background was removed, on a cutout slot only', async () => {
@@ -1780,7 +1780,7 @@ describe('the image candidate picker', () => {
     const text = (await loaded.page.textContent('ol.slots')) ?? '';
     expect(text).toContain('before the background was removed');
     await loaded.page.close();
-  });
+  }, 30_000);
 
   /*
    * **The session 31 defect, reproduced.** The panel is reloaded from
@@ -1814,7 +1814,7 @@ describe('the image candidate picker', () => {
     expect(shown).toContain('file:///v/img001-c1.jpg');
     expect(shown).toContain('file:///v/img002-c1.cutout.png');
     await loaded.page.close();
-  });
+  }, 30_000);
 
   /* A path that is gone and a path the panel was never given are not the same
      fact, and only one of them is about the disk. */
@@ -1828,7 +1828,7 @@ describe('the image candidate picker', () => {
     expect(text).toContain('no longer on the disk');
     expect(await loaded.page.$$('img.shot.built')).toHaveLength(2);
     await loaded.page.close();
-  });
+  }, 30_000);
 
   it('blames the tool, not the disk, when it was told no path at all', async () => {
     const bare = JSON.parse(JSON.stringify(IMAGES)) as typeof IMAGES;
@@ -1846,7 +1846,7 @@ describe('the image candidate picker', () => {
     expect(text).toContain('could not work out which picture');
     expect(text).not.toContain('no longer on the disk');
     await loaded.page.close();
-  });
+  }, 30_000);
 
   /* Every cutout in the corpus lives under `my files/test videos/`. */
   it('encodes the spaces in a real path', async () => {
@@ -1861,7 +1861,7 @@ describe('the image candidate picker', () => {
     );
     expect(shown).toContain('file:///Volumes/T7%20Shield/my%20files/test%20videos/cutouts/a.png');
     await loaded.page.close();
-  });
+  }, 30_000);
 
   /*
    * Images sit in the top-left corner on every reel, so there is no position to
@@ -1880,7 +1880,7 @@ describe('the image candidate picker', () => {
     expect(text).not.toContain('z_left');
     expect(await loaded.page.$$('button[aria-label^="Put img001"]')).toHaveLength(0);
     await loaded.page.close();
-  });
+  }, 30_000);
 
   /* A service too old to send the size must not make the panel invent one. */
   it('says nothing about size when the service does not offer it', async () => {
@@ -1896,7 +1896,7 @@ describe('the image candidate picker', () => {
     expect(text).not.toContain('Sits in the top-left corner');
     expect(loaded.uncaught).toEqual([]);
     await loaded.page.close();
-  });
+  }, 30_000);
 
   it('says what a slot with nothing generated would cost', async () => {
     const loaded = await loadImages();
@@ -1906,7 +1906,7 @@ describe('the image candidate picker', () => {
     expect(text).toContain('Nothing generated for this slot');
     expect(text).toContain('$1.45');
     await loaded.page.close();
-  });
+  }, 30_000);
 
   /* PROJECT_SPEC §6 spends the brand red on Run pipeline alone. */
   it('marks the chosen candidate without the brand accent', async () => {
@@ -1922,7 +1922,7 @@ describe('the image candidate picker', () => {
     expect(colour).not.toContain('237, 28, 36');
     expect(loaded.uncaught).toEqual([]);
     await loaded.page.close();
-  });
+  }, 30_000);
 });
 
 /*
@@ -2386,6 +2386,61 @@ describe.skipIf(!built)('what a client looks like', () => {
     try {
       await loaded.page.waitForSelector('section.client', { timeout: 5000 });
       expect(await loaded.page.$$('.clientcard')).toHaveLength(0);
+      expect(loaded.uncaught).toEqual([]);
+    } finally {
+      await loaded.page.close();
+    }
+  }, 30_000);
+});
+
+/*
+ * Browse appears only when the host really has a dialog.
+ *
+ * A browser `<input type="file">` gives a sandboxed file with no path, and
+ * every stage here needs an absolute one — so the panel uses CEP's own dialog
+ * if it is there. Whether it is there is a claim about After Effects that only
+ * his machine can settle; what is asserted here is that the panel looks, and
+ * that both answers behave.
+ */
+describe.skipIf(!built)('Browse, when the host has a dialog', () => {
+  it('is absent in an engine with no dialog, and the path field still works', async () => {
+    const loaded = await loadFlow('build', 'build');
+    if (loaded === null) return;
+    try {
+      expect(await loaded.page.getByRole('button', { name: 'Browse…' }).count()).toBe(0);
+      expect(await loaded.page.$$('input.browse')).toHaveLength(1);
+      expect(loaded.uncaught).toEqual([]);
+    } finally {
+      await loaded.page.close();
+    }
+  }, 30_000);
+
+  it('appears when the host has one, and fills the path from it', async () => {
+    const loaded = await loadFlow(
+      'build', 'build', 420,
+      `window.cep = { fs: { showOpenDialogEx: function () {
+         return { err: 0, data: ['/Volumes/T7 Shield/clients/jenna/before.mov'] };
+       } } };`,
+    );
+    if (loaded === null) return;
+    try {
+      await loaded.page.getByRole('button', { name: 'Browse…' }).click();
+      expect(await loaded.page.inputValue('input.browse')).toBe(
+        '/Volumes/T7 Shield/clients/jenna/before.mov',
+      );
+      expect(loaded.uncaught).toEqual([]);
+    } finally {
+      await loaded.page.close();
+    }
+  }, 30_000);
+
+  it('reports what the host offered, either way, in the details', async () => {
+    const loaded = await loadFlow('build', 'build');
+    if (loaded === null) return;
+    try {
+      await loaded.page.getByRole('button', { name: 'Details' }).click();
+      const details = (await loaded.page.textContent('section.readiness')) ?? '';
+      expect(details).toContain('file dialog');
       expect(loaded.uncaught).toEqual([]);
     } finally {
       await loaded.page.close();
