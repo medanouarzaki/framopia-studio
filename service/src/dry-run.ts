@@ -282,7 +282,7 @@ export async function dryRun(reelLabel: string, modeId: string): Promise<DryRunP
         'no image slots on the plan, and analysis has already run without planning any',
       );
     } else {
-      const planned = imageSlotCountFor(durationS);
+      const planned = imageSlotCountFor(durationS, mode.imageSlotsPer30s);
       const images = planned * DEFAULT_IMAGE_CONFIG.candidatesPerSlot;
       imagesCeilingUsd = images * perImageCeilingUsd();
       add(

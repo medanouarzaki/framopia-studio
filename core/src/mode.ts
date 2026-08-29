@@ -22,6 +22,8 @@ import { REPO_ROOT } from './paths.js';
  * imageVariation     { note, axes: { <axis>: string[] } }
  * imageScale         optional 0.5-2.0; how much larger than the largest
  *                    face-clearing square an image is drawn. Default 1.0.
+ * imageSlotsPer30s   optional 1-20; how many images a 30-second reel gets.
+ *                    Default 8.
  * imageCandidates    optional 2-4; §5.4's mode override for how many
  *                    candidates a slot generates. Absent means the code
  *                    default.
@@ -113,6 +115,13 @@ export interface ClientMode {
    * until Block 4 session 5. Optional: absent means the code default, so
    * every mode written before this stays valid.
    */
+  /**
+   * How many images a 30-second reel gets, for this client.
+   *
+   * Density is taste, and two clients will not agree about it. Absent takes the
+   * default in `count.ts`, which the user set to 8 on 2026-08-29.
+   */
+  imageSlotsPer30s?: number;
   imageCandidates?: number;
   /**
    * How large an image is drawn, as a multiple of the largest square that
@@ -554,6 +563,12 @@ export function validateMode(value: unknown): ModeValidationIssue[] {
     const s = mode.imageScale;
     if (typeof s !== 'number' || !Number.isFinite(s) || s < 0.5 || s > 2) {
       c.fail('imageScale', 'expected a number between 0.5 and 2.0');
+    }
+  }
+  if (mode.imageSlotsPer30s !== undefined) {
+    const n = mode.imageSlotsPer30s;
+    if (typeof n !== 'number' || !Number.isFinite(n) || n < 1 || n > 20) {
+      c.fail('imageSlotsPer30s', 'expected a number between 1 and 20');
     }
   }
   if (mode.imageCandidates !== undefined) {

@@ -34,17 +34,30 @@ export function keywordCountFor(durationS: number): number {
 }
 
 /**
- * PROJECT_SPEC §5 states 5–6 images per 30 s reel. Same treatment as
- * keywords: the spec gives a band, the pipeline needs one number, so it takes
- * the middle of the band and scales it pro-rata.
+ * How many images a 30-second reel gets.
+ *
+ * **8, the user's ruling of 2026-08-29**, amending PROJECT_SPEC §5's band of
+ * 5–6. He watched a built reel and asked for more; at 5.5 a 25.7-second reel
+ * gets five, and at 8 it gets seven.
+ *
+ * A mode may set its own `imageSlotsPer30s`, so a client can be denser or
+ * sparser than the default without every client moving with it.
  */
-export const IMAGE_SLOTS_PER_30S = 5.5;
+export const IMAGE_SLOTS_PER_30S = 8;
 
-/** Images are independent of keywords (§5), so this shares only the rule. */
-export function imageSlotCountFor(durationS: number): number {
+/**
+ * Images are independent of keywords (§5), so this shares only the rule.
+ *
+ * **This is the one declaration**, read by the planner and by the dry run, so
+ * what a run would plan and what it is priced at cannot drift — session 25's
+ * fix, when the dry run computed its own count and read zero for a reel with no
+ * slots yet.
+ */
+export function imageSlotCountFor(durationS: number, perThirtySeconds?: number): number {
   if (!Number.isFinite(durationS) || durationS < 0) {
     throw new RangeError(`image slot count needs a non-negative duration, got ${durationS}`);
   }
-  const exact = (durationS / KEYWORD_WINDOW_S) * IMAGE_SLOTS_PER_30S;
+  const density = perThirtySeconds ?? IMAGE_SLOTS_PER_30S;
+  const exact = (durationS / KEYWORD_WINDOW_S) * density;
   return Math.max(MIN_IMAGE_SLOTS, Math.sign(exact) * Math.round(Math.abs(exact)));
 }

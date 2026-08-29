@@ -69,7 +69,7 @@ async function main(): Promise<void> {
   const count =
     stage === 'keywords'
       ? keywordCountFor(plan.source.durationS)
-      : imageSlotCountFor(plan.source.durationS);
+      : imageSlotCountFor(plan.source.durationS, mode.imageSlotsPer30s);
   const candidateCount =
     stage === 'keywords' ? candidateCountFor(count) : slotCandidateCountFor(count);
 

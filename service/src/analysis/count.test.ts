@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { keywordCountFor, KEYWORDS_PER_30S } from './count.js';
+import {
+  imageSlotCountFor, IMAGE_SLOTS_PER_30S, keywordCountFor, KEYWORDS_PER_30S, MIN_IMAGE_SLOTS,
+} from './count.js';
 
 describe('keywordCountFor', () => {
   it('gives the per-30s midpoint at exactly 30 s', () => {
@@ -41,5 +43,38 @@ describe('keywordCountFor', () => {
     expect(() => keywordCountFor(-1)).toThrow(RangeError);
     expect(() => keywordCountFor(Number.NaN)).toThrow(RangeError);
     expect(() => keywordCountFor(Number.POSITIVE_INFINITY)).toThrow(RangeError);
+  });
+});
+
+/**
+ * The user watched a built reel and asked for more pictures. 5.5 per 30 s gave
+ * `vitasilk` five in 25.7 seconds; 8 gives it seven.
+ */
+describe('image density', () => {
+  it('gives vitasilk seven where it gave five', () => {
+    expect(imageSlotCountFor(25.7, 5.5)).toBe(5);
+    expect(imageSlotCountFor(25.7)).toBe(7);
+  });
+
+  it('is 8 per 30 seconds by default', () => {
+    expect(IMAGE_SLOTS_PER_30S).toBe(8);
+    expect(imageSlotCountFor(30)).toBe(8);
+    expect(imageSlotCountFor(60)).toBe(16);
+  });
+
+  /* A client may be denser or sparser without every client moving with it. */
+  it('takes a client’s own density when the mode names one', () => {
+    expect(imageSlotCountFor(30, 4)).toBe(4);
+    expect(imageSlotCountFor(30, 12)).toBe(12);
+  });
+
+  it('still gives the shortest reel one image', () => {
+    expect(imageSlotCountFor(0.5)).toBeGreaterThanOrEqual(MIN_IMAGE_SLOTS);
+    expect(imageSlotCountFor(0.5, 1)).toBe(MIN_IMAGE_SLOTS);
+  });
+
+  it('refuses a duration that is not one', () => {
+    expect(() => imageSlotCountFor(-1)).toThrow(RangeError);
+    expect(() => imageSlotCountFor(Number.NaN, 8)).toThrow(RangeError);
   });
 });

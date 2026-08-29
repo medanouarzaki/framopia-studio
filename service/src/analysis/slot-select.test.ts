@@ -43,22 +43,23 @@ const words: AnalysisWord[] = Array.from({ length: 20 }, (_, i) => ({
 }));
 
 describe('imageSlotCountFor', () => {
-  it('gives the per-30s midpoint at exactly 30 s', () => {
-    expect(imageSlotCountFor(30)).toBe(6);
+  /* 8 per 30 s since 2026-08-29, amending §5's band of 5–6. */
+  it('gives the declared density at exactly 30 s', () => {
+    expect(imageSlotCountFor(30)).toBe(8);
   });
 
   it('scales pro-rata and floors at one', () => {
-    expect(imageSlotCountFor(60)).toBe(11);
+    expect(imageSlotCountFor(60)).toBe(16);
     expect(imageSlotCountFor(0)).toBe(1);
     expect(imageSlotCountFor(1)).toBe(1);
   });
 
   it('gives the five real reels the counts they will run with', () => {
-    expect(imageSlotCountFor(21.187833)).toBe(4);
-    expect(imageSlotCountFor(21.988646)).toBe(4);
-    expect(imageSlotCountFor(22.322313)).toBe(4);
-    expect(imageSlotCountFor(23.256567)).toBe(4);
-    expect(imageSlotCountFor(25.692333)).toBe(5);
+    expect(imageSlotCountFor(21.187833)).toBe(6);
+    expect(imageSlotCountFor(21.988646)).toBe(6);
+    expect(imageSlotCountFor(22.322313)).toBe(6);
+    expect(imageSlotCountFor(23.256567)).toBe(6);
+    expect(imageSlotCountFor(25.692333)).toBe(7);
   });
 
   it('rejects a duration that cannot be scaled', () => {
