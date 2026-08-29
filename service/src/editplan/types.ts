@@ -368,6 +368,16 @@ export interface ImageSlot {
   candidates: ImageCandidate[];
   chosenCandidateId: string | null;
   /**
+   * One of the client's own pictures, chosen by hand for this moment.
+   *
+   * **Schema addition, optional with a default.** Absent means no such choice,
+   * which is every slot written before session 43. When set it wins over
+   * `chosenCandidateId`: he pointed at a photograph, and a generated square is
+   * not what he asked for. `humanFlaggedItems` reports it, so a re-run cannot
+   * discard it.
+   */
+  chosenClientPictureId?: string;
+  /**
    * The gate failures a deliberate choice overrode.
    *
    * **Schema addition, optional with a default.** The gate advises and the user

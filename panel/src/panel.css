@@ -548,3 +548,14 @@ section.client .say, section.video .say { margin: 8px 0 0; color: var(--muted); 
 .field.stacked input:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
 .field .hint { color: var(--faint); font-size: 0.75em; font-style: normal; line-height: 1.5; }
 .check { display: flex; align-items: center; gap: 8px; }
+
+/* The client's own pictures, offered beside the made ones. */
+.ownpics { margin-top: 12px; }
+.ownpics ul.owned { display: flex; flex-wrap: wrap; gap: 10px; list-style: none; margin: 8px 0 0; padding: 0; }
+.ownpics li {
+  display: flex; flex-direction: column; gap: 6px; width: 150px;
+  padding: 8px; border: 1px solid var(--line); border-radius: 9px; background: var(--panel);
+}
+.ownpics li.chosen { border-color: var(--text); }
+.ownpics li img.shot { width: 100%; height: 100px; object-fit: contain; background: var(--panel-2); border-radius: 6px; }
+.ownpics li .what { color: var(--muted); font-size: 0.75em; overflow-wrap: anywhere; }

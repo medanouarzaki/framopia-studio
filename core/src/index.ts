@@ -59,6 +59,11 @@ export {
   type TemplateKind,
 } from './mode.js';
 export { clientDefaults, STANDARD_FONTS, type ClientDefaults } from './client-defaults.js';
+export {
+  clientPictureById,
+  clientPictures,
+  fitByLongEdge,
+} from './client-pictures.js';
 export { DOCS_DIR, LOCAL_DIR, REPO_ROOT, ROOT_PACKAGE_JSON } from './paths.js';
 export { SCRIPT_RULES } from './script-rules.js';
 export {

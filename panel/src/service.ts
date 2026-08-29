@@ -478,7 +478,13 @@ export async function fetchImages(connection: Connection, reel: string): Promise
 /** Choose a candidate for a slot, or pass null to clear the choice. */
 export async function chooseImage(
   connection: Connection,
-  edit: { planPath: string; slotId: string; candidateId: string | null },
+  edit: {
+    planPath: string;
+    slotId: string;
+    candidateId: string | null;
+    /** One of the client's own pictures instead; null clears that choice. */
+    clientPictureId?: string | null;
+  },
 ): Promise<ImagesView> {
   return await postJson(connection, '/images/choose', edit);
 }

@@ -449,6 +449,8 @@ export interface ImageSlotView {
   zoneId: string | null;
   candidates: CandidateView[];
   chosenCandidateId: string | null;
+  /** One of the client's own pictures, chosen by hand. Optional. */
+  chosenClientPictureId?: string;
   overriddenFailures: string[];
   /* Optional: a service older than this panel sends neither. */
   placedSidePx?: number | null;
@@ -464,6 +466,12 @@ export interface ImagesView {
   generationEstimateUsd: number | null;
   generationNote: string | null;
   reelSpentUsd: number | null;
+  /**
+   * The client's own pictures. Absent from a service older than this, and an
+   * absent list is not an empty one — the panel shows nothing rather than
+   * saying the client has none.
+   */
+  clientPictures?: { id: string; path: string; description: string }[];
   source: {
     clientMode: string | null;
     clientModeVersion: number | null;

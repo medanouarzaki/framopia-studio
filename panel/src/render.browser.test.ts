@@ -2212,3 +2212,49 @@ describe.skipIf(!built)('a reel that is not ready to build', () => {
     }
   }, 30_000);
 });
+
+/*
+ * The client's own pictures, offered beside the generated ones. He chooses;
+ * nothing matches them to a moment, because deciding that "the clinic exterior"
+ * belongs here is the judgement the image-prompt defect is about.
+ */
+describe.skipIf(!built)('the client’s own pictures', () => {
+  const withPictures = (): unknown => {
+    const payload = JSON.parse(JSON.stringify(IMAGES)) as Record<string, unknown>;
+    payload['clientPictures'] = [
+      { id: 'pic001', path: '/v/clinic.jpg', description: 'the clinic exterior' },
+      { id: 'pic002', path: '/v/bottle.jpg', description: 'the product bottle' },
+    ];
+    return payload;
+  };
+
+  it('offers them with the words he described them in', async () => {
+    const loaded = await loadImages(withPictures());
+    if (loaded === null) return;
+    try {
+      await loaded.page.waitForSelector('.ownpics', { timeout: 5000 });
+      const text = (await loaded.page.textContent('.ownpics')) ?? '';
+      expect(text).toContain('the clinic exterior');
+      expect(text).toContain('the product bottle');
+      expect(text).toContain('the client’s own pictures');
+      // A field name is not a label.
+      expect(text).not.toContain('pic001');
+      expect(loaded.uncaught).toEqual([]);
+    } finally {
+      await loaded.page.close();
+    }
+  }, 30_000);
+
+  /* A service older than this sends no list, and an absent list is not empty. */
+  it('shows nothing at all when the service does not send them', async () => {
+    const loaded = await loadImages();
+    if (loaded === null) return;
+    try {
+      await loaded.page.waitForSelector('ol.slots li', { timeout: 5000 });
+      expect(await loaded.page.$$('.ownpics')).toHaveLength(0);
+      expect(loaded.uncaught).toEqual([]);
+    } finally {
+      await loaded.page.close();
+    }
+  }, 30_000);
+});

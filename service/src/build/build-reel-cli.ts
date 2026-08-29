@@ -7,6 +7,8 @@ import {
   cardColours,
   dialogueAttenuationDb,
   loudestBoundOffsetDb,
+  clientPictureById,
+  fitByLongEdge,
   loadMode,
   loadSfxIndex,
   loadTemplateManifest,
@@ -21,7 +23,7 @@ import { readEditPlan } from '../editplan/io.js';
 import { runBuildReel } from './drive.js';
 import { emitBuildStage } from './stages.js';
 import { imageSize } from './image-size.js';
-import { canvasScalePercent, contentBoxes } from './content-box.js';
+import { contentBoxes } from './content-box.js';
 import { assertAllPlaced, assertPathsPresent, type PathRef } from './preflight.js';
 import {
   assertRequirementsMet,
@@ -84,6 +86,24 @@ const chosenIds: string[] = [];
 function candidateFileFor(slotId: string): { path: string; id: string } | null {
   const slot = plan.images.slots.find((s) => s.id === slotId);
   if (slot === undefined) return null;
+
+  /*
+   * One of the client's own pictures wins over anything generated: he pointed
+   * at a photograph, and a square from a model is not what he asked for. The
+   * file is used where it sits — nothing copies it and nothing sends it.
+   */
+  if (slot.chosenClientPictureId !== undefined && placementModeId !== undefined) {
+    const picture = clientPictureById(loadMode(placementModeId), slot.chosenClientPictureId);
+    if (picture !== null) {
+      chosenIds.push(`${slotId}:${picture.id} (the client’s own picture)`);
+      return { path: picture.path, id: picture.id };
+    }
+    console.error(
+      `${slotId}: the client picture ${slot.chosenClientPictureId} is not on this client any more`,
+    );
+    process.exit(1);
+  }
+
   const choice = buildChoiceFor(slot);
   const c = slot.candidates.find((x) => x.id === choice.candidateId);
   if (c === undefined) return null;
@@ -307,18 +327,29 @@ for (const e of built.elements) {
    * whose content fills less than 0.926 of its canvas. Two of vitasilk's five
    * do, which is the misalignment that was reported.
    */
-  e.placeholderScalePercent = canvasScalePercent({
-    auditedSolidWidth: solid.width,
-    auditedScalePercent: solid.scalePercent,
+  /*
+   * Fitted by the **long edge**, not by the width.
+   *
+   * Every generated image is a 2048x2048 square, so scaling by width alone put
+   * the height where it belonged for free. One of the client's own pictures is
+   * a photograph: a phone's 3024x4032 at a 1000px width draws 1333px tall,
+   * over the top and the bottom of a 1200px comp and far outside the 1080px
+   * frame behind it. On a square this is the same arithmetic it always was.
+   */
+  const fit = fitByLongEdge({
+    boxPx: solid.width,
+    templateScalePercent: solid.scalePercent,
     sourceWidth: src.width,
+    sourceHeight: src.height,
   });
+  e.placeholderScalePercent = fit.scalePercent;
   // The canvas is the picture, so its own centre is the right anchor.
   e.contentAnchor = undefined;
   const longEdge = content === undefined ? src.width : Math.max(content.w, content.h);
-  const rendered = src.width * (e.placeholderScalePercent / 100);
   console.log(
-    `${e.id}: canvas ${src.width}px, content ${longEdge}px -> scale ` +
-      `${e.placeholderScalePercent.toFixed(4)}% -> renders ${rendered.toFixed(0)}px ` +
+    `${e.id}: ${src.width}x${src.height}px, content ${longEdge}px -> scale ` +
+      `${e.placeholderScalePercent.toFixed(4)}% -> draws ` +
+      `${fit.drawnWidth.toFixed(0)}x${fit.drawnHeight.toFixed(0)}px ` +
       `inside a ${solid.width}px solid and an 1080px frame`,
   );
 }

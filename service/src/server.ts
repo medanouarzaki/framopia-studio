@@ -474,7 +474,12 @@ export function createApp(token: string): http.Server {
       }
 
       if (req.method === 'POST' && url.pathname === '/images/choose') {
-        let body: { planPath?: unknown; slotId?: unknown; candidateId?: unknown };
+        let body: {
+          planPath?: unknown;
+          slotId?: unknown;
+          candidateId?: unknown;
+          clientPictureId?: unknown;
+        };
         try {
           body = JSON.parse((await readBody(req)) || '{}') as typeof body;
         } catch {
@@ -485,7 +490,13 @@ export function createApp(token: string): http.Server {
           sendJson(res, 400, { error: '"planPath" and "slotId" are required' });
           return;
         }
-        if (body.candidateId !== null && typeof body.candidateId !== 'string') {
+        const picture = body.clientPictureId;
+        const choosingPicture = picture !== undefined;
+        if (choosingPicture && picture !== null && typeof picture !== 'string') {
+          sendJson(res, 400, { error: '"clientPictureId" must be a string or null' });
+          return;
+        }
+        if (!choosingPicture && body.candidateId !== null && typeof body.candidateId !== 'string') {
           sendJson(res, 400, { error: '"candidateId" must be a string or null' });
           return;
         }
@@ -496,7 +507,8 @@ export function createApp(token: string): http.Server {
             await chooseCandidate({
               planPath: body.planPath,
               slotId: body.slotId,
-              candidateId: body.candidateId,
+              candidateId: choosingPicture ? null : (body.candidateId as string | null),
+              ...(choosingPicture ? { clientPictureId: picture as string | null } : {}),
             }),
           );
         } catch (error) {

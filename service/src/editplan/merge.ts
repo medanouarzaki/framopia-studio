@@ -63,6 +63,13 @@ export function humanFlaggedItems(plan: EditPlan): HumanFlag[] {
     flags.push({ block: 'keywords', itemId: wordId, detail: 'removed by a human' });
   }
   for (const slot of plan.images.slots) {
+    if (slot.chosenClientPictureId !== undefined) {
+      flags.push({
+        block: 'images',
+        itemId: slot.id,
+        detail: `one of the client’s own pictures was chosen (${slot.chosenClientPictureId})`,
+      });
+    }
     if (slot.chosenCandidateId !== null) {
       flags.push({
         block: 'images',

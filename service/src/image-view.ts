@@ -5,6 +5,7 @@ import { readEditPlan, writeEditPlan } from './editplan/io.js';
 import { dryRun } from './dry-run.js';
 import { buildChoiceFor } from './build/choose-candidate.js';
 import { reelPlacements, type ReelSlotPlacement } from './placement/top-left.js';
+import { clientPictures, loadMode } from '@framopia/core';
 import { FRAME_WIDTH } from './placement/constants.js';
 import { faceBoxesFor } from './placement/face-boxes.js';
 import { nothingIsMeasured, rendersAsCutout, verdictFor } from './images/verdict.js';
@@ -136,6 +137,14 @@ export interface ImagesView {
     cacheEntryId: string | null;
     cacheProvenance: string | null;
   };
+  /**
+   * The client's own pictures, offered beside the generated ones.
+   *
+   * **Nothing matches them to a moment.** Deciding that "the clinic exterior"
+   * is what a slot wants is the judgement the image-prompt defect is about, and
+   * that is Block 9 — he chooses, from pictures he described himself.
+   */
+  clientPictures: { id: string; path: string; description: string }[];
   /** Every image is drawn in a card frame, whatever the gate said. */
   cardFrameForced: boolean;
 }
@@ -220,6 +229,18 @@ async function viewOf(plan: EditPlan, planPath: string, reelLabel: string): Prom
     return placement === undefined ? [] : [slotViewOf(slot, placement)];
   });
   const noCandidates = slots.length > 0 && slots.every((s) => s.candidates.length === 0);
+  /*
+   * Read from the client the plan records, not from the picker: the builder
+   * reads the same one, and two sources here is two lists that can disagree.
+   */
+  let pictures: { id: string; path: string; description: string }[] = [];
+  if (plan.clientMode !== null) {
+    try {
+      pictures = clientPictures(loadMode(plan.clientMode.id)).map((p) => ({ ...p }));
+    } catch {
+      pictures = [];
+    }
+  }
 
   /*
    * The estimate comes from the dry run rather than being computed again here.
@@ -251,6 +272,7 @@ async function viewOf(plan: EditPlan, planPath: string, reelLabel: string): Prom
     generationEstimateUsd,
     generationNote,
     reelSpentUsd: plan.costs.spentByStage?.['images'] ?? null,
+    clientPictures: pictures,
     source: {
       clientMode: plan.clientMode?.id ?? null,
       clientModeVersion: plan.clientMode?.version ?? null,
@@ -290,12 +312,32 @@ export async function chooseCandidate(edit: {
   planPath: string;
   slotId: string;
   candidateId: string | null;
+  /** One of the client's own pictures instead. Null clears that choice. */
+  clientPictureId?: string | null;
 }): Promise<ImagesView> {
   const plan = await readEditPlan(edit.planPath);
   const slot = plan.images.slots.find((s) => s.id === edit.slotId);
   if (slot === undefined) {
     throw new ImageViewError(`${edit.planPath} has no image slot ${edit.slotId}`);
   }
+
+  /*
+   * The two choices are exclusive: picking one of his own pictures clears the
+   * generated one, and picking a generated one clears his. Leaving both set
+   * would make the builder's precedence a thing nobody can see on screen.
+   */
+  if (edit.clientPictureId !== undefined) {
+    if (edit.clientPictureId === null) delete slot.chosenClientPictureId;
+    else {
+      slot.chosenClientPictureId = edit.clientPictureId;
+      slot.chosenCandidateId = null;
+      delete slot.overriddenGateFailures;
+    }
+    plan.meta.updatedAt = new Date().toISOString();
+    await writeEditPlan(edit.planPath, plan);
+    return await imagesViewForPlan(edit.planPath);
+  }
+  delete slot.chosenClientPictureId;
 
   if (edit.candidateId === null) {
     slot.chosenCandidateId = null;

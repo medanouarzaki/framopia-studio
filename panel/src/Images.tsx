@@ -65,12 +65,18 @@ export function Images({
     );
   }
 
-  const choose = (slotId: string, candidateId: string | null): void => {
+  const choose = (
+    slotId: string,
+    candidateId: string | null,
+    clientPictureId?: string | null,
+  ): void => {
     if (connection === null) return;
-    void chooseImage(connection, { planPath: view.planPath, slotId, candidateId }).then(
-      setView,
-      (f: Error) => setError(f.message),
-    );
+    void chooseImage(connection, {
+      planPath: view.planPath,
+      slotId,
+      candidateId,
+      ...(clientPictureId === undefined ? {} : { clientPictureId }),
+    }).then(setView, (f: Error) => setError(f.message));
   };
 
   const withCandidates = view.slots.filter((s) => s.candidates.length > 0);
@@ -116,7 +122,7 @@ function Slot({
 }: {
   slot: ImageSlotView;
   view: ImagesView;
-  onChoose: (slotId: string, candidateId: string | null) => void;
+  onChoose: (slotId: string, candidateId: string | null, pictureId?: string | null) => void;
 }): JSX.Element {
   return (
     <div className="card">
@@ -137,6 +143,8 @@ function Slot({
       </p>
 
       <Where slot={slot} />
+
+      <ClientPictures slot={slot} view={view} onChoose={onChoose} />
 
       {slot.candidates.length === 0 ? (
         <p className="reason" role="status">
@@ -186,6 +194,53 @@ function Slot({
  * decision nobody makes per slot. What is worth saying is the size and the
  * reason for it, because that is the number behind "make them bigger".
  */
+/**
+ * The client's own pictures, offered beside the generated ones.
+ *
+ * **Nothing works out which one belongs here.** Deciding that "the clinic
+ * exterior" is what this moment wants is the same judgement as knowing a clock
+ * reads quarter past — the tool cannot do it yet, so he picks.
+ */
+function ClientPictures({
+  slot,
+  view,
+  onChoose,
+}: {
+  slot: ImageSlotView;
+  view: ImagesView;
+  onChoose: (slotId: string, candidateId: string | null, pictureId?: string | null) => void;
+}): JSX.Element | null {
+  const pictures = view.clientPictures ?? [];
+  if (pictures.length === 0) return null;
+  const chosen = slot.chosenClientPictureId ?? null;
+  return (
+    <div className="ownpics">
+      <p className="reason">Or use one of the client’s own pictures:</p>
+      <ul className="owned">
+        {pictures.map((picture) => (
+          <li key={picture.id} className={picture.id === chosen ? 'chosen' : ''}>
+            <img className="shot" src={fileUrl(picture.path)} alt={picture.description} />
+            <span className="what">{picture.description}</span>
+            <button
+              type="button"
+              className="chip"
+              aria-label={
+                picture.id === chosen ? `Clear ${picture.description}` : `Use ${picture.description}`
+              }
+              onClick={() => onChoose(slot.id, null, picture.id === chosen ? null : picture.id)}
+            >
+              {picture.id === chosen ? 'Using this' : 'Use this'}
+            </button>
+          </li>
+        ))}
+      </ul>
+      {chosen === null ? null : (
+        <p className="reason">This picture goes in the comp instead of a made one.</p>
+      )}
+    </div>
+  );
+}
+
 function Where({ slot }: { slot: ImageSlotView }): JSX.Element | null {
   if (slot.placedSidePx == null) return null;
   return (

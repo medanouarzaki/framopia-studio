@@ -439,6 +439,9 @@ function checkImages(c: Checker, value: unknown, words: Map<string, Rec>): void 
       }
     });
     c.nullableString(`${p}.chosenCandidateId`, slot.chosenCandidateId);
+    if (slot.chosenClientPictureId !== undefined) {
+      c.string(`${p}.chosenClientPictureId`, slot.chosenClientPictureId);
+    }
     // Optional with a default: absent on every plan written before Block 8
     // session 30, and on any slot whose choice did not override the gate.
     if (slot.overriddenGateFailures !== undefined) {
