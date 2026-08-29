@@ -275,6 +275,16 @@ export {
 } from './repo-root.js';
 export { buildFonts, type BuildFonts, type ModeFontsLike } from './build-fonts.js';
 export {
+  chooseRatio,
+  ratioTable,
+  RATIO_AGREEMENT_LIMIT,
+  RATIO_QUANTITIES,
+  type FaceMeasurement,
+  type RatioQuantity,
+  type RatioTable,
+  type RatioVerdict,
+} from './font-ratios.js';
+export {
   compareBuildStamps,
   describeBuildStamps,
   REBUILD_COMMAND,

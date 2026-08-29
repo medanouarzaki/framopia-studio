@@ -68,6 +68,13 @@ export const ARABIC_SIZE_RATIO = 1.07;
  * Identical at 343 and at 425 to five decimal places, so the ratio is a
  * property of the faces rather than of a size.
  *
+ * **The gate that justifies it is `chooseRatio` in `font-ratios.ts`**, and it
+ * tests this quantity: x-height is the same at both sizes, and advance width —
+ * an independent reading, valid here because both faces were given the same
+ * string — agrees within **0.617%**. Session 5 reported a gate over the two
+ * advance samples instead, which is a different quantity from the one it
+ * wrote; that gate passed and had tested nothing about this number.
+ *
  * **It is still a judgement the user can overturn by looking at a build.** If
  * an emphasized word reads too large, cap height's 1.1641 is the other end of
  * the range and the number to try.
