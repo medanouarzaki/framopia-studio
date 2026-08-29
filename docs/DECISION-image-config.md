@@ -312,6 +312,100 @@ and the fragments above are mode data — they belong to whoever decides what a 
 picture looks like. What this session fixes is that the defect is now named,
 quantified, and has a prompt to try.
 
+## Amendment (2026-08-29) — literal or atmospheric, decided per moment
+
+**The user's ruling, and it is a judgement rather than a rule.** When she names
+something concrete — a country, a brand, an ingredient, a place — the picture
+should often be **that thing**, immediately recognisable. Brazil should be able
+to become a flag or a landmark. But not always: sometimes the general mood of
+what she is saying is the better picture. **The choice is made per moment and
+both are valid.**
+
+### What the prompt says today
+
+`slotPrompt` in `service/src/analysis/slots.ts` decides what an idea depicts in
+two sentences:
+
+    Each slot illustrates ONE idea or sentence — a thing being explained, claimed
+    or shown, that a picture could carry.
+
+    For each slot give the word_ids of the span it illustrates, copied exactly
+    from the transcript, and a one-line idea in English describing what the image
+    should show. The idea is a description of a picture, not a translation of the
+    words and not a caption.
+
+**Nothing in it mentions naming a concrete thing.** So when she says *"le filler
+glow mn la marque Vita Silk"* there is nothing telling the model to depict Vita
+Silk, and it writes the category instead.
+
+### The evidence, all nine planned slots
+
+| slot | what she says | what the idea depicts | what would serve it | why |
+|---|---|---|---|---|
+| vitasilk img001 | *"5 d9ay9"* — five minutes | a clock face showing five minutes | **literal** | she names a quantity; a clock is the thing |
+| vitasilk img002 | *"le filler glow mn la marque Vita Silk"* | *a cosmetic bottle of hair serum on a presentation podium* | **literal — and it is not** | she names a **brand and a product**; the idea is the generic category |
+| vitasilk img003 | *"fih 26 vitamines et aussi des enzymes"* | *vitamin capsules and scientific molecular structures blending into a thick hair cream* | **literal — and it is diluted** | capsules are the concrete half; *molecular structures* is atmosphere bolted on, and two subjects at once |
+| vitasilk img004 | *"chno katsnay bach thllay f ch3rk"* — what are you waiting for | a woman at a mirror, thoughtful | **atmospheric, and it is** | a rhetorical question names nothing; the mood is the picture |
+| vitasilk img005 | *"ila l9iti 3ndhom la marque Vita Silk"* | *a salon shelf displaying premium hair care products* | **literal — and it is not** | the **brand** again, and the idea is a shelf of unnamed things |
+| test-1 img001 | *"bghiti شد طبيعي للوجه"* — do you want a natural lift | a woman touching her lifted jawline | **atmospheric, and it is** | a desired outcome, not an object |
+| test-1 img002 | *"3la محفزات الكولاجين"* — collagen stimulators | a doctor holding a small vial | **literal, and nearly is** | the vial is the thing; the doctor is scene-setting around it |
+| test-1 img003 | *"شد خفيف للبشرة"* — a light tightening | a cheek showing subtle tightening | **atmospheric, and it is** | an effect, not a thing |
+| test-1 img004 | *"kat7ssn lik mn jawdat البشرة"* — improves your skin quality | flawless hydrated skin | **atmospheric, and it is** | an outcome |
+
+**Five of nine call for the concrete thing and four for the mood** — which is
+the ruling, measured: neither preference would be right as a blanket rule.
+
+**Of the five that call for the concrete thing, three do not get it.** Both
+mentions of the brand became a generic category, and the third was diluted with
+atmosphere. **The four that call for mood are all served correctly**, so the
+model is not bad at atmosphere — it is that nothing asks it for the concrete
+thing.
+
+### The proposed change, not applied
+
+Added to `slotPrompt`, after the sentence about what a slot illustrates:
+
+    When the words name something concrete and depictable — a brand, a product,
+    a place, a country, an ingredient, a tool, a number of things — the picture
+    should usually be that thing, and the idea should name it as she named it.
+    A viewer should recognise it at a glance without working out what it stands
+    for.
+
+    When the words name no such thing — a question, a feeling, a promise, a
+    result — the picture should carry the mood or the outcome instead, and the
+    idea should describe that.
+
+    Decide this for each slot on its own. Both kinds are right, and neither is
+    the default. The test is what a viewer would recognise fastest in the two
+    seconds the picture is on screen.
+
+    Do not blend the two. A concrete thing beside an abstract one is two
+    subjects, and a slot idea depicts one.
+
+The last paragraph is not new policy — it restates the single-subject rule §5
+already enforces at plan time, at the point where it is being broken.
+
+### All three image defects are the prompt
+
+The three amendments in this document are one problem seen three ways:
+
+| | recorded | what it is |
+|---|---|---|
+| fidelity | session 31 | the picture does not show what was asked for |
+| darkness | session 34 | the picture is too dark to read at a glance |
+| **literalness** | **this one** | the picture shows a category where she named a thing |
+
+**None is a threshold and none is fixable in the gate.** All three are decided
+by the words sent to the image model — two in `imageStyle.stylePrompt`, which is
+mode data, and one in `slotPrompt`, which is the analysis stage. They should be
+changed together and tested together, because a prompt change is a billable
+re-generation and doing it three times costs three times.
+
+**It is Block 9.** Block 9 owns the client's visual identity and the prompts
+that carry it. Testing all three at once is `test-1`'s 8 images, about **$1.24**
+expected against a **$1.4472** budgeted ceiling, and needs the user's explicit
+go-ahead. **Nothing was generated and no prompt was changed.**
+
 ## References
 
 - `benchmarks/RESULTS-block4-imagebakeoff.md` — the six-image comparison.
