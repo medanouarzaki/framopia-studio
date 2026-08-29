@@ -92,9 +92,33 @@ export const TEMPLATE_PREFIXES: Record<TemplateKind, string> = {
  */
 export const GLOBAL_NEGATIVE_PROMPTS = ['no watermark', 'no logo'];
 
+/**
+ * The client's faces, in the same representation `LATIN_FONT` and `ARABIC_FONT`
+ * already use: family and style as one human-readable string, `Inter Semi-Bold`.
+ * **Not a PostScript name.** After Effects reports its own font as
+ * `Inter-SemiBold` and nothing in this project has ever written
+ * `TextDocument.font`, so resolving one form to the other is a measurement that
+ * has to be taken inside After Effects and is not taken here.
+ *
+ * `emphasis` is optional. A client with two faces sets emphasized words in the
+ * ordinary Latin face, which is what every build did before this field existed.
+ */
 export type ModeFonts =
   | { status: 'tbd'; note: string }
-  | { status: 'set'; latin: string; arabic: string };
+  | { status: 'set'; latin: string; arabic: string; emphasis?: string; note?: string };
+
+/**
+ * Which palette role carries which kind of text.
+ *
+ * Optional with a default, and the default is what every build has drawn: the
+ * light of the palette for ordinary words and the accent for emphasized ones.
+ * Roles, never hex — no colour is ever written outside a mode's own palette,
+ * and a role is what survives a palette being re-tuned.
+ */
+export interface ModeTextColours {
+  ordinary?: PaletteRole;
+  emphasis?: PaletteRole;
+}
 
 export interface ImageVariation {
   note: string;
@@ -108,6 +132,8 @@ export interface ClientMode {
   version: number;
   palette: Record<PaletteRole, string>;
   fonts: ModeFonts;
+  /** Optional; absent means light for ordinary words and accent for emphasis. */
+  textColours?: ModeTextColours;
   imageStyle: { stylePrompt: string[]; negativePrompt: string[] };
   imageVariation: ImageVariation;
   /**
@@ -342,9 +368,28 @@ function validateFonts(c: Checker, value: unknown): void {
   if (fonts.status === 'set') {
     c.string('fonts.latin', fonts.latin);
     c.string('fonts.arabic', fonts.arabic);
+    // Optional, and validated only when present: a client with two faces is
+    // exactly what every mode written before Block 9 session 2 looks like.
+    if (fonts.emphasis !== undefined) c.string('fonts.emphasis', fonts.emphasis);
+    if (fonts.note !== undefined) c.string('fonts.note', fonts.note);
     return;
   }
   c.fail('fonts.status', `expected "tbd" or "set", found ${JSON.stringify(fonts.status)}`);
+}
+
+function validateTextColours(c: Checker, value: unknown): void {
+  const colours = c.object('textColours', value);
+  if (colours === null) return;
+  for (const key of ['ordinary', 'emphasis']) {
+    const role = colours[key];
+    if (role === undefined) continue;
+    if (typeof role !== 'string' || !(PALETTE_ROLES as readonly string[]).includes(role)) {
+      c.fail(
+        `textColours.${key}`,
+        `expected a palette role, one of ${PALETTE_ROLES.join(', ')}`,
+      );
+    }
+  }
 }
 
 function validateImageStyle(c: Checker, value: unknown): void {
@@ -639,6 +684,7 @@ export function validateMode(value: unknown): ModeValidationIssue[] {
   }
   if (mode.palette !== undefined) validatePalette(c, mode.palette);
   if (mode.fonts !== undefined) validateFonts(c, mode.fonts);
+  if (mode.textColours !== undefined) validateTextColours(c, mode.textColours);
   if (mode.imageStyle !== undefined) validateImageStyle(c, mode.imageStyle);
   if (mode.imageVariation !== undefined) validateImageVariation(c, mode.imageVariation);
   if (mode.imageScale !== undefined) {

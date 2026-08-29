@@ -23,8 +23,26 @@ export const ARABIC_FONT = 'Almarai Bold';
  * Almarai runs smaller than Inter at the same nominal size, so the Arabic face
  * is set larger to match it optically. Measured by the user, not derived from
  * the metrics: it is a judgement about how the two faces read side by side.
+ *
+ * **It was measured against Inter, and Block 9 session 2 gave K2 an emphasis
+ * face that is not Inter.** Against Cormorant Garamond it is unverified; the
+ * measurement that would settle it is the same `sourceRectAtTime` pass that
+ * settles `EMPHASIS_SIZE_RATIO`.
  */
 export const ARABIC_SIZE_RATIO = 1.07;
+
+/**
+ * The emphasis face's size against the ordinary Latin one.
+ *
+ * **CHOSEN, NOT MEASURED, and near-certainly wrong.** Cormorant Garamond is an
+ * old-style serif and sets optically much smaller than Inter at the same
+ * nominal size, so an emphasized word at 1.0 will read smaller than the words
+ * around it rather than larger. The right number can only come from
+ * `sourceRectAtTime` inside After Effects, against the real faces, and that is
+ * the same measurement shrink-to-fit needs — PROJECT_SPEC §3 ruling 3. Guessing
+ * it here would put a number nobody measured into every build.
+ */
+export const EMPHASIS_SIZE_RATIO = 1.0;
 
 export const SUBTITLE_FONT_SIZE = 343;
 export const KEYWORD_FONT_SIZE = 425;

@@ -53,6 +53,7 @@ export {
   type ImageVariation,
   type VideoShape,
   type ModeFonts,
+  type ModeTextColours,
   type IdeaIssue,
   type ModeValidationIssue,
   type PaletteRole,
@@ -111,6 +112,7 @@ export {
 export {
   ARABIC_FONT,
   ARABIC_SIZE_RATIO,
+  EMPHASIS_SIZE_RATIO,
   EXTRA_LINES_RENDER_BELOW,
   FONT_METRICS,
   inkExtent,
@@ -272,6 +274,19 @@ export {
   type RepoRootResolution,
 } from './repo-root.js';
 export { buildFonts, type BuildFonts, type ModeFontsLike } from './build-fonts.js';
+export {
+  CLIENT_SNAPSHOT_VERSION,
+  snapshotIsBehind,
+  snapshotOfMode,
+  snapshotsAgree,
+  type ClientSnapshot,
+} from './client-snapshot.js';
+export {
+  DEFAULT_TEXT_COLOUR_ROLES,
+  resolveTextColours,
+  type ResolvedTextColour,
+  type ResolvedTextColours,
+} from './text-colours.js';
 export {
   CEP_CHROMIUM_MAJOR,
   CEP_CHROMIUM_VERSION,
