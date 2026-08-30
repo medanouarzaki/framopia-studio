@@ -139,6 +139,23 @@ AI-generated contextual images, SFX, and a watermark. Full spec in
   plan. Takes the session spend baseline once so every arm shares one ceiling.
 - `npm run plan-page -- --plan <abs path.editplan.json> [--out <dir>]` — free.
   The review page for a plan's candidates, grouped by slot.
+- `npm run prompt-page [-- --new <reel> --old <reel> --out <dir>]` — free, local,
+  **read-only**. Renders the before-and-after the image prompt is judged on into
+  `benchmarks/results/latest-image-prompt/`: each slot's words, its idea and its
+  candidates, with each picture's measured share of unlit frame beside it.
+  Generates nothing. The two halves are **different reels** and the page says so
+  in its own words — `test-1` under the new prompt against `vitasilk` under the
+  old, because `vitasilk` is the only reel that ever had images under the old one
+  and regenerating it would destroy the corpus every image measurement rests on.
+  Reads its luminance figures from `.local/build/luminance-<reel>.json`.
+- `tools/image-luminance/measure.py` — free, local, run by hand. Whole-frame
+  relative luminance of generated images: mean, median, p90 and the share below
+  0.05, which is how `docs/DECISION-image-config.md` quantifies "too dark to read
+  at a glance". Luminance is the sidecar's own `relative_luminance` (WCAG 2.1),
+  **imported rather than copied** so it cannot drift from `edge_luminance`.
+  **It reproduces that document's published ten-row table exactly** before being
+  used on anything new. `--json <path>` writes the figures for `prompt-page`.
+  Uses `tools/cv/.venv`, so it is not part of `npm run check`.
 - `npm run cutouts` — free, local. Runs the CV sidecar's cutout gate over
   `benchmarks/results/latest-imagebakeoff/` and writes cutouts, metrics and a
   review page to `benchmarks/results/latest-cutouts/`. Generates no images.
@@ -7259,3 +7276,94 @@ project open from `.local/build/` is now **saved and proceeded past**, with the
 file named in the result. Anything else keeps the refusal, and a project that
 was never written to disk keeps it too. `build.jsx` and `measure-survey.jsx` are
 unchanged; both branches are pinned in `core/src/audit-safety.test.ts`.
+
+
+## Block 9 session 12 — the image prompt, and a collision that cost eight cutouts
+
+**Spent $1.220660** on `test-1`'s eight images, the user's explicit go-ahead,
+against a $1.4472 ceiling. Ledger **108 → 116 lines**, sha `50ec3f57…` →
+`e5e0a6e9…`. After Effects was not contacted; 1 instance (pid 79146), 0
+`aerender`. `templates/library.aep` identical at both ends.
+
+### All three image defects were one prompt, and two of them are answered
+
+`docs/DECISION-image-config.md` recorded fidelity, darkness and literalness as
+one problem — the words sent to the model — with two pasteable fragments. Both
+are applied: `imageStyle.stylePrompt`'s palette and lighting pair (mode **v11**)
+and `slotPrompt`'s literal-or-atmospheric rule
+(**`ACTIVE_SLOT_PROMPT_VERSION` 2**, version 1 still selectable because every
+slot on disk was planned with it).
+
+**Darkness is fixed and measured**: mean relative luminance **0.0359 → 0.2248**,
+share of frame below 0.05 **87.4% → 47.5%**. Seven of eight moved; `img002-c1`
+did not, at 88.9%, and a prompt is an instruction rather than a control.
+
+**Brighter pictures matte worse.** That one dark candidate is also the only one
+of the eight to pass the cutout gate, gate `edge_halo` went from a 0.045–0.170
+range to 0.154–0.490, and pass rate went 2-of-10 to 1-of-8. It costs nothing
+today — a poor matte falls back to a card and every slot is card-framed anyway —
+and it is waiting for any block that wants real cutouts.
+
+**Fidelity is still unmeasured**, deliberately: inventing a metric is inventing a
+number, and a model grading its own output is not evidence.
+
+**The literalness rule is in force and has never been observed working.**
+Re-planning `test-1`'s slots would yield **6 slots, not 4**, at
+`IMAGE_SLOTS_PER_30S` 8 — 12 images, $2.1708 budgeted, over the authorised
+ceiling — and would have replaced the very ideas the comparison rests on. The
+first reel to plan slots afresh is its first test.
+
+**`test-1` had no images before this run**, so there is no slot-for-slot before
+and after; the before is `vitasilk`'s ten. Different reels, and
+`npm run prompt-page` says so on its own face rather than in a footnote.
+
+### Every plan wrote its cutouts to the same directory
+
+**`<video-dir>/cutouts/`, for every plan, and slot ids restart at `img001` on
+every reel.** All five corpus plans live in one directory, so the collision was
+total: generating `test-1`'s eight images **overwrote eight of `vitasilk`'s ten
+cutouts**, file for file. Latent since Block 4 — `vitasilk` was the only reel
+that had ever generated, so nothing had ever collided with anything.
+
+**They were restored, and the restoration is verified rather than asserted.** A
+cutout is derived from the cached source image, free and locally, and the source
+JPEGs were byte-identical throughout. The two files the collision happened to
+spare are the control: regenerating `img005-c1` reproduced the surviving Aug-25
+file **bit-identically**, same sha256. All eleven files are back at their exact
+original byte sizes, and the restored metrics reproduce the published figures to
+five decimals — `img001-c1` halo 0.100422, `img004-c1` holes 0.09251,
+`img004-c2` holes 0.017394, `img005-c1` halo 0.0999574.
+
+**That it was recoverable is luck, not design.** The same collision on an input
+nothing can reproduce would have been permanent, and this is the set every image
+measurement in the project is written against.
+
+`cutoutDirFor` in `service/src/images/job.ts` is the fix: `cutouts/<plan stem>/`,
+the same shape as `.local/cv/<video-basename>/`. Both plans' `cutoutPath`
+pointers were repointed, changing that field and nothing else. A test pins that
+two plans in one directory cannot produce one path.
+
+### A mode bump reports a pinned reel as behind, on the version alone
+
+`snapshotsAgree` compares the client's `version` along with the palette, faces,
+colour roles and `imageScale`. v11 touched none of the latter — proven: strip the
+version and the pinned v10 snapshot and today's mode agree exactly — yet all
+three pinned plans now report `behind: true` and the panel offers to move them
+forward.
+
+**Nothing was re-pinned**: moving a reel forward is a control someone presses,
+never automatic. Reported rather than fixed, because whether the client's version
+is provenance worth comparing is a design decision and not this session's to
+take. It is the same shape as the two cache defects already fixed — keying on a
+version rather than on what the version changed.
+
+### What a mode bump did and did not invalidate
+
+Measured from the code, not the document: `keywordModeContentHash`
+`7756f1e7883417fc` and `slotModeContentHash` `a654c324f198ed37` are **unchanged**,
+so nothing that bills moved; `compositionContentHash` `c5b43f23a3bd4b0b` →
+`800227495e05c527`, which is pure and feeds `recompose`. The image cache keys on
+the composed prompt string and has carried no mode version since Block 7 session
+1, so `test-1`'s four new prompts missed and **`vitasilk`'s fourteen image
+entries were untouched** — 28 files byte-identical at both ends of the session.
+

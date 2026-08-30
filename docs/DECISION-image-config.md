@@ -406,6 +406,118 @@ that carry it. Testing all three at once is `test-1`'s 8 images, about **$1.24**
 expected against a **$1.4472** budgeted ceiling, and needs the user's explicit
 go-ahead. **Nothing was generated and no prompt was changed.**
 
+## Amendment (2026-08-30) — the fragments are applied, and the darkness is fixed
+
+**Applied, on the user's explicit go-ahead, and tested in one generation.** All
+three amendments above name the same cause — the words sent to the model — and
+say they should be changed together because a prompt change is a billable
+regeneration. They were.
+
+| | |
+|---|---|
+| `imageStyle.stylePrompt` | the two palette/lighting fragments replaced; mode **v10 → v11** |
+| `slotPrompt` | the literal-or-atmospheric rule added; `ACTIVE_SLOT_PROMPT_VERSION` **1 → 2** |
+| generated | **`test-1`, 8 images**, 4 slots x 2 candidates |
+| estimate | $1.0720 published, **$1.4472 budgeted** at `IMAGE_COST_MULTIPLIER` 1.35 |
+| **actual** | **$1.220660**, from `usageMetadata` |
+| per image | $0.148296 to $0.158490, mean **$0.152583**, **+10.7% to +18.3%** over published |
+| ceiling | $1.4472, never approached; $0.226540 unspent |
+
+The published rate is a floor again, twenty-eight images running: nothing has
+ever billed under it, and the 1.35 gate cleared the worst by 14%.
+
+### Darkness: fixed, and measured
+
+`tools/image-luminance/measure.py`, which **reproduces this document's own
+ten-row table exactly** before it is used on anything new — the same discipline
+`tools/font-metrics/measure.py` follows.
+
+| | old prompt (`vitasilk`, 10) | new prompt (`test-1`, 8) |
+|---|---:|---:|
+| mean relative luminance | 0.0359 | **0.2248** |
+| share of the frame below 0.05 | **87.4%** | **47.5%** |
+
+Mid-grey is 0.216, so the pictures went from about a sixth of mid-grey to
+slightly above it. Per image, the new eight run 31.8% to 49.3% unlit — except
+one.
+
+| candidate | mean | median | p90 | below 0.05 |
+|---|---:|---:|---:|---:|
+| img001-c1 | 0.2305 | 0.1596 | 0.5269 | 32.3% |
+| img001-c2 | 0.2814 | 0.0578 | 0.8081 | 49.3% |
+| **img002-c1** | **0.0443** | 0.0048 | 0.0730 | **88.9%** |
+| img002-c2 | 0.2344 | 0.0762 | 0.6827 | 48.3% |
+| img003-c1 | 0.2373 | 0.1311 | 0.6028 | 47.6% |
+| img003-c2 | 0.2298 | 0.1096 | 0.5936 | 42.8% |
+| img004-c1 | 0.2498 | 0.2072 | 0.5702 | 39.4% |
+| img004-c2 | 0.2908 | 0.2902 | 0.6117 | 31.8% |
+
+**`img002-c1` did not move**, at 88.9% unlit against the old corpus's 87.4%
+average. Seven of eight did. The prompt is an instruction and not a control,
+which the lighting axis already established.
+
+**And it is the one candidate that passed the cutout gate.** That is not a
+coincidence worth ignoring: a near-black ground is what makes a subject easy to
+matte. Under the old prompt 2 of 10 passed; under the new one **1 of 8**, and
+gate `edge_halo` rose from a 0.045–0.170 range to 0.154–0.490. **Brighter
+pictures produce worse cutouts.** It costs nothing today — §5.4 makes a poor
+matte fall back to a card, and Block 7 session 9 forces the card frame on every
+slot anyway — but a later block that wants real cutouts will meet this
+head-on.
+
+### Fidelity: still unmeasured, and deliberately
+
+Nothing compares a picture against the idea it came from, and this session did
+not add anything that does. Inventing a metric would have been inventing a
+number, and asking a model to grade its own output is not evidence. The
+comparison page prints each slot's words and its idea beside the pictures so
+the judgement can be made by the person whose judgement it is.
+
+### Literalness: applied, and NOT exercised by this run
+
+The `slotPrompt` fragment governs **which ideas get written**, and this run
+reused `test-1`'s four existing ideas rather than re-planning them. So the eight
+images test the style fragments and not the literalness rule.
+
+**That was forced by the budget, and the arithmetic is why.**
+`IMAGE_SLOTS_PER_30S` went 5.5 → 8 at Block 8 session 35, so re-planning
+`test-1` (21.99 s) yields **6 slots, not 4** — 12 images, $1.608 published and
+**$2.1708 budgeted**, over the $1.4472 ceiling this run was authorised for. It
+would also have replaced the ideas, leaving no comparison.
+
+`test-1` is in any case the reel with least to prove on it: of its four slots
+**one names something concrete and three name a feeling**, and by this
+document's own table all four are already served correctly. The slots that fail
+literalness are `vitasilk`'s `img002` and `img005`, both brand mentions, and
+`vitasilk` may not be regenerated.
+
+**So the rule is in force for every slot planned from now on and has never been
+observed working.** The first reel to plan slots afresh is its first test.
+
+### What the comparison can and cannot show
+
+**`test-1` had no images before this run** — 4 planned slots, 0 candidates,
+nothing on disk. The document's estimate of what testing would cost was right;
+its framing that `test-1`'s pictures would be regenerated was not, because there
+were none.
+
+So there is **no slot-for-slot before and after**. The before is `vitasilk`'s
+ten under the old prompt and the after is `test-1`'s eight under the new one:
+different reels, different subjects, different ideas. Both are the same model at
+the same resolution and aspect ratio with the same negative prompt, and the only
+deliberate difference is the two fragments — but a 6.3x change in mean luminance
+is far outside anything subject choice plausibly explains, and the per-image
+figures do not overlap at all except for `img002-c1`.
+
+`npm run prompt-page` renders it.
+
+### The negative prompt was not touched
+
+Unchanged, and deliberately: `no watermark` and `no logo` have still never been
+tested as controls, and `no text` was ignored outright when it was there.
+Nothing was added to the negatives on the strength of hope. None of the eight
+images carries unexpected text.
+
 ## References
 
 - `benchmarks/RESULTS-block4-imagebakeoff.md` — the six-image comparison.
