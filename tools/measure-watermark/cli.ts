@@ -656,9 +656,18 @@ function main(): void {
    * watermark file recomputes rather than inheriting 1.4 s as a magic number.
    */
   const lastBeep = reported === null ? null : reported.bursts[reported.bursts.length - 1];
+  /*
+   * `schemaVersion` and `measuredAt` make this a freshness record rather than
+   * only a result: the pipeline re-measures when the version moves or the
+   * asset's sha does, and a build can say when the figures it is using were
+   * taken. The version is WATERMARK_FACTS_VERSION in
+   * service/src/build/measurements.ts, which is the reader.
+   */
   const facts = {
+    schemaVersion: 1,
     path: path.relative(REPO_ROOT, ASSET),
     sha256: sha,
+    measuredAt: new Date().toISOString(),
     width,
     height,
     durationS,

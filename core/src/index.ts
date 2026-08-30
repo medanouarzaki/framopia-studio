@@ -211,6 +211,16 @@ export {
   type ResolvedFfmpeg,
 } from './ffmpeg-path.js';
 export {
+  LOUDNESS_VERSION,
+  LoudnessUnavailableError,
+  hashFileSync,
+  loudnessIsFresh,
+  measureLoudness,
+  parseEbur128,
+  type LoudnessMeasurement,
+  type LoudnessRecord,
+} from './loudness.js';
+export {
   CacheEntrySelectionError,
   describeSelection,
   listTranscriptionEntries,
