@@ -1,0 +1,6785 @@
+{
+  "schemaVersion": 1,
+  "tool": "tools/ae/census.jsx",
+  "toolVersion": 1,
+  "measuredAt": "2026-08-30T14:56:54.674Z",
+  "aepPath": "/Volumes/T7 Shield/INSEA/Projects/framopia-studio/.local/build/vitasilk-full.aep",
+  "aepSha256": "d8bdf1449cd7fd6d1c35009d0aa9706942217931b118adf8b0334e5e60786d2e",
+  "aeVersion": "26.0x67",
+  "projectDirty": false,
+  "numItems": 97,
+  "fontNameCount": 1198,
+  "masters": [
+    {
+      "name": "master_final",
+      "width": 2160,
+      "height": 3840,
+      "duration": 25.6923590256924,
+      "frameRate": 29.9700317382812,
+      "numLayers": 83,
+      "layers": [
+        {
+          "index": 1,
+          "name": "whoosh_01.wav",
+          "role": "sfx",
+          "sourceName": "whoosh_01.wav",
+          "sourceFile": "/Volumes/T7 Shield/INSEA/Projects/framopia-studio/assets/sfx/whoosh_01.wav",
+          "templateId": null,
+          "inPoint": 19.4527861194528,
+          "outPoint": 21.4040152861195,
+          "startTime": 19.4527861194528,
+          "stretch": 100,
+          "position": [
+            1080,
+            1920
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": 5412,
+          "audioLevelDb": [
+            -13.2399997711182,
+            -13.2399997711182
+          ]
+        },
+        {
+          "index": 2,
+          "name": "whoosh_01.wav",
+          "role": "sfx",
+          "sourceName": "whoosh_01.wav",
+          "sourceFile": "/Volumes/T7 Shield/INSEA/Projects/framopia-studio/assets/sfx/whoosh_01.wav",
+          "templateId": null,
+          "inPoint": 16.383049716383,
+          "outPoint": 18.3342788830497,
+          "startTime": 16.383049716383,
+          "stretch": 100,
+          "position": [
+            1080,
+            1920
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": 5412,
+          "audioLevelDb": [
+            -13.2399997711182,
+            -13.2399997711182
+          ]
+        },
+        {
+          "index": 3,
+          "name": "whoosh_01.wav",
+          "role": "sfx",
+          "sourceName": "whoosh_01.wav",
+          "sourceFile": "/Volumes/T7 Shield/INSEA/Projects/framopia-studio/assets/sfx/whoosh_01.wav",
+          "templateId": null,
+          "inPoint": 11.0777444110777,
+          "outPoint": 13.0289735777444,
+          "startTime": 11.0777444110777,
+          "stretch": 100,
+          "position": [
+            1080,
+            1920
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": 5412,
+          "audioLevelDb": [
+            -13.2399997711182,
+            -13.2399997711182
+          ]
+        },
+        {
+          "index": 4,
+          "name": "whoosh_01.wav",
+          "role": "sfx",
+          "sourceName": "whoosh_01.wav",
+          "sourceFile": "/Volumes/T7 Shield/INSEA/Projects/framopia-studio/assets/sfx/whoosh_01.wav",
+          "templateId": null,
+          "inPoint": 5.70570570570571,
+          "outPoint": 7.65693487237237,
+          "startTime": 5.70570570570571,
+          "stretch": 100,
+          "position": [
+            1080,
+            1920
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": 5412,
+          "audioLevelDb": [
+            -13.2399997711182,
+            -13.2399997711182
+          ]
+        },
+        {
+          "index": 5,
+          "name": "whoosh_01.wav",
+          "role": "sfx",
+          "sourceName": "whoosh_01.wav",
+          "sourceFile": "/Volumes/T7 Shield/INSEA/Projects/framopia-studio/assets/sfx/whoosh_01.wav",
+          "templateId": null,
+          "inPoint": 0,
+          "outPoint": 1.48409536619953,
+          "startTime": -0.46713380046713,
+          "stretch": 100,
+          "position": [
+            1080,
+            1920
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": 5412,
+          "audioLevelDb": [
+            -13.2399997711182,
+            -13.2399997711182
+          ]
+        },
+        {
+          "index": 6,
+          "name": "intro.mov",
+          "role": "watermark",
+          "sourceName": "intro.mov",
+          "sourceFile": "/Volumes/T7 Shield/INSEA/Projects/framopia-studio/assets/watermark/intro.mov",
+          "templateId": null,
+          "inPoint": 0,
+          "outPoint": 1,
+          "startTime": 0,
+          "stretch": 100,
+          "position": [
+            1890,
+            289.365905761719
+          ],
+          "scale": [
+            16.839916229248,
+            16.839916229248
+          ],
+          "alphaMode": 5414,
+          "audioLevelDb": [
+            -20,
+            -20
+          ]
+        },
+        {
+          "index": 7,
+          "name": "img005__img_float",
+          "role": "image",
+          "sourceName": "img005__img_float",
+          "sourceFile": null,
+          "templateId": "img_float",
+          "inPoint": 20,
+          "outPoint": 22.002002002002,
+          "startTime": 20,
+          "stretch": 100,
+          "position": [
+            516.357116699219,
+            483.200012207031
+          ],
+          "scale": [
+            69.7333297729492,
+            69.7333297729492
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 8,
+          "name": "img004__img_float",
+          "role": "image",
+          "sourceName": "img004__img_float",
+          "sourceFile": null,
+          "templateId": "img_float",
+          "inPoint": 16.939981648315,
+          "outPoint": 18.738988988989,
+          "startTime": 16.939981648315,
+          "stretch": 100,
+          "position": [
+            488.979400634766,
+            483.200012207031
+          ],
+          "scale": [
+            69.7333297729492,
+            69.7333297729492
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 9,
+          "name": "img003__img_float",
+          "role": "image",
+          "sourceName": "img003__img_float",
+          "sourceFile": null,
+          "templateId": "img_float",
+          "inPoint": 11.618993993994,
+          "outPoint": 13.620995995996,
+          "startTime": 11.618993993994,
+          "stretch": 100,
+          "position": [
+            525.471862792969,
+            483.200012207031
+          ],
+          "scale": [
+            69.7333297729492,
+            69.7333297729492
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 10,
+          "name": "img002__img_float",
+          "role": "image",
+          "sourceName": "img002__img_float",
+          "sourceFile": null,
+          "templateId": "img_float",
+          "inPoint": 6.25900900900901,
+          "outPoint": 8.26101101101101,
+          "startTime": 6.25900900900901,
+          "stretch": 100,
+          "position": [
+            483.200012207031,
+            513.852722167969
+          ],
+          "scale": [
+            69.7333297729492,
+            69.7333297729492
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 11,
+          "name": "img001__img_float",
+          "role": "image",
+          "sourceName": "img001__img_float",
+          "sourceFile": null,
+          "templateId": "img_float",
+          "inPoint": 0.09901568234902,
+          "outPoint": 1.59901568234902,
+          "startTime": 0.09901568234902,
+          "stretch": 100,
+          "position": [
+            501.876800537109,
+            483.200012207031
+          ],
+          "scale": [
+            69.7333297729492,
+            69.7333297729492
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 12,
+          "name": "g073__sub_pop",
+          "role": "text",
+          "sourceName": "g073__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 24.849015682349,
+          "outPoint": 25.6923173173173,
+          "startTime": 24.849015682349,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 13,
+          "name": "g072__sub_pop",
+          "role": "text",
+          "sourceName": "g072__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 24.429012345679,
+          "outPoint": 24.849015682349,
+          "startTime": 24.429012345679,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 14,
+          "name": "g071__sub_pop",
+          "role": "text",
+          "sourceName": "g071__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 23.789998331665,
+          "outPoint": 24.429012345679,
+          "startTime": 23.789998331665,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 15,
+          "name": "g070__sub_pop",
+          "role": "text",
+          "sourceName": "g070__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 23.169002335669,
+          "outPoint": 23.789998331665,
+          "startTime": 23.169002335669,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 16,
+          "name": "g069__sub_pop",
+          "role": "text",
+          "sourceName": "g069__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 22.809017350684,
+          "outPoint": 23.169002335669,
+          "startTime": 22.809017350684,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 17,
+          "name": "g068__sub_pop",
+          "role": "text",
+          "sourceName": "g068__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 22.630005005005,
+          "outPoint": 22.809017350684,
+          "startTime": 22.630005005005,
+          "stretch": 77.8260886669159,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 18,
+          "name": "g067__sub_pop",
+          "role": "text",
+          "sourceName": "g067__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 21.948990657324,
+          "outPoint": 22.630005005005,
+          "startTime": 21.948990657324,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 19,
+          "name": "g066__sub_pop",
+          "role": "text",
+          "sourceName": "g066__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 21.630005005005,
+          "outPoint": 21.948990657324,
+          "startTime": 21.630005005005,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 20,
+          "name": "g065__sub_pop",
+          "role": "text",
+          "sourceName": "g065__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 21.328995662329,
+          "outPoint": 21.630005005005,
+          "startTime": 21.328995662329,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 21,
+          "name": "g064__sub_pop",
+          "role": "text",
+          "sourceName": "g064__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 21.089005672339,
+          "outPoint": 21.328995662329,
+          "startTime": 21.089005672339,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 22,
+          "name": "g063__sub_pop",
+          "role": "text",
+          "sourceName": "g063__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 20.948990657324,
+          "outPoint": 21.089005672339,
+          "startTime": 20.948990657324,
+          "stretch": 60.869562625885,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 23,
+          "name": "g062__sub_pop",
+          "role": "text",
+          "sourceName": "g062__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 20.390015015015,
+          "outPoint": 20.948990657324,
+          "startTime": 20.390015015015,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 24,
+          "name": "g061__sub_pop",
+          "role": "text",
+          "sourceName": "g061__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 20.089005672339,
+          "outPoint": 20.390015015015,
+          "startTime": 20.089005672339,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 25,
+          "name": "g060__sub_pop",
+          "role": "text",
+          "sourceName": "g060__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 19.869994994995,
+          "outPoint": 20.0890056759089,
+          "startTime": 19.869994994995,
+          "stretch": 95.2173888683319,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 26,
+          "name": "g059__sub_pop",
+          "role": "text",
+          "sourceName": "g059__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 19.390015015015,
+          "outPoint": 19.869994994995,
+          "startTime": 19.390015015015,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 27,
+          "name": "g058__sub_pop",
+          "role": "text",
+          "sourceName": "g058__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 18.970011678345,
+          "outPoint": 19.390015015015,
+          "startTime": 18.970011678345,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 28,
+          "name": "g057__sub_pop",
+          "role": "text",
+          "sourceName": "g057__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 18.648982315649,
+          "outPoint": 18.970011678345,
+          "startTime": 18.648982315649,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 29,
+          "name": "g056__sub_pop",
+          "role": "text",
+          "sourceName": "g056__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 18.328995662329,
+          "outPoint": 18.648982315649,
+          "startTime": 18.328995662329,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 30,
+          "name": "g055__sub_pop",
+          "role": "text",
+          "sourceName": "g055__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 18.278987320654,
+          "outPoint": 18.328995662329,
+          "startTime": 18.278987320654,
+          "stretch": 51.3333320617676,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 31,
+          "name": "g054__sub_pop",
+          "role": "text",
+          "sourceName": "g054__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 17.908992325659,
+          "outPoint": 18.278987320654,
+          "startTime": 17.908992325659,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 32,
+          "name": "g053__sub_pop",
+          "role": "text",
+          "sourceName": "g053__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 17.748998998999,
+          "outPoint": 17.9089923346037,
+          "startTime": 17.748998998999,
+          "stretch": 69.5652186870575,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 33,
+          "name": "g052__sub_pop",
+          "role": "text",
+          "sourceName": "g052__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 16.988988988989,
+          "outPoint": 17.748998998999,
+          "startTime": 16.988988988989,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 34,
+          "name": "g051__sub_pop",
+          "role": "text",
+          "sourceName": "g051__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 16.810018351685,
+          "outPoint": 16.9889889866223,
+          "startTime": 16.810018351685,
+          "stretch": 77.8260886669159,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 35,
+          "name": "g050__sub_pop",
+          "role": "text",
+          "sourceName": "g050__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 16.089005672339,
+          "outPoint": 16.810018351685,
+          "startTime": 16.089005672339,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 36,
+          "name": "g049__sub_pop",
+          "role": "text",
+          "sourceName": "g049__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 15.629004004004,
+          "outPoint": 16.089005672339,
+          "startTime": 15.629004004004,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 37,
+          "name": "g048__sub_pop",
+          "role": "text",
+          "sourceName": "g048__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 15.32999666333,
+          "outPoint": 15.629004004004,
+          "startTime": 15.32999666333,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 38,
+          "name": "g047__sub_pop",
+          "role": "text",
+          "sourceName": "g047__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 14.688980647314,
+          "outPoint": 15.32999666333,
+          "startTime": 14.688980647314,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 39,
+          "name": "g046__sub_pop",
+          "role": "text",
+          "sourceName": "g046__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 14.309017350684,
+          "outPoint": 14.688980647314,
+          "startTime": 14.309017350684,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 40,
+          "name": "g045__sub_pop",
+          "role": "text",
+          "sourceName": "g045__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 14.148982315649,
+          "outPoint": 14.3090173447027,
+          "startTime": 14.148982315649,
+          "stretch": 69.5652186870575,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 41,
+          "name": "g044__sub_pop",
+          "role": "text",
+          "sourceName": "g044__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 14.009009009009,
+          "outPoint": 14.1489823067242,
+          "startTime": 14.009009009009,
+          "stretch": 60.869562625885,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 42,
+          "name": "g043__sub_pop",
+          "role": "text",
+          "sourceName": "g043__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 13.889014014014,
+          "outPoint": 14.0090090045416,
+          "startTime": 13.889014014014,
+          "stretch": 52.173912525177,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 43,
+          "name": "g042__sub_pop",
+          "role": "text",
+          "sourceName": "g042__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 13.309017350684,
+          "outPoint": 13.889014014014,
+          "startTime": 13.309017350684,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 44,
+          "name": "g041__sub_pop",
+          "role": "text",
+          "sourceName": "g041__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 13.089005672339,
+          "outPoint": 13.3090173536573,
+          "startTime": 13.089005672339,
+          "stretch": 95.652174949646,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 45,
+          "name": "g040__sub_pop",
+          "role": "text",
+          "sourceName": "g040__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 12.789998331665,
+          "outPoint": 13.089005672339,
+          "startTime": 12.789998331665,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 46,
+          "name": "g039__sub_pop",
+          "role": "text",
+          "sourceName": "g039__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 12.648982315649,
+          "outPoint": 12.789998331665,
+          "startTime": 12.648982315649,
+          "stretch": 61.3043487071991,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 47,
+          "name": "g038__sub_pop",
+          "role": "text",
+          "sourceName": "g038__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 11.948990657324,
+          "outPoint": 12.648982315649,
+          "startTime": 11.948990657324,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 48,
+          "name": "g037__sub_pop",
+          "role": "text",
+          "sourceName": "g037__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 11.929012345679,
+          "outPoint": 11.948990657324,
+          "startTime": 11.929012345679,
+          "stretch": 51.3333320617676,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 49,
+          "name": "g036__sub_pop",
+          "role": "text",
+          "sourceName": "g036__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 11.488988988989,
+          "outPoint": 11.929012345679,
+          "startTime": 11.488988988989,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 50,
+          "name": "g035__sub_pop",
+          "role": "text",
+          "sourceName": "g035__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 11.349015682349,
+          "outPoint": 11.4889889800642,
+          "startTime": 11.349015682349,
+          "stretch": 60.869562625885,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 51,
+          "name": "g034__sub_pop",
+          "role": "text",
+          "sourceName": "g034__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 11.028987320654,
+          "outPoint": 11.349015682349,
+          "startTime": 11.028987320654,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 52,
+          "name": "g033__sub_pop",
+          "role": "text",
+          "sourceName": "g033__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 9.68898064731398,
+          "outPoint": 11.028987320654,
+          "startTime": 9.68898064731398,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 53,
+          "name": "g032__sub_pop",
+          "role": "text",
+          "sourceName": "g032__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 9.64898231564898,
+          "outPoint": 9.68898064731398,
+          "startTime": 9.64898231564898,
+          "stretch": 51.3333320617676,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 54,
+          "name": "g031__sub_pop",
+          "role": "text",
+          "sourceName": "g031__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 9.14898231564898,
+          "outPoint": 9.64898231564898,
+          "startTime": 9.14898231564898,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 55,
+          "name": "g030__sub_pop",
+          "role": "text",
+          "sourceName": "g030__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 8.94899065732399,
+          "outPoint": 9.14898231565395,
+          "startTime": 8.94899065732399,
+          "stretch": 86.9565188884735,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 56,
+          "name": "g029__sub_pop",
+          "role": "text",
+          "sourceName": "g029__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 8.80901735068402,
+          "outPoint": 8.9489906483992,
+          "startTime": 8.80901735068402,
+          "stretch": 60.869562625885,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 57,
+          "name": "k002__kw_slam",
+          "role": "text",
+          "sourceName": "k002__kw_slam",
+          "sourceFile": null,
+          "templateId": "kw_slam",
+          "inPoint": 8.10898398398398,
+          "outPoint": 8.80901735068402,
+          "startTime": 8.10898398398398,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 58,
+          "name": "g026__sub_pop",
+          "role": "text",
+          "sourceName": "g026__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 7.82999666333,
+          "outPoint": 8.10898398398398,
+          "startTime": 7.82999666333,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 59,
+          "name": "g025__sub_pop",
+          "role": "text",
+          "sourceName": "g025__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 7.68898064731398,
+          "outPoint": 7.82999666333,
+          "startTime": 7.68898064731398,
+          "stretch": 61.3043487071991,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 60,
+          "name": "g024__sub_pop",
+          "role": "text",
+          "sourceName": "g024__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 7.56898565231899,
+          "outPoint": 7.68898064284662,
+          "startTime": 7.56898565231899,
+          "stretch": 52.173912525177,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 61,
+          "name": "k001__kw_slam",
+          "role": "text",
+          "sourceName": "k001__kw_slam",
+          "sourceFile": null,
+          "templateId": "kw_slam",
+          "inPoint": 6.85001668335002,
+          "outPoint": 7.56898565231899,
+          "startTime": 6.85001668335002,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 62,
+          "name": "g021__sub_pop",
+          "role": "text",
+          "sourceName": "g021__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 6.68898064731398,
+          "outPoint": 6.85001668335002,
+          "startTime": 6.68898064731398,
+          "stretch": 69.9999988079071,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 63,
+          "name": "g020__sub_pop",
+          "role": "text",
+          "sourceName": "g020__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 6.42901234567901,
+          "outPoint": 6.68898064731398,
+          "startTime": 6.42901234567901,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 64,
+          "name": "g019__sub_pop",
+          "role": "text",
+          "sourceName": "g019__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 6.129004004004,
+          "outPoint": 6.42901234567901,
+          "startTime": 6.129004004004,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 65,
+          "name": "g018__sub_pop",
+          "role": "text",
+          "sourceName": "g018__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 5.58900567233901,
+          "outPoint": 6.129004004004,
+          "startTime": 5.58900567233901,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 66,
+          "name": "k003__kw_slam",
+          "role": "text",
+          "sourceName": "k003__kw_slam",
+          "sourceFile": null,
+          "templateId": "kw_slam",
+          "inPoint": 5.289998331665,
+          "outPoint": 5.58900567233901,
+          "startTime": 5.289998331665,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 67,
+          "name": "g016__sub_pop",
+          "role": "text",
+          "sourceName": "g016__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 4.82999666333,
+          "outPoint": 5.289998331665,
+          "startTime": 4.82999666333,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 68,
+          "name": "g015__sub_pop",
+          "role": "text",
+          "sourceName": "g015__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 4.58900567233901,
+          "outPoint": 4.82999666333,
+          "startTime": 4.58900567233901,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 69,
+          "name": "g014__sub_pop",
+          "role": "text",
+          "sourceName": "g014__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 4.54900734067401,
+          "outPoint": 4.58900567233901,
+          "startTime": 4.54900734067401,
+          "stretch": 51.3333320617676,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 70,
+          "name": "g013__sub_pop",
+          "role": "text",
+          "sourceName": "g013__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 4.129004004004,
+          "outPoint": 4.54900734067401,
+          "startTime": 4.129004004004,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 71,
+          "name": "g012__sub_pop",
+          "role": "text",
+          "sourceName": "g012__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 3.86999499499499,
+          "outPoint": 4.129004004004,
+          "startTime": 3.86999499499499,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 72,
+          "name": "g011__sub_pop",
+          "role": "text",
+          "sourceName": "g011__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 3.669002335669,
+          "outPoint": 3.86999499440332,
+          "startTime": 3.669002335669,
+          "stretch": 87.3913049697876,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 73,
+          "name": "g010__sub_pop",
+          "role": "text",
+          "sourceName": "g010__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 3.32999666333,
+          "outPoint": 3.669002335669,
+          "startTime": 3.32999666333,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 74,
+          "name": "g009__sub_pop",
+          "role": "text",
+          "sourceName": "g009__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 3.00900900900901,
+          "outPoint": 3.32999666333,
+          "startTime": 3.00900900900901,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 75,
+          "name": "g008__sub_pop",
+          "role": "text",
+          "sourceName": "g008__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 2.59000667334001,
+          "outPoint": 3.00900900900901,
+          "startTime": 2.59000667334001,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 76,
+          "name": "g007__sub_pop",
+          "role": "text",
+          "sourceName": "g007__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 2.209000667334,
+          "outPoint": 2.59000667334001,
+          "startTime": 2.209000667334,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 77,
+          "name": "g006__sub_pop",
+          "role": "text",
+          "sourceName": "g006__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 1.46901067734401,
+          "outPoint": 2.209000667334,
+          "startTime": 1.46901067734401,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 78,
+          "name": "g005__sub_pop",
+          "role": "text",
+          "sourceName": "g005__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 1.169002335669,
+          "outPoint": 1.46901067734401,
+          "startTime": 1.169002335669,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 79,
+          "name": "g004__sub_pop",
+          "role": "text",
+          "sourceName": "g004__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 0.88901401401401,
+          "outPoint": 1.169002335669,
+          "startTime": 0.88901401401401,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 80,
+          "name": "g003__sub_pop",
+          "role": "text",
+          "sourceName": "g003__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 0.83900567233901,
+          "outPoint": 0.88901401401401,
+          "startTime": 0.83900567233901,
+          "stretch": 51.3333320617676,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 81,
+          "name": "g002__sub_pop",
+          "role": "text",
+          "sourceName": "g002__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 0.328995662329,
+          "outPoint": 0.83900567233901,
+          "startTime": 0.328995662329,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 82,
+          "name": "g001__sub_pop",
+          "role": "text",
+          "sourceName": "g001__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": -0.03098932265599,
+          "outPoint": 0.328995662329,
+          "startTime": -0.03098932265599,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 83,
+          "name": "vitasilk.mov",
+          "role": "footage",
+          "sourceName": "vitasilk.mov",
+          "sourceFile": "/Volumes/T7 Shield/INSEA/Projects/framopia-studio/my files/test videos/vitasilk.mov",
+          "templateId": null,
+          "inPoint": 0,
+          "outPoint": 25.6923590256924,
+          "startTime": 0,
+          "stretch": 100,
+          "position": [
+            1080,
+            1920
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": 5412,
+          "audioLevelDb": [
+            -3.0699999332428,
+            -3.0699999332428
+          ]
+        }
+      ],
+      "roleCounts": {
+        "footage": 1,
+        "watermark": 1,
+        "sfx": 5,
+        "image": 5,
+        "text": 71,
+        "unknown": 0
+      }
+    },
+    {
+      "name": "master_subs_only",
+      "width": 2160,
+      "height": 3840,
+      "duration": 25.6923590256924,
+      "frameRate": 29.9700317382812,
+      "numLayers": 72,
+      "layers": [
+        {
+          "index": 1,
+          "name": "g073__sub_pop",
+          "role": "text",
+          "sourceName": "g073__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 24.849015682349,
+          "outPoint": 25.6923173173173,
+          "startTime": 24.849015682349,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 2,
+          "name": "g072__sub_pop",
+          "role": "text",
+          "sourceName": "g072__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 24.429012345679,
+          "outPoint": 24.849015682349,
+          "startTime": 24.429012345679,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 3,
+          "name": "g071__sub_pop",
+          "role": "text",
+          "sourceName": "g071__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 23.789998331665,
+          "outPoint": 24.429012345679,
+          "startTime": 23.789998331665,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 4,
+          "name": "g070__sub_pop",
+          "role": "text",
+          "sourceName": "g070__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 23.169002335669,
+          "outPoint": 23.789998331665,
+          "startTime": 23.169002335669,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 5,
+          "name": "g069__sub_pop",
+          "role": "text",
+          "sourceName": "g069__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 22.809017350684,
+          "outPoint": 23.169002335669,
+          "startTime": 22.809017350684,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 6,
+          "name": "g068__sub_pop",
+          "role": "text",
+          "sourceName": "g068__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 22.630005005005,
+          "outPoint": 22.809017350684,
+          "startTime": 22.630005005005,
+          "stretch": 77.8260886669159,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 7,
+          "name": "g067__sub_pop",
+          "role": "text",
+          "sourceName": "g067__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 21.948990657324,
+          "outPoint": 22.630005005005,
+          "startTime": 21.948990657324,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 8,
+          "name": "g066__sub_pop",
+          "role": "text",
+          "sourceName": "g066__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 21.630005005005,
+          "outPoint": 21.948990657324,
+          "startTime": 21.630005005005,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 9,
+          "name": "g065__sub_pop",
+          "role": "text",
+          "sourceName": "g065__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 21.328995662329,
+          "outPoint": 21.630005005005,
+          "startTime": 21.328995662329,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 10,
+          "name": "g064__sub_pop",
+          "role": "text",
+          "sourceName": "g064__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 21.089005672339,
+          "outPoint": 21.328995662329,
+          "startTime": 21.089005672339,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 11,
+          "name": "g063__sub_pop",
+          "role": "text",
+          "sourceName": "g063__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 20.948990657324,
+          "outPoint": 21.089005672339,
+          "startTime": 20.948990657324,
+          "stretch": 60.869562625885,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 12,
+          "name": "g062__sub_pop",
+          "role": "text",
+          "sourceName": "g062__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 20.390015015015,
+          "outPoint": 20.948990657324,
+          "startTime": 20.390015015015,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 13,
+          "name": "g061__sub_pop",
+          "role": "text",
+          "sourceName": "g061__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 20.089005672339,
+          "outPoint": 20.390015015015,
+          "startTime": 20.089005672339,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 14,
+          "name": "g060__sub_pop",
+          "role": "text",
+          "sourceName": "g060__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 19.869994994995,
+          "outPoint": 20.0890056759089,
+          "startTime": 19.869994994995,
+          "stretch": 95.2173888683319,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 15,
+          "name": "g059__sub_pop",
+          "role": "text",
+          "sourceName": "g059__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 19.390015015015,
+          "outPoint": 19.869994994995,
+          "startTime": 19.390015015015,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 16,
+          "name": "g058__sub_pop",
+          "role": "text",
+          "sourceName": "g058__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 18.970011678345,
+          "outPoint": 19.390015015015,
+          "startTime": 18.970011678345,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 17,
+          "name": "g057__sub_pop",
+          "role": "text",
+          "sourceName": "g057__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 18.648982315649,
+          "outPoint": 18.970011678345,
+          "startTime": 18.648982315649,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 18,
+          "name": "g056__sub_pop",
+          "role": "text",
+          "sourceName": "g056__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 18.328995662329,
+          "outPoint": 18.648982315649,
+          "startTime": 18.328995662329,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 19,
+          "name": "g055__sub_pop",
+          "role": "text",
+          "sourceName": "g055__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 18.278987320654,
+          "outPoint": 18.328995662329,
+          "startTime": 18.278987320654,
+          "stretch": 51.3333320617676,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 20,
+          "name": "g054__sub_pop",
+          "role": "text",
+          "sourceName": "g054__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 17.908992325659,
+          "outPoint": 18.278987320654,
+          "startTime": 17.908992325659,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 21,
+          "name": "g053__sub_pop",
+          "role": "text",
+          "sourceName": "g053__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 17.748998998999,
+          "outPoint": 17.9089923346037,
+          "startTime": 17.748998998999,
+          "stretch": 69.5652186870575,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 22,
+          "name": "g052__sub_pop",
+          "role": "text",
+          "sourceName": "g052__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 16.988988988989,
+          "outPoint": 17.748998998999,
+          "startTime": 16.988988988989,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 23,
+          "name": "g051__sub_pop",
+          "role": "text",
+          "sourceName": "g051__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 16.810018351685,
+          "outPoint": 16.9889889866223,
+          "startTime": 16.810018351685,
+          "stretch": 77.8260886669159,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 24,
+          "name": "g050__sub_pop",
+          "role": "text",
+          "sourceName": "g050__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 16.089005672339,
+          "outPoint": 16.810018351685,
+          "startTime": 16.089005672339,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 25,
+          "name": "g049__sub_pop",
+          "role": "text",
+          "sourceName": "g049__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 15.629004004004,
+          "outPoint": 16.089005672339,
+          "startTime": 15.629004004004,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 26,
+          "name": "g048__sub_pop",
+          "role": "text",
+          "sourceName": "g048__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 15.32999666333,
+          "outPoint": 15.629004004004,
+          "startTime": 15.32999666333,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 27,
+          "name": "g047__sub_pop",
+          "role": "text",
+          "sourceName": "g047__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 14.688980647314,
+          "outPoint": 15.32999666333,
+          "startTime": 14.688980647314,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 28,
+          "name": "g046__sub_pop",
+          "role": "text",
+          "sourceName": "g046__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 14.309017350684,
+          "outPoint": 14.688980647314,
+          "startTime": 14.309017350684,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 29,
+          "name": "g045__sub_pop",
+          "role": "text",
+          "sourceName": "g045__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 14.148982315649,
+          "outPoint": 14.3090173447027,
+          "startTime": 14.148982315649,
+          "stretch": 69.5652186870575,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 30,
+          "name": "g044__sub_pop",
+          "role": "text",
+          "sourceName": "g044__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 14.009009009009,
+          "outPoint": 14.1489823067242,
+          "startTime": 14.009009009009,
+          "stretch": 60.869562625885,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 31,
+          "name": "g043__sub_pop",
+          "role": "text",
+          "sourceName": "g043__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 13.889014014014,
+          "outPoint": 14.0090090045416,
+          "startTime": 13.889014014014,
+          "stretch": 52.173912525177,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 32,
+          "name": "g042__sub_pop",
+          "role": "text",
+          "sourceName": "g042__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 13.309017350684,
+          "outPoint": 13.889014014014,
+          "startTime": 13.309017350684,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 33,
+          "name": "g041__sub_pop",
+          "role": "text",
+          "sourceName": "g041__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 13.089005672339,
+          "outPoint": 13.3090173536573,
+          "startTime": 13.089005672339,
+          "stretch": 95.652174949646,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 34,
+          "name": "g040__sub_pop",
+          "role": "text",
+          "sourceName": "g040__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 12.789998331665,
+          "outPoint": 13.089005672339,
+          "startTime": 12.789998331665,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 35,
+          "name": "g039__sub_pop",
+          "role": "text",
+          "sourceName": "g039__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 12.648982315649,
+          "outPoint": 12.789998331665,
+          "startTime": 12.648982315649,
+          "stretch": 61.3043487071991,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 36,
+          "name": "g038__sub_pop",
+          "role": "text",
+          "sourceName": "g038__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 11.948990657324,
+          "outPoint": 12.648982315649,
+          "startTime": 11.948990657324,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 37,
+          "name": "g037__sub_pop",
+          "role": "text",
+          "sourceName": "g037__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 11.929012345679,
+          "outPoint": 11.948990657324,
+          "startTime": 11.929012345679,
+          "stretch": 51.3333320617676,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 38,
+          "name": "g036__sub_pop",
+          "role": "text",
+          "sourceName": "g036__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 11.488988988989,
+          "outPoint": 11.929012345679,
+          "startTime": 11.488988988989,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 39,
+          "name": "g035__sub_pop",
+          "role": "text",
+          "sourceName": "g035__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 11.349015682349,
+          "outPoint": 11.4889889800642,
+          "startTime": 11.349015682349,
+          "stretch": 60.869562625885,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 40,
+          "name": "g034__sub_pop",
+          "role": "text",
+          "sourceName": "g034__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 11.028987320654,
+          "outPoint": 11.349015682349,
+          "startTime": 11.028987320654,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 41,
+          "name": "g033__sub_pop",
+          "role": "text",
+          "sourceName": "g033__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 9.68898064731398,
+          "outPoint": 11.028987320654,
+          "startTime": 9.68898064731398,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 42,
+          "name": "g032__sub_pop",
+          "role": "text",
+          "sourceName": "g032__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 9.64898231564898,
+          "outPoint": 9.68898064731398,
+          "startTime": 9.64898231564898,
+          "stretch": 51.3333320617676,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 43,
+          "name": "g031__sub_pop",
+          "role": "text",
+          "sourceName": "g031__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 9.14898231564898,
+          "outPoint": 9.64898231564898,
+          "startTime": 9.14898231564898,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 44,
+          "name": "g030__sub_pop",
+          "role": "text",
+          "sourceName": "g030__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 8.94899065732399,
+          "outPoint": 9.14898231565395,
+          "startTime": 8.94899065732399,
+          "stretch": 86.9565188884735,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 45,
+          "name": "g029__sub_pop",
+          "role": "text",
+          "sourceName": "g029__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 8.80901735068402,
+          "outPoint": 8.9489906483992,
+          "startTime": 8.80901735068402,
+          "stretch": 60.869562625885,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 46,
+          "name": "k002__kw_slam",
+          "role": "text",
+          "sourceName": "k002__kw_slam",
+          "sourceFile": null,
+          "templateId": "kw_slam",
+          "inPoint": 8.10898398398398,
+          "outPoint": 8.80901735068402,
+          "startTime": 8.10898398398398,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 47,
+          "name": "g026__sub_pop",
+          "role": "text",
+          "sourceName": "g026__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 7.82999666333,
+          "outPoint": 8.10898398398398,
+          "startTime": 7.82999666333,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 48,
+          "name": "g025__sub_pop",
+          "role": "text",
+          "sourceName": "g025__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 7.68898064731398,
+          "outPoint": 7.82999666333,
+          "startTime": 7.68898064731398,
+          "stretch": 61.3043487071991,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 49,
+          "name": "g024__sub_pop",
+          "role": "text",
+          "sourceName": "g024__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 7.56898565231899,
+          "outPoint": 7.68898064284662,
+          "startTime": 7.56898565231899,
+          "stretch": 52.173912525177,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 50,
+          "name": "k001__kw_slam",
+          "role": "text",
+          "sourceName": "k001__kw_slam",
+          "sourceFile": null,
+          "templateId": "kw_slam",
+          "inPoint": 6.85001668335002,
+          "outPoint": 7.56898565231899,
+          "startTime": 6.85001668335002,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 51,
+          "name": "g021__sub_pop",
+          "role": "text",
+          "sourceName": "g021__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 6.68898064731398,
+          "outPoint": 6.85001668335002,
+          "startTime": 6.68898064731398,
+          "stretch": 69.9999988079071,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 52,
+          "name": "g020__sub_pop",
+          "role": "text",
+          "sourceName": "g020__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 6.42901234567901,
+          "outPoint": 6.68898064731398,
+          "startTime": 6.42901234567901,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 53,
+          "name": "g019__sub_pop",
+          "role": "text",
+          "sourceName": "g019__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 6.129004004004,
+          "outPoint": 6.42901234567901,
+          "startTime": 6.129004004004,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 54,
+          "name": "g018__sub_pop",
+          "role": "text",
+          "sourceName": "g018__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 5.58900567233901,
+          "outPoint": 6.129004004004,
+          "startTime": 5.58900567233901,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 55,
+          "name": "k003__kw_slam",
+          "role": "text",
+          "sourceName": "k003__kw_slam",
+          "sourceFile": null,
+          "templateId": "kw_slam",
+          "inPoint": 5.289998331665,
+          "outPoint": 5.58900567233901,
+          "startTime": 5.289998331665,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 56,
+          "name": "g016__sub_pop",
+          "role": "text",
+          "sourceName": "g016__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 4.82999666333,
+          "outPoint": 5.289998331665,
+          "startTime": 4.82999666333,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 57,
+          "name": "g015__sub_pop",
+          "role": "text",
+          "sourceName": "g015__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 4.58900567233901,
+          "outPoint": 4.82999666333,
+          "startTime": 4.58900567233901,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 58,
+          "name": "g014__sub_pop",
+          "role": "text",
+          "sourceName": "g014__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 4.54900734067401,
+          "outPoint": 4.58900567233901,
+          "startTime": 4.54900734067401,
+          "stretch": 51.3333320617676,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 59,
+          "name": "g013__sub_pop",
+          "role": "text",
+          "sourceName": "g013__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 4.129004004004,
+          "outPoint": 4.54900734067401,
+          "startTime": 4.129004004004,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 60,
+          "name": "g012__sub_pop",
+          "role": "text",
+          "sourceName": "g012__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 3.86999499499499,
+          "outPoint": 4.129004004004,
+          "startTime": 3.86999499499499,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 61,
+          "name": "g011__sub_pop",
+          "role": "text",
+          "sourceName": "g011__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 3.669002335669,
+          "outPoint": 3.86999499440332,
+          "startTime": 3.669002335669,
+          "stretch": 87.3913049697876,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 62,
+          "name": "g010__sub_pop",
+          "role": "text",
+          "sourceName": "g010__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 3.32999666333,
+          "outPoint": 3.669002335669,
+          "startTime": 3.32999666333,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 63,
+          "name": "g009__sub_pop",
+          "role": "text",
+          "sourceName": "g009__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 3.00900900900901,
+          "outPoint": 3.32999666333,
+          "startTime": 3.00900900900901,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 64,
+          "name": "g008__sub_pop",
+          "role": "text",
+          "sourceName": "g008__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 2.59000667334001,
+          "outPoint": 3.00900900900901,
+          "startTime": 2.59000667334001,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 65,
+          "name": "g007__sub_pop",
+          "role": "text",
+          "sourceName": "g007__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 2.209000667334,
+          "outPoint": 2.59000667334001,
+          "startTime": 2.209000667334,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 66,
+          "name": "g006__sub_pop",
+          "role": "text",
+          "sourceName": "g006__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 1.46901067734401,
+          "outPoint": 2.209000667334,
+          "startTime": 1.46901067734401,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 67,
+          "name": "g005__sub_pop",
+          "role": "text",
+          "sourceName": "g005__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 1.169002335669,
+          "outPoint": 1.46901067734401,
+          "startTime": 1.169002335669,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 68,
+          "name": "g004__sub_pop",
+          "role": "text",
+          "sourceName": "g004__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 0.88901401401401,
+          "outPoint": 1.169002335669,
+          "startTime": 0.88901401401401,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 69,
+          "name": "g003__sub_pop",
+          "role": "text",
+          "sourceName": "g003__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 0.83900567233901,
+          "outPoint": 0.88901401401401,
+          "startTime": 0.83900567233901,
+          "stretch": 51.3333320617676,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 70,
+          "name": "g002__sub_pop",
+          "role": "text",
+          "sourceName": "g002__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": 0.328995662329,
+          "outPoint": 0.83900567233901,
+          "startTime": 0.328995662329,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 71,
+          "name": "g001__sub_pop",
+          "role": "text",
+          "sourceName": "g001__sub_pop",
+          "sourceFile": null,
+          "templateId": "sub_pop",
+          "inPoint": -0.03098932265599,
+          "outPoint": 0.328995662329,
+          "startTime": -0.03098932265599,
+          "stretch": 100,
+          "position": [
+            1080,
+            2330.39990234375
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": null,
+          "audioLevelDb": [
+            0,
+            0
+          ]
+        },
+        {
+          "index": 72,
+          "name": "vitasilk.mov",
+          "role": "footage",
+          "sourceName": "vitasilk.mov",
+          "sourceFile": "/Volumes/T7 Shield/INSEA/Projects/framopia-studio/my files/test videos/vitasilk.mov",
+          "templateId": null,
+          "inPoint": 0,
+          "outPoint": 25.6923590256924,
+          "startTime": 0,
+          "stretch": 100,
+          "position": [
+            1080,
+            1920
+          ],
+          "scale": [
+            100,
+            100
+          ],
+          "alphaMode": 5412,
+          "audioLevelDb": [
+            -3.0699999332428,
+            -3.0699999332428
+          ]
+        }
+      ],
+      "roleCounts": {
+        "footage": 1,
+        "watermark": 0,
+        "sfx": 0,
+        "image": 0,
+        "text": 71,
+        "unknown": 0
+      }
+    }
+  ],
+  "textComps": [
+    {
+      "compName": "g001__sub_pop",
+      "elementId": "g001",
+      "templateId": "sub_pop",
+      "layerNames": [
+        "TXT_MAIN",
+        "TXT_MAIN_SHADOW"
+      ],
+      "missingDeclared": [],
+      "undeclaredTextLayers": [],
+      "layers": [
+        {
+          "name": "TXT_MAIN",
+          "role": "placeholder",
+          "text": "5",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.97254997491837,
+            0.96470999717712,
+            0.94902002811432
+          ]
+        },
+        {
+          "name": "TXT_MAIN_SHADOW",
+          "role": "shadow",
+          "text": "5",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.50980001688004,
+            0,
+            0
+          ]
+        }
+      ],
+      "placeholderShadowAgree": true
+    },
+    {
+      "compName": "g002__sub_pop",
+      "elementId": "g002",
+      "templateId": "sub_pop",
+      "layerNames": [
+        "TXT_MAIN",
+        "TXT_MAIN_SHADOW"
+      ],
+      "missingDeclared": [],
+      "undeclaredTextLayers": [],
+      "layers": [
+        {
+          "name": "TXT_MAIN",
+          "role": "placeholder",
+          "text": "d9ay9",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.97254997491837,
+            0.96470999717712,
+            0.94902002811432
+          ]
+        },
+        {
+          "name": "TXT_MAIN_SHADOW",
+          "role": "shadow",
+          "text": "d9ay9",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.50980001688004,
+            0,
+            0
+          ]
+        }
+      ],
+      "placeholderShadowAgree": true
+    },
+    {
+      "compName": "g003__sub_pop",
+      "elementId": "g003",
+      "templateId": "sub_pop",
+      "layerNames": [
+        "TXT_MAIN",
+        "TXT_MAIN_SHADOW"
+      ],
+      "missingDeclared": [],
+      "undeclaredTextLayers": [],
+      "layers": [
+        {
+          "name": "TXT_MAIN",
+          "role": "placeholder",
+          "text": "eyyh",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.97254997491837,
+            0.96470999717712,
+            0.94902002811432
+          ]
+        },
+        {
+          "name": "TXT_MAIN_SHADOW",
+          "role": "shadow",
+          "text": "eyyh",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.50980001688004,
+            0,
+            0
+          ]
+        }
+      ],
+      "placeholderShadowAgree": true
+    },
+    {
+      "compName": "g004__sub_pop",
+      "elementId": "g004",
+      "templateId": "sub_pop",
+      "layerNames": [
+        "TXT_MAIN",
+        "TXT_MAIN_SHADOW"
+      ],
+      "missingDeclared": [],
+      "undeclaredTextLayers": [],
+      "layers": [
+        {
+          "name": "TXT_MAIN",
+          "role": "placeholder",
+          "text": "a",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.97254997491837,
+            0.96470999717712,
+            0.94902002811432
+          ]
+        },
+        {
+          "name": "TXT_MAIN_SHADOW",
+          "role": "shadow",
+          "text": "a",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.50980001688004,
+            0,
+            0
+          ]
+        }
+      ],
+      "placeholderShadowAgree": true
+    },
+    {
+      "compName": "g005__sub_pop",
+      "elementId": "g005",
+      "templateId": "sub_pop",
+      "layerNames": [
+        "TXT_MAIN",
+        "TXT_MAIN_SHADOW"
+      ],
+      "missingDeclared": [],
+      "undeclaredTextLayers": [],
+      "layers": [
+        {
+          "name": "TXT_MAIN",
+          "role": "placeholder",
+          "text": "lalla",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.97254997491837,
+            0.96470999717712,
+            0.94902002811432
+          ]
+        },
+        {
+          "name": "TXT_MAIN_SHADOW",
+          "role": "shadow",
+          "text": "lalla",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.50980001688004,
+            0,
+            0
+          ]
+        }
+      ],
+      "placeholderShadowAgree": true
+    },
+    {
+      "compName": "g006__sub_pop",
+      "elementId": "g006",
+      "templateId": "sub_pop",
+      "layerNames": [
+        "TXT_MAIN",
+        "TXT_MAIN_SHADOW"
+      ],
+      "missingDeclared": [],
+      "undeclaredTextLayers": [],
+      "layers": [
+        {
+          "name": "TXT_MAIN",
+          "role": "placeholder",
+          "text": "5",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.97254997491837,
+            0.96470999717712,
+            0.94902002811432
+          ]
+        },
+        {
+          "name": "TXT_MAIN_SHADOW",
+          "role": "shadow",
+          "text": "5",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.50980001688004,
+            0,
+            0
+          ]
+        }
+      ],
+      "placeholderShadowAgree": true
+    },
+    {
+      "compName": "g007__sub_pop",
+      "elementId": "g007",
+      "templateId": "sub_pop",
+      "layerNames": [
+        "TXT_MAIN",
+        "TXT_MAIN_SHADOW"
+      ],
+      "missingDeclared": [],
+      "undeclaredTextLayers": [],
+      "layers": [
+        {
+          "name": "TXT_MAIN",
+          "role": "placeholder",
+          "text": "minutes",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.97254997491837,
+            0.96470999717712,
+            0.94902002811432
+          ]
+        },
+        {
+          "name": "TXT_MAIN_SHADOW",
+          "role": "shadow",
+          "text": "minutes",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.50980001688004,
+            0,
+            0
+          ]
+        }
+      ],
+      "placeholderShadowAgree": true
+    },
+    {
+      "compName": "g008__sub_pop",
+      "elementId": "g008",
+      "templateId": "sub_pop",
+      "layerNames": [
+        "TXT_MAIN",
+        "TXT_MAIN_SHADOW"
+      ],
+      "missingDeclared": [],
+      "undeclaredTextLayers": [],
+      "layers": [
+        {
+          "name": "TXT_MAIN",
+          "role": "placeholder",
+          "text": "ymkn",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.97254997491837,
+            0.96470999717712,
+            0.94902002811432
+          ]
+        },
+        {
+          "name": "TXT_MAIN_SHADOW",
+          "role": "shadow",
+          "text": "ymkn",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.50980001688004,
+            0,
+            0
+          ]
+        }
+      ],
+      "placeholderShadowAgree": true
+    },
+    {
+      "compName": "g009__sub_pop",
+      "elementId": "g009",
+      "templateId": "sub_pop",
+      "layerNames": [
+        "TXT_MAIN",
+        "TXT_MAIN_SHADOW"
+      ],
+      "missingDeclared": [],
+      "undeclaredTextLayers": [],
+      "layers": [
+        {
+          "name": "TXT_MAIN",
+          "role": "placeholder",
+          "text": "lik",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.97254997491837,
+            0.96470999717712,
+            0.94902002811432
+          ]
+        },
+        {
+          "name": "TXT_MAIN_SHADOW",
+          "role": "shadow",
+          "text": "lik",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.50980001688004,
+            0,
+            0
+          ]
+        }
+      ],
+      "placeholderShadowAgree": true
+    },
+    {
+      "compName": "g010__sub_pop",
+      "elementId": "g010",
+      "templateId": "sub_pop",
+      "layerNames": [
+        "TXT_MAIN",
+        "TXT_MAIN_SHADOW"
+      ],
+      "missingDeclared": [],
+      "undeclaredTextLayers": [],
+      "layers": [
+        {
+          "name": "TXT_MAIN",
+          "role": "placeholder",
+          "text": "diri",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.97254997491837,
+            0.96470999717712,
+            0.94902002811432
+          ]
+        },
+        {
+          "name": "TXT_MAIN_SHADOW",
+          "role": "shadow",
+          "text": "diri",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.50980001688004,
+            0,
+            0
+          ]
+        }
+      ],
+      "placeholderShadowAgree": true
+    },
+    {
+      "compName": "g011__sub_pop",
+      "elementId": "g011",
+      "templateId": "sub_pop",
+      "layerNames": [
+        "TXT_MAIN",
+        "TXT_MAIN_SHADOW"
+      ],
+      "missingDeclared": [],
+      "undeclaredTextLayers": [],
+      "layers": [
+        {
+          "name": "TXT_MAIN",
+          "role": "placeholder",
+          "text": "un",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.97254997491837,
+            0.96470999717712,
+            0.94902002811432
+          ]
+        },
+        {
+          "name": "TXT_MAIN_SHADOW",
+          "role": "shadow",
+          "text": "un",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.50980001688004,
+            0,
+            0
+          ]
+        }
+      ],
+      "placeholderShadowAgree": true
+    },
+    {
+      "compName": "g012__sub_pop",
+      "elementId": "g012",
+      "templateId": "sub_pop",
+      "layerNames": [
+        "TXT_MAIN",
+        "TXT_MAIN_SHADOW"
+      ],
+      "missingDeclared": [],
+      "undeclaredTextLayers": [],
+      "layers": [
+        {
+          "name": "TXT_MAIN",
+          "role": "placeholder",
+          "text": "soin",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.97254997491837,
+            0.96470999717712,
+            0.94902002811432
+          ]
+        },
+        {
+          "name": "TXT_MAIN_SHADOW",
+          "role": "shadow",
+          "text": "soin",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.50980001688004,
+            0,
+            0
+          ]
+        }
+      ],
+      "placeholderShadowAgree": true
+    },
+    {
+      "compName": "g013__sub_pop",
+      "elementId": "g013",
+      "templateId": "sub_pop",
+      "layerNames": [
+        "TXT_MAIN",
+        "TXT_MAIN_SHADOW"
+      ],
+      "missingDeclared": [],
+      "undeclaredTextLayers": [],
+      "layers": [
+        {
+          "name": "TXT_MAIN",
+          "role": "placeholder",
+          "text": "li",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.97254997491837,
+            0.96470999717712,
+            0.94902002811432
+          ]
+        },
+        {
+          "name": "TXT_MAIN_SHADOW",
+          "role": "shadow",
+          "text": "li",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.50980001688004,
+            0,
+            0
+          ]
+        }
+      ],
+      "placeholderShadowAgree": true
+    },
+    {
+      "compName": "g014__sub_pop",
+      "elementId": "g014",
+      "templateId": "sub_pop",
+      "layerNames": [
+        "TXT_MAIN",
+        "TXT_MAIN_SHADOW"
+      ],
+      "missingDeclared": [],
+      "undeclaredTextLayers": [],
+      "layers": [
+        {
+          "name": "TXT_MAIN",
+          "role": "placeholder",
+          "text": "ghayrdd",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.97254997491837,
+            0.96470999717712,
+            0.94902002811432
+          ]
+        },
+        {
+          "name": "TXT_MAIN_SHADOW",
+          "role": "shadow",
+          "text": "ghayrdd",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.50980001688004,
+            0,
+            0
+          ]
+        }
+      ],
+      "placeholderShadowAgree": true
+    },
+    {
+      "compName": "g015__sub_pop",
+      "elementId": "g015",
+      "templateId": "sub_pop",
+      "layerNames": [
+        "TXT_MAIN",
+        "TXT_MAIN_SHADOW"
+      ],
+      "missingDeclared": [],
+      "undeclaredTextLayers": [],
+      "layers": [
+        {
+          "name": "TXT_MAIN",
+          "role": "placeholder",
+          "text": "lik",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.97254997491837,
+            0.96470999717712,
+            0.94902002811432
+          ]
+        },
+        {
+          "name": "TXT_MAIN_SHADOW",
+          "role": "shadow",
+          "text": "lik",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.50980001688004,
+            0,
+            0
+          ]
+        }
+      ],
+      "placeholderShadowAgree": true
+    },
+    {
+      "compName": "g016__sub_pop",
+      "elementId": "g016",
+      "templateId": "sub_pop",
+      "layerNames": [
+        "TXT_MAIN",
+        "TXT_MAIN_SHADOW"
+      ],
+      "missingDeclared": [],
+      "undeclaredTextLayers": [],
+      "layers": [
+        {
+          "name": "TXT_MAIN",
+          "role": "placeholder",
+          "text": "ch3rk",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.97254997491837,
+            0.96470999717712,
+            0.94902002811432
+          ]
+        },
+        {
+          "name": "TXT_MAIN_SHADOW",
+          "role": "shadow",
+          "text": "ch3rk",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.50980001688004,
+            0,
+            0
+          ]
+        }
+      ],
+      "placeholderShadowAgree": true
+    },
+    {
+      "compName": "g018__sub_pop",
+      "elementId": "g018",
+      "templateId": "sub_pop",
+      "layerNames": [
+        "TXT_MAIN",
+        "TXT_MAIN_SHADOW"
+      ],
+      "missingDeclared": [],
+      "undeclaredTextLayers": [],
+      "layers": [
+        {
+          "name": "TXT_MAIN",
+          "role": "placeholder",
+          "text": "msbsb",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.97254997491837,
+            0.96470999717712,
+            0.94902002811432
+          ]
+        },
+        {
+          "name": "TXT_MAIN_SHADOW",
+          "role": "shadow",
+          "text": "msbsb",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.50980001688004,
+            0,
+            0
+          ]
+        }
+      ],
+      "placeholderShadowAgree": true
+    },
+    {
+      "compName": "g019__sub_pop",
+      "elementId": "g019",
+      "templateId": "sub_pop",
+      "layerNames": [
+        "TXT_MAIN",
+        "TXT_MAIN_SHADOW"
+      ],
+      "missingDeclared": [],
+      "undeclaredTextLayers": [],
+      "layers": [
+        {
+          "name": "TXT_MAIN",
+          "role": "placeholder",
+          "text": "jbt",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.97254997491837,
+            0.96470999717712,
+            0.94902002811432
+          ]
+        },
+        {
+          "name": "TXT_MAIN_SHADOW",
+          "role": "shadow",
+          "text": "jbt",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.50980001688004,
+            0,
+            0
+          ]
+        }
+      ],
+      "placeholderShadowAgree": true
+    },
+    {
+      "compName": "g020__sub_pop",
+      "elementId": "g020",
+      "templateId": "sub_pop",
+      "layerNames": [
+        "TXT_MAIN",
+        "TXT_MAIN_SHADOW"
+      ],
+      "missingDeclared": [],
+      "undeclaredTextLayers": [],
+      "layers": [
+        {
+          "name": "TXT_MAIN",
+          "role": "placeholder",
+          "text": "likom",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.97254997491837,
+            0.96470999717712,
+            0.94902002811432
+          ]
+        },
+        {
+          "name": "TXT_MAIN_SHADOW",
+          "role": "shadow",
+          "text": "likom",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.50980001688004,
+            0,
+            0
+          ]
+        }
+      ],
+      "placeholderShadowAgree": true
+    },
+    {
+      "compName": "g021__sub_pop",
+      "elementId": "g021",
+      "templateId": "sub_pop",
+      "layerNames": [
+        "TXT_MAIN",
+        "TXT_MAIN_SHADOW"
+      ],
+      "missingDeclared": [],
+      "undeclaredTextLayers": [],
+      "layers": [
+        {
+          "name": "TXT_MAIN",
+          "role": "placeholder",
+          "text": "le",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.97254997491837,
+            0.96470999717712,
+            0.94902002811432
+          ]
+        },
+        {
+          "name": "TXT_MAIN_SHADOW",
+          "role": "shadow",
+          "text": "le",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.50980001688004,
+            0,
+            0
+          ]
+        }
+      ],
+      "placeholderShadowAgree": true
+    },
+    {
+      "compName": "g024__sub_pop",
+      "elementId": "g024",
+      "templateId": "sub_pop",
+      "layerNames": [
+        "TXT_MAIN",
+        "TXT_MAIN_SHADOW"
+      ],
+      "missingDeclared": [],
+      "undeclaredTextLayers": [],
+      "layers": [
+        {
+          "name": "TXT_MAIN",
+          "role": "placeholder",
+          "text": "mn",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.97254997491837,
+            0.96470999717712,
+            0.94902002811432
+          ]
+        },
+        {
+          "name": "TXT_MAIN_SHADOW",
+          "role": "shadow",
+          "text": "mn",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.50980001688004,
+            0,
+            0
+          ]
+        }
+      ],
+      "placeholderShadowAgree": true
+    },
+    {
+      "compName": "g025__sub_pop",
+      "elementId": "g025",
+      "templateId": "sub_pop",
+      "layerNames": [
+        "TXT_MAIN",
+        "TXT_MAIN_SHADOW"
+      ],
+      "missingDeclared": [],
+      "undeclaredTextLayers": [],
+      "layers": [
+        {
+          "name": "TXT_MAIN",
+          "role": "placeholder",
+          "text": "la",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.97254997491837,
+            0.96470999717712,
+            0.94902002811432
+          ]
+        },
+        {
+          "name": "TXT_MAIN_SHADOW",
+          "role": "shadow",
+          "text": "la",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.50980001688004,
+            0,
+            0
+          ]
+        }
+      ],
+      "placeholderShadowAgree": true
+    },
+    {
+      "compName": "g026__sub_pop",
+      "elementId": "g026",
+      "templateId": "sub_pop",
+      "layerNames": [
+        "TXT_MAIN",
+        "TXT_MAIN_SHADOW"
+      ],
+      "missingDeclared": [],
+      "undeclaredTextLayers": [],
+      "layers": [
+        {
+          "name": "TXT_MAIN",
+          "role": "placeholder",
+          "text": "marque",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.97254997491837,
+            0.96470999717712,
+            0.94902002811432
+          ]
+        },
+        {
+          "name": "TXT_MAIN_SHADOW",
+          "role": "shadow",
+          "text": "marque",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.50980001688004,
+            0,
+            0
+          ]
+        }
+      ],
+      "placeholderShadowAgree": true
+    },
+    {
+      "compName": "g029__sub_pop",
+      "elementId": "g029",
+      "templateId": "sub_pop",
+      "layerNames": [
+        "TXT_MAIN",
+        "TXT_MAIN_SHADOW"
+      ],
+      "missingDeclared": [],
+      "undeclaredTextLayers": [],
+      "layers": [
+        {
+          "name": "TXT_MAIN",
+          "role": "placeholder",
+          "text": "mn",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.97254997491837,
+            0.96470999717712,
+            0.94902002811432
+          ]
+        },
+        {
+          "name": "TXT_MAIN_SHADOW",
+          "role": "shadow",
+          "text": "mn",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.50980001688004,
+            0,
+            0
+          ]
+        }
+      ],
+      "placeholderShadowAgree": true
+    },
+    {
+      "compName": "g030__sub_pop",
+      "elementId": "g030",
+      "templateId": "sub_pop",
+      "layerNames": [
+        "TXT_MAIN",
+        "TXT_MAIN_SHADOW"
+      ],
+      "missingDeclared": [],
+      "undeclaredTextLayers": [],
+      "layers": [
+        {
+          "name": "TXT_MAIN",
+          "role": "placeholder",
+          "text": "ghir",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.97254997491837,
+            0.96470999717712,
+            0.94902002811432
+          ]
+        },
+        {
+          "name": "TXT_MAIN_SHADOW",
+          "role": "shadow",
+          "text": "ghir",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.50980001688004,
+            0,
+            0
+          ]
+        }
+      ],
+      "placeholderShadowAgree": true
+    },
+    {
+      "compName": "g031__sub_pop",
+      "elementId": "g031",
+      "templateId": "sub_pop",
+      "layerNames": [
+        "TXT_MAIN",
+        "TXT_MAIN_SHADOW"
+      ],
+      "missingDeclared": [],
+      "undeclaredTextLayers": [],
+      "layers": [
+        {
+          "name": "TXT_MAIN",
+          "role": "placeholder",
+          "text": "anno",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.97254997491837,
+            0.96470999717712,
+            0.94902002811432
+          ]
+        },
+        {
+          "name": "TXT_MAIN_SHADOW",
+          "role": "shadow",
+          "text": "anno",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.50980001688004,
+            0,
+            0
+          ]
+        }
+      ],
+      "placeholderShadowAgree": true
+    },
+    {
+      "compName": "g032__sub_pop",
+      "elementId": "g032",
+      "templateId": "sub_pop",
+      "layerNames": [
+        "TXT_MAIN",
+        "TXT_MAIN_SHADOW"
+      ],
+      "missingDeclared": [],
+      "undeclaredTextLayers": [],
+      "layers": [
+        {
+          "name": "TXT_MAIN",
+          "role": "placeholder",
+          "text": "il",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.97254997491837,
+            0.96470999717712,
+            0.94902002811432
+          ]
+        },
+        {
+          "name": "TXT_MAIN_SHADOW",
+          "role": "shadow",
+          "text": "il",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.50980001688004,
+            0,
+            0
+          ]
+        }
+      ],
+      "placeholderShadowAgree": true
+    },
+    {
+      "compName": "g033__sub_pop",
+      "elementId": "g033",
+      "templateId": "sub_pop",
+      "layerNames": [
+        "TXT_MAIN",
+        "TXT_MAIN_SHADOW"
+      ],
+      "missingDeclared": [],
+      "undeclaredTextLayers": [],
+      "layers": [
+        {
+          "name": "TXT_MAIN",
+          "role": "placeholder",
+          "text": "nourrit",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.97254997491837,
+            0.96470999717712,
+            0.94902002811432
+          ]
+        },
+        {
+          "name": "TXT_MAIN_SHADOW",
+          "role": "shadow",
+          "text": "nourrit",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.50980001688004,
+            0,
+            0
+          ]
+        }
+      ],
+      "placeholderShadowAgree": true
+    },
+    {
+      "compName": "g034__sub_pop",
+      "elementId": "g034",
+      "templateId": "sub_pop",
+      "layerNames": [
+        "TXT_MAIN",
+        "TXT_MAIN_SHADOW"
+      ],
+      "missingDeclared": [],
+      "undeclaredTextLayers": [],
+      "layers": [
+        {
+          "name": "TXT_MAIN",
+          "role": "placeholder",
+          "text": "il",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.97254997491837,
+            0.96470999717712,
+            0.94902002811432
+          ]
+        },
+        {
+          "name": "TXT_MAIN_SHADOW",
+          "role": "shadow",
+          "text": "il",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.50980001688004,
+            0,
+            0
+          ]
+        }
+      ],
+      "placeholderShadowAgree": true
+    },
+    {
+      "compName": "g035__sub_pop",
+      "elementId": "g035",
+      "templateId": "sub_pop",
+      "layerNames": [
+        "TXT_MAIN",
+        "TXT_MAIN_SHADOW"
+      ],
+      "missingDeclared": [],
+      "undeclaredTextLayers": [],
+      "layers": [
+        {
+          "name": "TXT_MAIN",
+          "role": "placeholder",
+          "text": "hydrate",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.97254997491837,
+            0.96470999717712,
+            0.94902002811432
+          ]
+        },
+        {
+          "name": "TXT_MAIN_SHADOW",
+          "role": "shadow",
+          "text": "hydrate",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.50980001688004,
+            0,
+            0
+          ]
+        }
+      ],
+      "placeholderShadowAgree": true
+    },
+    {
+      "compName": "g036__sub_pop",
+      "elementId": "g036",
+      "templateId": "sub_pop",
+      "layerNames": [
+        "TXT_MAIN",
+        "TXT_MAIN_SHADOW"
+      ],
+      "missingDeclared": [],
+      "undeclaredTextLayers": [],
+      "layers": [
+        {
+          "name": "TXT_MAIN",
+          "role": "placeholder",
+          "text": "fih",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.97254997491837,
+            0.96470999717712,
+            0.94902002811432
+          ]
+        },
+        {
+          "name": "TXT_MAIN_SHADOW",
+          "role": "shadow",
+          "text": "fih",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.50980001688004,
+            0,
+            0
+          ]
+        }
+      ],
+      "placeholderShadowAgree": true
+    },
+    {
+      "compName": "g037__sub_pop",
+      "elementId": "g037",
+      "templateId": "sub_pop",
+      "layerNames": [
+        "TXT_MAIN",
+        "TXT_MAIN_SHADOW"
+      ],
+      "missingDeclared": [],
+      "undeclaredTextLayers": [],
+      "layers": [
+        {
+          "name": "TXT_MAIN",
+          "role": "placeholder",
+          "text": "26",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.97254997491837,
+            0.96470999717712,
+            0.94902002811432
+          ]
+        },
+        {
+          "name": "TXT_MAIN_SHADOW",
+          "role": "shadow",
+          "text": "26",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.50980001688004,
+            0,
+            0
+          ]
+        }
+      ],
+      "placeholderShadowAgree": true
+    },
+    {
+      "compName": "g038__sub_pop",
+      "elementId": "g038",
+      "templateId": "sub_pop",
+      "layerNames": [
+        "TXT_MAIN",
+        "TXT_MAIN_SHADOW"
+      ],
+      "missingDeclared": [],
+      "undeclaredTextLayers": [],
+      "layers": [
+        {
+          "name": "TXT_MAIN",
+          "role": "placeholder",
+          "text": "vitamines",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.97254997491837,
+            0.96470999717712,
+            0.94902002811432
+          ]
+        },
+        {
+          "name": "TXT_MAIN_SHADOW",
+          "role": "shadow",
+          "text": "vitamines",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.50980001688004,
+            0,
+            0
+          ]
+        }
+      ],
+      "placeholderShadowAgree": true
+    },
+    {
+      "compName": "g039__sub_pop",
+      "elementId": "g039",
+      "templateId": "sub_pop",
+      "layerNames": [
+        "TXT_MAIN",
+        "TXT_MAIN_SHADOW"
+      ],
+      "missingDeclared": [],
+      "undeclaredTextLayers": [],
+      "layers": [
+        {
+          "name": "TXT_MAIN",
+          "role": "placeholder",
+          "text": "et",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.97254997491837,
+            0.96470999717712,
+            0.94902002811432
+          ]
+        },
+        {
+          "name": "TXT_MAIN_SHADOW",
+          "role": "shadow",
+          "text": "et",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.50980001688004,
+            0,
+            0
+          ]
+        }
+      ],
+      "placeholderShadowAgree": true
+    },
+    {
+      "compName": "g040__sub_pop",
+      "elementId": "g040",
+      "templateId": "sub_pop",
+      "layerNames": [
+        "TXT_MAIN",
+        "TXT_MAIN_SHADOW"
+      ],
+      "missingDeclared": [],
+      "undeclaredTextLayers": [],
+      "layers": [
+        {
+          "name": "TXT_MAIN",
+          "role": "placeholder",
+          "text": "aussi",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.97254997491837,
+            0.96470999717712,
+            0.94902002811432
+          ]
+        },
+        {
+          "name": "TXT_MAIN_SHADOW",
+          "role": "shadow",
+          "text": "aussi",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.50980001688004,
+            0,
+            0
+          ]
+        }
+      ],
+      "placeholderShadowAgree": true
+    },
+    {
+      "compName": "g041__sub_pop",
+      "elementId": "g041",
+      "templateId": "sub_pop",
+      "layerNames": [
+        "TXT_MAIN",
+        "TXT_MAIN_SHADOW"
+      ],
+      "missingDeclared": [],
+      "undeclaredTextLayers": [],
+      "layers": [
+        {
+          "name": "TXT_MAIN",
+          "role": "placeholder",
+          "text": "des",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.97254997491837,
+            0.96470999717712,
+            0.94902002811432
+          ]
+        },
+        {
+          "name": "TXT_MAIN_SHADOW",
+          "role": "shadow",
+          "text": "des",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.50980001688004,
+            0,
+            0
+          ]
+        }
+      ],
+      "placeholderShadowAgree": true
+    },
+    {
+      "compName": "g042__sub_pop",
+      "elementId": "g042",
+      "templateId": "sub_pop",
+      "layerNames": [
+        "TXT_MAIN",
+        "TXT_MAIN_SHADOW"
+      ],
+      "missingDeclared": [],
+      "undeclaredTextLayers": [],
+      "layers": [
+        {
+          "name": "TXT_MAIN",
+          "role": "placeholder",
+          "text": "enzymes",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.97254997491837,
+            0.96470999717712,
+            0.94902002811432
+          ]
+        },
+        {
+          "name": "TXT_MAIN_SHADOW",
+          "role": "shadow",
+          "text": "enzymes",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.50980001688004,
+            0,
+            0
+          ]
+        }
+      ],
+      "placeholderShadowAgree": true
+    },
+    {
+      "compName": "g043__sub_pop",
+      "elementId": "g043",
+      "templateId": "sub_pop",
+      "layerNames": [
+        "TXT_MAIN",
+        "TXT_MAIN_SHADOW"
+      ],
+      "missingDeclared": [],
+      "undeclaredTextLayers": [],
+      "layers": [
+        {
+          "name": "TXT_MAIN",
+          "role": "placeholder",
+          "text": "et",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.97254997491837,
+            0.96470999717712,
+            0.94902002811432
+          ]
+        },
+        {
+          "name": "TXT_MAIN_SHADOW",
+          "role": "shadow",
+          "text": "et",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.50980001688004,
+            0,
+            0
+          ]
+        }
+      ],
+      "placeholderShadowAgree": true
+    },
+    {
+      "compName": "g044__sub_pop",
+      "elementId": "g044",
+      "templateId": "sub_pop",
+      "layerNames": [
+        "TXT_MAIN",
+        "TXT_MAIN_SHADOW"
+      ],
+      "missingDeclared": [],
+      "undeclaredTextLayers": [],
+      "layers": [
+        {
+          "name": "TXT_MAIN",
+          "role": "placeholder",
+          "text": "c'est",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.97254997491837,
+            0.96470999717712,
+            0.94902002811432
+          ]
+        },
+        {
+          "name": "TXT_MAIN_SHADOW",
+          "role": "shadow",
+          "text": "c'est",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.50980001688004,
+            0,
+            0
+          ]
+        }
+      ],
+      "placeholderShadowAgree": true
+    },
+    {
+      "compName": "g045__sub_pop",
+      "elementId": "g045",
+      "templateId": "sub_pop",
+      "layerNames": [
+        "TXT_MAIN",
+        "TXT_MAIN_SHADOW"
+      ],
+      "missingDeclared": [],
+      "undeclaredTextLayers": [],
+      "layers": [
+        {
+          "name": "TXT_MAIN",
+          "role": "placeholder",
+          "text": "la",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.97254997491837,
+            0.96470999717712,
+            0.94902002811432
+          ]
+        },
+        {
+          "name": "TXT_MAIN_SHADOW",
+          "role": "shadow",
+          "text": "la",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.50980001688004,
+            0,
+            0
+          ]
+        }
+      ],
+      "placeholderShadowAgree": true
+    },
+    {
+      "compName": "g046__sub_pop",
+      "elementId": "g046",
+      "templateId": "sub_pop",
+      "layerNames": [
+        "TXT_MAIN",
+        "TXT_MAIN_SHADOW"
+      ],
+      "missingDeclared": [],
+      "undeclaredTextLayers": [],
+      "layers": [
+        {
+          "name": "TXT_MAIN",
+          "role": "placeholder",
+          "text": "dernière",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.97254997491837,
+            0.96470999717712,
+            0.94902002811432
+          ]
+        },
+        {
+          "name": "TXT_MAIN_SHADOW",
+          "role": "shadow",
+          "text": "dernière",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.50980001688004,
+            0,
+            0
+          ]
+        }
+      ],
+      "placeholderShadowAgree": true
+    },
+    {
+      "compName": "g047__sub_pop",
+      "elementId": "g047",
+      "templateId": "sub_pop",
+      "layerNames": [
+        "TXT_MAIN",
+        "TXT_MAIN_SHADOW"
+      ],
+      "missingDeclared": [],
+      "undeclaredTextLayers": [],
+      "layers": [
+        {
+          "name": "TXT_MAIN",
+          "role": "placeholder",
+          "text": "génération",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.97254997491837,
+            0.96470999717712,
+            0.94902002811432
+          ]
+        },
+        {
+          "name": "TXT_MAIN_SHADOW",
+          "role": "shadow",
+          "text": "génération",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.50980001688004,
+            0,
+            0
+          ]
+        }
+      ],
+      "placeholderShadowAgree": true
+    },
+    {
+      "compName": "g048__sub_pop",
+      "elementId": "g048",
+      "templateId": "sub_pop",
+      "layerNames": [
+        "TXT_MAIN",
+        "TXT_MAIN_SHADOW"
+      ],
+      "missingDeclared": [],
+      "undeclaredTextLayers": [],
+      "layers": [
+        {
+          "name": "TXT_MAIN",
+          "role": "placeholder",
+          "text": "dial",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.97254997491837,
+            0.96470999717712,
+            0.94902002811432
+          ]
+        },
+        {
+          "name": "TXT_MAIN_SHADOW",
+          "role": "shadow",
+          "text": "dial",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.50980001688004,
+            0,
+            0
+          ]
+        }
+      ],
+      "placeholderShadowAgree": true
+    },
+    {
+      "compName": "g049__sub_pop",
+      "elementId": "g049",
+      "templateId": "sub_pop",
+      "layerNames": [
+        "TXT_MAIN",
+        "TXT_MAIN_SHADOW"
+      ],
+      "missingDeclared": [],
+      "undeclaredTextLayers": [],
+      "layers": [
+        {
+          "name": "TXT_MAIN",
+          "role": "placeholder",
+          "text": "lissage",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.97254997491837,
+            0.96470999717712,
+            0.94902002811432
+          ]
+        },
+        {
+          "name": "TXT_MAIN_SHADOW",
+          "role": "shadow",
+          "text": "lissage",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.50980001688004,
+            0,
+            0
+          ]
+        }
+      ],
+      "placeholderShadowAgree": true
+    },
+    {
+      "compName": "g050__sub_pop",
+      "elementId": "g050",
+      "templateId": "sub_pop",
+      "layerNames": [
+        "TXT_MAIN",
+        "TXT_MAIN_SHADOW"
+      ],
+      "missingDeclared": [],
+      "undeclaredTextLayers": [],
+      "layers": [
+        {
+          "name": "TXT_MAIN",
+          "role": "placeholder",
+          "text": "brésilien",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.97254997491837,
+            0.96470999717712,
+            0.94902002811432
+          ]
+        },
+        {
+          "name": "TXT_MAIN_SHADOW",
+          "role": "shadow",
+          "text": "brésilien",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.50980001688004,
+            0,
+            0
+          ]
+        }
+      ],
+      "placeholderShadowAgree": true
+    },
+    {
+      "compName": "g051__sub_pop",
+      "elementId": "g051",
+      "templateId": "sub_pop",
+      "layerNames": [
+        "TXT_MAIN",
+        "TXT_MAIN_SHADOW"
+      ],
+      "missingDeclared": [],
+      "undeclaredTextLayers": [],
+      "layers": [
+        {
+          "name": "TXT_MAIN",
+          "role": "placeholder",
+          "text": "chno",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.97254997491837,
+            0.96470999717712,
+            0.94902002811432
+          ]
+        },
+        {
+          "name": "TXT_MAIN_SHADOW",
+          "role": "shadow",
+          "text": "chno",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.50980001688004,
+            0,
+            0
+          ]
+        }
+      ],
+      "placeholderShadowAgree": true
+    },
+    {
+      "compName": "g052__sub_pop",
+      "elementId": "g052",
+      "templateId": "sub_pop",
+      "layerNames": [
+        "TXT_MAIN",
+        "TXT_MAIN_SHADOW"
+      ],
+      "missingDeclared": [],
+      "undeclaredTextLayers": [],
+      "layers": [
+        {
+          "name": "TXT_MAIN",
+          "role": "placeholder",
+          "text": "katsnay",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.97254997491837,
+            0.96470999717712,
+            0.94902002811432
+          ]
+        },
+        {
+          "name": "TXT_MAIN_SHADOW",
+          "role": "shadow",
+          "text": "katsnay",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.50980001688004,
+            0,
+            0
+          ]
+        }
+      ],
+      "placeholderShadowAgree": true
+    },
+    {
+      "compName": "g053__sub_pop",
+      "elementId": "g053",
+      "templateId": "sub_pop",
+      "layerNames": [
+        "TXT_MAIN",
+        "TXT_MAIN_SHADOW"
+      ],
+      "missingDeclared": [],
+      "undeclaredTextLayers": [],
+      "layers": [
+        {
+          "name": "TXT_MAIN",
+          "role": "placeholder",
+          "text": "bach",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.97254997491837,
+            0.96470999717712,
+            0.94902002811432
+          ]
+        },
+        {
+          "name": "TXT_MAIN_SHADOW",
+          "role": "shadow",
+          "text": "bach",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.50980001688004,
+            0,
+            0
+          ]
+        }
+      ],
+      "placeholderShadowAgree": true
+    },
+    {
+      "compName": "g054__sub_pop",
+      "elementId": "g054",
+      "templateId": "sub_pop",
+      "layerNames": [
+        "TXT_MAIN",
+        "TXT_MAIN_SHADOW"
+      ],
+      "missingDeclared": [],
+      "undeclaredTextLayers": [],
+      "layers": [
+        {
+          "name": "TXT_MAIN",
+          "role": "placeholder",
+          "text": "thllay",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.97254997491837,
+            0.96470999717712,
+            0.94902002811432
+          ]
+        },
+        {
+          "name": "TXT_MAIN_SHADOW",
+          "role": "shadow",
+          "text": "thllay",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.50980001688004,
+            0,
+            0
+          ]
+        }
+      ],
+      "placeholderShadowAgree": true
+    },
+    {
+      "compName": "g055__sub_pop",
+      "elementId": "g055",
+      "templateId": "sub_pop",
+      "layerNames": [
+        "TXT_MAIN",
+        "TXT_MAIN_SHADOW"
+      ],
+      "missingDeclared": [],
+      "undeclaredTextLayers": [],
+      "layers": [
+        {
+          "name": "TXT_MAIN",
+          "role": "placeholder",
+          "text": "f",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.97254997491837,
+            0.96470999717712,
+            0.94902002811432
+          ]
+        },
+        {
+          "name": "TXT_MAIN_SHADOW",
+          "role": "shadow",
+          "text": "f",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.50980001688004,
+            0,
+            0
+          ]
+        }
+      ],
+      "placeholderShadowAgree": true
+    },
+    {
+      "compName": "g056__sub_pop",
+      "elementId": "g056",
+      "templateId": "sub_pop",
+      "layerNames": [
+        "TXT_MAIN",
+        "TXT_MAIN_SHADOW"
+      ],
+      "missingDeclared": [],
+      "undeclaredTextLayers": [],
+      "layers": [
+        {
+          "name": "TXT_MAIN",
+          "role": "placeholder",
+          "text": "ch3rk",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.97254997491837,
+            0.96470999717712,
+            0.94902002811432
+          ]
+        },
+        {
+          "name": "TXT_MAIN_SHADOW",
+          "role": "shadow",
+          "text": "ch3rk",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.50980001688004,
+            0,
+            0
+          ]
+        }
+      ],
+      "placeholderShadowAgree": true
+    },
+    {
+      "compName": "g057__sub_pop",
+      "elementId": "g057",
+      "templateId": "sub_pop",
+      "layerNames": [
+        "TXT_MAIN",
+        "TXT_MAIN_SHADOW"
+      ],
+      "missingDeclared": [],
+      "undeclaredTextLayers": [],
+      "layers": [
+        {
+          "name": "TXT_MAIN",
+          "role": "placeholder",
+          "text": "siri",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.97254997491837,
+            0.96470999717712,
+            0.94902002811432
+          ]
+        },
+        {
+          "name": "TXT_MAIN_SHADOW",
+          "role": "shadow",
+          "text": "siri",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.50980001688004,
+            0,
+            0
+          ]
+        }
+      ],
+      "placeholderShadowAgree": true
+    },
+    {
+      "compName": "g058__sub_pop",
+      "elementId": "g058",
+      "templateId": "sub_pop",
+      "layerNames": [
+        "TXT_MAIN",
+        "TXT_MAIN_SHADOW"
+      ],
+      "missingDeclared": [],
+      "undeclaredTextLayers": [],
+      "layers": [
+        {
+          "name": "TXT_MAIN",
+          "role": "placeholder",
+          "text": "la9rab",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.97254997491837,
+            0.96470999717712,
+            0.94902002811432
+          ]
+        },
+        {
+          "name": "TXT_MAIN_SHADOW",
+          "role": "shadow",
+          "text": "la9rab",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.50980001688004,
+            0,
+            0
+          ]
+        }
+      ],
+      "placeholderShadowAgree": true
+    },
+    {
+      "compName": "g059__sub_pop",
+      "elementId": "g059",
+      "templateId": "sub_pop",
+      "layerNames": [
+        "TXT_MAIN",
+        "TXT_MAIN_SHADOW"
+      ],
+      "missingDeclared": [],
+      "undeclaredTextLayers": [],
+      "layers": [
+        {
+          "name": "TXT_MAIN",
+          "role": "placeholder",
+          "text": "salon",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.97254997491837,
+            0.96470999717712,
+            0.94902002811432
+          ]
+        },
+        {
+          "name": "TXT_MAIN_SHADOW",
+          "role": "shadow",
+          "text": "salon",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.50980001688004,
+            0,
+            0
+          ]
+        }
+      ],
+      "placeholderShadowAgree": true
+    },
+    {
+      "compName": "g060__sub_pop",
+      "elementId": "g060",
+      "templateId": "sub_pop",
+      "layerNames": [
+        "TXT_MAIN",
+        "TXT_MAIN_SHADOW"
+      ],
+      "missingDeclared": [],
+      "undeclaredTextLayers": [],
+      "layers": [
+        {
+          "name": "TXT_MAIN",
+          "role": "placeholder",
+          "text": "ila",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.97254997491837,
+            0.96470999717712,
+            0.94902002811432
+          ]
+        },
+        {
+          "name": "TXT_MAIN_SHADOW",
+          "role": "shadow",
+          "text": "ila",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.50980001688004,
+            0,
+            0
+          ]
+        }
+      ],
+      "placeholderShadowAgree": true
+    },
+    {
+      "compName": "g061__sub_pop",
+      "elementId": "g061",
+      "templateId": "sub_pop",
+      "layerNames": [
+        "TXT_MAIN",
+        "TXT_MAIN_SHADOW"
+      ],
+      "missingDeclared": [],
+      "undeclaredTextLayers": [],
+      "layers": [
+        {
+          "name": "TXT_MAIN",
+          "role": "placeholder",
+          "text": "l9iti",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.97254997491837,
+            0.96470999717712,
+            0.94902002811432
+          ]
+        },
+        {
+          "name": "TXT_MAIN_SHADOW",
+          "role": "shadow",
+          "text": "l9iti",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.50980001688004,
+            0,
+            0
+          ]
+        }
+      ],
+      "placeholderShadowAgree": true
+    },
+    {
+      "compName": "g062__sub_pop",
+      "elementId": "g062",
+      "templateId": "sub_pop",
+      "layerNames": [
+        "TXT_MAIN",
+        "TXT_MAIN_SHADOW"
+      ],
+      "missingDeclared": [],
+      "undeclaredTextLayers": [],
+      "layers": [
+        {
+          "name": "TXT_MAIN",
+          "role": "placeholder",
+          "text": "3ndhom",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.97254997491837,
+            0.96470999717712,
+            0.94902002811432
+          ]
+        },
+        {
+          "name": "TXT_MAIN_SHADOW",
+          "role": "shadow",
+          "text": "3ndhom",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.50980001688004,
+            0,
+            0
+          ]
+        }
+      ],
+      "placeholderShadowAgree": true
+    },
+    {
+      "compName": "g063__sub_pop",
+      "elementId": "g063",
+      "templateId": "sub_pop",
+      "layerNames": [
+        "TXT_MAIN",
+        "TXT_MAIN_SHADOW"
+      ],
+      "missingDeclared": [],
+      "undeclaredTextLayers": [],
+      "layers": [
+        {
+          "name": "TXT_MAIN",
+          "role": "placeholder",
+          "text": "la",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.97254997491837,
+            0.96470999717712,
+            0.94902002811432
+          ]
+        },
+        {
+          "name": "TXT_MAIN_SHADOW",
+          "role": "shadow",
+          "text": "la",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.50980001688004,
+            0,
+            0
+          ]
+        }
+      ],
+      "placeholderShadowAgree": true
+    },
+    {
+      "compName": "g064__sub_pop",
+      "elementId": "g064",
+      "templateId": "sub_pop",
+      "layerNames": [
+        "TXT_MAIN",
+        "TXT_MAIN_SHADOW"
+      ],
+      "missingDeclared": [],
+      "undeclaredTextLayers": [],
+      "layers": [
+        {
+          "name": "TXT_MAIN",
+          "role": "placeholder",
+          "text": "marque",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.97254997491837,
+            0.96470999717712,
+            0.94902002811432
+          ]
+        },
+        {
+          "name": "TXT_MAIN_SHADOW",
+          "role": "shadow",
+          "text": "marque",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.50980001688004,
+            0,
+            0
+          ]
+        }
+      ],
+      "placeholderShadowAgree": true
+    },
+    {
+      "compName": "g065__sub_pop",
+      "elementId": "g065",
+      "templateId": "sub_pop",
+      "layerNames": [
+        "TXT_MAIN",
+        "TXT_MAIN_SHADOW"
+      ],
+      "missingDeclared": [],
+      "undeclaredTextLayers": [],
+      "layers": [
+        {
+          "name": "TXT_MAIN",
+          "role": "placeholder",
+          "text": "Vita",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.97254997491837,
+            0.96470999717712,
+            0.94902002811432
+          ]
+        },
+        {
+          "name": "TXT_MAIN_SHADOW",
+          "role": "shadow",
+          "text": "Vita",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.50980001688004,
+            0,
+            0
+          ]
+        }
+      ],
+      "placeholderShadowAgree": true
+    },
+    {
+      "compName": "g066__sub_pop",
+      "elementId": "g066",
+      "templateId": "sub_pop",
+      "layerNames": [
+        "TXT_MAIN",
+        "TXT_MAIN_SHADOW"
+      ],
+      "missingDeclared": [],
+      "undeclaredTextLayers": [],
+      "layers": [
+        {
+          "name": "TXT_MAIN",
+          "role": "placeholder",
+          "text": "Silk",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.97254997491837,
+            0.96470999717712,
+            0.94902002811432
+          ]
+        },
+        {
+          "name": "TXT_MAIN_SHADOW",
+          "role": "shadow",
+          "text": "Silk",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.50980001688004,
+            0,
+            0
+          ]
+        }
+      ],
+      "placeholderShadowAgree": true
+    },
+    {
+      "compName": "g067__sub_pop",
+      "elementId": "g067",
+      "templateId": "sub_pop",
+      "layerNames": [
+        "TXT_MAIN",
+        "TXT_MAIN_SHADOW"
+      ],
+      "missingDeclared": [],
+      "undeclaredTextLayers": [],
+      "layers": [
+        {
+          "name": "TXT_MAIN",
+          "role": "placeholder",
+          "text": "wl9iti",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.97254997491837,
+            0.96470999717712,
+            0.94902002811432
+          ]
+        },
+        {
+          "name": "TXT_MAIN_SHADOW",
+          "role": "shadow",
+          "text": "wl9iti",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.50980001688004,
+            0,
+            0
+          ]
+        }
+      ],
+      "placeholderShadowAgree": true
+    },
+    {
+      "compName": "g068__sub_pop",
+      "elementId": "g068",
+      "templateId": "sub_pop",
+      "layerNames": [
+        "TXT_MAIN",
+        "TXT_MAIN_SHADOW"
+      ],
+      "missingDeclared": [],
+      "undeclaredTextLayers": [],
+      "layers": [
+        {
+          "name": "TXT_MAIN",
+          "role": "placeholder",
+          "text": "le",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.97254997491837,
+            0.96470999717712,
+            0.94902002811432
+          ]
+        },
+        {
+          "name": "TXT_MAIN_SHADOW",
+          "role": "shadow",
+          "text": "le",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.50980001688004,
+            0,
+            0
+          ]
+        }
+      ],
+      "placeholderShadowAgree": true
+    },
+    {
+      "compName": "g069__sub_pop",
+      "elementId": "g069",
+      "templateId": "sub_pop",
+      "layerNames": [
+        "TXT_MAIN",
+        "TXT_MAIN_SHADOW"
+      ],
+      "missingDeclared": [],
+      "undeclaredTextLayers": [],
+      "layers": [
+        {
+          "name": "TXT_MAIN",
+          "role": "placeholder",
+          "text": "filler",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.97254997491837,
+            0.96470999717712,
+            0.94902002811432
+          ]
+        },
+        {
+          "name": "TXT_MAIN_SHADOW",
+          "role": "shadow",
+          "text": "filler",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.50980001688004,
+            0,
+            0
+          ]
+        }
+      ],
+      "placeholderShadowAgree": true
+    },
+    {
+      "compName": "g070__sub_pop",
+      "elementId": "g070",
+      "templateId": "sub_pop",
+      "layerNames": [
+        "TXT_MAIN",
+        "TXT_MAIN_SHADOW"
+      ],
+      "missingDeclared": [],
+      "undeclaredTextLayers": [],
+      "layers": [
+        {
+          "name": "TXT_MAIN",
+          "role": "placeholder",
+          "text": "glow",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.97254997491837,
+            0.96470999717712,
+            0.94902002811432
+          ]
+        },
+        {
+          "name": "TXT_MAIN_SHADOW",
+          "role": "shadow",
+          "text": "glow",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.50980001688004,
+            0,
+            0
+          ]
+        }
+      ],
+      "placeholderShadowAgree": true
+    },
+    {
+      "compName": "g071__sub_pop",
+      "elementId": "g071",
+      "templateId": "sub_pop",
+      "layerNames": [
+        "TXT_MAIN",
+        "TXT_MAIN_SHADOW"
+      ],
+      "missingDeclared": [],
+      "undeclaredTextLayers": [],
+      "layers": [
+        {
+          "name": "TXT_MAIN",
+          "role": "placeholder",
+          "text": "matrddadich",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.97254997491837,
+            0.96470999717712,
+            0.94902002811432
+          ]
+        },
+        {
+          "name": "TXT_MAIN_SHADOW",
+          "role": "shadow",
+          "text": "matrddadich",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.50980001688004,
+            0,
+            0
+          ]
+        }
+      ],
+      "placeholderShadowAgree": true
+    },
+    {
+      "compName": "g072__sub_pop",
+      "elementId": "g072",
+      "templateId": "sub_pop",
+      "layerNames": [
+        "TXT_MAIN",
+        "TXT_MAIN_SHADOW"
+      ],
+      "missingDeclared": [],
+      "undeclaredTextLayers": [],
+      "layers": [
+        {
+          "name": "TXT_MAIN",
+          "role": "placeholder",
+          "text": "wla",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.97254997491837,
+            0.96470999717712,
+            0.94902002811432
+          ]
+        },
+        {
+          "name": "TXT_MAIN_SHADOW",
+          "role": "shadow",
+          "text": "wla",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.50980001688004,
+            0,
+            0
+          ]
+        }
+      ],
+      "placeholderShadowAgree": true
+    },
+    {
+      "compName": "g073__sub_pop",
+      "elementId": "g073",
+      "templateId": "sub_pop",
+      "layerNames": [
+        "TXT_MAIN",
+        "TXT_MAIN_SHADOW"
+      ],
+      "missingDeclared": [],
+      "undeclaredTextLayers": [],
+      "layers": [
+        {
+          "name": "TXT_MAIN",
+          "role": "placeholder",
+          "text": "d9i9a",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.97254997491837,
+            0.96470999717712,
+            0.94902002811432
+          ]
+        },
+        {
+          "name": "TXT_MAIN_SHADOW",
+          "role": "shadow",
+          "text": "d9i9a",
+          "font": "Inter-SemiBold",
+          "fontSize": 343,
+          "tracking": 0,
+          "fillColor": [
+            0.50980001688004,
+            0,
+            0
+          ]
+        }
+      ],
+      "placeholderShadowAgree": true
+    },
+    {
+      "compName": "k001__kw_slam",
+      "elementId": "k001",
+      "templateId": "kw_slam",
+      "layerNames": [
+        "TXT_MAIN",
+        "TXT_MAIN_SHADOW"
+      ],
+      "missingDeclared": [],
+      "undeclaredTextLayers": [],
+      "layers": [
+        {
+          "name": "TXT_MAIN",
+          "role": "placeholder",
+          "text": "filler glow",
+          "font": "CormorantGaramondItalic-SemiBoldItalic",
+          "fontSize": 494.742004394531,
+          "tracking": 0,
+          "fillColor": [
+            0.7882399559021,
+            0.66275000572205,
+            0.4313699901104
+          ]
+        },
+        {
+          "name": "TXT_MAIN_SHADOW",
+          "role": "shadow",
+          "text": "filler glow",
+          "font": "CormorantGaramondItalic-SemiBoldItalic",
+          "fontSize": 494.742004394531,
+          "tracking": 0,
+          "fillColor": [
+            0.50980001688004,
+            0,
+            0
+          ]
+        }
+      ],
+      "placeholderShadowAgree": true
+    },
+    {
+      "compName": "k002__kw_slam",
+      "elementId": "k002",
+      "templateId": "kw_slam",
+      "layerNames": [
+        "TXT_MAIN",
+        "TXT_MAIN_SHADOW"
+      ],
+      "missingDeclared": [],
+      "undeclaredTextLayers": [],
+      "layers": [
+        {
+          "name": "TXT_MAIN",
+          "role": "placeholder",
+          "text": "Vita Silk",
+          "font": "CormorantGaramondItalic-SemiBoldItalic",
+          "fontSize": 494.742004394531,
+          "tracking": 0,
+          "fillColor": [
+            0.7882399559021,
+            0.66275000572205,
+            0.4313699901104
+          ]
+        },
+        {
+          "name": "TXT_MAIN_SHADOW",
+          "role": "shadow",
+          "text": "Vita Silk",
+          "font": "CormorantGaramondItalic-SemiBoldItalic",
+          "fontSize": 494.742004394531,
+          "tracking": 0,
+          "fillColor": [
+            0.50980001688004,
+            0,
+            0
+          ]
+        }
+      ],
+      "placeholderShadowAgree": true
+    },
+    {
+      "compName": "k003__kw_slam",
+      "elementId": "k003",
+      "templateId": "kw_slam",
+      "layerNames": [
+        "TXT_MAIN",
+        "TXT_MAIN_SHADOW"
+      ],
+      "missingDeclared": [],
+      "undeclaredTextLayers": [],
+      "layers": [
+        {
+          "name": "TXT_MAIN",
+          "role": "placeholder",
+          "text": "7rir",
+          "font": "CormorantGaramondItalic-SemiBoldItalic",
+          "fontSize": 494.742004394531,
+          "tracking": 0,
+          "fillColor": [
+            0.7882399559021,
+            0.66275000572205,
+            0.4313699901104
+          ]
+        },
+        {
+          "name": "TXT_MAIN_SHADOW",
+          "role": "shadow",
+          "text": "7rir",
+          "font": "CormorantGaramondItalic-SemiBoldItalic",
+          "fontSize": 494.742004394531,
+          "tracking": 0,
+          "fillColor": [
+            0.50980001688004,
+            0,
+            0
+          ]
+        }
+      ],
+      "placeholderShadowAgree": true
+    }
+  ],
+  "summary": {
+    "compCount": 84,
+    "masterCount": 2,
+    "elementCompCount": 76,
+    "libraryCompCount": 6,
+    "textCompCount": 71,
+    "textLayersChecked": 142,
+    "placeholderWordsSurviving": 0,
+    "compsWithMissingDeclaredLayer": 0,
+    "compsWithUndeclaredTextLayer": 0,
+    "compsWherePlaceholderAndShadowDiffer": 0,
+    "fontsSeen": [
+      "CormorantGaramondItalic-SemiBoldItalic",
+      "Inter-SemiBold"
+    ],
+    "unexpectedFonts": [],
+    "emptyTextLayers": 0
+  }
+}
