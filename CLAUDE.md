@@ -2134,8 +2134,11 @@ were this one word. `benchmarks/RESULTS-block2-dialrule.md` measured it: the
 instability is gone (6/6 occurrences comply in all three runs, stability
 69/81 → 79/81) and WER stayed inside the floor.
 
-**All four references are versioned, and all four are now
-`v1.0.6-conformant`.** Two corrections got them there. Block 3 session 1 fixed
+**All four references are versioned. They were `v1.0.6-conformant` when Block 3
+closed and all four read `v1.0.8-conformant` on disk today**, verified by
+`npm run bench:verify-refs` inside `npm run check` — the guide bump to v1.0.8
+moved no WER figure, because the references already carried the fused form.
+Two corrections got them to v1.0.6. Block 3 session 1 fixed
 `test-1` and `test-2` — `dla vidéo` → `dial lvidéo`, `joj dl 7essass` →
 `joj dial l7essass`. Block 3 session 2 swept all four against the current guide
 with the conformance scorer and straightened the three curly apostrophes §4
@@ -7570,3 +7573,84 @@ so the two unanalysed reels are $4.70 of it.
 **Block 9 session 13's report said "about $2.17 a reel", which was the image half
 alone.** The reel figure is $2.35.
 
+
+
+## Block 10 session 1 — the ground state, and the build observed end to end
+
+**Spent $0.00; no API was called.** Ledger **116 lines, sha `e5e0a6e9…`,
+byte-identical at both ends**; `templates/library.aep` `1d7553e894…` at both
+ends; the cache **byte-identical** — 44 entries, 55,355,647 bytes, 77 files,
+none created, none evicted. After Effects pid 79146 throughout, 0 `aerender`.
+
+`reports/block-10-ground-state.json` is the machine-readable census; the report
+is `reports/block-10-session-1.md`.
+
+**The machine of record:** macOS 26.6.2 on an Apple M3, node v24.14.1 (`.nvmrc`
+24), npm 11.11.0, Python 3.11.14 in `tools/cv/.venv`, ffmpeg/ffprobe 8.0.1 at
+`/opt/homebrew/bin`, git 2.50.1, After Effects **26.0x67**, machine label
+`anouar-mbp`. `npm run check` exit 0: core **547**/39, service **1146**/90,
+benchmarks **166**/16, panel **159 passed + 2 skipped**/6, pytest **149**.
+
+**Dry run, all five reels, measured rather than quoted:** `test-1`, `test-2`
+and `vitasilk` read **$0.00**; `ground-truth` and `test-3` read **$2.3508**
+each, which is $4.70 of the ~$6.82 remaining. Every reel resolves transcription
+`compatible` against the pinned guide-v1.0.7 entry.
+
+### The build path is confirmed, from Node
+
+`runBuildJob` — the function `POST /jobs {type:"build"}` calls, spawning the
+same `build-reel-cli.js` a terminal runs — built `vitasilk` in **5.091 s** and
+reported its save path. Read back out of After Effects rather than trusted:
+`master_final` 2160x3840 / 25.6924 s / 29.9700317 fps / **83 layers**,
+`master_subs_only` **72**, 84 comps in 97 items, project clean.
+
+**71 text comps and 142 text layers checked individually: 0 placeholder words
+surviving, 0 comps with an unexpected layer set, 0 text mismatches against the
+plan, 0 font mismatches.** 68 `Inter-SemiBold` subtitles in crème `#F8F6F2`,
+3 `CormorantGaramondItalic-SemiBoldItalic` keywords in gold `#C9A96E`, all 71
+shadows in Rouge K2 `#820000`. Watermark `medium` at 324 px, 108 px from both
+near edges, `alphaMode` 5414, out at 1.000 s. Five images at 836.8 px, five
+whooshes at −13.24 dB, footage at −3.07 dB, `img001`'s sound starting at
+**−0.46713 s** with its in-point at 0.
+
+**What it does not establish: anything about the panel.** The button was not
+pressed, nothing went through CEP `evalScript`, and neither the dry run nor the
+build went over the service's HTTP layer. A claim about the host made from
+outside the host is not evidence.
+
+### Nothing writes `build.status`
+
+**`vitasilk`'s plan is byte-identical before and after a successful build** and
+its `build` block still reads `{status: "none", aepPath: null, builtAt: null}`.
+All five plans do. ARCHITECTURE §3 defines the field and
+`service/src/editplan/merge.ts` acts on it — a transcript change marks a
+`built` plan **`stale`** — so **that branch has never been reachable**, and a
+reel that was built and then edited is indistinguishable from one never built.
+The sibling of the defect Block 9 session 14 fixed one layer up: the build now
+reports its save path to the caller, and the caller does not persist it. **Not
+fixed**; the session's job was the "before".
+
+### The font-pollution claim does not reproduce, so the font check is neither certified nor dismissed
+
+All three K2 faces read installed and `missingFonts` is empty. But the record
+says a name that is set but not installed pollutes `app.fonts.allFonts` for the
+rest of the application session and only a restart clears it — and **the
+sentinel `FramopiaNoSuchFaceZZQX` is absent**, though `measure-fonts.jsx` wrote
+it on 2026-08-30 00:14 **inside this same process**, which started 2026-08-27
+21:00 and has not restarted. The name count is **1198** now against **1200**
+recorded then: two fewer, not one more. Neither figure is explained, and
+nothing here separates "the pollution does not persist" from "the reader cannot
+see it". Only a restart settles it, which a session may not do.
+
+### Two smaller findings
+
+**The watermark is layer index 6, not 1.** Block 7 session 10 recorded "index 1
+with 0 layers above it"; the five SFX layers now sit above it. Audio occludes
+nothing, so the comp is correct — but a check written against that sentence
+would fail on a correct build, and the property that matters (no *visible*
+layer above the mark) is asserted nowhere.
+
+**`.local/build/loudness/` holds one record**, `vitasilk.json`, while all five
+plans carry `dialogueLufs`. The driven measurement path has been exercised on
+exactly one reel and the freshness comparison has one sample; a second machine
+has none.

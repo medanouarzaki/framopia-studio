@@ -1,0 +1,1235 @@
+{
+  "generatedAt": "2026-08-30T14:24:28.354224+00:00",
+  "session": "block-10-session-1",
+  "preconditions": {
+    "repoPath": "/Volumes/T7 Shield/INSEA/Projects/framopia-studio",
+    "packageName": "framopia-studio",
+    "gitBranch": "main",
+    "gitHead": "f1ab167eba4a1377175bc36ecb719a73592a45cb",
+    "gitHeadSubject": "docs: report block 9 session 14",
+    "workingTreeCleanAtStart": true,
+    "afterEffectsInstances": 1,
+    "aerenderProcesses": 0,
+    "ledgerLines": 116,
+    "ledgerSha256Start": "e5e0a6e9d6735188065fdbcb33bb9211cf1fc95a5cbc23b192ad246299c132cb",
+    "libraryAepSha256Start": "1d7553e894e10f82051131e8c1b37305fa8ad14a1d6843df4a40415d2bc4a5d8"
+  },
+  "machine": {
+    "macOS": "26.6.2 (25G83)",
+    "chip": "Apple M3",
+    "arch": "arm64",
+    "computerName": "MacBook Air (2)",
+    "machineLabel": "anouar-mbp",
+    "backupDirConfigured": true,
+    "configKeys": [
+      "elevenLabsApiKey",
+      "googleApiKey",
+      "machineLabel",
+      "backupDir"
+    ]
+  },
+  "toolchain": {
+    "node": "v24.14.1",
+    "npm": "11.11.0",
+    "nvmrc": "24",
+    "python": "3.11.14",
+    "venvPath": "tools/cv/.venv",
+    "venvExists": true,
+    "ffmpeg": {
+      "version": "8.0.1",
+      "path": "/opt/homebrew/bin/ffmpeg"
+    },
+    "ffprobe": {
+      "version": "8.0.1",
+      "path": "/opt/homebrew/bin/ffprobe"
+    },
+    "git": "2.50.1 (Apple Git-155)"
+  },
+  "afterEffects": {
+    "appVersion": "26.0x67",
+    "buildName": "26.0x67",
+    "processStarted": "Thu Aug 27 21:00:05 2026",
+    "uptimeAtCensus": "02-18:19:13",
+    "projectOpenAtCensus": null,
+    "projectDirtyAtCensus": false,
+    "projectNumItemsAtCensus": 0,
+    "fontNameCount": 1198,
+    "requiredFontsPresent": [
+      "Inter-SemiBold",
+      "CormorantGaramondItalic-SemiBoldItalic",
+      "Almarai-Bold"
+    ],
+    "missingFonts": [],
+    "pollutionSentinel": {
+      "name": "FramopiaNoSuchFaceZZQX",
+      "presentInAllFonts": false,
+      "note": "measure-fonts.jsx wrote this name on 2026-08-30T00:14 inside this same AE process (started 2026-08-27T21:00, never restarted since). The recorded claim that writing an uninstalled name pollutes app.fonts.allFonts for the rest of the application session does not reproduce here. Font count was 1200 at that measurement and is 1198 now; the difference is unexplained."
+    }
+  },
+  "docs": {
+    "docs/PROJECT_SPEC.md": {
+      "statedVersion": "Version: 1.0 (Foundation conversation, 2026-08-10)",
+      "sections": [
+        "1. What this is",
+        "2. Users and environment",
+        "3. Hard constraints",
+        "4. Input / output (locked)",
+        "5. Locked product decisions",
+        "6. Architecture (summary — full detail in ARCHITECTURE.md)",
+        "7. Transcription strategy (highest stakes)",
+        "8. Template library (hand-made; system contract)",
+        "9. Quality bar"
+      ]
+    },
+    "docs/ARCHITECTURE.md": {
+      "statedVersion": "Version: 1.0 (Foundation). The Edit Plan schema is versioned independently.",
+      "sections": [
+        "1. The three pieces",
+        "2. Repo layout",
+        "3. The Edit Plan (schema v1)",
+        "4. Data flow (happy path)",
+        "5. Stage notes",
+        "6. Caching & costs",
+        "7. Dev environment",
+        "8. Error philosophy"
+      ]
+    },
+    "docs/CLAUDE_CODE_GUIDELINES.md": {
+      "statedVersion": "Version: 1.0.",
+      "sections": [
+        "1. No AI fingerprints (hard requirement)",
+        "2. Stack conventions",
+        "3. Testing expectations",
+        "4. Session report (mandatory, every session)",
+        "5. CLAUDE.md maintenance",
+        "6. Safety rails"
+      ]
+    },
+    "docs/ORTHOGRAPHY_GUIDE.md": {
+      "statedVersion": "v1.0.8 (stated in the title line and in the Status paragraph; frozen)",
+      "sections": [
+        "1. Scope",
+        "2. Arabizi character conventions (Darija)",
+        "3. Vowels",
+        "3a. Numbers",
+        "4. High-frequency words — fixed spellings (freeze list)",
+        "5. Code-switch boundaries",
+        "6. Latin vs Arabic script — the decision rule",
+        "7. Cleaning rules (applied as flags, never deletion)",
+        "8. Punctuation & casing in subtitles",
+        "9. Resolved decisions and remaining work"
+      ]
+    },
+    "docs/DECISION-image-config.md": {
+      "statedVersion": "no version line; Status: frozen, settled 2026-08-25, with six dated amendments",
+      "sections": [
+        "The frozen config",
+        "The evidence",
+        "Known caveats",
+        "Amendment (2026-08-29) — the gate advises, it never blocks",
+        "Amendment (2026-08-29) — cutout metrics judge cutout slots only",
+        "Amendment (2026-08-29) — nothing measures whether the picture shows the idea",
+        "Amendment (2026-08-29) — the pictures are too dark to read",
+        "Amendment (2026-08-29) — literal or atmospheric, decided per moment",
+        "Amendment (2026-08-30) — the fragments are applied, and the darkness is fixed",
+        "Amendment (2026-08-30) — the framing axis loses its wide value",
+        "References"
+      ]
+    },
+    "docs/DECISION-transcription-config.md": {
+      "statedVersion": "no version line; dated 2026-08-24, with six dated amendments",
+      "sections": [
+        "The frozen config",
+        "Run C — the evidence",
+        "Why not the alternatives",
+        "Known caveats",
+        "Amendment — prompt version 2, tried and reverted (2026-08-24)",
+        "Amendment — prompt version 3 activated (2026-08-25)",
+        "Amendment — prompt version 4 activated (2026-08-25)",
+        "Amendment — transliteration-aware alignment cost adopted (2026-08-28)",
+        "References",
+        "Amendment — the corpus is pinned at ORTHOGRAPHY_GUIDE v1.0.7 (2026-08-28)"
+      ]
+    }
+  },
+  "modes": {
+    "k2-syndicalia": {
+      "version": 12,
+      "fontsStatus": "set",
+      "imageScale": 1.4,
+      "vocabulary": [],
+      "postScriptNames": {
+        "latin": "Inter-SemiBold",
+        "arabic": "Almarai-Bold",
+        "emphasis": "CormorantGaramondItalic-SemiBoldItalic"
+      }
+    }
+  },
+  "corpus": {
+    "test-1": {
+      "planPath": "/Volumes/T7 Shield/INSEA/Projects/framopia-studio/my files/test videos/test 1.editplan.json",
+      "planBytes": 65874,
+      "schemaVersion": 1,
+      "video": "test 1.mov",
+      "videoSha256Prefix": "365967c9fd2c82f7",
+      "durationS": 21.988646,
+      "fps": 29.97002997002997,
+      "widthPx": 2160,
+      "heightPx": 3840,
+      "dialogueLufs": -14,
+      "dialoguePeakDbfs": 0.1,
+      "wordCount": 67,
+      "groupCount": 67,
+      "supersededGroups": 3,
+      "renderedCards": 64,
+      "keywordCount": 2,
+      "imageSlotCount": 4,
+      "candidateCount": 8,
+      "chosenCandidateCount": 0,
+      "sfxEventCount": 4,
+      "zoneCount": 18,
+      "clientMode": {
+        "id": "k2-syndicalia",
+        "version": 5,
+        "path": "/Volumes/T7 Shield/INSEA/Projects/framopia-studio/modes/k2-syndicalia.json"
+      },
+      "clientSnapshotPresent": true,
+      "clientSnapshotClient": "k2-syndicalia",
+      "clientSnapshotVersion": 10,
+      "watermark": null,
+      "build": {
+        "status": "none",
+        "aepPath": null,
+        "builtAt": null
+      },
+      "costs": {
+        "totalUsd": 1.4296757505888888,
+        "byStage": {
+          "transcription": 0.20901575058888888,
+          "analysis": 0,
+          "images": 1.22066
+        },
+        "spentByStage": {
+          "images": 1.22066
+        },
+        "spentUsd": 1.22066
+      },
+      "pipeline": {
+        "transcription": "done",
+        "analysis": "done",
+        "images": "done",
+        "zones": "done",
+        "build": "pending"
+      }
+    },
+    "test-2": {
+      "planPath": "/Volumes/T7 Shield/INSEA/Projects/framopia-studio/my files/test videos/test 2.editplan.json",
+      "planBytes": 51068,
+      "schemaVersion": 1,
+      "video": "test 2.mov",
+      "videoSha256Prefix": "c3a2ac59de3dc1ec",
+      "durationS": 22.322313,
+      "fps": 29.97002997002997,
+      "widthPx": 2160,
+      "heightPx": 3840,
+      "dialogueLufs": -14.6,
+      "dialoguePeakDbfs": 0.2,
+      "wordCount": 69,
+      "groupCount": 69,
+      "supersededGroups": 5,
+      "renderedCards": 64,
+      "keywordCount": 3,
+      "imageSlotCount": 0,
+      "candidateCount": 0,
+      "chosenCandidateCount": 0,
+      "sfxEventCount": 0,
+      "zoneCount": 19,
+      "clientMode": {
+        "id": "k2-syndicalia",
+        "version": 5,
+        "path": "/Volumes/T7 Shield/INSEA/Projects/framopia-studio/modes/k2-syndicalia.json"
+      },
+      "clientSnapshotPresent": true,
+      "clientSnapshotClient": "k2-syndicalia",
+      "clientSnapshotVersion": 10,
+      "watermark": null,
+      "build": {
+        "status": "none",
+        "aepPath": null,
+        "builtAt": null
+      },
+      "costs": {
+        "totalUsd": 0.35145814135,
+        "byStage": {
+          "transcription": 0.16794014135,
+          "analysis": 0.18351800000000001
+        },
+        "spentByStage": {
+          "analysis": 0.412818
+        },
+        "spentUsd": 0.412818
+      },
+      "pipeline": {
+        "transcription": "done",
+        "analysis": "done",
+        "images": "pending",
+        "zones": "done",
+        "build": "pending"
+      }
+    },
+    "test-3": {
+      "planPath": "/Volumes/T7 Shield/INSEA/Projects/framopia-studio/my files/test videos/test 3.editplan.json",
+      "planBytes": 38142,
+      "schemaVersion": 1,
+      "video": "test 3.mov",
+      "videoSha256Prefix": "20f8c61d4f01f867",
+      "durationS": 21.187833,
+      "fps": 29.97002997002997,
+      "widthPx": 2160,
+      "heightPx": 3840,
+      "dialogueLufs": -14.6,
+      "dialoguePeakDbfs": 0.1,
+      "wordCount": 58,
+      "groupCount": 58,
+      "supersededGroups": 0,
+      "renderedCards": 58,
+      "keywordCount": 0,
+      "imageSlotCount": 0,
+      "candidateCount": 0,
+      "chosenCandidateCount": 0,
+      "sfxEventCount": 0,
+      "zoneCount": 7,
+      "clientMode": null,
+      "clientSnapshotPresent": false,
+      "clientSnapshotClient": null,
+      "clientSnapshotVersion": null,
+      "watermark": null,
+      "build": {
+        "status": "none",
+        "aepPath": null,
+        "builtAt": null
+      },
+      "costs": {
+        "totalUsd": 0.12435281201666666,
+        "byStage": {
+          "transcription": 0.12435281201666666
+        }
+      },
+      "pipeline": {
+        "transcription": "done",
+        "analysis": "pending",
+        "images": "pending",
+        "zones": "done",
+        "build": "pending"
+      }
+    },
+    "ground-truth": {
+      "planPath": "/Volumes/T7 Shield/INSEA/Projects/framopia-studio/my files/test videos/ground truth.editplan.json",
+      "planBytes": 48441,
+      "schemaVersion": 1,
+      "video": "ground truth.mov",
+      "videoSha256Prefix": "2b3957559a491ee9",
+      "durationS": 23.256567,
+      "fps": 29.97002997002997,
+      "widthPx": 2160,
+      "heightPx": 3840,
+      "dialogueLufs": -13.9,
+      "dialoguePeakDbfs": 0.1,
+      "wordCount": 76,
+      "groupCount": 76,
+      "supersededGroups": 0,
+      "renderedCards": 76,
+      "keywordCount": 0,
+      "imageSlotCount": 0,
+      "candidateCount": 0,
+      "chosenCandidateCount": 0,
+      "sfxEventCount": 0,
+      "zoneCount": 7,
+      "clientMode": null,
+      "clientSnapshotPresent": false,
+      "clientSnapshotClient": null,
+      "clientSnapshotVersion": null,
+      "watermark": null,
+      "build": {
+        "status": "none",
+        "aepPath": null,
+        "builtAt": null
+      },
+      "costs": {
+        "totalUsd": 0.16580323464999996,
+        "byStage": {
+          "transcription": 0.16580323464999996
+        }
+      },
+      "pipeline": {
+        "transcription": "done",
+        "analysis": "pending",
+        "images": "pending",
+        "zones": "done",
+        "build": "pending"
+      }
+    },
+    "vitasilk": {
+      "planPath": "/Volumes/T7 Shield/INSEA/Projects/framopia-studio/my files/test videos/vitasilk.editplan.json",
+      "planBytes": 86580,
+      "schemaVersion": 1,
+      "video": "vitasilk.mov",
+      "videoSha256Prefix": "99dfe0e530ab85d1",
+      "durationS": 25.692333,
+      "fps": 29.97002997002997,
+      "widthPx": 2160,
+      "heightPx": 3840,
+      "dialogueLufs": -14.4,
+      "dialoguePeakDbfs": 0,
+      "wordCount": 73,
+      "groupCount": 73,
+      "supersededGroups": 5,
+      "renderedCards": 68,
+      "keywordCount": 3,
+      "imageSlotCount": 5,
+      "candidateCount": 10,
+      "chosenCandidateCount": 0,
+      "sfxEventCount": 5,
+      "zoneCount": 20,
+      "clientMode": {
+        "id": "k2-syndicalia",
+        "version": 5,
+        "path": "/Volumes/T7 Shield/INSEA/Projects/framopia-studio/modes/k2-syndicalia.json"
+      },
+      "clientSnapshotPresent": true,
+      "clientSnapshotClient": "k2-syndicalia",
+      "clientSnapshotVersion": 10,
+      "watermark": {
+        "assetPath": "/Volumes/T7 Shield/INSEA/Projects/framopia-studio/assets/watermark/intro.mov",
+        "startS": 0,
+        "durationS": null,
+        "enabled": true,
+        "size": "medium"
+      },
+      "build": {
+        "status": "none",
+        "aepPath": null,
+        "builtAt": null
+      },
+      "costs": {
+        "totalUsd": 0.17065808701666665,
+        "byStage": {
+          "transcription": 0.17065808701666665,
+          "analysis": 0,
+          "images": 0
+        },
+        "spentByStage": {
+          "images": 1.550444
+        },
+        "spentUsd": 1.550444
+      },
+      "pipeline": {
+        "transcription": "done",
+        "analysis": "done",
+        "images": "done",
+        "zones": "done",
+        "build": "pending"
+      }
+    }
+  },
+  "cacheBefore": {
+    "20f8c61d4f01f867865cd348a455999f7ba8721891f6d6c7f817e7ec3c1ad091": {
+      "stages": {
+        "transcription": {
+          "entries": [
+            "transcription-758a3924d090d1b5",
+            "transcription-92adf5b1bf24601a"
+          ],
+          "bytes": 1409998,
+          "files": 4
+        }
+      },
+      "entryCount": 2,
+      "bytes": 1409998,
+      "files": 4
+    },
+    "2b3957559a491ee90e17966f7de514e3709508ec695739a250e09c916c325313": {
+      "stages": {
+        "transcription": {
+          "entries": [
+            "transcription-758a3924d090d1b5",
+            "transcription-92adf5b1bf24601a"
+          ],
+          "bytes": 1560036,
+          "files": 4
+        }
+      },
+      "entryCount": 2,
+      "bytes": 1560036,
+      "files": 4
+    },
+    "365967c9fd2c82f7f62ee05c8bedf47673e5effd4b529ffa698f6daf67028e1c": {
+      "stages": {
+        "analysis": {
+          "entries": [
+            "analysis-229db60f05bcb5bc",
+            "analysis-739311b04c86e805",
+            "analysis-935b2ae8cae28967"
+          ],
+          "bytes": 12232,
+          "files": 3
+        },
+        "images": {
+          "entries": [
+            "images-24594526fbd4e818",
+            "images-32597bdc020f5171",
+            "images-373e6ed213750231",
+            "images-5ca1ccec82d84b06",
+            "images-6916347f930bea15",
+            "images-979c63811e8c2d78",
+            "images-cf9dd3e1cbb70c13",
+            "images-e0ee60ac82f878dd"
+          ],
+          "bytes": 19838206,
+          "files": 16
+        },
+        "imageslots": {
+          "entries": [
+            "imageslots-33f0fee5727dab46",
+            "imageslots-824527f1304e061e"
+          ],
+          "bytes": 7955,
+          "files": 2
+        },
+        "transcription": {
+          "entries": [
+            "transcription-758a3924d090d1b5",
+            "transcription-92adf5b1bf24601a"
+          ],
+          "bytes": 1467723,
+          "files": 4
+        }
+      },
+      "entryCount": 15,
+      "bytes": 21326116,
+      "files": 25
+    },
+    "99dfe0e530ab85d12e2c5e756dc907dca09c75f1257e2bdded28e32795327e72": {
+      "stages": {
+        "analysis": {
+          "entries": [
+            "analysis-590f79bed5eed690",
+            "analysis-951c471154edb3e6",
+            "analysis-c3accc8690e29486"
+          ],
+          "bytes": 11448,
+          "files": 3
+        },
+        "images": {
+          "entries": [
+            "images-10ca07d38e3f608b",
+            "images-2982dc2a1f55bea1",
+            "images-309682651217f6c7",
+            "images-3686c9fe4024787a",
+            "images-369becaf086368f2",
+            "images-400cd405f9caaadb",
+            "images-666271d7c6ae5e33",
+            "images-68e8ae9fa5763537",
+            "images-699c0a38a9c512ff",
+            "images-6ea58062fe8faaec",
+            "images-ac0e7b6fee0743c4",
+            "images-ad2cf7daf27b46f3",
+            "images-b82cc4346e6e8f89",
+            "images-e9fad12565d42c6e"
+          ],
+          "bytes": 26985593,
+          "files": 28
+        },
+        "imageslots": {
+          "entries": [
+            "imageslots-5187924b139f8de5",
+            "imageslots-ad76fcfa6c44d3b4"
+          ],
+          "bytes": 7254,
+          "files": 2
+        },
+        "transcription": {
+          "entries": [
+            "transcription-0cb5401192dbfbc7",
+            "transcription-758a3924d090d1b5",
+            "transcription-92adf5b1bf24601a"
+          ],
+          "bytes": 2557607,
+          "files": 6
+        }
+      },
+      "entryCount": 22,
+      "bytes": 29561902,
+      "files": 39
+    },
+    "c3a2ac59de3dc1ec662aa5ae19c32169d58873e3b46f43d8f0806326c6e1100e": {
+      "stages": {
+        "analysis": {
+          "entries": [
+            "analysis-f92a8e4cad748c67"
+          ],
+          "bytes": 4610,
+          "files": 1
+        },
+        "transcription": {
+          "entries": [
+            "transcription-758a3924d090d1b5",
+            "transcription-92adf5b1bf24601a"
+          ],
+          "bytes": 1492985,
+          "files": 4
+        }
+      },
+      "entryCount": 3,
+      "bytes": 1497595,
+      "files": 5
+    },
+    "_totals": {
+      "videoDirs": 5,
+      "entries": 44,
+      "bytes": 55355647,
+      "files": 77
+    }
+  },
+  "cacheAfter": {
+    "20f8c61d4f01f867865cd348a455999f7ba8721891f6d6c7f817e7ec3c1ad091": {
+      "stages": {
+        "transcription": {
+          "entries": [
+            "transcription-758a3924d090d1b5",
+            "transcription-92adf5b1bf24601a"
+          ],
+          "bytes": 1409998,
+          "files": 4
+        }
+      },
+      "entryCount": 2,
+      "bytes": 1409998,
+      "files": 4
+    },
+    "2b3957559a491ee90e17966f7de514e3709508ec695739a250e09c916c325313": {
+      "stages": {
+        "transcription": {
+          "entries": [
+            "transcription-758a3924d090d1b5",
+            "transcription-92adf5b1bf24601a"
+          ],
+          "bytes": 1560036,
+          "files": 4
+        }
+      },
+      "entryCount": 2,
+      "bytes": 1560036,
+      "files": 4
+    },
+    "365967c9fd2c82f7f62ee05c8bedf47673e5effd4b529ffa698f6daf67028e1c": {
+      "stages": {
+        "analysis": {
+          "entries": [
+            "analysis-229db60f05bcb5bc",
+            "analysis-739311b04c86e805",
+            "analysis-935b2ae8cae28967"
+          ],
+          "bytes": 12232,
+          "files": 3
+        },
+        "images": {
+          "entries": [
+            "images-24594526fbd4e818",
+            "images-32597bdc020f5171",
+            "images-373e6ed213750231",
+            "images-5ca1ccec82d84b06",
+            "images-6916347f930bea15",
+            "images-979c63811e8c2d78",
+            "images-cf9dd3e1cbb70c13",
+            "images-e0ee60ac82f878dd"
+          ],
+          "bytes": 19838206,
+          "files": 16
+        },
+        "imageslots": {
+          "entries": [
+            "imageslots-33f0fee5727dab46",
+            "imageslots-824527f1304e061e"
+          ],
+          "bytes": 7955,
+          "files": 2
+        },
+        "transcription": {
+          "entries": [
+            "transcription-758a3924d090d1b5",
+            "transcription-92adf5b1bf24601a"
+          ],
+          "bytes": 1467723,
+          "files": 4
+        }
+      },
+      "entryCount": 15,
+      "bytes": 21326116,
+      "files": 25
+    },
+    "99dfe0e530ab85d12e2c5e756dc907dca09c75f1257e2bdded28e32795327e72": {
+      "stages": {
+        "analysis": {
+          "entries": [
+            "analysis-590f79bed5eed690",
+            "analysis-951c471154edb3e6",
+            "analysis-c3accc8690e29486"
+          ],
+          "bytes": 11448,
+          "files": 3
+        },
+        "images": {
+          "entries": [
+            "images-10ca07d38e3f608b",
+            "images-2982dc2a1f55bea1",
+            "images-309682651217f6c7",
+            "images-3686c9fe4024787a",
+            "images-369becaf086368f2",
+            "images-400cd405f9caaadb",
+            "images-666271d7c6ae5e33",
+            "images-68e8ae9fa5763537",
+            "images-699c0a38a9c512ff",
+            "images-6ea58062fe8faaec",
+            "images-ac0e7b6fee0743c4",
+            "images-ad2cf7daf27b46f3",
+            "images-b82cc4346e6e8f89",
+            "images-e9fad12565d42c6e"
+          ],
+          "bytes": 26985593,
+          "files": 28
+        },
+        "imageslots": {
+          "entries": [
+            "imageslots-5187924b139f8de5",
+            "imageslots-ad76fcfa6c44d3b4"
+          ],
+          "bytes": 7254,
+          "files": 2
+        },
+        "transcription": {
+          "entries": [
+            "transcription-0cb5401192dbfbc7",
+            "transcription-758a3924d090d1b5",
+            "transcription-92adf5b1bf24601a"
+          ],
+          "bytes": 2557607,
+          "files": 6
+        }
+      },
+      "entryCount": 22,
+      "bytes": 29561902,
+      "files": 39
+    },
+    "c3a2ac59de3dc1ec662aa5ae19c32169d58873e3b46f43d8f0806326c6e1100e": {
+      "stages": {
+        "analysis": {
+          "entries": [
+            "analysis-f92a8e4cad748c67"
+          ],
+          "bytes": 4610,
+          "files": 1
+        },
+        "transcription": {
+          "entries": [
+            "transcription-758a3924d090d1b5",
+            "transcription-92adf5b1bf24601a"
+          ],
+          "bytes": 1492985,
+          "files": 4
+        }
+      },
+      "entryCount": 3,
+      "bytes": 1497595,
+      "files": 5
+    },
+    "_totals": {
+      "videoDirs": 5,
+      "entries": 44,
+      "bytes": 55355647,
+      "files": 77
+    }
+  },
+  "cacheUnchanged": true,
+  "watermarkFacts": {
+    "schemaVersion": 1,
+    "path": "assets/watermark/intro.mov",
+    "sha256": "99edc6499392f2e72ce3df83b5a0f6a69246b7ab57f1b44c97092e8b8811886e",
+    "measuredAt": "2026-08-30T13:09:41.023Z",
+    "width": 1924,
+    "height": 2154,
+    "durationS": 2.035367,
+    "frames": 61,
+    "frameRate": "30000/1001",
+    "alphaPlane": true,
+    "alphaIsPremultiplied": true,
+    "beeps": [
+      {
+        "startS": 0.033,
+        "endS": 0.133
+      },
+      {
+        "startS": 0.166,
+        "endS": 0.267
+      },
+      {
+        "startS": 0.3,
+        "endS": 0.4
+      }
+    ],
+    "lastBeepEndS": 0.4,
+    "audio": {
+      "meanDb": -18.3,
+      "maxDb": -0.5
+    }
+  },
+  "loudnessRecordsOnDisk": [
+    "vitasilk.json"
+  ],
+  "referenceHeaders": {
+    "ground-truth.txt": "# One utterance per line. Write what is actually said.",
+    "test-1.txt": "# reference-version: v1.0.8-conformant",
+    "test-2.txt": "# reference-version: v1.0.8-conformant",
+    "test-3.txt": "# reference-version: v1.0.8-conformant"
+  },
+  "check": {
+    "exitCode": 0,
+    "result": "check: PASS",
+    "counts": {
+      "core": {
+        "files": 39,
+        "tests": 547
+      },
+      "service": {
+        "files": 90,
+        "tests": 1146
+      },
+      "benchmarks": {
+        "files": 16,
+        "tests": 166
+      },
+      "panel": {
+        "files": 6,
+        "tests": 159,
+        "skipped": 2
+      },
+      "pytest": {
+        "tests": 149
+      }
+    },
+    "gates": {
+      "validateModes": "mode k2-syndicalia v12: ok (fonts set)",
+      "templateManifest": "templates: 6 entries, ok",
+      "extendscript": "12 .jsx file(s) ok",
+      "validateTemplates": "6 template(s) ok, audited against library.aep",
+      "validatePanel": "panel/CSXS/manifest.xml ok",
+      "referenceVersions": "PASS (all four v1.0.8-conformant)",
+      "modelPins": "birefnet-general ok, selfie-multiclass-256x256 ok"
+    }
+  },
+  "dryRun": {
+    "ground-truth": {
+      "reel": "ground-truth",
+      "videoPath": "/Volumes/T7 Shield/INSEA/Projects/framopia-studio/my files/test videos/ground truth.mov",
+      "modeId": "k2-syndicalia",
+      "modeName": "K2 Syndicalia",
+      "modeVersion": 12,
+      "planPath": "/Volumes/T7 Shield/INSEA/Projects/framopia-studio/my files/test videos/ground truth.editplan.json",
+      "spentUsd": null,
+      "stages": [
+        {
+          "id": "transcription",
+          "label": "Transcribe and correct",
+          "status": "done",
+          "provenance": "compatible",
+          "entryId": "transcription-758a3924d090d1b5",
+          "estimateUsd": null,
+          "action": "skip",
+          "note": "reusing transcription-758a3924d090d1b5, a transcription made against orthography guide v1.0.7 while the guide is now v1.0.8. Same prompt version (v4), so it will not re-transcribe and will not bill. Already on the plan, so a run skips it"
+        },
+        {
+          "id": "analysis",
+          "label": "Keywords and image slots",
+          "status": "pending",
+          "provenance": "none",
+          "entryId": null,
+          "estimateUsd": 0.18,
+          "action": "run",
+          "note": "keywords: no cache entry for fingerprint 0cc4e6259b47ba9a (analysis prompt v4, 9 candidates); a run would call the model and bill. Image slots: no cache entry for fingerprint 3b04d5928ea1f138 (slot prompt v2, 12 candidates); a run would call the model and bill"
+        },
+        {
+          "id": "images",
+          "label": "Generate images",
+          "status": "pending",
+          "provenance": "none",
+          "entryId": null,
+          "estimateUsd": 2.1708000000000003,
+          "action": "run",
+          "note": "no image slots planned yet; a run would plan about 6 for a 23.3s reel and generate 12 candidates, budgeted at most $2.17"
+        },
+        {
+          "id": "zones",
+          "label": "Looking at the video",
+          "status": "done",
+          "provenance": null,
+          "entryId": null,
+          "estimateUsd": null,
+          "action": "skip",
+          "note": "free, and done on this machine. It can take a few minutes the first time for a video. Already on the plan, so a run skips it"
+        }
+      ],
+      "watermark": true,
+      "watermarkSize": "medium",
+      "watermarkWidthsPx": {
+        "small": 216,
+        "medium": 324,
+        "large": 432
+      },
+      "planClientMode": null,
+      "estimateUsd": 2.3508000000000004,
+      "reusesOlderGuide": true
+    },
+    "test-1": {
+      "reel": "test-1",
+      "videoPath": "/Volumes/T7 Shield/INSEA/Projects/framopia-studio/my files/test videos/test 1.mov",
+      "modeId": "k2-syndicalia",
+      "modeName": "K2 Syndicalia",
+      "modeVersion": 12,
+      "planPath": "/Volumes/T7 Shield/INSEA/Projects/framopia-studio/my files/test videos/test 1.editplan.json",
+      "spentUsd": 1.22066,
+      "stages": [
+        {
+          "id": "transcription",
+          "label": "Transcribe and correct",
+          "status": "done",
+          "provenance": "compatible",
+          "entryId": "transcription-758a3924d090d1b5",
+          "estimateUsd": null,
+          "action": "skip",
+          "note": "reusing transcription-758a3924d090d1b5, a transcription made against orthography guide v1.0.7 while the guide is now v1.0.8. Same prompt version (v4), so it will not re-transcribe and will not bill. Already on the plan, so a run skips it"
+        },
+        {
+          "id": "analysis",
+          "label": "Keywords and image slots",
+          "status": "done",
+          "provenance": "none",
+          "entryId": null,
+          "estimateUsd": null,
+          "action": "skip",
+          "note": "keywords: no cache entry for fingerprint 4e75fdb62bf1a4fb (analysis prompt v4, 9 candidates); a run would call the model and bill. Image slots: no cache entry for fingerprint faecde5f3b0aab7e (slot prompt v2, 12 candidates); a run would call the model and bill. Already on the plan, so a run skips it"
+        },
+        {
+          "id": "images",
+          "label": "Generate images",
+          "status": "done",
+          "provenance": "exact",
+          "entryId": null,
+          "estimateUsd": null,
+          "action": "skip",
+          "note": "8 of 8 candidate images are cached; a run would bill nothing. Already on the plan, so a run skips it"
+        },
+        {
+          "id": "zones",
+          "label": "Looking at the video",
+          "status": "done",
+          "provenance": null,
+          "entryId": null,
+          "estimateUsd": null,
+          "action": "skip",
+          "note": "free, and done on this machine. It can take a few minutes the first time for a video. Already on the plan, so a run skips it"
+        }
+      ],
+      "watermark": true,
+      "watermarkSize": "medium",
+      "watermarkWidthsPx": {
+        "small": 216,
+        "medium": 324,
+        "large": 432
+      },
+      "planClientMode": {
+        "id": "k2-syndicalia",
+        "version": 5
+      },
+      "estimateUsd": 0,
+      "reusesOlderGuide": true
+    },
+    "test-2": {
+      "reel": "test-2",
+      "videoPath": "/Volumes/T7 Shield/INSEA/Projects/framopia-studio/my files/test videos/test 2.mov",
+      "modeId": "k2-syndicalia",
+      "modeName": "K2 Syndicalia",
+      "modeVersion": 12,
+      "planPath": "/Volumes/T7 Shield/INSEA/Projects/framopia-studio/my files/test videos/test 2.editplan.json",
+      "spentUsd": 0.412818,
+      "stages": [
+        {
+          "id": "transcription",
+          "label": "Transcribe and correct",
+          "status": "done",
+          "provenance": "compatible",
+          "entryId": "transcription-758a3924d090d1b5",
+          "estimateUsd": null,
+          "action": "skip",
+          "note": "reusing transcription-758a3924d090d1b5, a transcription made against orthography guide v1.0.7 while the guide is now v1.0.8. Same prompt version (v4), so it will not re-transcribe and will not bill. Already on the plan, so a run skips it"
+        },
+        {
+          "id": "analysis",
+          "label": "Keywords and image slots",
+          "status": "done",
+          "provenance": "none",
+          "entryId": "analysis-f92a8e4cad748c67",
+          "estimateUsd": null,
+          "action": "skip",
+          "note": "keywords: exact cache hit analysis-f92a8e4cad748c67. Image slots: no cache entry for fingerprint a83c9da925328aab (slot prompt v2, 12 candidates); a run would call the model and bill. Already on the plan, so a run skips it"
+        },
+        {
+          "id": "images",
+          "label": "Generate images",
+          "status": "pending",
+          "provenance": null,
+          "entryId": null,
+          "estimateUsd": null,
+          "action": "run",
+          "note": "no image slots on the plan, and analysis has already run without planning any"
+        },
+        {
+          "id": "zones",
+          "label": "Looking at the video",
+          "status": "done",
+          "provenance": null,
+          "entryId": null,
+          "estimateUsd": null,
+          "action": "skip",
+          "note": "free, and done on this machine. It can take a few minutes the first time for a video. Already on the plan, so a run skips it"
+        }
+      ],
+      "watermark": true,
+      "watermarkSize": "medium",
+      "watermarkWidthsPx": {
+        "small": 216,
+        "medium": 324,
+        "large": 432
+      },
+      "planClientMode": {
+        "id": "k2-syndicalia",
+        "version": 5
+      },
+      "estimateUsd": 0,
+      "reusesOlderGuide": true
+    },
+    "test-3": {
+      "reel": "test-3",
+      "videoPath": "/Volumes/T7 Shield/INSEA/Projects/framopia-studio/my files/test videos/test 3.mov",
+      "modeId": "k2-syndicalia",
+      "modeName": "K2 Syndicalia",
+      "modeVersion": 12,
+      "planPath": "/Volumes/T7 Shield/INSEA/Projects/framopia-studio/my files/test videos/test 3.editplan.json",
+      "spentUsd": null,
+      "stages": [
+        {
+          "id": "transcription",
+          "label": "Transcribe and correct",
+          "status": "done",
+          "provenance": "compatible",
+          "entryId": "transcription-758a3924d090d1b5",
+          "estimateUsd": null,
+          "action": "skip",
+          "note": "reusing transcription-758a3924d090d1b5, a transcription made against orthography guide v1.0.7 while the guide is now v1.0.8. Same prompt version (v4), so it will not re-transcribe and will not bill. Already on the plan, so a run skips it"
+        },
+        {
+          "id": "analysis",
+          "label": "Keywords and image slots",
+          "status": "pending",
+          "provenance": "none",
+          "entryId": null,
+          "estimateUsd": 0.18,
+          "action": "run",
+          "note": "keywords: no cache entry for fingerprint f47fee49a5d087ae (analysis prompt v4, 9 candidates); a run would call the model and bill. Image slots: no cache entry for fingerprint 18b6e950f712a6f5 (slot prompt v2, 12 candidates); a run would call the model and bill"
+        },
+        {
+          "id": "images",
+          "label": "Generate images",
+          "status": "pending",
+          "provenance": "none",
+          "entryId": null,
+          "estimateUsd": 2.1708000000000003,
+          "action": "run",
+          "note": "no image slots planned yet; a run would plan about 6 for a 21.2s reel and generate 12 candidates, budgeted at most $2.17"
+        },
+        {
+          "id": "zones",
+          "label": "Looking at the video",
+          "status": "done",
+          "provenance": null,
+          "entryId": null,
+          "estimateUsd": null,
+          "action": "skip",
+          "note": "free, and done on this machine. It can take a few minutes the first time for a video. Already on the plan, so a run skips it"
+        }
+      ],
+      "watermark": true,
+      "watermarkSize": "medium",
+      "watermarkWidthsPx": {
+        "small": 216,
+        "medium": 324,
+        "large": 432
+      },
+      "planClientMode": null,
+      "estimateUsd": 2.3508000000000004,
+      "reusesOlderGuide": true
+    },
+    "vitasilk": {
+      "reel": "vitasilk",
+      "videoPath": "/Volumes/T7 Shield/INSEA/Projects/framopia-studio/my files/test videos/vitasilk.mov",
+      "modeId": "k2-syndicalia",
+      "modeName": "K2 Syndicalia",
+      "modeVersion": 12,
+      "planPath": "/Volumes/T7 Shield/INSEA/Projects/framopia-studio/my files/test videos/vitasilk.editplan.json",
+      "spentUsd": 1.550444,
+      "stages": [
+        {
+          "id": "transcription",
+          "label": "Transcribe and correct",
+          "status": "done",
+          "provenance": "compatible",
+          "entryId": "transcription-758a3924d090d1b5",
+          "estimateUsd": null,
+          "action": "skip",
+          "note": "reusing transcription-758a3924d090d1b5, a transcription made against orthography guide v1.0.7 while the guide is now v1.0.8. Same prompt version (v4), so it will not re-transcribe and will not bill. Already on the plan, so a run skips it"
+        },
+        {
+          "id": "analysis",
+          "label": "Keywords and image slots",
+          "status": "done",
+          "provenance": "none",
+          "entryId": null,
+          "estimateUsd": null,
+          "action": "skip",
+          "note": "keywords: no cache entry for fingerprint 324f3a034ef9c903 (analysis prompt v4, 9 candidates); a run would call the model and bill. Image slots: no cache entry for fingerprint 58e7a919696232a1 (slot prompt v2, 14 candidates); a run would call the model and bill. Already on the plan, so a run skips it"
+        },
+        {
+          "id": "images",
+          "label": "Generate images",
+          "status": "done",
+          "provenance": "exact",
+          "entryId": null,
+          "estimateUsd": null,
+          "action": "skip",
+          "note": "10 of 10 candidate images are cached; a run would bill nothing. Already on the plan, so a run skips it"
+        },
+        {
+          "id": "zones",
+          "label": "Looking at the video",
+          "status": "done",
+          "provenance": null,
+          "entryId": null,
+          "estimateUsd": null,
+          "action": "skip",
+          "note": "free, and done on this machine. It can take a few minutes the first time for a video. Already on the plan, so a run skips it"
+        }
+      ],
+      "watermark": true,
+      "watermarkSize": "medium",
+      "watermarkWidthsPx": {
+        "small": 216,
+        "medium": 324,
+        "large": 432
+      },
+      "planClientMode": {
+        "id": "k2-syndicalia",
+        "version": 5
+      },
+      "estimateUsd": 0,
+      "reusesOlderGuide": true
+    }
+  },
+  "build": {
+    "reel": "vitasilk",
+    "driver": "runBuildJob (service/dist/build/job.js)",
+    "billed": 0.0,
+    "result": {
+      "reel": "vitasilk",
+      "planPath": "/Volumes/T7 Shield/INSEA/Projects/framopia-studio/my files/test videos/vitasilk.editplan.json",
+      "stages": [
+        {
+          "id": "prepare",
+          "label": "Read the plan and resolve everything it names",
+          "state": "done"
+        },
+        {
+          "id": "after-effects",
+          "label": "Build the composition in After Effects",
+          "state": "done"
+        },
+        {
+          "id": "check",
+          "label": "Check the built comp against the plan",
+          "state": "done"
+        }
+      ],
+      "percent": 1,
+      "done": true,
+      "savePath": "/Volumes/T7 Shield/INSEA/Projects/framopia-studio/.local/build/vitasilk-full.aep",
+      "savedOwnOutput": null,
+      "wallS": 5.091,
+      "error": null
+    },
+    "savePathExists": true,
+    "savePathBytes": 9190491,
+    "savePathSha256Before": "6d6859249d6800503afb59a3d702a29915364a20be87615f3a37ffea651e9fb3",
+    "savePathSha256After": "d8bdf1449cd7fd6d1c35009d0aa9706942217931b118adf8b0334e5e60786d2e",
+    "planSha256Before": "c8501bcafc79ed3bd74fec776a2401efa8e68caab41cea5b8d2d1ac221c63c20",
+    "planSha256After": "c8501bcafc79ed3bd74fec776a2401efa8e68caab41cea5b8d2d1ac221c63c20",
+    "planUnchanged": true,
+    "planBuildBlockAfter": {
+      "status": "none",
+      "aepPath": null,
+      "builtAt": null
+    },
+    "readBack": {
+      "projectFile": "/Volumes/T7 Shield/INSEA/Projects/framopia-studio/.local/build/vitasilk-full.aep",
+      "dirty": false,
+      "numItems": 97,
+      "compCount": 84,
+      "masters": [
+        {
+          "name": "master_final",
+          "width": 2160,
+          "height": 3840,
+          "duration": 25.6923590256924,
+          "frameRate": 29.9700317382812,
+          "layers": 83
+        },
+        {
+          "name": "master_subs_only",
+          "width": 2160,
+          "height": 3840,
+          "duration": 25.6923590256924,
+          "frameRate": 29.9700317382812,
+          "layers": 72
+        }
+      ],
+      "textComps": 71,
+      "textLayersChecked": 142,
+      "placeholderWordsSurviving": 0,
+      "textMismatches": 0,
+      "compsWithUnexpectedLayerSet": 0,
+      "fontsSeen": [
+        "CormorantGaramondItalic-SemiBoldItalic",
+        "Inter-SemiBold"
+      ]
+    }
+  },
+  "closeOut": {
+    "ledgerLinesEnd": 116,
+    "ledgerSha256End": "e5e0a6e9d6735188065fdbcb33bb9211cf1fc95a5cbc23b192ad246299c132cb",
+    "libraryAepSha256End": "1d7553e894e10f82051131e8c1b37305fa8ad14a1d6843df4a40415d2bc4a5d8",
+    "afterEffectsInstancesEnd": 1,
+    "aerenderProcessesEnd": 0,
+    "cacheEntriesBefore": 44,
+    "cacheEntriesAfter": 44,
+    "cacheBytesBefore": 55355647,
+    "cacheBytesAfter": 55355647,
+    "cacheEntriesChanged": []
+  }
+}
