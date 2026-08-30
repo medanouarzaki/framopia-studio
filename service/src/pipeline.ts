@@ -8,7 +8,8 @@ import { transcribeVideo } from './transcription/job.js';
 import { analyseKeywordsForPlan, planImageSlotsForPlan } from './analysis/job.js';
 import { generateImagesForPlan } from './images/job.js';
 import { resolveTranscriptionEntry } from './transcription/resolve-entry.js';
-import { analyseFrames, type FrameAnalysisProgress } from './frames/analyse.js';
+import { analyseFrames, assertFrameAnalysisAvailable, type FrameAnalysisProgress } from './frames/analyse.js';
+import { applyLoudnessToPlan, ensureLoudness, ensureWatermarkFacts } from './build/measurements.js';
 import type { EditPlan } from './editplan/types.js';
 
 /**
@@ -148,6 +149,19 @@ export interface RunPipelineOptions {
   now?: () => string;
   /** Injected so the whole runner can be exercised without an API key. */
   stages?: Partial<PipelineStageImpl>;
+  /**
+   * The check that everything the free last stage needs is present, run before
+   * the first billable one. Injected so a test can prove it refuses *before*
+   * anything spends, which is the whole point of moving it forward.
+   */
+  preflight?: () => void;
+  /** Injected for the same reason: the measurements are disk and ffmpeg work. */
+  measure?: (options: {
+    planPath: string;
+    videoPath: string;
+    reelLabel: string;
+    log: (message: string) => void;
+  }) => Promise<void>;
 }
 
 export interface PipelineStageImpl {
@@ -214,6 +228,39 @@ async function driveFrameAnalysis(
   return { skipped: null };
 }
 
+/**
+ * The two free measurements a build refuses without, taken as soon as there is
+ * a plan to put them on.
+ *
+ * **Here rather than in a stage of their own**: together they are under three
+ * seconds, and a fifth row in the panel for three seconds of ffmpeg would be a
+ * story about the tool rather than about the video. `handoffs/block-8.md` §9
+ * lists both as terminal-only and the user does not use a terminal.
+ *
+ * **In the transcription stage rather than later** because the level has to be
+ * on the plan before the analysis stage derives SFX gains from it — otherwise
+ * the sounds are levelled against nothing and the plan needs a second pass. It
+ * runs on the skip path too: a plan transcribed before this existed has no
+ * level on it, and skipping the stage must not mean skipping the measurement.
+ */
+async function takeBuildMeasurements(options: {
+  planPath: string;
+  videoPath: string;
+  reelLabel: string;
+  log: (message: string) => void;
+}): Promise<void> {
+  const { planPath, videoPath, reelLabel, log } = options;
+  ensureWatermarkFacts({ log });
+  const plan = await readEditPlan(planPath);
+  const { record } = ensureLoudness({
+    videoPath,
+    reel: reelLabel,
+    sourceSha256: plan.source.sha256,
+    log,
+  });
+  await applyLoudnessToPlan({ planPath, record, log });
+}
+
 export async function runPipeline(options: RunPipelineOptions): Promise<PipelineProgress> {
   const {
     reel: reelLabel,
@@ -226,6 +273,8 @@ export async function runPipeline(options: RunPipelineOptions): Promise<Pipeline
     onProgress = (): void => undefined,
     log = (): void => undefined,
     now = () => new Date().toISOString(),
+    preflight = assertFrameAnalysisAvailable,
+    measure = takeBuildMeasurements,
   } = options;
 
   const impl: PipelineStageImpl = {
@@ -332,6 +381,15 @@ export async function runPipeline(options: RunPipelineOptions): Promise<Pipeline
   const wants = (id: PipelineStageId): boolean => redo.includes(id);
   const asked = (id: PipelineStageId): boolean => only.length === 0 || only.includes(id);
 
+  /*
+   * Frame analysis runs last, so everything it needs — ffmpeg, the CV venv, the
+   * segmentation model — used to be discovered *after* three billable stages
+   * had spent. A machine missing the venv paid for a transcript, keywords and
+   * eight images and then could not finish. The stage keeps its position; only
+   * the discovery moves.
+   */
+  preflight();
+
   await run('transcription', async () => {
     if (!asked('transcription')) return { skipped: true, reason: 'not part of this run' };
     const existing = await planIfAny();
@@ -339,6 +397,9 @@ export async function runPipeline(options: RunPipelineOptions): Promise<Pipeline
       const entry = existing.pipeline.transcription;
       stageOf('transcription').cacheEntryId = entry.cacheEntryId ?? null;
       stageOf('transcription').cacheProvenance = entry.cacheProvenance ?? null;
+      if (planPath !== null) {
+        await measure({ planPath, videoPath: reel.videoPath, reelLabel, log });
+      }
       return { skipped: true, reason: 'already on the plan' };
     }
 
@@ -368,6 +429,7 @@ export async function runPipeline(options: RunPipelineOptions): Promise<Pipeline
       log,
     });
     planPath = result.planPath;
+    await measure({ planPath, videoPath: reel.videoPath, reelLabel, log });
     return {
       costUsd: result.cached ? 0 : result.transcript.cost.totalUsd,
       reason: entry?.provenance === 'compatible' ? 'reusing an older guide' : null,

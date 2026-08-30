@@ -23,6 +23,18 @@ const LEDGER = path.join(REPO_ROOT, '.local', 'costs.jsonl');
  * stage functions are never called, and the ledger is asserted byte-identical
  * afterwards rather than trusted to be.
  */
+/**
+ * The preflight and the two build measurements, stubbed out.
+ *
+ * Both reach the disk for real — the preflight looks for ffmpeg, the CV venv
+ * and the segmentation model, and the measurements run ffmpeg over a 2.4 GB
+ * reel and write to a plan. A unit test must do neither, and before these were
+ * injected these tests measured two real videos on every run.
+ */
+function fakeHooks(): { preflight: () => void; measure: () => Promise<void> } {
+  return { preflight: () => undefined, measure: async () => undefined };
+}
+
 function fakeStages(overrides: Partial<PipelineStageImpl> = {}): Partial<PipelineStageImpl> {
   return {
     transcribe: vi.fn(async () => {
@@ -46,6 +58,56 @@ function ledgerSha(): string {
   return readFileSync(LEDGER, 'utf8');
 }
 
+describe('the preflight, before anything can spend', () => {
+  /*
+   * Frame analysis is the last stage and the only free one, so a machine
+   * missing ffmpeg, the CV venv or the segmentation model used to discover it
+   * *after* transcription, keywords and eight images had been paid for. The
+   * stage keeps its position; only the discovery moved.
+   */
+  it('refuses before the first billable stage, and no stage runs', async () => {
+    const before = ledgerSha();
+    const stages = fakeStages({
+      zones: vi.fn(async () => {
+        throw new Error('zones must not run in this test');
+      }),
+    });
+
+    await expect(
+      runPipeline({
+        reel: 'vitasilk',
+        modeId: 'k2-syndicalia',
+        stages,
+        measure: async () => undefined,
+        preflight: () => {
+          throw new Error('Looking at the video cannot run: the segmentation model at /nowhere');
+        },
+      }),
+    ).rejects.toThrow('the segmentation model');
+
+    for (const key of ['transcribe', 'keywords', 'slots', 'images', 'zones'] as const) {
+      expect(stages[key]).not.toHaveBeenCalled();
+    }
+    expect(ledgerSha()).toBe(before);
+  });
+
+  it('runs the measurements once there is a plan, even on the skip path', async () => {
+    const measure = vi.fn(async () => undefined);
+    await runPipeline({
+      reel: 'vitasilk',
+      modeId: 'k2-syndicalia',
+      stages: fakeStages(),
+      preflight: () => undefined,
+      measure,
+    });
+    // vitasilk's transcription is on the plan, so the stage skips — and the
+    // measurement must still happen, because a plan transcribed before this
+    // existed carries no dialogue level and the build refuses without one.
+    expect(measure).toHaveBeenCalledTimes(1);
+    expect(measure.mock.calls[0]?.[0]?.reelLabel).toBe('vitasilk');
+  });
+});
+
 describe('runPipeline over a plan that is already complete', () => {
   /*
    * `vitasilk` has been through every billable stage, so a run must touch
@@ -54,6 +116,7 @@ describe('runPipeline over a plan that is already complete', () => {
   it('skips every stage the plan already carries, and bills nothing', async () => {
     const before = ledgerSha();
     const progress = await runPipeline({
+      ...fakeHooks(),
       reel: 'vitasilk',
       modeId: 'k2-syndicalia',
       stages: fakeStages(),
@@ -76,6 +139,7 @@ describe('runPipeline over a plan that is already complete', () => {
 
   it('says why each stage was skipped, in words', async () => {
     const progress = await runPipeline({
+      ...fakeHooks(),
       reel: 'vitasilk',
       modeId: 'k2-syndicalia',
       stages: fakeStages(),
@@ -88,6 +152,7 @@ describe('runPipeline over a plan that is already complete', () => {
 
   it('reports the plan’s cumulative spend, which is what the alarm reads', async () => {
     const progress = await runPipeline({
+      ...fakeHooks(),
       reel: 'vitasilk',
       modeId: 'k2-syndicalia',
       stages: fakeStages(),
@@ -97,6 +162,7 @@ describe('runPipeline over a plan that is already complete', () => {
 
   it('reaches 100 per cent when every stage has settled', async () => {
     const progress = await runPipeline({
+      ...fakeHooks(),
       reel: 'vitasilk',
       modeId: 'k2-syndicalia',
       stages: fakeStages(),
@@ -128,6 +194,7 @@ describe('a reel that has never been analysed', () => {
 
     const before = ledgerSha();
     const progress = await runPipeline({
+      ...fakeHooks(),
       reel: 'ground-truth',
       modeId: 'k2-syndicalia',
       stages: fakeStages({ keywords, slots }),
@@ -147,6 +214,7 @@ describe('a reel that has never been analysed', () => {
   it('does not ask for images when the plan has no slots', async () => {
     const images = vi.fn();
     const progress = await runPipeline({
+      ...fakeHooks(),
       reel: 'ground-truth',
       modeId: 'k2-syndicalia',
       stages: fakeStages({
@@ -183,11 +251,13 @@ describe('an interrupted run', () => {
     })) as unknown as PipelineStageImpl['slots'];
 
     await runPipeline({
+      ...fakeHooks(),
       reel: 'vitasilk',
       modeId: 'k2-syndicalia',
       stages: fakeStages({ keywords, slots }),
     });
     await runPipeline({
+      ...fakeHooks(),
       reel: 'vitasilk',
       modeId: 'k2-syndicalia',
       stages: fakeStages({ keywords, slots }),
@@ -208,6 +278,7 @@ describe('an interrupted run', () => {
     })) as unknown as PipelineStageImpl['slots'];
 
     await runPipeline({
+      ...fakeHooks(),
       reel: 'vitasilk',
       modeId: 'k2-syndicalia',
       redo: ['analysis'],
@@ -228,6 +299,7 @@ describe('the ceiling', () => {
     const keywords = vi.fn();
     await expect(
       runPipeline({
+        ...fakeHooks(),
         reel: 'ground-truth',
         modeId: 'k2-syndicalia',
         // Zero leaves no room at all, so the first billable stage refuses.
@@ -242,6 +314,7 @@ describe('the ceiling', () => {
   it('reports a refusal as a stage failure that is not worth retrying', async () => {
     try {
       await runPipeline({
+      ...fakeHooks(),
         reel: 'ground-truth',
         modeId: 'k2-syndicalia',
         ceilingUsd: 0,
@@ -274,6 +347,7 @@ describe('a failing stage', () => {
 
     await expect(
       runPipeline({
+        ...fakeHooks(),
         reel: 'ground-truth',
         modeId: 'k2-syndicalia',
         stages: fakeStages({ keywords, images: images as unknown as PipelineStageImpl['images'] }),
@@ -298,6 +372,7 @@ describe('progress', () => {
   it('reports every stage before any of them has run', async () => {
     const seen: string[][] = [];
     await runPipeline({
+      ...fakeHooks(),
       reel: 'vitasilk',
       modeId: 'k2-syndicalia',
       stages: fakeStages(),
@@ -309,7 +384,7 @@ describe('progress', () => {
 
   it('refuses a reel that is not in the catalogue, by name', async () => {
     await expect(
-      runPipeline({ reel: 'nope', modeId: 'k2-syndicalia', stages: fakeStages() }),
+      runPipeline({ ...fakeHooks(), reel: 'nope', modeId: 'k2-syndicalia', stages: fakeStages() }),
     ).rejects.toThrow('no reel labelled "nope"');
   });
 });
@@ -364,6 +439,7 @@ describe('the frame-analysis stage', () => {
   it('is given the video, not only the plan', async () => {
     const zones = vi.fn(async () => ({ skipped: null }));
     await runPipeline({
+      ...fakeHooks(),
       reel: 'vitasilk',
       modeId: 'k2-syndicalia',
       stages: fakeStages({ zones }),
@@ -382,6 +458,7 @@ describe('the frame-analysis stage', () => {
   it('carries the stage’s own progress line onto the report while it runs', async () => {
     const seen: (string | null | undefined)[] = [];
     await runPipeline({
+      ...fakeHooks(),
       reel: 'vitasilk',
       modeId: 'k2-syndicalia',
       onProgress: (progress) => {
@@ -400,6 +477,7 @@ describe('the frame-analysis stage', () => {
 
   it('clears its progress line when it finishes', async () => {
     const progress = await runPipeline({
+      ...fakeHooks(),
       reel: 'vitasilk',
       modeId: 'k2-syndicalia',
       stages: fakeStages({
@@ -416,6 +494,7 @@ describe('the frame-analysis stage', () => {
     const before = ledgerSha();
     await expect(
       runPipeline({
+        ...fakeHooks(),
         reel: 'vitasilk',
         modeId: 'k2-syndicalia',
         stages: fakeStages({
@@ -428,6 +507,7 @@ describe('the frame-analysis stage', () => {
 
     let detail: { stage: string; cause: string } | null = null;
     await runPipeline({
+      ...fakeHooks(),
       reel: 'vitasilk',
       modeId: 'k2-syndicalia',
       onProgress: (progress) => {
@@ -457,6 +537,7 @@ describe('running one stage on its own', () => {
     const before = ledgerSha();
     const zones = vi.fn(async () => ({ skipped: null }));
     const progress = await runPipeline({
+      ...fakeHooks(),
       reel: 'vitasilk',
       modeId: 'k2-syndicalia',
       only: ['zones'],
