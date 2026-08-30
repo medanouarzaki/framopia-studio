@@ -2201,9 +2201,17 @@ describe.skipIf(!built)('the Build step', () => {
       await loaded.page.waitForSelector('.buildpane [role="status"]', { timeout: 5000 });
       const text = (await loaded.page.textContent('.buildpane')) ?? '';
       expect(text).toContain('Built in 1.3s');
-      expect(text).toContain('Saved to /repo/.local/build/vitasilk-full.aep');
-      expect(text).toContain('Nothing was rendered');
+      // The file is the deliverable, so the path is its own element rather
+      // than a clause: nothing here renders, and a saved project is how a reel
+      // leaves this system.
+      expect(text).toContain('Your composition is here');
+      const shown = await loaded.page.textContent('.buildpane .savepath');
+      expect(shown?.trim()).toBe('/repo/.local/build/vitasilk-full.aep');
+      expect(text).toContain('It is open in After Effects now, and nothing was rendered');
       expect(text).toContain('your previous build was open'.replace('your', 'Your'));
+      // No reveal-in-Finder control: CEP runs Chromium 99 and whether it can
+      // reveal a file has never been proven on the host, so nothing claims it.
+      expect(await loaded.page.$('.buildpane button.reveal')).toBeNull();
       expect(loaded.uncaught).toEqual([]);
     } finally {
       await loaded.page.close();

@@ -573,3 +573,22 @@ section.client .say, section.video .say { margin: 8px 0 0; color: var(--muted); 
 .clientcard img.clientlogo {
   margin-top: 10px; max-width: 120px; max-height: 48px; display: block;
 }
+
+/*
+ * The built file's path. It is the deliverable of the whole tool, so it is set
+ * to be read and copied rather than skimmed: selectable, and allowed to break
+ * anywhere, because these paths contain spaces and are longer than the panel.
+ */
+.savepath {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.78em;
+  line-height: 1.45;
+  margin: 0.15em 0 0.6em;
+  padding: 0.5em 0.6em;
+  border-radius: 3px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  color: var(--text);
+  overflow-wrap: anywhere;
+  user-select: text;
+}

@@ -400,6 +400,13 @@ function framopiaBuildReel(optionsPath, outPath) {
 
         stage = 'save';
         app.project.save(new File(o.savePath));
+        /*
+         * Read back from the project rather than echoing the option: this is
+         * the one place that knows where After Effects actually put the file,
+         * and the deliverable of this whole system is that file. A build that
+         * cannot say where it wrote is a build the panel cannot hand over.
+         */
+        var savedTo = app.project.file ? app.project.file.fsName : o.savePath;
 
         stage = 'park-playhead';
         var active = findItem(o.activeComp);
@@ -458,6 +465,7 @@ function framopiaBuildReel(optionsPath, outPath) {
         result = {
             ok: true,
             aeVersion: app.version,
+            savePath: savedTo,
             savedOwnOutput: savedOwnOutput,
             emptiedUntitled: emptiedUntitled,
             elementsBuilt: o.elements.length,

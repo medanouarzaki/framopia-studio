@@ -297,13 +297,29 @@ function BuildStages({ detail }: { detail: BuildProgress }): JSX.Element {
   );
 }
 
+/*
+ * The file is the deliverable. Nothing in this system renders, so a saved
+ * project is how a reel leaves it — which makes naming the file the last step
+ * of the job rather than a detail under it. The build reports the path After
+ * Effects actually wrote to, read back from the project rather than echoed
+ * from what it was asked, and until Block 9 session 14 it reported nothing at
+ * all and this sentence was always empty.
+ */
 function BuildDone({ detail }: { detail: BuildProgress }): JSX.Element {
   return (
     <div className="card" role="status">
-      <p className="detail">
-        Built in {(detail.wallS ?? 0).toFixed(1)}s.
-        {detail.savePath === null ? '' : ` Saved to ${detail.savePath}.`}
-      </p>
+      <p className="detail">Built in {(detail.wallS ?? 0).toFixed(1)}s.</p>
+      {detail.savePath === null ? (
+        <p className="detail">
+          The build finished but did not say where it saved. Look in .local/build for the
+          newest file.
+        </p>
+      ) : (
+        <>
+          <p className="note">Your composition is here</p>
+          <p className="savepath">{detail.savePath}</p>
+        </>
+      )}
       {detail.savedOwnOutput === null ? null : (
         <p className="detail">
           Your previous build was open with unsaved changes, so it was saved first:{' '}
@@ -311,8 +327,7 @@ function BuildDone({ detail }: { detail: BuildProgress }): JSX.Element {
         </p>
       )}
       <p className="note">
-        Nothing was rendered and the project was not opened — open it in After Effects when you
-        want to look at it.
+        It is open in After Effects now, and nothing was rendered.
       </p>
     </div>
   );
