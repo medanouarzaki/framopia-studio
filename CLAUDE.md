@@ -8263,3 +8263,84 @@ that re-reads the ledger before every request — **was never reached**.
 session 6 proved the six draws, and no picture has been seen. No gate results, no
 luminance figures against Block 9's, and no answer on whether `img002`'s "two open
 doors" and `img006`'s "four cards" produce multi-subject pictures.
+
+
+## Block 10 session 8 — the retry is in, the pictures are not
+
+**Spent $0.00.** The code half shipped and the gate passed; the spend failed
+again — **three attempts, all 503**. **Ledger unchanged at 118 lines, sha
+`3f657131e5cda5c903acaf6db1ca34cddd478789042d07b636499fb36559a58c`**; cache
+identical at 46 entries; all five plans, all seven references and the library
+byte-identical; `app.fonts.allFonts` 1198 → 1198. About **$6.64** remains,
+unchanged for the third session running.
+
+### One shared retry predicate, not a fourth private copy
+
+`core/src/transient-failure.ts`. **Three identical private copies already
+existed** — `analysis/keywords.ts`, `analysis/slots.ts` and
+`transcription/correction.ts` each declared the same `OVERLOAD_MARKERS` and
+`isTransientOverload`. All three are **deleted** and import the shared one; a
+test reads all four files and fails if a private copy comes back.
+
+| | |
+|---|---|
+| retryable | `status >= 500`, `429`, and a network failure with no status |
+| **never retried** | any other 4xx, and a content refusal |
+| attempts | `RETRY_MAX_ATTEMPTS` **3** in total |
+| backoff | `RETRY_BASE_DELAY_MS` **1000**, capped at `RETRY_MAX_DELAY_MS` **8000** |
+| jitter | **full jitter** — a uniform draw over the whole interval |
+
+**All three constants are CHOSEN, not measured**: the existing clients retry
+**once with no backoff and no jitter**, so there was no schedule to copy, and
+ARCHITECTURE §8's "bounded, jittered" was not being met by any of them.
+
+**One deliberate behaviour change:** the old predicate matched message substrings
+only, so **a 400 whose body happened to contain "503" was retryable**. A readable
+status decides on its own now; the markers are the fallback for the Google SDK,
+which throws an `ApiError` whose message carries the JSON body. `statusOf` reads
+a `status`/`statusCode`/`code` property, a nested `response.status`, or
+`"code": NNN` out of that message.
+
+**A successful call is never repeated, structurally**: `await attempt()` returns
+straight out of `withTransientRetry` and the loop is reachable only from the
+`catch`, so no path leads from a returned value to another request. That is the
+money-losing case and it is asserted, not commented.
+
+**`appendCost` fires once per image, not once per attempt** — the retry is inside
+`client.generate`, and a `FlakyClient` that fails twice then succeeds is asserted
+to produce 3 attempts, 1 billed image and **exactly one ledger line**.
+
+**No test can reach a network**: `GeminiImageClient` is never constructed in any
+test, the doubles import nothing network-bearing, and every test injects `sleep`.
+
+### The run's ceiling now reaches the image stage
+
+`runPipeline` passes `ceilingUsd` into `impl.images`. Session 7 had to inject the
+real stage function through the `stages` hook because the stage fell back to its
+own `DEFAULT_CEILING_USD` of $3. Pinned by a test that the ceiling given to
+`runPipeline` is the one the stage receives and **not** the stage's default.
+
+### The retry worked exactly as designed and did not help
+
+| attempt | status | waited |
+|---:|---:|---:|
+| 1 | 503 | 517 ms |
+| 2 | 503 | 1371 ms |
+| 3 | 503 | bound reached |
+
+Both waits are jittered draws over [0, 1000] and [0, 2000] — 517 and 1371, not
+1000 and 2000. **0 of 12 candidates generated, $0.00 billed, a restart costs the
+full $2.1708.** Nothing was banked because nothing completed; the cache *would*
+bank a partial run (`test-1` 8 of 8 cached, `vitasilk` 10 of 10) since the image
+is written before its manifest.
+
+**The honest limit: under two seconds of backoff does not cover an outage that
+has now spanned two sessions.** What survives that is resuming the batch later
+rather than more retrying inside the client — which the cache already makes free.
+That is a design decision, not a bug, and it was not attempted beside a spend.
+
+**The three existing clients still retry once with no backoff.** They share the
+predicate but not the loop; converting them would change three billable paths.
+
+**`ground-truth` is still unbuildable**, and **the framing change is still
+confirmed only as text** — no picture has ever been seen.
