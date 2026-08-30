@@ -209,6 +209,80 @@ function framopiaAudit(aepPath, outPath) {
         return out;
     }
 
+    /*
+     * A TextDocument property that is not set throws rather than returning
+     * null, so each of these is read on its own and an unreadable one is
+     * recorded as null. Null means "could not be read", never zero.
+     */
+    function readColour(doc, field) {
+        try {
+            var c = doc[field];
+            if (!c || typeof c.length !== 'number') return null;
+            return [c[0], c[1], c[2]];
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function readFlag(doc, field) {
+        try {
+            return doc[field] === true;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function readNumber(doc, field) {
+        try {
+            var v = doc[field];
+            return typeof v === 'number' ? v : null;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    /*
+     * What a Transform effect on a layer displaces it by: its Position against
+     * its Anchor Point. The user's shadow is offset this way rather than by the
+     * layer's own transform, so nothing that reads the layer's Position can see
+     * it — and `sourceRectAtTime` cannot either, because an effect is applied
+     * after the source rect is taken.
+     */
+    function effectOffsets(layer) {
+        var out = [];
+        try {
+            var effects = layer.property('Effects');
+            if (!effects) return out;
+            var i;
+            for (i = 1; i <= effects.numProperties; i++) {
+                var fx = effects.property(i);
+                var row = { name: String(fx.name), matchName: String(fx.matchName) };
+                var anchorPoint = null;
+                var position = null;
+                var j;
+                for (j = 1; j <= fx.numProperties; j++) {
+                    var pr = fx.property(j);
+                    var nm = String(pr.name);
+                    try {
+                        if (nm === 'Anchor Point') anchorPoint = [pr.value[0], pr.value[1]];
+                        if (nm === 'Position') position = [pr.value[0], pr.value[1]];
+                    } catch (ep) {
+                        // A property that will not read is left null below.
+                    }
+                }
+                if (anchorPoint !== null && position !== null) {
+                    row.anchorPoint = anchorPoint;
+                    row.position = position;
+                    row.offset = [position[0] - anchorPoint[0], position[1] - anchorPoint[1]];
+                    out.push(row);
+                }
+            }
+        } catch (e) {
+            return out;
+        }
+        return out;
+    }
+
     function justificationName(value) {
         try {
             if (value === ParagraphJustification.LEFT_JUSTIFY) return 'LEFT_JUSTIFY';
@@ -361,7 +435,9 @@ function framopiaAudit(aepPath, outPath) {
                     sampleTime: sampleTime,
                     sourceRect: null,
                     text: null,
-                    animated: []
+                    animated: [],
+                    /* Where a Transform effect displaces the layer, if one does. */
+                    effectOffsets: effectOffsets(layer)
                 };
 
                 try {
@@ -389,7 +465,19 @@ function framopiaAudit(aepPath, outPath) {
                             fontSize: td.fontSize,
                             justification: justificationName(td.justification),
                             justificationRaw: td.justification,
-                            tracking: td.tracking
+                            tracking: td.tracking,
+                            /*
+                             * The colour, so the audit alone can tell which of
+                             * two text layers is the shadow. Block 9 session 9
+                             * had to run a separate inspection to know that,
+                             * which meant the record of the templates could not
+                             * answer a question about the templates.
+                             */
+                            fillColor: readColour(td, 'fillColor'),
+                            applyFill: readFlag(td, 'applyFill'),
+                            strokeColor: readColour(td, 'strokeColor'),
+                            applyStroke: readFlag(td, 'applyStroke'),
+                            strokeWidth: readNumber(td, 'strokeWidth')
                         };
                     } catch (eT) {
                         entry.text = null;
