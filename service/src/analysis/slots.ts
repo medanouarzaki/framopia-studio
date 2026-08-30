@@ -9,13 +9,20 @@ import {
 import { AnalysisError, type AnalysisWord } from './types.js';
 import type { SlotCandidate } from './slot-select.js';
 
-export type SlotPromptVersion = 1;
+export type SlotPromptVersion = 1 | 2;
 
 /**
  * Identity of the image-slot prompt, and part of the slot cache fingerprint
  * per ARCHITECTURE §6. Switching is this constant and nothing else.
+ *
+ * **Version 2** is version 1 plus the literal-or-atmospheric rule, adopted at
+ * Block 9 session 12 on the evidence in `docs/DECISION-image-config.md`: five
+ * of nine planned slots call for the concrete thing she named and four for the
+ * mood, and nothing in version 1 asked for the first, so both mentions of a
+ * brand became a generic category. Version 1 stays selectable because every
+ * slot on disk was planned with it.
  */
-export const ACTIVE_SLOT_PROMPT_VERSION: SlotPromptVersion = 1;
+export const ACTIVE_SLOT_PROMPT_VERSION: SlotPromptVersion = 2;
 
 /** ARCHITECTURE §8: every billable call appends one line under this stage. */
 export const SLOT_LEDGER_STAGE = 'analysis-slots';
@@ -66,6 +73,23 @@ For each slot give the word_ids of the span it illustrates, copied exactly
 from the transcript, and a one-line idea in English describing what the image
 should show. The idea is a description of a picture, not a translation of the
 words and not a caption.
+
+When the words name something concrete and depictable — a brand, a product,
+a place, a country, an ingredient, a tool, a number of things — the picture
+should usually be that thing, and the idea should name it as she named it.
+A viewer should recognise it at a glance without working out what it stands
+for.
+
+When the words name no such thing — a question, a feeling, a promise, a
+result — the picture should carry the mood or the outcome instead, and the
+idea should describe that.
+
+Decide this for each slot on its own. Both kinds are right, and neither is
+the default. The test is what a viewer would recognise fastest in the two
+seconds the picture is on screen.
+
+Do not blend the two. A concrete thing beside an abstract one is two
+subjects, and a slot idea depicts one.
 
 Do not describe colours, lighting, framing or art style. Those come from the
 client's own visual identity and are added after you answer.
