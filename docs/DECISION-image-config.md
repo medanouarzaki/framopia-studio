@@ -518,6 +518,70 @@ tested as controls, and `no text` was ignored outright when it was there.
 Nothing was added to the negatives on the strength of hope. None of the eight
 images carries unexpected text.
 
+## Amendment (2026-08-30) — the framing axis loses its wide value
+
+**The user's ruling, from looking at the eight images session 12 generated.** He
+approved them; what he could not read was the one framed wide.
+
+A picture is placed at a **fixed size in the top-left corner** — 801 to 917 px on
+a 2160 px frame, and one size per reel — so how much of the frame the subject
+fills inside its own square is the whole of how legible it is. `test-1`'s
+`img002` is the evidence, two candidates from one idea:
+
+| candidate | framing drawn | what it shows |
+|---|---|---|
+| `img002-c1` | *wide, the whole subject with air around it* | a whole doctor, unreadable at 917 px in a corner |
+| `img002-c2` | (the same slot, other candidate) | her from the chest, the vial large in frame, reads instantly |
+
+So `wide, the whole subject with air around it` is **removed** from
+`imageVariation.axes.framingTightness`. Three values remain — medium, close,
+macro — against a validator minimum of two. **Medium is now the loosest framing
+any slot can draw.** The subject fills the frame.
+
+Mode **v12**. Nothing that bills moved: `keywordModeContentHash` and
+`slotModeContentHash` are unchanged, and the image cache keys on the composed
+prompt string, which is only consulted when something regenerates.
+
+### Two prompt changes are applied and have never been observed working
+
+This is the record that should stop a future session assuming either works.
+
+| change | applied | exercised | what would test it |
+|---|---|---|---|
+| **literal or atmospheric** (`slotPrompt`, `ACTIVE_SLOT_PROMPT_VERSION` 2) | session 12 | **no** | the first reel to plan slots fresh |
+| **framing tightness** (`imageVariation`, mode v12) | session 13 | **no** | the first reel to plan slots fresh |
+
+**Neither was tested, and in both cases that was a decision rather than an
+oversight.**
+
+The literalness rule governs which *ideas* get written, and session 12 reused
+`test-1`'s four existing ideas. Re-planning them would have yielded **six slots,
+not four** — `IMAGE_SLOTS_PER_30S` went to 8 at Block 8 session 35 — which is
+twelve images at **$2.1708** budgeted against the $1.4472 that run was
+authorised for, and it would have replaced the very ideas the before-and-after
+rested on.
+
+The framing rule changes what a slot *draws*, so testing it means regenerating.
+About **$6.82** of Gemini credit remains and Block 10's golden runs on two
+machines come out of it, so the user ruled: do not spend to test it.
+
+**Both get their first real test on the same run** — the first reel that plans
+slots fresh will exercise the literalness rule when it writes its ideas and the
+framing rule when it composes its prompts. `ground-truth` and `test-3` are the
+two reels whose analysis has never run.
+
+**What would miss the cache if anything were regenerated**, measured rather than
+guessed and true at the moment this was written:
+
+| reel | slots that would miss | why |
+|---|---|---|
+| `test-1` | **3 of 4** (6 of 8 images) | the framing draw moves on img001, img002, img003; img004 draws *close* either way and still hits |
+| `vitasilk` | **5 of 5** (10 of 10 images) | its stored prompts still carry the *old* palette and lighting fragments — session 12 deliberately did not recompose it — so these would have missed already |
+
+**Nothing was regenerated and no image file was deleted.** Neither plan was
+recomposed either: recomposing would leave a plan describing prompts whose
+pictures are not on disk.
+
 ## References
 
 - `benchmarks/RESULTS-block4-imagebakeoff.md` — the six-image comparison.

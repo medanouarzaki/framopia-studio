@@ -198,7 +198,8 @@ AI-generated contextual images, SFX, and a watermark. Full spec in
   analysis over every stored binary mask, plus the twelve frames with the
   largest dropped component rendered to `benchmarks/results/latest-components/`.
   Modifies no mask.
-- `npm run loudness:measure` — free, local, **read-only**. Measures every reel's
+- `npm run loudness:measure` — free, local, **read-only**. **The pipeline drives
+  this itself since Block 9 session 13**; this sweeps every reel at once. Measures every reel's
   integrated loudness, loudness range and true peak with ffmpeg's `ebur128` and
   writes `.local/build/loudness.json`. What the SFX levels are set against: the
   corpus runs −13.9 to −14.6 LUFS at **0.0–0.2 dBFS true peak**, so it has no
@@ -206,7 +207,8 @@ AI-generated contextual images, SFX, and a watermark. Full spec in
   plan as `source.dialogueLufs` and `source.dialoguePeakDbfs`; absent means
   unmeasured, and the build then attenuates nothing and falls back to each
   file's absolute gain rather than to a guessed loudness.
-- `npm run watermark:measure` — free, local. Measures
+- `npm run watermark:measure` — free, local. **The pipeline drives this itself
+  since Block 9 session 13**, by spawning this same file. Measures
   `assets/watermark/intro.mov` with ffprobe/ffmpeg and **emits** every claim
   into `benchmarks/RESULTS-block7-watermark.md`: duration in seconds and
   frames, both frame rates, pixel format and whether an alpha plane is really
@@ -7366,4 +7368,131 @@ so nothing that bills moved; `compositionContentHash` `c5b43f23a3bd4b0b` →
 the composed prompt string and has carried no mode version since Block 7 session
 1, so `test-1`'s four new prompts missed and **`vitasilk`'s fourteen image
 entries were untouched** — 28 files byte-identical at both ends of the session.
+
+
+## Block 9 session 13 — the framing tightened, and Block 8's DoD closed
+
+**Spent $0.00; no API was called and no image was generated.** Ledger **116
+lines, sha `e5e0a6e9…`, byte-identical at both ends**. Cache 44 entries at both
+ends, `vitasilk`'s 28 image files byte-identical (manifest `b5d4e5c7…`), all 19
+cutout files byte-identical (manifest `31a5baa2…`). After Effects pid 79146
+throughout, 0 `aerender`, `templates/library.aep` unchanged.
+
+### The framing axis stops offering wide
+
+**User ruling**, from the eight images session 12 generated and he approved. A
+picture is placed at a **fixed size in the top-left corner**, 801–917 px on a
+2160 px frame, so how much of its own square the subject fills is the whole of
+how legible it is. `test-1`'s `img002` is the evidence: one candidate a whole
+doctor showing nothing, the other her from the chest with the vial large in
+frame, reading instantly.
+
+`wide, the whole subject with air around it` is gone from
+`imageVariation.axes.framingTightness`. **Medium is the loosest value left**;
+close and macro lead. Three values against a validator minimum of two. Mode
+**v12**.
+
+**Nothing regenerated and no image file was deleted.** Measured, if anything ever
+were: `test-1` **3 of 4** slots would miss (img004 draws *close* either way),
+`vitasilk` **5 of 5** — but those five would have missed already, because
+session 12 deliberately left its stored prompts on the old palette fragments.
+Neither plan was recomposed: a recomposed plan would describe prompts whose
+pictures are not on disk.
+
+### Two prompt changes are applied and have never been observed working
+
+Recorded in `docs/DECISION-image-config.md` so a later session does not assume
+they work. The **literal-or-atmospheric** rule (session 12) and the **framing**
+rule (this one) both change what a slot asks for, and neither has been through a
+generation. Session 12 could not exercise the first — re-planning `test-1` gives
+**6 slots, not 4**, at $2.1708 against an authorised $1.4472 — and the user ruled
+against spending to test the second, since about **$6.82** of credit remains and
+Block 10's golden runs come out of it.
+
+**Both get their first test on the same run**: the first reel to plan slots
+fresh. `ground-truth` and `test-3` are the two whose analysis has never run.
+
+### The two terminal-only measurements are driven
+
+`handoffs/block-8.md` §9 listed both, and the user does not use a terminal.
+`service/src/build/measurements.ts` is the one declaration.
+
+- **The watermark** is measured by **spawning `tools/measure-watermark/cli.ts`**,
+  the same file a terminal runs — 680 lines of ffprobe, alpha
+  straight-vs-premultiplied testing and beep detection, and two implementations
+  of that would be two answers. The build job spawns its CLI for the same
+  reason. 2.4 s.
+- **The loudness** measurement moved into **`core/src/loudness.ts`**, which the
+  sweep CLI and the pipeline both call, so the driven path and the terminal path
+  cannot measure differently. About 0.2 s a reel.
+
+**Both run inside the transcription stage, not as stages of their own** —
+together under three seconds, and a fifth row in the panel for three seconds of
+ffmpeg would be a story about the tool rather than about the video. In
+transcription specifically because **the level has to be on the plan before the
+analysis stage derives SFX gains from it**; and on the **skip path too**, because
+a plan transcribed before this existed carries no level and skipping the stage
+must not mean skipping the measurement.
+
+**`applyLoudnessToPlan` closes the second hop.** The level reached a plan only
+through `npm run migrate:sfx-placement`, which read the corpus sweep and copied
+two numbers across — measuring alone would have left `dialogueLufs` undefined and
+the build refusing exactly as before. A plan that already carries SFX events has
+them re-derived when the level changes, through the same `deriveSfxEvents` the
+analysis stage calls.
+
+**Each carries a freshness record and the record is the artifact.**
+`.local/build/loudness/<stem>.json` names the video, its sha256 — taken from the
+plan, since hashing a 2.4 GB reel is seven seconds and transcription already
+computed it — when, by what, and the schema version.
+`.local/build/watermark.json` gained `schemaVersion` and `measuredAt` beside the
+asset sha it already had. Any mismatch is a re-measurement.
+
+**A missing input refuses by name.** `MeasurementUnavailableError` names what is
+missing, what the build would otherwise do and the command that fixes it —
+never an empty result, which is the shape that put a 2030 px picture across the
+speaker while every check reported success. **The build's own refusals are
+unchanged**; what changed is that they no longer fire in normal use.
+
+### The preflight runs before the first billable stage
+
+Frame analysis is last and free, so a missing ffmpeg, CV venv or segmentation
+model was discovered **after** three billable stages had spent.
+`assertFrameAnalysisAvailable()` now runs before the transcription stage; the
+stage keeps its position and only the discovery moved.
+
+**Proven by moving the real model file aside**, not by stubbing: the refusal
+names the model path, says *"nothing can find you in the frame, and every image
+is placed over your face"*, and names `tools/cv/setup.sh`. Restored at its
+pinned sha256 `c6748b12…`. A test injects a throwing preflight and asserts no
+stage impl was called and the ledger did not move.
+
+### A reel is behind when the look differs, not when the number does
+
+`snapshotsAgree` compared the client's `version` along with the palette, faces,
+colour roles and image scale, so sessions 12 and 13 — which edited image prompts
+no build reads — marked every pinned reel as behind while its look was
+byte-identical. **A warning that fires when nothing has changed trains the reader
+to ignore the one that matters.**
+
+`version` is now excluded from the comparison for the same reason `capturedAt`
+already was: neither changes a pixel. It stays **recorded** as provenance —
+which version a reel was pinned at is worth knowing — it simply does not decide.
+**Nothing is ever re-pinned automatically**; moving a reel forward is still a
+control someone presses.
+
+### Block 8's definition of done is met
+
+**`vitasilk`, and nothing billed.** Ledger byte-identical across the whole proof.
+
+| | |
+|---|---|
+| pipeline | all four stages skipped as already on the plan, **$0.00** |
+| watermark | cold: *measuring — nothing has measured the watermark* → 1924x2154, 61 frames |
+| loudness | cold: *measuring* → **−14.4 LUFS, peak 0.0 dBFS**, matching the sweep exactly |
+| warm re-run | both report *already measured from this exact file/video*; 3.5 s cold, 1.5 s warm |
+| build | `runBuildJob`, three stages done, no error |
+| result | `.local/build/vitasilk-full.aep`, **`master_final` 83 layers and `master_subs_only` 72**, 2160x3840, 25.692 s @ 29.9700 |
+
+The plan changed in **no top-level key** and the project was left **clean**.
 
