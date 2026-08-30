@@ -8000,3 +8000,96 @@ literal-versus-atmospheric change lives in `ACTIVE_SLOT_PROMPT_VERSION` 2 and
 governs which **ideas** are written, so only a reel whose slot stage runs fresh
 can exercise it: **`ground-truth` and `test-3` are the only reels with no slots
 planned at all**, at about **$2.35** each.
+
+
+## Block 10 session 5 — a video with no client stops the build
+
+**Spent $0.00.** Ledger 116 lines / `e5e0a6e9…` at both ends; `library.aep`
+`1d7553e894…`; **cache byte-identical, no entry created**; all seven hand-made
+reference files unchanged; `app.fonts.allFonts` **1198 → 1198**. Two Edit Plans
+changed as intended, three byte-identical.
+
+### A build refuses when no client identity resolves
+
+`client-identity` is a **build requirement** in
+`service/src/build/requirements.ts` — the one declaration the builder and
+`steps.ts` both read — and it is the only **unconditional** one there: every
+reel with cards has type to set. Its `present` comes from
+`resolveClientIdentity`'s own `source`, **passed in rather than recomputed**, so
+there is still one declaration of which look a build uses; absent, it reports as
+met, because a caller that never resolves an identity cannot be told it has the
+wrong one. `build-reel-cli.ts` now resolves the identity **before**
+`assertRequirementsMet`. `DryRunPlan.buildBlockedBecause` says the same thing
+before a run starts, optional-with-default on the panel side.
+
+**Six tests asserted the old corpus state and were rewritten**, named in
+`reports/block-10-session-5.md` — including one in `requirements.test.ts` that
+never supplied a `clientSource` and so **would have passed whatever the corpus
+looked like**; it resolves the identity for real now.
+
+### `POST /client` — the control that was missing
+
+**Nothing could attach a client to a plan whose analysis had never run.** The
+only writers of `clientMode` were the analysis stage, which bills, and a
+one-shot migration that reads an analysis label these plans do not have;
+`POST /client-snapshot` re-pins an existing client and refuses a plan with none.
+So the refusal above would have pointed at something the product could not do —
+and this repo's rule is that **a remedy sentence is verified by running it**.
+
+`POST /client { planPath, modeId }` mirrors `POST /client-snapshot` exactly:
+same `withPlan`, `loadMode`, `snapshotOfMode`, same 400 on an unknown client. It
+writes the pointer and the copy in one write. `setClient` in
+`panel/src/service.ts` is the panel side. **Five tests**, including that an
+unknown client writes nothing. **The panel has no button for it yet**, so the
+refusal's sentence is true of the API and not yet of the screen.
+
+### `ground-truth` and `test-3` carry K2 Syndicalia at v12
+
+Attached through that route over a real service; **no plan was hand-edited**.
+Exactly three top-level keys moved on each — `clientMode`, `clientSnapshot`,
+`meta` (only `updatedAt`).
+
+**The new v12 snapshot differs from the three existing v10 ones in `version` and
+`capturedAt` and nothing else** — palette, fonts, `textColours`, `imageScale`,
+name and id all identical, and both differing fields are the two
+`snapshotsAgree` excludes. All five reels are current.
+
+**Rebuilt and censused: `#F4F4F4` → `#F8F6F2` on all 76 and all 58 cards.**
+Shadows stay `#820000`. Both censuses otherwise clean, 0 mismatches against the
+plan.
+
+### What the next $2.35 buys, written down before it is spent
+
+`reports/block-10-next-run-preview.json`, computed read-only.
+
+`ground-truth`'s plan id makes the draw deterministic, so **every sentence the
+next run will send is already known except the ideas themselves**: six slots,
+none drawing `wide` (the axis no longer holds it), the four invariant style
+fragments, and the seven negatives.
+
+**The dry run is unmoved by attaching a client: $2.3508.** Of that, **$2.1708 is
+derived** — `imageSlotCountFor(23.257s)` = 6 slots × 2 candidates × $0.1809
+(published pro-2K $0.134 × `IMAGE_COST_MULTIPLIER` 1.35), assuming the planner
+returns six usable slots — and **$0.18 is a fixed assumption**,
+`STAGE_ESTIMATES.analysis`, not derived from the reel.
+
+**A fresh slot plan writes** `subtitles.groups`, `keywords`, `sfx`, `images`,
+`clientMode`, `clientSnapshot`, the two `pipeline` records, `costs` and
+`meta.updatedAt`. **It does not touch `plan.transcript` at all**, nor `zones`,
+`watermark` or `build`, and neither analysis file references
+`.local/ground-truth/` or `benchmarks/references/`. **Nothing hand-made is at
+risk.**
+
+### `buildSlotPrompt` ignores its `version` argument
+
+**`ACTIVE_SLOT_PROMPT_VERSION` 1 and 2 produce byte-identical prompts** — 3399
+characters each, zero lines differing. `buildSlotPrompt`
+(`service/src/analysis/slots.ts:52`) destructures `options` without reading
+`version`, and the literal-or-atmospheric paragraphs are **unconditional** in
+the single prompt body.
+
+The version is real as a **cache key** and as **provenance on the plan**, and
+the change **is live and will be sent**. What is false is the doc comment above
+the constant: *"Version 1 stays selectable"* — asking for version 1 returns the
+version 2 text. **So a disappointing result cannot be A/B'd by flipping the
+constant.** Reported, not changed; it is live and the next run depends on it.
