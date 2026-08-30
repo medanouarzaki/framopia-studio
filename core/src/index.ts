@@ -358,6 +358,21 @@ export {
   type RetryAttemptReport,
   type TransientRetryOptions,
 } from './transient-failure.js';
+
+export {
+  DOCTOR_SCHEMA_VERSION,
+  FATAL_BLOCKING,
+  exitCodeFor,
+  formatCheck,
+  formatReport,
+  redact,
+  summarise,
+  type Blocking,
+  type CheckResult,
+  type CheckState,
+  type DoctorReport,
+  type DoctorSummary,
+} from './doctor.js';
 export {
   CLIENT_SNAPSHOT_VERSION,
   snapshotIsBehind,
