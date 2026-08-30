@@ -111,13 +111,37 @@ describe('snapshotIsBehind', () => {
     const retuned = fixture({ version: 4, palette: { ...fixture().palette, light: '#EEEEEE' } });
     expect(snapshotIsBehind(pinned, retuned)).toBe(true);
   });
+
+  /*
+   * The bump that produced this rule: Block 9 sessions 12 and 13 took K2
+   * Syndicalia from v10 to v12 by editing image prompts, which no build reads,
+   * and every pinned reel started reporting itself behind. A warning that fires
+   * when nothing has changed trains the reader to ignore the one that matters.
+   */
+  it('is false when only the client’s version moved', () => {
+    const pinned = snapshotOfMode(fixture(), 'then');
+    expect(snapshotIsBehind(pinned, fixture({ version: fixture().version + 7 }))).toBe(false);
+  });
+
+  it('still reports the version it was pinned at', () => {
+    const pinned = snapshotOfMode(fixture({ version: 3 }), 'then');
+    expect(pinned.version).toBe(3);
+    expect(snapshotIsBehind(pinned, fixture({ version: 9 }))).toBe(false);
+  });
+
+  it('sees a look change even when the version does not move', () => {
+    const pinned = snapshotOfMode(fixture(), 'then');
+    const sameNumber = fixture({ imageScale: fixture().imageScale === 2 ? 3 : 2 });
+    expect(sameNumber.version).toBe(fixture().version);
+    expect(snapshotIsBehind(pinned, sameNumber)).toBe(true);
+  });
 });
 
 describe('the real client', () => {
   it('pins K2 Syndicalia’s three faces and its locked palette', () => {
     const snap = snapshotOfMode(loadMode('k2-syndicalia'), 'now');
 
-    expect(snap.version).toBe(11);
+    expect(snap.version).toBe(12);
     expect(snap.palette).toEqual({
       background: '#1A0000',
       primary: '#820000',

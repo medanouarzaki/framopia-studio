@@ -75,10 +75,9 @@ describe('the client that already exists', () => {
     const raw = readFileSync(modePathFor('k2-syndicalia'), 'utf8');
     const mode = loadMode('k2-syndicalia');
     expect(validateMode(mode)).toEqual([]);
-    // v11 at Block 9 session 12 — the image-style palette and lighting
-    // fragments. The fields listed below are a different set and are still
-    // absent.
-    expect(mode.version).toBe(11);
+    // v12 at Block 9 session 13 — the framing axis loses its wide value. The
+    // fields listed below are a different set and are still absent.
+    expect(mode.version).toBe(12);
     for (const field of [
       'videoFolder', 'logoPath', 'pictures', 'language',
       'subtitleBaselineY', 'videoShape', 'watermarkByDefault',

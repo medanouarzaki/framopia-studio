@@ -230,6 +230,7 @@ describe('the k2 stub on disk', () => {
   /*
    * v8, Block 9 session 2: the real faces, their colour roles and a note.
    * v11, Block 9 session 12: the image-style palette and lighting fragments.
+   * v12, Block 9 session 13: the framing axis loses its wide value.
    *
    * A bump invalidates nothing that bills, and that is measured before it is
    * made
@@ -239,8 +240,8 @@ describe('the k2 stub on disk', () => {
    * `[name]` for slots — none of which moved. Transcription never reads the
    * mode at all.
    */
-  it('is at version 11', () => {
-    expect(mode.version).toBe(11);
+  it('is at version 12', () => {
+    expect(mode.version).toBe(12);
   });
 
   /*
@@ -264,21 +265,23 @@ describe('the k2 stub on disk', () => {
   });
 
   /*
-   * v11, Block 9 session 12, replaced two `imageStyle.stylePrompt` fragments,
-   * so the composition hash moves and must: it covers the palette and both
-   * halves of the image style, and the composed prompt really did change.
+   * v11 (session 12) replaced two `imageStyle.stylePrompt` fragments and v12
+   * (session 13) dropped the wide value from the framing axis, so the
+   * composition hash moves and must: it covers the palette, both halves of the
+   * image style and the variation axes, and the composed prompt really did
+   * change.
    *
    * **Nothing that bills moved.** Composition is pure — it feeds `recompose`,
    * which makes no model call — while the two hashes that gate a paid call
    * cover `[name, vocabulary]` and `[name]`, and neither was touched. The
    * image cache keys on the composed prompt string itself and has not keyed on
-   * the mode version since Block 7 session 1, so `test-1`'s new prompts miss
-   * and every other reel's cached image still hits.
+   * the mode version since Block 7 session 1, so a slot whose draw moved would
+   * miss on its own prompt if anything were ever regenerated, and nothing is.
    */
-  it('bumping to v11 moved only the hash that bills for nothing', () => {
+  it('bumping to v12 moved only the hash that bills for nothing', () => {
     expect(keywordModeContentHash(mode)).toBe('7756f1e7883417fc');
     expect(slotModeContentHash(mode)).toBe('a654c324f198ed37');
-    expect(compositionContentHash(mode)).toBe('800227495e05c527');
+    expect(compositionContentHash(mode)).toBe('ac8ff84afe8dcd2f');
   });
 
   it('allows both script variants of the text templates', () => {
