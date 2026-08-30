@@ -7764,7 +7764,7 @@ neither reel has a keyword so the emphasis face never arises. Reported, not
 changed.
 
 
-## Block 10 session 3 — an overlong card shrinks, and nothing wraps
+## Block 10 session 3 — an overlong card shrinks, and nothing wraps (SUPERSEDED by session 4)
 
 **Spent $0.00.** Ledger 116 lines / `e5e0a6e9…` at both ends; `library.aep`
 `1d7553e894…`; **all five Edit Plans byte-identical**; cache byte-identical;
@@ -7882,3 +7882,121 @@ debt; not touched.**
 `mésothérapie` ×3 and `hyaluronique` ×1 — and both reels are also the
 client-less pair, so that path stays untested. **The refusal path has never
 fired**: every real card converged in two attempts.
+
+
+## Block 10 session 4 — break first, shrink only when there is nothing to break
+
+**Spent $0.00.** Ledger 116 lines / `e5e0a6e9…` at both ends; `library.aep`
+`1d7553e894…`; **all five Edit Plans byte-identical**; cache byte-identical;
+`app.fonts.allFonts` **1198 → 1198**.
+
+### The rule session 3 shipped was wrong, and the user overruled it by eye
+
+**User ruling, 2026-08-30**, recorded in `docs/PROJECT_SPEC.md` §3 replacing
+"never wraps to a second line". Session 3 forced every overlong card onto one
+line and shrank it; on `test-1`'s keyword `محفزات الكولاجين` that produced a card
+**56% the height of its neighbours** — wide, thin, and smaller than the ordinary
+subtitle beside it. **A keyword is meant to be the largest thing on screen, so
+shrinking one inverts what it is for.**
+
+**A card with a space to break at goes onto two lines at its authored size;
+shrinking is only for a card that cannot be broken.** Breaking costs nothing,
+because `SUBTITLE_BAND` was always derived for `MAX_SUBTITLE_LINES` = 2 and the
+first baseline does not move.
+
+`core/src/shrink-to-fit.ts` is renamed **`core/src/card-fit.ts`** — the old name
+described only the fallback — and `framopiaShrinkToFit` is
+**`framopiaFitCard`**. The order, every step decided on a width After Effects
+measured: measure one line at full size; if over, take `chooseBreak`'s break and
+measure each line; shrink only if there is no break or a line still overruns,
+**keeping the break**, driven by the widest line. `SHRINK_MAX_ATTEMPTS` unchanged
+at 6.
+
+**Both layers get the identical text *including the break character* and the
+identical size, and the builder reads both back and throws on either.** A break
+that reached one layer and not the other is the Block 9 defect wearing a
+different hat.
+
+**32 tests in `card-fit.test.ts`**, seven reading the `.jsx` — including one that
+pins the break being tried *before* any reduction in size, by comparing where
+each appears in the function. Every test that asserted the one-line rule was
+rewritten in the same commit; `wrap.test.ts` needed none, because `chooseBreak`
+is **load-bearing again** rather than vestigial.
+
+**Session 3's `SUBTITLE_BAND` debt is resolved, not outstanding.** It called the
+323 px of second-line descent unearned because no card could have two lines.
+Cards can again, so the band is correct as authored. Untouched.
+
+### All five reels built and censused — 338 cards, 0 over the bound
+
+**First build ever of `ground-truth` and `test-3`.**
+
+| reel | cards | one line | **broken** | **shrunk** | over |
+|---|---:|---:|---:|---:|---:|
+| ground-truth | 76 | 74 | 0 | 2 | 0 |
+| test-1 | 66 | 65 | **1** | 0 | 0 |
+| test-2 | 67 | 65 | **1** | 1 | 0 |
+| test-3 | 58 | 55 | 0 | 3 | 0 |
+| vitasilk | 71 | 70 | 0 | 1 | 0 |
+| **corpus** | **338** | **329** | **2** | **7** | **0** |
+
+**The nine cards session 2 predicted, split exactly as the ruling intends.** The
+two with a break point break; the seven single words shrink.
+
+**Both cards the user ruled on break and keep their authored size** —
+`محفزات الكولاجين` → `محفزات` / `الكولاجين` and `ترطيب عميق` → `ترطيب` / `عميق`,
+both **Almarai-Bold at 455, unchanged**, widest lines 1815.91 and 1295.39 px
+against 1940. Neither had to shrink after breaking. **Nothing in the corpus
+shrinks a keyword any more**; the worst shrink is now **×0.7412** on
+`polynucléotides`, an ordinary single word, where session 3's was ×0.5589 on a
+keyword. Every card resolved in **two** attempts.
+
+Census over all five: **0 placeholder words surviving, 0 undeclared text layers,
+0 comps where placeholder and shadow differ in text or size, 338 compared
+against the Edit Plan, 0 mismatches, 0 fonts outside K2.**
+
+### A client-less reel draws the template's own pale, not the client's crème
+
+First evidence for session 2's §3.7 finding. `ground-truth` and `test-3` have no
+`clientMode` and no `clientSnapshot`, so `resolveClientIdentity` returns
+`source: 'none'` and `textStyleFor` returns nothing.
+
+**Every card on both reels is `#F4F4F4`** — the template's own pale — against
+**`#F8F6F2`** crème on the three client reels. Four points per channel, invisible
+to the eye. No gold appears on either, but only because neither reel has a
+keyword. **The census reports "fonts outside k2-syndicalia: none" for both, and
+that is a coincidence rather than a check passing**: the templates carry
+Inter-SemiBold and Almarai-Bold, which happen to be K2's own faces. A second
+client with different faces would build these two reels in K2's type with nothing
+saying so. **Observed, not fixed.**
+
+### Why `test-1`'s first picture is a wide shot
+
+**The framing instruction is fixed into the slot's stored `prompt` string at
+compose time and nothing at generation time re-reads the axes.**
+`drawVariation` (`service/src/analysis/slot-select.ts:82`) and `composePrompt`
+(`:152`), called from `planSlots` (`:240`) and `recompose.ts:43`.
+`ImageSlot.variation` is **null on every slot in the corpus**, so the drawn
+values survive only inside that string.
+
+**`test-1` `img002` (4.599–6.759 s) carries `wide, the whole subject with air
+around it` verbatim**, at `promptModeVersion: 11`. The amendment that removed
+`wide` is **mode v12**, the session after. Block 9 session 12's $1.220660
+regeneration **did not rewrite the ideas** — analysis is still
+`keywords-prompt-v3-k2-syndicalia-v5` — it recomposed at v11 and generated from
+that.
+
+**`vitasilk` carries it too**: `img004` at 16.94 s, `promptModeVersion: 5`,
+composed in Block 4 and never recomposed. **So the likely golden reel also has a
+wide shot.** Computed read-only against v12, a recompose would draw `close` for
+`test-1 img002` and `medium` for `vitasilk img004`, and no slot on either reel
+would draw `wide`.
+
+**Neither prompt change can be exercised by any reel on disk without spending.**
+Recomposing is free but only rewrites the string; the pictures are cached under
+the **old** composed prompt, so a recomposed slot misses its cache and strands
+its images — seeing the framing fix means regenerating. The
+literal-versus-atmospheric change lives in `ACTIVE_SLOT_PROMPT_VERSION` 2 and
+governs which **ideas** are written, so only a reel whose slot stage runs fresh
+can exercise it: **`ground-truth` and `test-3` are the only reels with no slots
+planned at all**, at about **$2.35** each.
