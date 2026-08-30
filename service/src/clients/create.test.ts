@@ -75,9 +75,10 @@ describe('the client that already exists', () => {
     const raw = readFileSync(modePathFor('k2-syndicalia'), 'utf8');
     const mode = loadMode('k2-syndicalia');
     expect(validateMode(mode)).toEqual([]);
-    // v10 at Block 9 session 11 — the shadow colour role. The fields listed
-    // below are a different set and are still absent.
-    expect(mode.version).toBe(10);
+    // v11 at Block 9 session 12 — the image-style palette and lighting
+    // fragments. The fields listed below are a different set and are still
+    // absent.
+    expect(mode.version).toBe(11);
     for (const field of [
       'videoFolder', 'logoPath', 'pictures', 'language',
       'subtitleBaselineY', 'videoShape', 'watermarkByDefault',

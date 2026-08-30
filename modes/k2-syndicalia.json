@@ -1,8 +1,8 @@
 {
   "id": "k2-syndicalia",
   "name": "K2 Syndicalia",
-  "version": 10,
-  "note": "The palette is locked (PROJECT_SPEC §5). Fonts, their colour roles and the palette role names come from the client's own brand document, supplied by the user at Block 9 session 2: Noir Abyssal #1A0000 is the dominant ground, Blanc Cassé/Crème #F8F6F2 is text, Or Signature #C9A96E carries highlights and emphasis, and Rouge K2 #820000 is used sparingly in gradients and background motion. The three faces are Inter Semi-Bold for ordinary words, Cormorant Garamond SemiBold Italic for emphasized ones and Almarai Bold for Arabic; all three are installed on both machines. Block 9 session 5 measured the faces in After Effects: EMPHASIS_SIZE_RATIO is 1.3479 and the PostScript names are recorded below. Still open: whether the build should set colour and font at all, which today live in the template comps; and vocabulary, which is deliberately still empty because it keys the keyword cache and the brand document's terms -- Loi 18-00, CNDP, copropriété, syndic, assemblée générale, recouvrement -- are load-bearing on transcription. imageStyle and imageVariation are untouched: they change only in the billable image session, on the user's explicit go-ahead, because editing them strands images already paid for.",
+  "version": 11,
+  "note": "The palette is locked (PROJECT_SPEC §5). Fonts, their colour roles and the palette role names come from the client's own brand document, supplied by the user at Block 9 session 2: Noir Abyssal #1A0000 is the dominant ground, Blanc Cassé/Crème #F8F6F2 is text, Or Signature #C9A96E carries highlights and emphasis, and Rouge K2 #820000 is used sparingly in gradients and background motion. The three faces are Inter Semi-Bold for ordinary words, Cormorant Garamond SemiBold Italic for emphasized ones and Almarai Bold for Arabic; all three are installed on both machines. Block 9 session 5 measured the faces in After Effects and the PostScript names are recorded below; EMPHASIS_SIZE_RATIO is 1.1641, ruled by the user at session 7 from cap height after seeing one reel built at each of the two candidates. Still open: whether the build should set colour and font at all, which today live in the template comps; and vocabulary, which is deliberately still empty because it keys the keyword cache and the brand document's terms -- Loi 18-00, CNDP, copropriété, syndic, assemblée générale, recouvrement -- are load-bearing on transcription. imageStyle's palette and lighting fragments were replaced at Block 9 session 12, on the user's explicit go-ahead, and tested by generating test-1's eight images: the old pair led with the near-black ground and confined the only light colour to highlights, which put 87.4% of the average frame below 0.05 luminance. imageVariation is untouched. Both still change only in a billable image session, because editing either strands images already paid for.",
   "palette": {
     "background": "#1A0000",
     "primary": "#820000",
@@ -30,8 +30,8 @@
     "stylePrompt": [
       "a single clear idea, readable at a glance",
       "one subject, centred and unobstructed",
-      "dominant colour palette of {{palette.background}}, {{palette.primary}} and {{palette.accent}}",
-      "lit against {{palette.background}}, with {{palette.light}} reserved for highlights"
+      "the brighter end of the palette leads: {{palette.accent}} and {{palette.light}} carry the subject, with {{palette.primary}} for depth and {{palette.background}} kept to the ground behind it",
+      "lit so the subject reads immediately at a glance, bright and clearly separated from its ground, not sunk into it"
     ],
     "negativePrompt": [
       "no extraneous objects",

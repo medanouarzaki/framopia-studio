@@ -229,16 +229,18 @@ describe('the k2 stub on disk', () => {
 
   /*
    * v8, Block 9 session 2: the real faces, their colour roles and a note.
+   * v11, Block 9 session 12: the image-style palette and lighting fragments.
    *
-   * The bump invalidates nothing, and that was measured before it was made
+   * A bump invalidates nothing that bills, and that is measured before it is
+   * made
    * rather than argued: the image cache stopped keying on `modeVersion` in
    * Block 7 session 1, and the analysis stages key on content hashes of the
    * fields their own call reads — `[name, vocabulary]` for keywords and
    * `[name]` for slots — none of which moved. Transcription never reads the
    * mode at all.
    */
-  it('is at version 10', () => {
-    expect(mode.version).toBe(10);
+  it('is at version 11', () => {
+    expect(mode.version).toBe(11);
   });
 
   /*
@@ -261,10 +263,22 @@ describe('the k2 stub on disk', () => {
     for (const value of Object.values(names)) expect(value).not.toMatch(/\s/);
   });
 
-  it('bumping to v10 moved no cache key', () => {
+  /*
+   * v11, Block 9 session 12, replaced two `imageStyle.stylePrompt` fragments,
+   * so the composition hash moves and must: it covers the palette and both
+   * halves of the image style, and the composed prompt really did change.
+   *
+   * **Nothing that bills moved.** Composition is pure — it feeds `recompose`,
+   * which makes no model call — while the two hashes that gate a paid call
+   * cover `[name, vocabulary]` and `[name]`, and neither was touched. The
+   * image cache keys on the composed prompt string itself and has not keyed on
+   * the mode version since Block 7 session 1, so `test-1`'s new prompts miss
+   * and every other reel's cached image still hits.
+   */
+  it('bumping to v11 moved only the hash that bills for nothing', () => {
     expect(keywordModeContentHash(mode)).toBe('7756f1e7883417fc');
     expect(slotModeContentHash(mode)).toBe('a654c324f198ed37');
-    expect(compositionContentHash(mode)).toBe('c5b43f23a3bd4b0b');
+    expect(compositionContentHash(mode)).toBe('800227495e05c527');
   });
 
   it('allows both script variants of the text templates', () => {

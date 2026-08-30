@@ -13,14 +13,28 @@ describe('the client-snapshot migration', () => {
    * have written. If the two could differ, a migrated corpus would build
    * differently from a newly-analysed reel and nothing would say why.
    */
-  it('leaves a plan identical to one pinned fresh from the client file', async () => {
+  /*
+   * The pin was taken at K2 Syndicalia v10 and the client is at v11 since
+   * Block 9 session 12, which replaced two image-prompt fragments. Nothing a
+   * build reads moved, so the two snapshots still agree on every field that
+   * decides a reel — they differ only in the client's own version, which is
+   * provenance. `snapshotsAgree` counts that version, which is what makes the
+   * build preview report this reel as behind.
+   */
+  it('leaves a plan identical to one pinned fresh, but for the client’s version', async () => {
     const plan = await readEditPlan(path.join(FOOTAGE, 'vitasilk.editplan.json'));
     const migrated = plan.clientSnapshot;
     expect(migrated).toBeDefined();
+    const pinned = migrated as NonNullable<typeof migrated>;
 
     const fresh = snapshotOfMode(loadMode('k2-syndicalia'), 'a different instant');
 
-    expect(snapshotsAgree(migrated as NonNullable<typeof migrated>, fresh)).toBe(true);
+    expect(pinned.version).toBe(10);
+    expect(fresh.version).toBe(11);
+    expect(snapshotsAgree(pinned, fresh)).toBe(false);
+
+    // Everything that decides the build is unchanged.
+    expect(snapshotsAgree({ ...pinned, version: 0 }, { ...fresh, version: 0 })).toBe(true);
   });
 
   it('pinned every plan that names a client, and left the ones that do not', async () => {
