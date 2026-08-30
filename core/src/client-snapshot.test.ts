@@ -47,6 +47,7 @@ describe('snapshotOfMode', () => {
    * the defaults happen to be on the day it is read.
    */
   it('resolves the colour roles a client leaves blank', () => {
+    // No shadow key at all: a client who names none must not be given one.
     expect(snapshotOfMode(fixture(), 'then').textColours).toEqual({
       ordinary: 'light',
       emphasis: 'accent',
@@ -116,7 +117,7 @@ describe('the real client', () => {
   it('pins K2 Syndicalia’s three faces and its locked palette', () => {
     const snap = snapshotOfMode(loadMode('k2-syndicalia'), 'now');
 
-    expect(snap.version).toBe(9);
+    expect(snap.version).toBe(10);
     expect(snap.palette).toEqual({
       background: '#1A0000',
       primary: '#820000',
@@ -128,6 +129,10 @@ describe('the real client', () => {
       arabic: 'Almarai Bold',
       emphasis: 'Cormorant Garamond SemiBold Italic',
     });
-    expect(snap.textColours).toEqual({ ordinary: 'light', emphasis: 'accent' });
+    expect(snap.textColours).toEqual({
+      ordinary: 'light',
+      emphasis: 'accent',
+      shadow: 'primary',
+    });
   });
 });

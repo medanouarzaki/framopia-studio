@@ -1,7 +1,7 @@
 {
   "id": "k2-syndicalia",
   "name": "K2 Syndicalia",
-  "version": 9,
+  "version": 10,
   "note": "The palette is locked (PROJECT_SPEC §5). Fonts, their colour roles and the palette role names come from the client's own brand document, supplied by the user at Block 9 session 2: Noir Abyssal #1A0000 is the dominant ground, Blanc Cassé/Crème #F8F6F2 is text, Or Signature #C9A96E carries highlights and emphasis, and Rouge K2 #820000 is used sparingly in gradients and background motion. The three faces are Inter Semi-Bold for ordinary words, Cormorant Garamond SemiBold Italic for emphasized ones and Almarai Bold for Arabic; all three are installed on both machines. Block 9 session 5 measured the faces in After Effects: EMPHASIS_SIZE_RATIO is 1.3479 and the PostScript names are recorded below. Still open: whether the build should set colour and font at all, which today live in the template comps; and vocabulary, which is deliberately still empty because it keys the keyword cache and the brand document's terms -- Loi 18-00, CNDP, copropriété, syndic, assemblée générale, recouvrement -- are load-bearing on transcription. imageStyle and imageVariation are untouched: they change only in the billable image session, on the user's explicit go-ahead, because editing them strands images already paid for.",
   "palette": {
     "background": "#1A0000",
@@ -23,7 +23,8 @@
   },
   "textColours": {
     "ordinary": "light",
-    "emphasis": "accent"
+    "emphasis": "accent",
+    "shadow": "primary"
   },
   "imageStyle": {
     "stylePrompt": [

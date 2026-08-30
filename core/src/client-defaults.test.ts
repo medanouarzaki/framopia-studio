@@ -38,9 +38,9 @@ describe('what a client who says nothing gets', () => {
   it('leaves k2-syndicalia taking every client detail’s standard value', () => {
     const mode = loadMode('k2-syndicalia');
     expect(validateMode(mode)).toEqual([]);
-    // v9 at Block 9 session 5: the measured PostScript names. None of the
-    // fields *this* module answers for has ever been touched by those bumps.
-    expect(mode.version).toBe(9);
+    // v10 at Block 9 session 11: the shadow colour role. None of the fields
+    // *this* module answers for has ever been touched by those bumps.
+    expect(mode.version).toBe(10);
     // None of the new fields is set, so every one of them takes the old value.
     const d = clientDefaults(mode);
     expect(d.source).toEqual({

@@ -213,8 +213,14 @@ describe('the k2 stub on disk', () => {
     });
   });
 
-  it('says which palette role carries ordinary words and which carries emphasis', () => {
-    expect(mode.textColours).toEqual({ ordinary: 'light', emphasis: 'accent' });
+  it('says which palette role carries ordinary words, emphasis and the shadow', () => {
+    expect(mode.textColours).toEqual({
+      ordinary: 'light',
+      emphasis: 'accent',
+      // #820000, read out of the audit and matched to the palette role that
+      // holds it rather than written as a hex value.
+      shadow: 'primary',
+    });
   });
 
   it('has no vocabulary yet', () => {
@@ -231,8 +237,8 @@ describe('the k2 stub on disk', () => {
    * `[name]` for slots — none of which moved. Transcription never reads the
    * mode at all.
    */
-  it('is at version 9', () => {
-    expect(mode.version).toBe(9);
+  it('is at version 10', () => {
+    expect(mode.version).toBe(10);
   });
 
   /*
@@ -255,7 +261,7 @@ describe('the k2 stub on disk', () => {
     for (const value of Object.values(names)) expect(value).not.toMatch(/\s/);
   });
 
-  it('bumping to v9 moved no cache key', () => {
+  it('bumping to v10 moved no cache key', () => {
     expect(keywordModeContentHash(mode)).toBe('7756f1e7883417fc');
     expect(slotModeContentHash(mode)).toBe('a654c324f198ed37');
     expect(compositionContentHash(mode)).toBe('c5b43f23a3bd4b0b');

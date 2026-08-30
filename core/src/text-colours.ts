@@ -1,4 +1,4 @@
-import type { ClientMode, ModeTextColours, PaletteRole } from './mode.js';
+import type { ClientMode, PaletteRole } from './mode.js';
 
 /**
  * Which colour each kind of subtitle word is drawn in, resolved against a
@@ -15,7 +15,7 @@ import type { ClientMode, ModeTextColours, PaletteRole } from './mode.js';
  * the string. Making the build mode-driven is a change the user rules on by
  * looking at a build, not one to slip in beside a data addition.
  */
-export const DEFAULT_TEXT_COLOUR_ROLES: Required<ModeTextColours> = {
+export const DEFAULT_TEXT_COLOUR_ROLES: { ordinary: PaletteRole; emphasis: PaletteRole } = {
   ordinary: 'light',
   emphasis: 'accent',
 };
@@ -30,15 +30,28 @@ export interface ResolvedTextColour {
 export interface ResolvedTextColours {
   ordinary: ResolvedTextColour;
   emphasis: ResolvedTextColour;
+  /**
+   * Null when the client names none, which means the template's own shadow
+   * colour stands. There is deliberately no default: see `ModeTextColours`.
+   */
+  shadow: ResolvedTextColour | null;
 }
 
 export function resolveTextColours(
   mode: Pick<ClientMode, 'palette' | 'textColours'>,
 ): ResolvedTextColours {
-  const of = (key: keyof Required<ModeTextColours>): ResolvedTextColour => {
+  const of = (key: 'ordinary' | 'emphasis'): ResolvedTextColour => {
     const named = mode.textColours?.[key];
     const role = named ?? DEFAULT_TEXT_COLOUR_ROLES[key];
     return { role, hex: mode.palette[role], source: named === undefined ? 'standard' : 'client' };
   };
-  return { ordinary: of('ordinary'), emphasis: of('emphasis') };
+  const shadowRole = mode.textColours?.shadow;
+  return {
+    ordinary: of('ordinary'),
+    emphasis: of('emphasis'),
+    shadow:
+      shadowRole === undefined
+        ? null
+        : { role: shadowRole, hex: mode.palette[shadowRole], source: 'client' },
+  };
 }

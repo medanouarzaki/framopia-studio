@@ -34,7 +34,7 @@ export interface ClientSnapshot {
   palette: Record<PaletteRole, string>;
   fonts: ModeFonts;
   /** Resolved, so a snapshot never has to be read against today's defaults. */
-  textColours: { ordinary: PaletteRole; emphasis: PaletteRole };
+  textColours: { ordinary: PaletteRole; emphasis: PaletteRole; shadow?: PaletteRole };
   imageScale: number;
   capturedAt: string;
 }
@@ -50,6 +50,9 @@ export function snapshotOfMode(mode: ClientMode, capturedAt: string): ClientSnap
     textColours: {
       ordinary: mode.textColours?.ordinary ?? DEFAULT_TEXT_COLOUR_ROLES.ordinary,
       emphasis: mode.textColours?.emphasis ?? DEFAULT_TEXT_COLOUR_ROLES.emphasis,
+      // Optional with no default: absent means the template's own colour, and
+      // a snapshot must not invent one for a client who named none.
+      ...(mode.textColours?.shadow === undefined ? {} : { shadow: mode.textColours.shadow }),
     },
     imageScale: mode.imageScale ?? 1,
     capturedAt,

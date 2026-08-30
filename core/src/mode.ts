@@ -139,6 +139,20 @@ export type ModeFonts =
 export interface ModeTextColours {
   ordinary?: PaletteRole;
   emphasis?: PaletteRole;
+  /**
+   * The colour of the shadow copy drawn behind a word, where a template has
+   * one.
+   *
+   * **Absent means the build leaves the template's own colour alone**, which is
+   * what it does today and what every client without this field gets. There is
+   * no palette default: a shadow colour is a decision about a client's look,
+   * and picking one for a client who has not made it would give them somebody
+   * else's.
+   *
+   * Recorded and **not yet wired through to the build** — the build sets the
+   * visible layer's colour and never the shadow's.
+   */
+  shadow?: PaletteRole;
 }
 
 export interface ImageVariation {
