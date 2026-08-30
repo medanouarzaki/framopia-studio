@@ -3,6 +3,9 @@ import {
   LINE_SPACING,
   MAX_SUBTITLE_LINES,
   SUBTITLE_ANCHOR_BASELINE_Y,
+  loadTemplateAudit,
+  loadTemplateManifest,
+  shadowDescentPx,
   worstCaseExtent,
 } from '@framopia/core';
 
@@ -56,10 +59,24 @@ export const FRAME_ASPECT = FRAME_HEIGHT / FRAME_WIDTH;
  */
 export const SUBTITLE_BAND_TOP_PX =
   SUBTITLE_ANCHOR_BASELINE_Y - worstCaseExtent().ascentPx;
+/**
+ * How far the templates' shadow layers reach below the word, from the audit.
+ *
+ * The shadow is a duplicate of the text displaced by a Transform effect, so it
+ * extends past the ink the font metrics describe. Derived from
+ * `templates/library.audit.json` rather than typed: the offset is a fact about
+ * the templates and changes when the user changes them.
+ *
+ * Zero when no template declares a shadow, which is every library before Block
+ * 9 session 10 — such a library derives exactly the band it always did.
+ */
+export const SHADOW_DESCENT_PX = shadowDescentPx(loadTemplateManifest(), loadTemplateAudit());
+
 export const SUBTITLE_BAND_BOTTOM_PX =
   SUBTITLE_ANCHOR_BASELINE_Y +
   (MAX_SUBTITLE_LINES - 1) * LINE_SPACING +
-  worstCaseExtent().descentPx;
+  worstCaseExtent().descentPx +
+  SHADOW_DESCENT_PX;
 export const SUBTITLE_BAND_HEIGHT_PX =
   SUBTITLE_BAND_BOTTOM_PX - SUBTITLE_BAND_TOP_PX;
 export const SUBTITLE_BAND = {

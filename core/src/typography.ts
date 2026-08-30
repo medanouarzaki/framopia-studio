@@ -175,6 +175,20 @@ export const EXTRA_LINES_RENDER_BELOW = true;
 export const FONT_METRICS = {
   latin: { unitsPerEm: 2048, ascent: 1970, descent: 480 },
   arabic: { unitsPerEm: 1000, ascent: 1100, descent: 427 },
+  /**
+   * The emphasis face, added Block 9 session 11. It had never been in the
+   * derivation: `SUBTITLE_BAND` was built from two faces while three are drawn.
+   *
+   * CormorantGaramondItalic-SemiBoldItalic, instanced at wght 600 from the
+   * **italic** family — a separate family here, which is why the emphasis
+   * PostScript name is `CormorantGaramondItalic-…` and not
+   * `CormorantGaramond-…`.
+   *
+   * Derived by `tools/font-metrics/measure.py`, which **reproduces the two
+   * faces above exactly** before it reports a third. A tool that cannot
+   * reproduce a known answer has no business producing an unknown one.
+   */
+  emphasis: { unitsPerEm: 1000, ascent: 806, descent: 281 },
 } as const;
 
 /** Ink extent in pixels above and below the baseline at a given size. */
@@ -190,18 +204,23 @@ export function inkExtent(
 }
 
 /**
- * The worst case the subtitle band has to clear: the larger of the two track
- * sizes, in whichever face reaches further from the baseline.
+ * The worst case the subtitle band has to clear: the largest reach from the
+ * baseline across every face that is drawn, each at the size it is drawn at.
  *
- * Almarai wins both directions at the keyword size — 500.23 against 408.81
- * above, 194.18 against 99.61 below — because the 1.07 ratio and its heavier
- * descenders more than cover Inter's taller nominal ascent.
+ * Almarai still wins both directions at the keyword size — 500.23 against
+ * 408.81 above and 194.18 against 99.61 below for Inter — because the 1.07
+ * ratio and its heavier descenders more than cover Inter's taller nominal
+ * ascent. **The emphasis face is in it since Block 9 session 11** and does not
+ * win either direction: Cormorant is a small-extent face and the ruled 1.1641
+ * does not make up the difference. It is here because a band derived from two
+ * of the three faces on screen was right by luck rather than by construction.
  */
 export function worstCaseExtent(): { ascentPx: number; descentPx: number } {
   const latin = inkExtent('latin', KEYWORD_FONT_SIZE);
   const arabic = inkExtent('arabic', KEYWORD_FONT_SIZE * ARABIC_SIZE_RATIO);
+  const emphasis = inkExtent('emphasis', KEYWORD_FONT_SIZE * EMPHASIS_SIZE_RATIO);
   return {
-    ascentPx: Math.max(latin.ascentPx, arabic.ascentPx),
-    descentPx: Math.max(latin.descentPx, arabic.descentPx),
+    ascentPx: Math.max(latin.ascentPx, arabic.ascentPx, emphasis.ascentPx),
+    descentPx: Math.max(latin.descentPx, arabic.descentPx, emphasis.descentPx),
   };
 }

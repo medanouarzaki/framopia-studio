@@ -435,6 +435,15 @@ export interface AuditTextStyle {
  * `requireGeometry` below refuses to read a default in place of a measurement
  * on any layer a template actually declares as a placeholder.
  */
+/** A Transform effect's displacement of the layer it sits on. */
+export interface AuditEffectOffset {
+  name: string;
+  matchName: string;
+  anchorPoint?: [number, number];
+  position?: [number, number];
+  offset?: [number, number];
+}
+
 export interface AuditLayer {
   name: string;
   kind: string;
@@ -448,6 +457,8 @@ export interface AuditLayer {
   sourceRect?: AuditSourceRect | null;
   text?: AuditTextStyle | null;
   animated?: AuditAnimatedProperty[];
+  /** Optional: an audit taken before Block 9 session 11 records none. */
+  effectOffsets?: AuditEffectOffset[];
 }
 export interface AuditComp {
   name: string;

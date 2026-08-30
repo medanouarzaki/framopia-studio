@@ -276,6 +276,11 @@ export {
 } from './repo-root.js';
 export { buildFonts, type BuildFonts, type ModeFontsLike } from './build-fonts.js';
 export {
+  loadTemplateAudit,
+  shadowDescentPx,
+  TEMPLATE_AUDIT_PATH,
+} from './shadow-extent.js';
+export {
   chooseRatio,
   ratioTable,
   RATIO_AGREEMENT_LIMIT,
