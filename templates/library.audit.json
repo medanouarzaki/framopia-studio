@@ -164,7 +164,8 @@
                 }
               ]
             }
-          ]
+          ],
+          "effectOffsets": []
         },
         {
           "name": "CARD",
@@ -407,7 +408,8 @@
                 }
               ]
             }
-          ]
+          ],
+          "effectOffsets": []
         }
       ]
     },
@@ -627,7 +629,8 @@
                 }
               ]
             }
-          ]
+          ],
+          "effectOffsets": []
         }
       ]
     },
@@ -704,7 +707,16 @@
             "fontSize": 425,
             "justification": "CENTER_JUSTIFY",
             "justificationRaw": 7415,
-            "tracking": 0
+            "tracking": 0,
+            "fillColor": [
+              0.95787000656128,
+              0.95787000656128,
+              0.95787000656128
+            ],
+            "applyFill": true,
+            "strokeColor": null,
+            "applyStroke": false,
+            "strokeWidth": 0.5
           },
           "animated": [
             {
@@ -853,7 +865,8 @@
                 }
               ]
             }
-          ]
+          ],
+          "effectOffsets": []
         },
         {
           "name": "TXT_MAIN_SHADOW",
@@ -921,7 +934,16 @@
             "fontSize": 425,
             "justification": "CENTER_JUSTIFY",
             "justificationRaw": 7415,
-            "tracking": 0
+            "tracking": 0,
+            "fillColor": [
+              0.50980001688004,
+              0,
+              0
+            ],
+            "applyFill": true,
+            "strokeColor": null,
+            "applyStroke": false,
+            "strokeWidth": 0.5
           },
           "animated": [
             {
@@ -1068,6 +1090,24 @@
                   ],
                   "unreadable": null
                 }
+              ]
+            }
+          ],
+          "effectOffsets": [
+            {
+              "name": "Transform",
+              "matchName": "ADBE Geometry2",
+              "anchorPoint": [
+                1080,
+                550
+              ],
+              "position": [
+                1088,
+                565
+              ],
+              "offset": [
+                8,
+                14.9999999999999
               ]
             }
           ]
@@ -1147,7 +1187,16 @@
             "fontSize": 455,
             "justification": "CENTER_JUSTIFY",
             "justificationRaw": 7415,
-            "tracking": 0
+            "tracking": 0,
+            "fillColor": [
+              0.95787000656128,
+              0.95787000656128,
+              0.95787000656128
+            ],
+            "applyFill": true,
+            "strokeColor": null,
+            "applyStroke": false,
+            "strokeWidth": 0.5
           },
           "animated": [
             {
@@ -1296,7 +1345,8 @@
                 }
               ]
             }
-          ]
+          ],
+          "effectOffsets": []
         },
         {
           "name": "TXT_MAIN_SHADOW",
@@ -1364,7 +1414,16 @@
             "fontSize": 455,
             "justification": "CENTER_JUSTIFY",
             "justificationRaw": 7415,
-            "tracking": 0
+            "tracking": 0,
+            "fillColor": [
+              0.50980001688004,
+              0,
+              0
+            ],
+            "applyFill": true,
+            "strokeColor": null,
+            "applyStroke": false,
+            "strokeWidth": 0.5
           },
           "animated": [
             {
@@ -1511,6 +1570,24 @@
                   ],
                   "unreadable": null
                 }
+              ]
+            }
+          ],
+          "effectOffsets": [
+            {
+              "name": "Transform",
+              "matchName": "ADBE Geometry2",
+              "anchorPoint": [
+                1080,
+                550
+              ],
+              "position": [
+                1088,
+                565
+              ],
+              "offset": [
+                8,
+                14.9999999999999
               ]
             }
           ]
@@ -1590,7 +1667,16 @@
             "fontSize": 343,
             "justification": "CENTER_JUSTIFY",
             "justificationRaw": 7415,
-            "tracking": 0
+            "tracking": 0,
+            "fillColor": [
+              0.95787000656128,
+              0.95787000656128,
+              0.95787000656128
+            ],
+            "applyFill": true,
+            "strokeColor": null,
+            "applyStroke": false,
+            "strokeWidth": 0.5
           },
           "animated": [
             {
@@ -1739,7 +1825,8 @@
                 }
               ]
             }
-          ]
+          ],
+          "effectOffsets": []
         },
         {
           "name": "TXT_MAIN_SHADOW",
@@ -1807,7 +1894,16 @@
             "fontSize": 343,
             "justification": "CENTER_JUSTIFY",
             "justificationRaw": 7415,
-            "tracking": 0
+            "tracking": 0,
+            "fillColor": [
+              0.50980001688004,
+              0,
+              0
+            ],
+            "applyFill": true,
+            "strokeColor": null,
+            "applyStroke": false,
+            "strokeWidth": 0.5
           },
           "animated": [
             {
@@ -1954,6 +2050,24 @@
                   ],
                   "unreadable": null
                 }
+              ]
+            }
+          ],
+          "effectOffsets": [
+            {
+              "name": "Transform",
+              "matchName": "ADBE Geometry2",
+              "anchorPoint": [
+                1080,
+                550
+              ],
+              "position": [
+                1088,
+                565
+              ],
+              "offset": [
+                8,
+                14.9999999999999
               ]
             }
           ]
@@ -2033,7 +2147,16 @@
             "fontSize": 367,
             "justification": "CENTER_JUSTIFY",
             "justificationRaw": 7415,
-            "tracking": 0
+            "tracking": 0,
+            "fillColor": [
+              0.95787000656128,
+              0.95787000656128,
+              0.95787000656128
+            ],
+            "applyFill": true,
+            "strokeColor": null,
+            "applyStroke": false,
+            "strokeWidth": 0.5
           },
           "animated": [
             {
@@ -2182,7 +2305,8 @@
                 }
               ]
             }
-          ]
+          ],
+          "effectOffsets": []
         },
         {
           "name": "TXT_MAIN_SHADOW",
@@ -2250,7 +2374,16 @@
             "fontSize": 367,
             "justification": "CENTER_JUSTIFY",
             "justificationRaw": 7415,
-            "tracking": 0
+            "tracking": 0,
+            "fillColor": [
+              0.50980001688004,
+              0,
+              0
+            ],
+            "applyFill": true,
+            "strokeColor": null,
+            "applyStroke": false,
+            "strokeWidth": 0.5
           },
           "animated": [
             {
@@ -2397,6 +2530,24 @@
                   ],
                   "unreadable": null
                 }
+              ]
+            }
+          ],
+          "effectOffsets": [
+            {
+              "name": "Transform",
+              "matchName": "ADBE Geometry2",
+              "anchorPoint": [
+                1080,
+                550
+              ],
+              "position": [
+                1088,
+                565
+              ],
+              "offset": [
+                8,
+                14.9999999999999
               ]
             }
           ]
