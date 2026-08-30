@@ -8197,3 +8197,69 @@ in `reports/block-10-session-6.md` — fixtures moved to `test-3` across
 `keyword-view`, `steps`, `pipeline` and `requirements` tests, the corpus sfx
 total went **9 → 15**, and `keyword-view` gained a test pinning `ground-truth`'s
 three keywords.
+
+
+## Block 10 session 7 — the picture half did not happen
+
+**Spent $0.00.** The image stage on `ground-truth` was authorised, projected at
+**$2.1708** and launched; **the model refused the first request with HTTP 503**
+(`"This model is currently experiencing high demand... Please try again later."`).
+**Ledger unchanged at 118 lines, sha `3f657131e5cda5c903acaf6db1ca34cddd478789042d07b636499fb36559a58c`**;
+cache identical at 46 entries; all five plans, all seven references and the
+library byte-identical; `app.fonts.allFonts` 1198 → 1198. **Run once and not
+retried** — §1.7 makes a retry the conversation's decision.
+
+The only side effect is an **empty** `my files/test videos/cutouts/ground truth/`,
+created by `mkdirSync` before the first request. Gitignored, left in place.
+
+### The image client does not retry a 5xx, and ARCHITECTURE §8 says it should
+
+`service/src/images/gemini-client.ts` is 93 lines with **one** `catch`, which
+wraps the SDK error and rethrows. No retry, no backoff, no 5xx branch. §8 requires
+*"automatic retries only for transient network/5xx (bounded, jittered)"* and
+**every other billable client has one** — `transcription/scribe.ts` classifies
+`status >= 500 || status === 429` as retryable, and `correction.ts`,
+`analysis/keywords.ts` and `analysis/slots.ts` each carry a retry. **The image
+client is the only one without, and it is the most expensive to restart**: a
+demand spike at candidate seven throws away the remaining five.
+
+### A retry costs the full $2.1708, and the cache would have protected a partial run
+
+Measured by dry run after the failure, not assumed:
+
+- `ground-truth` — **0 of 12 candidate images are cached; a run would generate 12**
+- `test-1` — 8 of 8 cached, a run would bill nothing
+- `vitasilk` — 10 of 10 cached, a run would bill nothing
+
+So the cache does bank what a partial run produces — the image is written before
+its manifest, so an interrupted write reads as a miss. **This run banked nothing
+only because it failed on the very first request.**
+
+### Two things the runner does not do, both of which misled this session
+
+**`only: ['images']` alone skips the stage.** The runner reads
+`pipeline.images.status === 'done'` — and **`pipeline.images` is written by the
+slot stage as well as the image stage**, so `ground-truth` records it `done` with
+zero pictures. `redo: ['images']` is required. The dry run shows the same
+confusion, reporting the stage as `skip` while saying `0 of 12 candidate images
+are cached`. **A plan cannot say that its slots are planned and its pictures are
+not.**
+
+**`runPipeline`'s `ceilingUsd` never reaches the image stage.** It calls
+`impl.images({ planPath, modeId, cacheRoot, costsPath, log })` with no ceiling, so
+`generateImagesForPlan` falls back to its own `DEFAULT_CEILING_USD` of **$3** —
+above whatever the runner was given. The authorised $2.30 was made binding by
+injecting the real `generateImagesForPlan` through the `stages` hook.
+
+**Ceiling checks reached before the failure:** the runner's own, at a running
+total of $0.00 against $2.30; and the stage's pre-flight over the whole billable
+set, $2.1708 against $2.30. The per-candidate `assertCeilingNotReached` — the one
+that re-reads the ledger before every request — **was never reached**.
+
+### Still open
+
+`ground-truth` remains **unbuildable** (six slots, no positions, no candidates).
+**The framing change is still confirmed only as text**: session 5 proved the axis,
+session 6 proved the six draws, and no picture has been seen. No gate results, no
+luminance figures against Block 9's, and no answer on whether `img002`'s "two open
+doors" and `img006`'s "four cards" produce multi-subject pictures.
