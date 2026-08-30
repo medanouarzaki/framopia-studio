@@ -1,0 +1,218 @@
+{
+  "schemaVersion": 1,
+  "tool": "tools/doctor/cli.ts",
+  "measuredAt": "2026-08-30T21:37:25.099Z",
+  "machine": {
+    "platform": "darwin",
+    "release": "25.6.0",
+    "arch": "arm64",
+    "hostname": "192.168.1.5",
+    "label": "anouar-mbp"
+  },
+  "repoRoot": "/Volumes/T7 Shield/INSEA/Projects/framopia-studio",
+  "checks": [
+    {
+      "id": "repo",
+      "what": "the repository, at the path everything resolves from",
+      "state": "present",
+      "detail": "/Volumes/T7 Shield/INSEA/Projects/framopia-studio",
+      "blocking": "run"
+    },
+    {
+      "id": "node",
+      "what": "node, at the version .nvmrc pins (24)",
+      "state": "present",
+      "detail": "v24.14.1 running, resolved to /Users/mohamedanouarzaki/.nvm/versions/node/v24.14.1/bin/node (process.execPath)",
+      "blocking": "run"
+    },
+    {
+      "id": "dependencies",
+      "what": "the installed workspace dependencies",
+      "state": "present",
+      "detail": "169 entries in node_modules",
+      "blocking": "run"
+    },
+    {
+      "id": "ffmpeg",
+      "what": "ffmpeg, resolved the way a panel-spawned service resolves it",
+      "state": "present",
+      "detail": "ffmpeg version 8.0.1 Copyright (c) 2000-2025 the FFmpeg developers at /opt/homebrew/bin/ffmpeg (homebrew)",
+      "blocking": "run"
+    },
+    {
+      "id": "ffprobe",
+      "what": "ffprobe, resolved the way a panel-spawned service resolves it",
+      "state": "present",
+      "detail": "ffprobe version 8.0.1 Copyright (c) 2007-2025 the FFmpeg developers at /opt/homebrew/bin/ffprobe (homebrew)",
+      "blocking": "run"
+    },
+    {
+      "id": "cv-venv",
+      "what": "the picture tools — the Python interpreter in the CV venv",
+      "state": "present",
+      "detail": "Python 3.11.14 at /Volumes/T7 Shield/INSEA/Projects/framopia-studio/tools/cv/.venv/bin/python",
+      "blocking": "build"
+    },
+    {
+      "id": "cv-packages",
+      "what": "the packages the CV sidecar imports",
+      "state": "present",
+      "detail": "mediapipe, rembg, PIL and numpy all import",
+      "blocking": "build"
+    },
+    {
+      "id": "model-selfie-multiclass-256x256",
+      "what": "the selfie-multiclass-256x256 model weights",
+      "state": "present",
+      "detail": "16371837 bytes at /Volumes/T7 Shield/INSEA/Projects/framopia-studio/tools/cv/models/selfie_multiclass_256x256.tflite, the pinned size",
+      "blocking": "build",
+      "caveat": "checked by size; tools/cv/verify-models.sh is what checks the sha256"
+    },
+    {
+      "id": "model-birefnet-general",
+      "what": "the birefnet-general model weights",
+      "state": "present",
+      "detail": "972666916 bytes at /Users/mohamedanouarzaki/.rembg/models/birefnet-general/birefnet-general.onnx, the pinned size",
+      "blocking": "build",
+      "caveat": "checked by size; tools/cv/verify-models.sh is what checks the sha256"
+    },
+    {
+      "id": "templates",
+      "what": "the template library, matching its recorded audit",
+      "state": "present",
+      "detail": "sha256 1d7553e894e10f82, the audited one",
+      "blocking": "build"
+    },
+    {
+      "id": "after-effects",
+      "what": "After Effects, running and answering",
+      "state": "unknown",
+      "detail": "not asked (--no-after-effects)",
+      "blocking": "build",
+      "caveat": "nothing here may launch After Effects; a build needs a person to open it",
+      "remedy": "open After Effects and run this again",
+      "remedyVerified": false
+    },
+    {
+      "id": "ae-scripting",
+      "what": "After Effects allowed to let scripts write files",
+      "state": "unknown",
+      "detail": "After Effects is not answering, so the preference could not be read",
+      "blocking": "build",
+      "remedy": "Preferences > Scripting & Expressions > Allow Scripts to Write Files and Access Network",
+      "remedyVerified": false
+    },
+    {
+      "id": "fonts",
+      "what": "the client’s faces, by PostScript name",
+      "state": "unknown",
+      "detail": "Inter-SemiBold, Almarai-Bold, CormorantGaramondItalic-SemiBoldItalic — After Effects is not answering, so nothing was checked",
+      "blocking": "build",
+      "caveat": "After Effects accepts a font name it cannot resolve and substitutes silently, so this is the only check that stands between a wrong face and a comp that looks built",
+      "remedy": "open After Effects and run this again",
+      "remedyVerified": false
+    },
+    {
+      "id": "panel-installed",
+      "what": "the panel, where After Effects looks for extensions",
+      "state": "present",
+      "detail": "/Users/mohamedanouarzaki/Library/Application Support/Adobe/CEP/extensions/com.framopia.studio",
+      "blocking": "panel"
+    },
+    {
+      "id": "panel-built",
+      "what": "the panel bundle the manifest points at",
+      "state": "present",
+      "detail": "206080 bytes at /Volumes/T7 Shield/INSEA/Projects/framopia-studio/panel/dist/panel.js",
+      "blocking": "panel"
+    },
+    {
+      "id": "cep-debug-mode",
+      "what": "PlayerDebugMode, without which an unsigned extension will not load",
+      "state": "present",
+      "detail": "set on CSXS 10, 11, 12, 13; unset on none",
+      "blocking": "panel"
+    },
+    {
+      "id": "api-keys",
+      "what": "the API keys, by presence",
+      "state": "present",
+      "detail": "googleApiKey present (value not shown), elevenLabsApiKey present (value not shown)",
+      "blocking": "run"
+    },
+    {
+      "id": "watermark-facts",
+      "what": "the watermark measurement",
+      "state": "present",
+      "detail": "/Volumes/T7 Shield/INSEA/Projects/framopia-studio/.local/build/watermark.json",
+      "blocking": "money",
+      "caveat": "expected absent on a machine that has never run the pipeline — the transcription stage measures it and writes this file, so it costs one ffmpeg pass rather than a fault"
+    },
+    {
+      "id": "loudness-records",
+      "what": "the per-reel dialogue loudness records",
+      "state": "present",
+      "detail": "1 record(s) in /Volumes/T7 Shield/INSEA/Projects/framopia-studio/.local/build/loudness",
+      "blocking": "money",
+      "caveat": "measured by the transcription stage, like the watermark; absent is expected cold"
+    },
+    {
+      "id": "footage",
+      "what": "the source reels, which are not in git",
+      "state": "present",
+      "detail": "5 of 5 match the sha256 on their Edit Plan",
+      "blocking": "run",
+      "caveat": "benchmarks/footage.json records no hash and no fetch note, so the only figure to check against is source.sha256 on each reel’s own Edit Plan"
+    },
+    {
+      "id": "cache",
+      "what": "the API cache, which is what makes a re-run free",
+      "state": "present",
+      "detail": "46 entries across 5 video(s) in /Volumes/T7 Shield/INSEA/Projects/framopia-studio/.local/cache",
+      "blocking": "money",
+      "caveat": "absent costs money, not correctness: every stage bills again"
+    },
+    {
+      "id": "ledger",
+      "what": "the cost ledger",
+      "state": "present",
+      "detail": "118 lines at /Volumes/T7 Shield/INSEA/Projects/framopia-studio/.local/costs.jsonl",
+      "blocking": "money",
+      "caveat": "append-only and irreplaceable; a fresh machine starts its own"
+    },
+    {
+      "id": "disk",
+      "what": "free disk space, at least 20 GB",
+      "state": "present",
+      "detail": "162.1 GB free on the volume holding the repo",
+      "blocking": "run",
+      "caveat": "20 GB is chosen, not measured: nothing in the repo states a figure. The two CV models are ~945 MiB and the corpus footage is 11.9 GB."
+    },
+    {
+      "id": "xmllint",
+      "what": "xmllint, which parses the panel manifest in npm run check",
+      "state": "present",
+      "detail": "on PATH and runs",
+      "blocking": "dev",
+      "caveat": "the gate prints a notice and does not fail without it, so this blocks nothing"
+    }
+  ],
+  "summary": {
+    "total": 24,
+    "present": 21,
+    "absent": 0,
+    "unknown": 3,
+    "blockers": [],
+    "undetermined": [
+      "after-effects",
+      "ae-scripting",
+      "fonts"
+    ],
+    "unverifiedRemedies": [
+      "after-effects",
+      "ae-scripting",
+      "fonts"
+    ],
+    "ok": true
+  }
+}

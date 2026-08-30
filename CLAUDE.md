@@ -8344,3 +8344,78 @@ predicate but not the loop; converting them would change three billable paths.
 
 **`ground-truth` is still unbuildable**, and **the framing change is still
 confirmed only as text** — no picture has ever been seen.
+
+
+## Block 10 session 9 — `npm run doctor`
+
+**Spent $0.00.** Ledger 118 lines / `3f657131…` at both ends; library, the seven
+references, all five plans and the cache byte-identical; `app.fonts.allFonts`
+**1198 → 1198**, so no phantom name was created.
+
+### `npm run doctor` — what this machine is missing
+
+`-- [--hash-footage] [--no-after-effects] [--mode <id>] [--out <path>]`. Free,
+local, **read-only: it reports and never repairs, and there is no `--fix`.**
+`core/src/doctor.ts` decides, `tools/doctor/checks.ts` looks,
+`tools/doctor/probe.jsx` asks After Effects, `tools/doctor/cli.ts` drives.
+**24 checks**, all green here. Machine-readable twin at
+`reports/doctor-<machine>.json` carrying its own inputs, so two machines diff
+line by line.
+
+**Three states, never two:** `present`, `absent`, **`unknown`**. An unknown is
+never a blocker and never a pass — folding "cannot tell" into "fine" is this
+project's dominant defect class. **It exits non-zero only for an absent `run` or
+`build` item**; `money`, `panel` and `dev` absences are reported and do not fail.
+Every verdict carries the measured value — `ffmpeg 8.0.1 at
+/opt/homebrew/bin/ffmpeg`, not `ffmpeg ok`. **It never prints a secret**:
+`redact()` returns `present (value not shown)` and a test pins that it carries no
+part of the value.
+
+**It runs on a machine with nothing installed** — every shell-out catches and the
+three After Effects checks degrade to `unknown`, proven with `--no-after-effects`.
+
+### The requirement nothing checked: After Effects' scripting preference
+
+**"Allow Scripts to Write Files and Access Network" is off by default on a fresh
+install and was checked nowhere in this repo.** Every driven script writes its
+result to a file for `drive.ts` to read back, so a machine with it off produces
+*"After Effects wrote no result"* and nothing that names the cause. Read on this
+machine: **on**. `docs/MACHINE_REQUIREMENTS.md` is the full inventory — **24
+requirements, each with the file and line that needs it** — and it also names
+`PlayerDebugMode`, `panel/dist`, the 928 MiB rembg model, `xmllint`,
+`node_modules` and the ledger, none of which were on the brief's list.
+
+**Two things recorded nowhere:** `benchmarks/footage.json` **carries no hash and
+no fetch note**, so `source.sha256` on each reel's own Edit Plan is the only
+figure to check against; and **no disk-space figure is stated anywhere**, so the
+doctor's 20 GB is chosen and says so.
+
+### 21 of the 24 checks have been watched failing
+
+Nothing real was moved, renamed or deleted — every absence was simulated with an
+environment override (`FRAMOPIA_DOCTOR_PATH`, `_VENV`, `_MODELS_DIR`,
+`_REMBG_DIR`, `_LOCAL_DIR`, `_EXTENSIONS_DIR`, `_TEMPLATES_DIR`, `_PANEL_DIST`,
+`_FOOTAGE_DIR`, `_AE_STATE`, `_MIN_FREE_GB`) or a temporary empty directory. The
+whole-machine case reads **8 present, 11 absent, 5 could not be determined**,
+exit **1**, with five blockers named. Two cascades worth keeping: a missing venv
+makes the packages check **`????`** rather than absent, and a malformed
+`config.json` makes the key check **`????`** rather than absent.
+
+**Three checks are unproven, by name: `repo`, `node` and `dependencies`.** All
+three are unfalsifiable from inside a working checkout, and the first cold
+machine tests all three at once.
+
+**All 24 remedies are unverified**, and the doctor marks each `(unverified
+remedy)` in its own output rather than letting them read like instructions
+someone has checked.
+
+**One hole in the three-state design:** an After Effects with the scripting
+preference off is **indistinguishable** from one that is not answering, because
+the probe cannot write its result either way. The doctor says `unknown` and says
+why, but cannot tell the user which — and the one it cannot rule out is the one
+with a one-click fix.
+
+Footage hashing is **off by default** (`--hash-footage`, 18.6 s for five 2.4 GB
+reels, streamed in 1 MiB chunks because `readFileSync` refuses past 2 GiB); the
+two CV models are checked **by size**, with `tools/cv/verify-models.sh` still the
+thing that hashes.
