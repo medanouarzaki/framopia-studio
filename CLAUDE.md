@@ -7496,3 +7496,77 @@ control someone presses.
 
 The plan changed in **no top-level key** and the project was left **clean**.
 
+
+## Block 9 is complete — session 14 closed it
+
+**Spent $0.00.** Ledger **116 lines, sha `e5e0a6e9…`, byte-identical at both
+ends**. Cache 44 entries and all 19 cutout files identical at both ends. After
+Effects pid 79146, 0 `aerender`, `templates/library.aep` unchanged.
+
+`handoffs/block-9.md` is the handoff; `handoffs/block-10-opening-prompt.md` opens
+the next block.
+
+### The build says where it put the file
+
+**`panel/jsx/build-reel.jsx` saved the project and never reported the path.** It
+wrote to `o.savePath` and left it out of its result, so `readSavePath` found
+nothing, `BuildProgress.savePath` was always `null`, and the panel's *"Saved to
+…"* sentence had been silently empty for as long as it had existed. The service
+and the panel were both correct and both reading a field nobody emitted.
+
+**Nothing in this system renders**, so the saved `.aep` is how a reel leaves it
+and naming the file is the last step of the product rather than a detail under
+it. The path is read back from `app.project.file.fsName` — what After Effects
+actually wrote — never echoed from the option it was handed, and the panel now
+shows it as its own element rather than a clause. Pinned by
+`core/src/build-save-path.test.ts`, which reads the source the way the audit's
+refusals are pinned.
+
+**No reveal-in-Finder control was added.** CEP runs Chromium 99 and whether it
+can reveal a file has never been proven on the host; the browser test asserts the
+button is absent so nothing claims it.
+
+**A second, smaller correction:** the panel said *"the project was not opened"*.
+It is — `build-reel.jsx` starts a new project, builds into it and saves, so After
+Effects holds the built file when the build finishes. It now says so.
+
+### Two keywords in the corpus overflow, and the builder wraps them
+
+Measured in After Effects this session through `tools/ae/measure-widths.jsx`,
+every keyword at the face and size `textStyleFor` would give it, against
+`SUBTITLE_SAFE_WIDTH` 1940:
+
+| keyword | face | width | |
+|---|---|---:|---|
+| `test-1` k002 `محفزات الكولاجين` | Almarai-Bold 455 | **3471.2** | **overflows, wrapped** |
+| `test-2` k002 `ترطيب عميق` | Almarai-Bold 455 | **2449.7** | **overflows, wrapped** |
+| `test-2` k003 `شد خفيف` | Almarai-Bold 455 | 1921.0 | fits by **19 px** |
+| `vitasilk` k001 `filler glow` | Cormorant 494.742 | 1816.0 | fits |
+| `vitasilk` k002 `Vita Silk` | Cormorant 494.742 | 1547.4 | fits |
+
+**Two, not three** — a figure carried into this session as three and corrected by
+measuring. PROJECT_SPEC §3's ruling 3 says an overlong word **shrinks**; these
+wrap, so the corpus contradicts the ruling today. `filler glow` fits at the ruled
+1.1641 and wrapped at the retired 1.3479, which is consistent with session 11.
+
+### ARCHITECTURE §6 no longer contradicts the code
+
+It said a cache key includes the mode version. **It does not, and the code
+stopped keying on it twice**, both after a bump stranded paid work — Block 4
+session 4 for analysis, Block 7 session 1 for images, the second stranding 14
+generated images worth $2.06. §6 now lists what each stage actually keys on and
+states the rule: **key on what the call sends, never on a number that moves for
+unrelated reasons.** K2 went v10 → v12 during this block and no cached entry
+moved.
+
+### What a fresh reel costs, measured
+
+`ground-truth` and `test-3` read **$2.35** each on the dry run — $0.18 for
+keywords and image slots, plus **$2.17** budgeted for six slots and twelve
+candidates. `test-1`, `test-2` and `vitasilk` read **$0.00**. About **$6.82** of
+credit remains and Block 10's golden runs on two machines draw on the same pot,
+so the two unanalysed reels are $4.70 of it.
+
+**Block 9 session 13's report said "about $2.17 a reel", which was the image half
+alone.** The reel figure is $2.35.
+
