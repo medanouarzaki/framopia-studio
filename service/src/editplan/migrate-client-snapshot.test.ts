@@ -33,7 +33,14 @@ describe('the client-snapshot migration', () => {
     expect(snapshotsAgree(pinned, fresh)).toBe(true);
   });
 
-  it('pinned every plan that names a client, and left the ones that do not', async () => {
+  /*
+   * The migration pinned the three plans that named a client and left the two
+   * that did not. Block 10 session 5 attached a client to those two through
+   * `POST /client`, which pins in the same write, so the whole corpus is pinned
+   * now — and the invariant that matters, that a pin agrees with the client it
+   * pins, is what this asserts.
+   */
+  it('pinned every plan, and no pin disagrees with the client it names', async () => {
     const seen: Record<string, string | null> = {};
     for (const reel of ['ground truth', 'test 1', 'test 2', 'test 3', 'vitasilk']) {
       const plan = await readEditPlan(path.join(FOOTAGE, `${reel}.editplan.json`));
@@ -43,10 +50,10 @@ describe('the client-snapshot migration', () => {
       else expect(plan.clientSnapshot?.id).toBe(plan.clientMode.id);
     }
     expect(seen).toEqual({
-      'ground truth': null,
+      'ground truth': 'k2-syndicalia',
       'test 1': 'k2-syndicalia',
       'test 2': 'k2-syndicalia',
-      'test 3': null,
+      'test 3': 'k2-syndicalia',
       vitasilk: 'k2-syndicalia',
     });
   });

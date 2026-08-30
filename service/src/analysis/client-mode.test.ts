@@ -47,18 +47,17 @@ describe('the mode a stage recorded', () => {
 describe('the corpus after the migration', () => {
   const FOOTAGE = path.join(REPO_ROOT, 'my files', 'test videos');
 
-  it('gives a client to every plan whose analysis has run, and none to the rest', async () => {
-    for (const [reel, expected] of [
-      ['ground truth', null],
-      ['test 1', 'k2-syndicalia'],
-      ['test 2', 'k2-syndicalia'],
-      ['test 3', null],
-      ['vitasilk', 'k2-syndicalia'],
-    ] as const) {
+  /*
+   * The migration derived a client from the analysis label, so it could only
+   * reach the three reels whose analysis had run. Block 10 session 5 attached
+   * one to the other two through `POST /client` — a build refuses without a
+   * client now — so every plan in the corpus carries one and the migration's
+   * "and none to the rest" half is no longer what the disk shows.
+   */
+  it('gives every plan in the corpus a client', async () => {
+    for (const reel of ['ground truth', 'test 1', 'test 2', 'test 3', 'vitasilk']) {
       const plan = await readEditPlan(path.join(FOOTAGE, `${reel}.editplan.json`));
-      expect(plan.clientMode?.id ?? null, reel).toBe(expected);
-      // Null exactly where there is no label to read it from.
-      expect(plan.clientMode === null, reel).toBe(plan.pipeline.analysis.config === null);
+      expect(plan.clientMode?.id ?? null, reel).toBe('k2-syndicalia');
     }
   });
 });

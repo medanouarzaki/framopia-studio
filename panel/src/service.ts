@@ -503,6 +503,20 @@ export async function updateClientLook(
   await postJson(connection, '/client-snapshot', edit);
 }
 
+/**
+ * Attach a client to a video that has none.
+ *
+ * A build refuses without one, because a client mode is what decides the type
+ * and the colours; before this the only thing that set it was the analysis
+ * stage, which bills.
+ */
+export async function setClient(
+  connection: Connection,
+  edit: { planPath: string; modeId: string },
+): Promise<void> {
+  await postJson(connection, '/client', edit);
+}
+
 export async function setWatermark(
   connection: Connection,
   edit: { planPath: string; enabled?: boolean; size?: WatermarkSize },

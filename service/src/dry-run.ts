@@ -80,6 +80,16 @@ export interface DryRunPlan {
    * nothing on disk says which client it belongs to.
    */
   planClientMode: { id: string; version: number } | null;
+  /**
+   * The sentence to show when this reel has no client at all, and null when it
+   * has one.
+   *
+   * A build refuses in that state — a client mode is what decides the type and
+   * the colour, and without one every card silently keeps whatever the template
+   * carries. Saying so here means it is read before a run starts rather than
+   * discovered partway through one.
+   */
+  buildBlockedBecause: string | null;
   /** Sum of the stages that would actually bill. */
   estimateUsd: number;
   /** True when any stage resolves `compatible`; the panel says so plainly. */
@@ -113,6 +123,7 @@ interface PlanLike {
   images?: { slots?: PlanLikeSlot[] };
   watermark?: { enabled?: boolean; size?: WatermarkSize } | null;
   clientMode?: { id?: string; version?: number } | null;
+  clientSnapshot?: { id?: string } | null;
 }
 
 /**
@@ -176,6 +187,7 @@ export async function dryRun(reelLabel: string, modeId: string): Promise<DryRunP
   let watermark = true;
   let watermarkSize: WatermarkSize = watermarkSizeOf(null);
   let planClientMode: { id: string; version: number } | null = null;
+  let hasClientSnapshot = false;
   if (reel.planPath !== null && existsSync(reel.planPath)) {
     try {
       const plan = JSON.parse(readFileSync(reel.planPath, 'utf8')) as PlanLike;
@@ -191,6 +203,7 @@ export async function dryRun(reelLabel: string, modeId: string): Promise<DryRunP
         typeof plan.clientMode?.id === 'string' && typeof plan.clientMode.version === 'number'
           ? { id: plan.clientMode.id, version: plan.clientMode.version }
           : null;
+      hasClientSnapshot = typeof plan.clientSnapshot?.id === 'string';
     } catch (error) {
       throw new DryRunError(`${reel.planPath} did not parse: ${(error as Error).message}`);
     }
@@ -371,6 +384,11 @@ export async function dryRun(reelLabel: string, modeId: string): Promise<DryRunP
       WATERMARK_SIZES.map((size) => [size, Math.round(watermarkWidthFraction(size) * FRAME_WIDTH)]),
     ) as Record<WatermarkSize, number>,
     planClientMode,
+    buildBlockedBecause:
+      planClientMode === null && !hasClientSnapshot
+        ? 'This video has no client yet, so a build would have nothing to take its type and ' +
+          'colours from. Choose the client for this video before building.'
+        : null,
     estimateUsd: stages.reduce((sum, s) => sum + (s.estimateUsd ?? 0), 0),
     reusesOlderGuide: stages.some((s) => s.provenance === 'compatible'),
   };

@@ -222,22 +222,26 @@ function faceSpan(startS: number, endS: number): { x: number; y: number; w: numb
  * Session 38 found a reel with no masks building a picture across the speaker's
  * face and saying nothing; a missing input names itself and stops here now.
  */
-assertRequirementsMet(
-  buildRequirements(plan, readBuildDisk(planPath), {
-    ...(flag('mode') === undefined ? {} : { modeId: flag('mode') as string }),
-    knownTemplateIds: new Set(entries.keys()),
-  }),
-);
-
 /*
  * The client's look comes from the copy on the plan, not from the mode file as
  * it stands today. A reel approved in March must rebuild in June as it was
  * approved; where there is no copy the live file is read, exactly as every
  * build did before, and the fallback is printed rather than assumed.
+ *
+ * Resolved before the requirements check, because whether an identity resolved
+ * at all is one of the things that check refuses on.
  */
 const identity = resolveClientIdentity(plan, {
   ...(flag('mode') === undefined ? {} : { modeIdOverride: flag('mode') as string }),
 });
+
+assertRequirementsMet(
+  buildRequirements(plan, readBuildDisk(planPath), {
+    ...(flag('mode') === undefined ? {} : { modeId: flag('mode') as string }),
+    knownTemplateIds: new Set(entries.keys()),
+    clientSource: identity.source,
+  }),
+);
 console.log(`\nclient: ${identity.note}`);
 if (identity.behind === true) {
   console.log(

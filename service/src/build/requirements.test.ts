@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { REPO_ROOT, loadTemplateManifest, templatesById } from '@framopia/core';
 import { readEditPlan } from '../editplan/io.js';
+import { resolveClientIdentity } from './client-identity.js';
 import {
   MissingBuildMeasurementsError,
   assertRequirementsMet,
@@ -60,7 +61,10 @@ describe('what a build requires', () => {
   it('asks for nothing a subtitles-only reel does not use', async () => {
     const plan = await readEditPlan(planPath('ground truth'));
     const needed = buildRequirements(plan, ABSENT).filter((n) => n.needed).map((n) => n.id);
-    expect(needed).toEqual(['watermark-facts']);
+    // client-identity is unconditional; every card has type to set.
+    expect(needed).toEqual(['client-identity', 'watermark-facts']);
+    expect(needed).not.toContain('face-masks');
+    expect(needed).not.toContain('dialogue-loudness');
   });
 
   it('refuses a reel that carries the mark with no watermark measurement', async () => {
@@ -73,7 +77,8 @@ describe('what a build requires', () => {
   it('does not ask for a watermark measurement when the reel refuses the mark', async () => {
     const plan = await readEditPlan(planPath('ground truth'));
     plan.watermark = { assetPath: 'a.mov', startS: 0, durationS: 1, enabled: false };
-    expect(buildRequirements(plan, ABSENT).filter((n) => n.needed)).toEqual([]);
+    const needed = buildRequirements(plan, ABSENT).filter((n) => n.needed).map((n) => n.id);
+    expect(needed).toEqual(['client-identity']);
   });
 
   /*
@@ -133,13 +138,88 @@ describe('what a build requires', () => {
  * session changes nothing about how any of them builds — and if that ever stops
  * being true, this is where it shows.
  */
+/*
+ * A client mode is what decides the type and the colour. Falling through to the
+ * template's own left two of five corpus reels drawing #F4F4F4 where every
+ * other reel drew #F8F6F2, for a whole block, with nothing saying so.
+ */
+describe('a video with no client', () => {
+  it('refuses when no identity resolved', async () => {
+    const plan = await readEditPlan(planPath('vitasilk'));
+    const missing = missingRequirements(
+      buildRequirements(plan, PRESENT, { knownTemplateIds: known(), clientSource: 'none' }),
+    );
+    expect(missing.map((m) => m.id)).toContain('client-identity');
+  });
+
+  it('names the client, the control and what would happen otherwise', async () => {
+    const plan = await readEditPlan(planPath('vitasilk'));
+    const missing = missingRequirements(
+      buildRequirements(plan, PRESENT, { knownTemplateIds: known(), clientSource: 'none' }),
+    );
+    const client = missing.find((m) => m.id === 'client-identity');
+    expect(client?.what).toContain('no client mode and no saved client look');
+    expect(client?.command).toContain('choose the client for this video');
+    expect(client?.consequence).toContain('#F4F4F4');
+    expect(client?.consequence).toContain('#F8F6F2');
+  });
+
+  it.each(['plan', 'live-mode', 'override'] as const)(
+    'is satisfied by an identity resolved from %s',
+    async (source) => {
+      const plan = await readEditPlan(planPath('vitasilk'));
+      const missing = missingRequirements(
+        buildRequirements(plan, PRESENT, { knownTemplateIds: known(), clientSource: source }),
+      );
+      expect(missing.map((m) => m.id)).not.toContain('client-identity');
+    },
+  );
+
+  /*
+   * Every other requirement here is conditional on what the comp contains. This
+   * one is not: a reel with cards has type to set, and every reel has cards.
+   */
+  it('applies to a reel with no images and no sounds', async () => {
+    const plan = await readEditPlan(planPath('test 3'));
+    const needs = buildRequirements(plan, ABSENT, {
+      knownTemplateIds: known(),
+      clientSource: 'none',
+    });
+    expect(needs.find((n) => n.id === 'client-identity')?.needed).toBe(true);
+  });
+
+  /* A caller that never resolves an identity cannot be told it has the wrong one. */
+  it('is reported as met when the caller did not ask', async () => {
+    const plan = await readEditPlan(planPath('vitasilk'));
+    const needs = buildRequirements(plan, PRESENT, { knownTemplateIds: known() });
+    expect(needs.find((n) => n.id === 'client-identity')?.present).toBe(true);
+  });
+
+  it('throws with the sentence when asserted', async () => {
+    const plan = await readEditPlan(planPath('vitasilk'));
+    expect(() =>
+      assertRequirementsMet(
+        buildRequirements(plan, PRESENT, { knownTemplateIds: known(), clientSource: 'none' }),
+      ),
+    ).toThrow(MissingBuildMeasurementsError);
+  });
+});
+
 describe('the corpus as it stands', () => {
+  /*
+   * Resolved for real rather than left unasked: the point of the client-identity
+   * requirement is that a reel without one refuses, so a corpus check that never
+   * supplies a source would pass whatever the corpus looked like.
+   */
   it('asks nothing extra of any of the five reels', async () => {
     for (const stem of ['ground truth', 'test 1', 'test 2', 'test 3', 'vitasilk']) {
       const p = planPath(stem);
       const plan = await readEditPlan(p);
       const missing = missingRequirements(
-        buildRequirements(plan, readBuildDisk(p), { knownTemplateIds: known() }),
+        buildRequirements(plan, readBuildDisk(p), {
+          knownTemplateIds: known(),
+          clientSource: resolveClientIdentity(plan, {}).source,
+        }),
       );
       expect(`${stem}: ${missing.map((m) => m.id).join(',')}`).toBe(`${stem}: `);
     }

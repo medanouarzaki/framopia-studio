@@ -236,13 +236,13 @@ describe('the build preview', () => {
   });
 
   /*
-   * `plan.clientMode` is null on a reel whose analysis has never run, and the
-   * build then falls back to the picker — so the preview has to say which one
-   * it landed on rather than echo the picker back as if it were the plan's.
+   * Every plan in the corpus carries its own client since Block 10 session 5 —
+   * a build refuses without one — so the preview reports the plan rather than
+   * the picker even on a reel whose analysis has never run.
    */
-  it('says when the client came from the picker rather than the plan', () => {
+  it('says the client came from the plan, not the picker', () => {
     const preview = stepsFor('ground-truth', 'k2-syndicalia').build;
-    expect(preview?.modeSource).toBe('the picker');
+    expect(preview?.modeSource).not.toBe('the picker');
     expect(preview?.keywords).toBe(0);
     expect(preview?.images).toBe(0);
   });

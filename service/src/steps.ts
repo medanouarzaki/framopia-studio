@@ -294,6 +294,7 @@ export function stepsFor(reelLabel: string, modeId: string): PlanSteps {
     const missing = missingRequirements(
       buildRequirements(plan, readBuildDisk(planPath ?? ''), {
         knownTemplateIds: new Set(templatesById(loadTemplateManifest()).keys()),
+        clientSource: identity.source,
       }),
     );
     if (missing.length > 0) {

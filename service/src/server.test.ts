@@ -1,9 +1,10 @@
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { ServiceAlreadyRunningError, startServer, type RunningService } from './server.js';
 import { readHandshake, writeHandshake } from './lock.js';
+import { REPO_ROOT } from '@framopia/core';
 
 /*
  * Every test drives its own lock file. Sharing `.local/service.json` would
@@ -32,6 +33,89 @@ describe('server', () => {
 
   afterEach(() => {
     running.server.close();
+  });
+
+  /*
+   * The only writer of `clientMode` was the analysis stage, which bills, so a
+   * video whose analysis had never run could not be given a client without
+   * paying for one. A build refuses without a client and tells the user to
+   * choose one in the panel; this is what makes that sentence true.
+   */
+  describe('POST /client', () => {
+    /* A copy with the client stripped, so the route is exercised on the state
+     * it exists for: a plan whose analysis has never run. */
+    function scratchPlan(): string {
+      const dir = mkdtempSync(path.join(tmpdir(), 'framopia-plan-'));
+      tempDirs.push(dir);
+      const copied = path.join(dir, 'scratch.editplan.json');
+      const plan = JSON.parse(
+        readFileSync(path.join(REPO_ROOT, 'my files', 'test videos', 'test 3.editplan.json'), 'utf8'),
+      ) as Record<string, unknown>;
+      plan['clientMode'] = null;
+      delete plan['clientSnapshot'];
+      writeFileSync(copied, JSON.stringify(plan));
+      return copied;
+    }
+
+    async function post(body: unknown): Promise<Response> {
+      return await fetch(`${base}/client`, {
+        method: 'POST',
+        headers: { 'x-service-token': running.token, 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+    }
+
+    it('attaches a client and pins its look in one write', async () => {
+      const planPath = scratchPlan();
+      const before = JSON.parse(readFileSync(planPath, 'utf8')) as Record<string, unknown>;
+      expect(before['clientMode']).toBeNull();
+
+      const res = await post({ planPath, modeId: 'k2-syndicalia' });
+      expect(res.status).toBe(200);
+
+      const after = JSON.parse(readFileSync(planPath, 'utf8')) as {
+        clientMode: { id: string; version: number; path: string } | null;
+        clientSnapshot: { id: string; version: number } | null;
+      };
+      expect(after.clientMode?.id).toBe('k2-syndicalia');
+      expect(after.clientSnapshot?.id).toBe('k2-syndicalia');
+      expect(after.clientMode?.version).toBe(after.clientSnapshot?.version);
+    });
+
+    it('changes nothing but the client and the timestamp', async () => {
+      const planPath = scratchPlan();
+      const before = JSON.parse(readFileSync(planPath, 'utf8')) as Record<string, unknown>;
+      await post({ planPath, modeId: 'k2-syndicalia' });
+      const after = JSON.parse(readFileSync(planPath, 'utf8')) as Record<string, unknown>;
+      const moved = Object.keys(after).filter(
+        (k) => JSON.stringify(after[k]) !== JSON.stringify(before[k]),
+      );
+      expect(moved.sort()).toEqual(['clientMode', 'clientSnapshot', 'meta']);
+    });
+
+    it('refuses a client that does not exist, and writes nothing', async () => {
+      const planPath = scratchPlan();
+      const before = readFileSync(planPath, 'utf8');
+      const res = await post({ planPath, modeId: 'no-such-client' });
+      expect(res.status).toBe(400);
+      expect((await res.json()).error).toContain('there is no client "no-such-client"');
+      expect(readFileSync(planPath, 'utf8')).toBe(before);
+    });
+
+    it('needs both a plan and a client', async () => {
+      const res = await post({ planPath: scratchPlan() });
+      expect(res.status).toBe(400);
+      expect((await res.json()).error).toContain('"planPath" and "modeId" are required');
+    });
+
+    it('rejects a request with no token', async () => {
+      const res = await fetch(`${base}/client`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ planPath: 'x', modeId: 'k2-syndicalia' }),
+      });
+      expect(res.status).toBe(401);
+    });
   });
 
   it('serves /health without a token', async () => {

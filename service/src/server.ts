@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import http, { type IncomingMessage, type ServerResponse } from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { REPO_ROOT, loadMode, snapshotOfMode } from '@framopia/core';
+import { REPO_ROOT, loadMode, modePathFor, snapshotOfMode } from '@framopia/core';
 import { createJob, getJob, UnknownJobTypeError } from './jobs.js';
 import { readEditPlan, writeEditPlan } from './editplan/io.js';
 import { clearManualZone, ManualZoneError, setManualZone } from './frames/plan-zones.js';
@@ -607,6 +607,45 @@ export function createApp(token: string): http.Server {
             );
           }
           plan.clientSnapshot = snapshotOfMode(loadMode(id), new Date().toISOString());
+        });
+        return;
+      }
+
+      /*
+       * Attach a client to a video.
+       *
+       * Until now the only thing that wrote `clientMode` was the analysis
+       * stage, which bills — so a video whose analysis had never run could not
+       * be given a client at all without paying, and two of the five corpus
+       * reels sat with none for a whole block. A build refuses in that state,
+       * and its message tells the user to choose the client here, so this is
+       * what makes that sentence true.
+       *
+       * The snapshot is taken at the same moment, because a reel is built
+       * against a copy of the client's look rather than a pointer to it.
+       */
+      if (req.method === 'POST' && url.pathname === '/client') {
+        let body: { planPath?: unknown; modeId?: unknown };
+        try {
+          body = JSON.parse((await readBody(req)) || '{}') as typeof body;
+        } catch {
+          sendJson(res, 400, { error: 'invalid JSON body' });
+          return;
+        }
+        if (typeof body.planPath !== 'string' || typeof body.modeId !== 'string') {
+          sendJson(res, 400, { error: '"planPath" and "modeId" are required' });
+          return;
+        }
+        const modeId = body.modeId;
+        await withPlan(res, body.planPath, (plan) => {
+          let mode;
+          try {
+            mode = loadMode(modeId);
+          } catch (err) {
+            throw new PlanEditError(`there is no client "${modeId}": ${(err as Error).message}`);
+          }
+          plan.clientMode = { id: mode.id, version: mode.version, path: modePathFor(mode.id) };
+          plan.clientSnapshot = snapshotOfMode(mode, new Date().toISOString());
         });
         return;
       }

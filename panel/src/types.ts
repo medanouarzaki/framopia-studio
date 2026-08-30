@@ -98,6 +98,11 @@ export interface DryRunPlan {
    * nothing on disk says which client it belongs to.
    */
   planClientMode: { id: string; version: number } | null;
+  /**
+   * Why a build cannot run, when it cannot. Optional-with-default so a service
+   * older than this field reads as "nothing blocking" rather than as empty.
+   */
+  buildBlockedBecause?: string | null;
   estimateUsd: number;
   /** True when a stage reuses a transcription made against an older guide. */
   reusesOlderGuide: boolean;

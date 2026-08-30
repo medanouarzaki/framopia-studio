@@ -2,6 +2,7 @@ import { existsSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { REPO_ROOT } from '@framopia/core';
 import type { EditPlan } from '../editplan/types.js';
+import type { ClientIdentitySource } from './client-identity.js';
 import { watermarkEnabled } from '../placement/watermark.js';
 
 /**
@@ -81,7 +82,20 @@ export function readBuildDisk(planPath: string): BuildDisk {
 export function buildRequirements(
   plan: EditPlan,
   disk: BuildDisk,
-  options: { modeId?: string; knownTemplateIds?: Set<string> } = {},
+  options: {
+    modeId?: string;
+    knownTemplateIds?: Set<string>;
+    /**
+     * What `resolveClientIdentity` answered for this plan.
+     *
+     * Passed in rather than resolved here so there is one declaration of which
+     * look a build uses, and so this stays testable without a mode file on
+     * disk. Absent means the caller did not ask, and the requirement is then
+     * reported as met — a caller that never resolves an identity cannot be told
+     * it has the wrong one.
+     */
+    clientSource?: ClientIdentitySource;
+  } = {},
 ): BuildRequirement[] {
   const slots = plan.images.slots.length;
   const sounds = plan.sfx.events.length;
@@ -99,6 +113,29 @@ export function buildRequirements(
         );
 
   return [
+    /*
+     * A client mode is what decides the type and the colour, so a build that
+     * cannot resolve one has no basis for what it is about to place. It used to
+     * fall through: `textStyleFor` returned nothing and every card silently
+     * took the template's own #F4F4F4 instead of the client's #F8F6F2. Two of
+     * the five corpus reels built that way for the whole of Block 10 and
+     * nothing anywhere said a word — and a second client with different faces
+     * would have had its reels set in K2's type just as quietly.
+     *
+     * Unconditional, unlike every other requirement here: a reel with no
+     * subtitles has nothing to build at all, and every reel that does has type
+     * to set.
+     */
+    {
+      id: 'client-identity',
+      needed: true,
+      present: options.clientSource === undefined || options.clientSource !== 'none',
+      what: 'a client for this video — no client mode and no saved client look is on its plan',
+      command: 'choose the client for this video in the panel',
+      consequence:
+        'every card keeps whatever type and colour the template happens to carry rather ' +
+        'than the client’s, which on this corpus is #F4F4F4 where it should be #F8F6F2',
+    },
     {
       id: 'face-masks',
       needed: slots > 0,
