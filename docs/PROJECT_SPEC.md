@@ -49,9 +49,28 @@ depends on the client fonts Block 9 collects.
    entrance to `MIN_INTRO_S` and clips the hold rather than extending the card —
    so the 23 clipped holds are a recorded decision and not an open defect.
    **Nothing to build.**
-3. **An overlong word shrinks to fit.** It never clips at the safe width and
-   never wraps to a second line: the type scales down just enough for that word,
-   on its own card. 7 words across the corpus are affected today.
+3. **An overlong card is broken if it can be, and shrunk only if it cannot.**
+   It never clips at the safe width. A card with a space to break at goes onto
+   **two lines at its authored size**; a single word with nowhere to break has
+   its type scaled down, on its own card, until the widest line fits.
+
+   **Amended 2026-08-30 (user ruling), replacing "never wraps to a second
+   line".** He saw a build made under the first reading, where every overlong
+   card was forced onto one line and shrunk, and ruled against it on
+   `test-1`'s keyword `محفزات الكولاجين`: at ×0.5589 it came out **56% the
+   height of the ordinary cards around it**, wide and thin and smaller than the
+   subtitle beside it. A keyword is meant to be the largest thing on screen, so
+   shrinking one inverts what it is for. Breaking costs nothing, because
+   `SUBTITLE_BAND` was always derived for `MAX_SUBTITLE_LINES` = 2 and the
+   first baseline does not move.
+
+   Measured across the corpus: 9 of 338 cards exceed `SUBTITLE_SAFE_WIDTH`.
+   **Two have a break point** — both two-word Arabic keyword spans — and take
+   two lines at full size; **seven are single words** and shrink, worst case
+   ×0.9122. Implemented in `panel/jsx/text-fit.jsx` (`framopiaFitCard`, the
+   measuring) and `core/src/card-fit.ts` (the policy and the refusal); every
+   decision is taken on a width After Effects measured, and a card that cannot
+   be brought under the bound fails the build by name.
 
 ## 4. Input / output (locked)
 
