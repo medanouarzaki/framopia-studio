@@ -275,6 +275,78 @@ describe('validateTemplates', () => {
       aepSha256: SHA,
     });
 
+  /*
+   * Block 9 session 8: a hand style pass duplicated the text layer, and the
+   * copy kept the template's placeholder word. The build fills layers by exact
+   * name, so nothing filled the duplicate and nothing noticed — it was one
+   * build away from putting `kan9olo` on every card of every reel.
+   */
+  describe('every text layer is accounted for', () => {
+    it('fails on an undeclared text layer, naming the comp and the layer', () => {
+      const withDuplicate = comp('sub_pop', {
+        layers: [layer({ name: 'TXT_MAIN' }), layer({ name: 'TXT_MAIN 2' })],
+      });
+
+      expect(run([withDuplicate], [entry('sub_pop')])).toEqual([
+        'comp "sub_pop" has a text layer "TXT_MAIN 2" that the manifest does not account ' +
+          'for. A text layer the build does not fill keeps whatever word the template was ' +
+          'authored with. Declare it in placeholders, in shadowLayers, or in ' +
+          'decorativeTextLayers if the build should leave it alone.',
+      ]);
+    });
+
+    it('accepts it once the manifest declares it a shadow', () => {
+      const withShadow = comp('sub_pop', {
+        layers: [layer({ name: 'TXT_MAIN' }), layer({ name: 'TXT_MAIN_SHADOW' })],
+      });
+
+      expect(
+        run([withShadow], [entry('sub_pop', { shadowLayers: ['TXT_MAIN_SHADOW'] })]),
+      ).toEqual([]);
+    });
+
+    it('accepts one the build is told to leave alone', () => {
+      const decorated = comp('sub_pop', {
+        layers: [layer({ name: 'TXT_MAIN' }), layer({ name: 'CREDIT' })],
+      });
+
+      expect(
+        run([decorated], [entry('sub_pop', { decorativeTextLayers: ['CREDIT'] })]),
+      ).toEqual([]);
+    });
+
+    /*
+     * A declared shadow that is not there is an absent input, and an absent
+     * input producing a plausible wrong output is the shape that cost Block 8
+     * four sessions. It is checked exactly as a placeholder is, and says which
+     * of the two it was.
+     */
+    it('fails when a declared shadow is not in the comp, and calls it a shadow', () => {
+      const noShadow = comp('sub_pop', { layers: [layer({ name: 'TXT_MAIN' })] });
+
+      expect(run([noShadow], [entry('sub_pop', { shadowLayers: ['TXT_MAIN_SHADOW'] })])).toEqual([
+        'comp "sub_pop" declares shadow layer "TXT_MAIN_SHADOW" but has no layer of that ' +
+          'name (layers present: TXT_MAIN)',
+      ]);
+    });
+
+    it('requires a declared shadow to be a text layer', () => {
+      const wrongKind = comp('sub_pop', {
+        layers: [layer({ name: 'TXT_MAIN' }), layer({ name: 'TXT_MAIN_SHADOW', kind: 'solid' })],
+      });
+
+      expect(
+        run([wrongKind], [entry('sub_pop', { shadowLayers: ['TXT_MAIN_SHADOW'] })]),
+      ).toContain('comp "sub_pop" layer "TXT_MAIN_SHADOW" is a solid layer; an editable text layer is required');
+    });
+
+    /* A template with one text layer is every template written before this. */
+    it('is silent for a template that declares no shadow and has none', () => {
+      const plain = comp('sub_pop', { layers: [layer({ name: 'TXT_MAIN' })] });
+      expect(run([plain], [entry('sub_pop')])).toEqual([]);
+    });
+  });
+
   // The audit is what measures geometry, so a stale audit file must fail
   // loudly rather than let a build read a default. The wording is asserted,
   // not just the count: a message that stops naming the comp, the layer or the

@@ -1,108 +1,120 @@
 {
-  "schemaVersion": 1,
-  "stub": false,
-  "templates": [
+ "schemaVersion": 1,
+ "stub": false,
+ "templates": [
+  {
+   "id": "sub_pop",
+   "file": "library.aep",
+   "type": "subtitle",
+   "placeholders": [
+    "TXT_MAIN"
+   ],
+   "shadowLayers": [
+    "TXT_MAIN_SHADOW"
+   ],
+   "introS": 0.13,
+   "outroS": 0,
+   "minHoldS": 0.1,
+   "anchor": "center",
+   "imagePresentation": null,
+   "sfx": [],
+   "notes": "latin subtitle pop; the whole 4-frame budget is spent on the entrance and the card hard-cuts out, so there is no outro phase"
+  },
+  {
+   "id": "sub_pop_ar",
+   "file": "library.aep",
+   "type": "subtitle",
+   "placeholders": [
+    "TXT_MAIN"
+   ],
+   "shadowLayers": [
+    "TXT_MAIN_SHADOW"
+   ],
+   "introS": 0.13,
+   "outroS": 0,
+   "minHoldS": 0.1,
+   "anchor": "center",
+   "imagePresentation": null,
+   "sfx": [],
+   "notes": "arabic variant of sub_pop; almarai bold, rtl paragraph direction, matched timing"
+  },
+  {
+   "id": "kw_slam",
+   "file": "library.aep",
+   "type": "keyword",
+   "placeholders": [
+    "TXT_MAIN"
+   ],
+   "shadowLayers": [
+    "TXT_MAIN_SHADOW"
+   ],
+   "introS": 0.13,
+   "outroS": 0,
+   "minHoldS": 0.1,
+   "anchor": "center",
+   "imagePresentation": null,
+   "sfx": [],
+   "notes": "latin keyword slam; places at the subtitle anchor with no offset, which KEYWORDS_ARE_INSIDE_SUBTITLE_BAND depends on"
+  },
+  {
+   "id": "kw_slam_ar",
+   "file": "library.aep",
+   "type": "keyword",
+   "placeholders": [
+    "TXT_MAIN"
+   ],
+   "shadowLayers": [
+    "TXT_MAIN_SHADOW"
+   ],
+   "introS": 0.13,
+   "outroS": 0,
+   "minHoldS": 0.1,
+   "anchor": "center",
+   "imagePresentation": null,
+   "sfx": [],
+   "notes": "arabic variant of kw_slam; almarai bold, rtl paragraph direction, matched timing"
+  },
+  {
+   "id": "img_slide_left",
+   "file": "library.aep",
+   "type": "image",
+   "placeholders": [
+    "IMG_MAIN"
+   ],
+   "introS": 0.13,
+   "outroS": 0,
+   "minHoldS": 0.1,
+   "anchor": "center",
+   "imagePresentation": "cutout",
+   "sfx": [
     {
-      "id": "sub_pop",
-      "file": "library.aep",
-      "type": "subtitle",
-      "placeholders": [
-        "TXT_MAIN"
-      ],
-      "introS": 0.13,
-      "outroS": 0,
-      "minHoldS": 0.1,
-      "anchor": "center",
-      "imagePresentation": null,
-      "sfx": [],
-      "notes": "latin subtitle pop; the whole 4-frame budget is spent on the entrance and the card hard-cuts out, so there is no outro phase"
-    },
-    {
-      "id": "sub_pop_ar",
-      "file": "library.aep",
-      "type": "subtitle",
-      "placeholders": [
-        "TXT_MAIN"
-      ],
-      "introS": 0.13,
-      "outroS": 0,
-      "minHoldS": 0.1,
-      "anchor": "center",
-      "imagePresentation": null,
-      "sfx": [],
-      "notes": "arabic variant of sub_pop; almarai bold, rtl paragraph direction, matched timing"
-    },
-    {
-      "id": "kw_slam",
-      "file": "library.aep",
-      "type": "keyword",
-      "placeholders": [
-        "TXT_MAIN"
-      ],
-      "introS": 0.13,
-      "outroS": 0,
-      "minHoldS": 0.1,
-      "anchor": "center",
-      "imagePresentation": null,
-      "sfx": [],
-      "notes": "latin keyword slam; places at the subtitle anchor with no offset, which KEYWORDS_ARE_INSIDE_SUBTITLE_BAND depends on"
-    },
-    {
-      "id": "kw_slam_ar",
-      "file": "library.aep",
-      "type": "keyword",
-      "placeholders": [
-        "TXT_MAIN"
-      ],
-      "introS": 0.13,
-      "outroS": 0,
-      "minHoldS": 0.1,
-      "anchor": "center",
-      "imagePresentation": null,
-      "sfx": [],
-      "notes": "arabic variant of kw_slam; almarai bold, rtl paragraph direction, matched timing"
-    },
-    {
-      "id": "img_slide_left",
-      "file": "library.aep",
-      "type": "image",
-      "placeholders": [
-        "IMG_MAIN"
-      ],
-      "introS": 0.13,
-      "outroS": 0,
-      "minHoldS": 0.1,
-      "anchor": "center",
-      "imagePresentation": "cutout",
-      "sfx": [
-        {
-          "sfxId": "whoosh_01",
-          "offsetS": 0,
-          "gainDb": -24
-        }
-      ],
-      "notes": "slides in from the left; expects a gated cutout with no background"
-    },
-    {
-      "id": "img_float",
-      "file": "library.aep",
-      "type": "image",
-      "placeholders": [
-        "IMG_MAIN"
-      ],
-      "introS": 0.13,
-      "outroS": 0,
-      "minHoldS": 0.1,
-      "anchor": "center",
-      "imagePresentation": "card",
-      "sfx": [
-        {
-          "sfxId": "whoosh_01",
-          "offsetS": 0,
-          "gainDb": -24
-        }
-      ],
-      "notes": "card-framed fallback for when the cutout gate says no; carries a decorative CARD layer behind IMG_MAIN, which is parented to it"
+     "sfxId": "whoosh_01",
+     "offsetS": 0,
+     "gainDb": -24
     }
-  ]
+   ],
+   "notes": "slides in from the left; expects a gated cutout with no background"
+  },
+  {
+   "id": "img_float",
+   "file": "library.aep",
+   "type": "image",
+   "placeholders": [
+    "IMG_MAIN"
+   ],
+   "introS": 0.13,
+   "outroS": 0,
+   "minHoldS": 0.1,
+   "anchor": "center",
+   "imagePresentation": "card",
+   "sfx": [
+    {
+     "sfxId": "whoosh_01",
+     "offsetS": 0,
+     "gainDb": -24
+    }
+   ],
+   "notes": "card-framed fallback for when the cutout gate says no; carries a decorative CARD layer behind IMG_MAIN, which is parented to it"
+  }
+ ]
 }

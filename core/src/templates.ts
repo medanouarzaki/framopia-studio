@@ -25,6 +25,27 @@ export interface TemplateEntry {
   file: string;
   type: TemplateKind;
   placeholders: string[];
+  /**
+   * A text layer that carries a copy of the placeholder's word, drawn behind
+   * it — the user's shadow, made by duplicating the layer and offsetting a
+   * coloured copy rather than with an effect.
+   *
+   * **The build fills it with the same word, font and size as the placeholder,
+   * and never touches its colour.** That colour is the design.
+   *
+   * Optional with a default: a template with one text layer has none of these
+   * and builds exactly as it always did.
+   */
+  shadowLayers?: string[];
+  /**
+   * Text layers the build deliberately leaves alone.
+   *
+   * Empty today and expected to stay so. It exists because the validation rule
+   * is "every text layer is accounted for", and the honest way to account for
+   * one the build does not fill is to say so rather than to let silence mean
+   * two different things.
+   */
+  decorativeTextLayers?: string[];
   introS: number;
   outroS: number;
   minHoldS: number;
@@ -196,6 +217,15 @@ export function validateTemplateManifest(value: unknown, sfxIds: Set<string>): M
 
     if (!Array.isArray(t.placeholders) || t.placeholders.length === 0) {
       issues.push({ path: `${p}.placeholders`, message: 'expected at least one layer name' });
+    }
+    // Optional with a default, so a template written before Block 9 session 10
+    // stays valid; validated only when present.
+    for (const field of ['shadowLayers', 'decorativeTextLayers'] as const) {
+      const value = (t as Record<string, unknown>)[field];
+      if (value === undefined) continue;
+      if (!Array.isArray(value) || value.some((n) => typeof n !== 'string' || n.length === 0)) {
+        issues.push({ path: `${p}.${field}`, message: 'expected an array of layer names' });
+      }
     }
     num(issues, `${p}.introS`, t.introS);
     num(issues, `${p}.outroS`, t.outroS);
@@ -508,6 +538,8 @@ export function validateTemplates(options: {
       id: string;
       type: string;
       placeholders: string[];
+      shadowLayers?: string[];
+      decorativeTextLayers?: string[];
       introS: number;
       outroS: number;
       minHoldS: number;
@@ -526,23 +558,53 @@ export function validateTemplates(options: {
       problems.push(`comp "${t.id}" is type "${t.type}" but does not start with "${expectedPrefix}"`);
     }
 
-    for (const name of t.placeholders) {
+    /*
+     * A declared shadow that is not there is an absent input, and an absent
+     * input that produces a plausible wrong output is the shape that cost
+     * Block 8 four sessions. So it is checked exactly as a placeholder is.
+     */
+    const shadows = Array.isArray(t.shadowLayers) ? t.shadowLayers : [];
+    const decorative = Array.isArray(t.decorativeTextLayers) ? t.decorativeTextLayers : [];
+
+    for (const name of [...t.placeholders, ...shadows]) {
       const layer = comp.layers.find((l) => l.name === name);
       if (layer === undefined) {
         const names = comp.layers.map((l) => l.name).join(', ') || 'none';
         problems.push(
-          `comp "${t.id}" declares placeholder "${name}" but has no layer of that name ` +
-            `(layers present: ${names})`,
+          `comp "${t.id}" declares ${shadows.includes(name) ? 'shadow layer' : 'placeholder'} ` +
+            `"${name}" but has no layer of that name (layers present: ${names})`,
         );
         continue;
       }
-      const accepts = ACCEPTS[name];
+      const accepts = shadows.includes(name) ? ACCEPTS['TXT_MAIN'] : ACCEPTS[name];
       if (accepts !== undefined && !accepts.kinds.includes(layer.kind)) {
         problems.push(
           `comp "${t.id}" layer "${name}" is a ${layer.kind} layer; ${accepts.describe} is required`,
         );
       }
       problems.push(...requireGeometry(t.id, layer));
+    }
+
+    /*
+     * **Every text layer in a comp is accounted for.**
+     *
+     * Block 9 session 8: a hand style pass duplicated the text layer, and the
+     * copy kept the template's placeholder word. The build fills layers by
+     * exact name, so nothing filled the duplicate and nothing noticed — it was
+     * one build away from putting `kan9olo` on every card of every reel. An
+     * undeclared text layer is now a manifest error rather than a surprise.
+     */
+    for (const layer of comp.layers) {
+      if (layer.kind !== 'text') continue;
+      if (t.placeholders.includes(layer.name)) continue;
+      if (shadows.includes(layer.name)) continue;
+      if (decorative.includes(layer.name)) continue;
+      problems.push(
+        `comp "${t.id}" has a text layer "${layer.name}" that the manifest does not ` +
+          'account for. A text layer the build does not fill keeps whatever word the ' +
+          'template was authored with. Declare it in placeholders, in shadowLayers, ' +
+          'or in decorativeTextLayers if the build should leave it alone.',
+      );
     }
 
     if (Math.abs(comp.frameRate - REQUIRED_FPS) > FPS_TOLERANCE) {
