@@ -181,12 +181,23 @@ function framopiaBuildReel(optionsPath, outPath) {
             }
 
             if (e.kind !== 'image') {
-                // Measured by AE, then broken only if the measurement says so.
-                // The break point arrived precomputed; the decision is here
-                // because only AE knows the rendered width.
-                e.fit = framopiaFitText(
-                    ph, instance.duration / 2, e.candidate, o.safeWidth, e.textStyle
+                /*
+                 * PROJECT_SPEC §3 ruling 3: a card too wide for the safe width
+                 * shrinks, on one line. It is never broken — a wrapped card
+                 * leaves the locked first-baseline anchor — and never clipped.
+                 * The width is measured here because only AE knows it, and the
+                 * loop exits on a measured width rather than on arithmetic.
+                 */
+                e.shrink = framopiaShrinkToFit(
+                    ph, instance.duration / 2, e.candidate.oneLine, o.safeWidth,
+                    e.textStyle, o.shrinkMaxAttempts
                 );
+                if (!e.shrink.fits) {
+                    throw new Error(framopiaTooWideMessage(
+                        e.id, e.kind, e.shrink, o.safeWidth,
+                        e.textStyle ? e.textStyle.font : null
+                    ));
+                }
                 /*
                  * The shadow is a copy of the word drawn behind it, so it has
                  * to say the word. Block 9 session 8 found the duplicated layer
@@ -206,19 +217,36 @@ function framopiaBuildReel(optionsPath, outPath) {
                             throw new Error('comp "' + e.templateId + '" declares shadow layer "' +
                                             shadowName + '" but has no layer of that name');
                         }
-                        var shadowStyle = null;
-                        if (e.textStyle) {
-                            shadowStyle = { font: e.textStyle.font, fontSize: e.textStyle.fontSize };
-                        }
-                        framopiaSetText(shadow, framopiaFittedText(e.fit, e.candidate), shadowStyle);
+                        /*
+                         * The size is the one the shrink actually landed on,
+                         * not the style's: a shrunk card whose shadow stayed at
+                         * full size would draw a larger word behind a smaller
+                         * one. Both layers are read back below rather than
+                         * assumed equal.
+                         */
+                        var shadowStyle = { fontSize: e.shrink.finalFontSize };
+                        if (e.textStyle) shadowStyle.font = e.textStyle.font;
+                        framopiaSetText(shadow, e.shrink.text, shadowStyle);
+                        e.shadowApplied = framopiaReadTextStyle(shadow);
                     }
                 }
-                // Read back rather than assumed: After Effects substitutes a
-                // face it cannot resolve and reports the name it was given, so
-                // this proves only that the write took, not that the face is
-                // real. `check-fonts` above is what proves the face is real.
-                if (e.textStyle) {
-                    e.textStyleApplied = framopiaReadTextStyle(ph);
+                /*
+                 * Read back rather than assumed: After Effects substitutes a
+                 * face it cannot resolve and reports the name it was given, so
+                 * this proves only that the write took, not that the face is
+                 * real. `check-fonts` above is what proves the face is real.
+                 *
+                 * The placeholder is read unconditionally now, because the
+                 * shrink writes a size whether or not the client carries a
+                 * face, and the size on both layers has to be checked.
+                 */
+                e.textStyleApplied = framopiaReadTextStyle(ph);
+                if (e.shadowApplied &&
+                    e.shadowApplied.fontSize !== e.textStyleApplied.fontSize) {
+                    throw new Error('comp "' + instance.name + '": the word is set at ' +
+                        e.textStyleApplied.fontSize + ' and its shadow at ' +
+                        e.shadowApplied.fontSize + '. Both layers carry the same word ' +
+                        'and must carry the same size.');
                 }
             } else {
                 var img = importOnce(e.imagePath, imports);
@@ -413,15 +441,15 @@ function framopiaBuildReel(optionsPath, outPath) {
         var parkedAt = o.parkAtS;
         var parkedOn = null;
         /*
-         * Park on a card that actually wrapped, so the fix is the first thing
-         * on screen rather than something to go hunting for. Which cards
-         * wrapped is only known here, after measuring, so the choice cannot be
-         * made by the caller.
+         * Park on a card that was actually shrunk, so the thing to judge is the
+         * first thing on screen rather than something to go hunting for. Which
+         * cards shrank is only known here, after measuring, so the choice
+         * cannot be made by the caller.
          */
-        if (o.parkOnWrapped) {
+        if (o.parkOnShrunk) {
             var wrappedId = null;
             for (i = 0; i < o.elements.length; i++) {
-                if (o.elements[i].fit && o.elements[i].fit.wrapped && !o.elements[i].fit.overflows) {
+                if (o.elements[i].shrink && o.elements[i].shrink.factor < 1) {
                     wrappedId = o.elements[i].id;
                     break;
                 }
@@ -437,7 +465,7 @@ function framopiaBuildReel(optionsPath, outPath) {
                     }
                 }
             }
-            if (!parkedOn) warnings.push('no wrapped card to park on; used the midpoint');
+            if (!parkedOn) warnings.push('no shrunk card to park on; used the midpoint');
         }
         if (active && active instanceof CompItem) {
             active.openInViewer();
@@ -452,12 +480,13 @@ function framopiaBuildReel(optionsPath, outPath) {
             if (o.elements[i].measured) {
                 measured.push({ id: o.elements[i].id, measured: o.elements[i].measured });
             }
-            if (o.elements[i].fit) {
+            if (o.elements[i].shrink) {
                 fits.push({
                     id: o.elements[i].id,
                     kind: o.elements[i].kind,
-                    text: o.elements[i].candidate.oneLine,
-                    fit: o.elements[i].fit
+                    templateId: o.elements[i].templateId,
+                    font: o.elements[i].textStyleApplied ? o.elements[i].textStyleApplied.font : null,
+                    shrink: o.elements[i].shrink
                 });
             }
         }

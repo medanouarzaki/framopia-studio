@@ -1,9 +1,13 @@
 import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import {
   REPO_ROOT,
   SUBTITLE_SAFE_WIDTH,
+  SHRINK_MAX_ATTEMPTS,
+  assertEveryCardFits,
+  summariseShrinks,
+  type ShrinkRow,
   cardColours,
   dialogueAttenuationDb,
   loudestBoundOffsetDb,
@@ -602,6 +606,7 @@ const result = runBuildReel({
   reelDurationS: plan.source.durationS,
   frameRate: 30000 / 1001,
   safeWidth: SUBTITLE_SAFE_WIDTH,
+  shrinkMaxAttempts: SHRINK_MAX_ATTEMPTS,
   elements: built.elements,
   /*
    * Checked inside After Effects before a card is placed. Empty today, because
@@ -625,7 +630,7 @@ const result = runBuildReel({
   parkAtS: Number(flag('park') ?? plan.source.durationS / 2),
   // --park pins the playhead at a named moment; without it the build finds a
   // wrapped card, which is only useful when wrapping is what is being judged.
-  parkOnWrapped: flag('park') === undefined,
+  parkOnShrunk: flag('park') === undefined,
   savePath:
     outArg === undefined
       ? path.join(REPO_ROOT, '.local', 'build', `${reel}-full.aep`)
@@ -639,6 +644,84 @@ if (result.ok && typeof result['savedOwnOutput'] === 'string') {
 }
 
 console.log(`\n${JSON.stringify(result, null, 2)}`);
+
+/*
+ * Every card, against the bound it was built to.
+ *
+ * After Effects refuses a card it could not bring under the safe width, so this
+ * cannot normally fire — and that is the point: a check that can only pass
+ * because of something upstream is worth keeping only if it reads the same
+ * measurement independently. This reads the width AE measured last, not the
+ * arithmetic that produced the size, and it is the one place the whole set is
+ * seen at once.
+ */
+if (result.ok) {
+  const textFits = (result['textFits'] ?? []) as {
+    id: string;
+    kind: 'subtitle' | 'keyword';
+    templateId: string;
+    font: string | null;
+    shrink: {
+      text: string;
+      baseFontSize: number;
+      finalFontSize: number;
+      factor: number;
+      widthBeforePx: number;
+      widthAfterPx: number;
+      attempts: number;
+      measurements: { fontSize: number; widthPx: number }[];
+      fits: boolean;
+    };
+  }[];
+  const rows: ShrinkRow[] = textFits.map((f) => ({
+    reel,
+    id: f.id,
+    kind: f.kind,
+    text: f.shrink.text,
+    templateId: f.templateId,
+    font: f.font,
+    baseFontSize: f.shrink.baseFontSize,
+    finalFontSize: f.shrink.finalFontSize,
+    factor: f.shrink.factor,
+    widthBeforePx: f.shrink.widthBeforePx,
+    widthAfterPx: f.shrink.widthAfterPx,
+    safeWidthPx: SUBTITLE_SAFE_WIDTH,
+    attempts: f.shrink.attempts,
+    measurements: f.shrink.measurements,
+    fits: f.shrink.fits,
+  }));
+  assertEveryCardFits(rows);
+
+  const summary = summariseShrinks(rows);
+  const shrinkPath = path.join(REPO_ROOT, '.local', 'build', `${reel}-shrink.json`);
+  writeFileSync(
+    shrinkPath,
+    `${JSON.stringify(
+      {
+        schemaVersion: 1,
+        reel,
+        planPath,
+        aepPath: result['savePath'] ?? null,
+        aeVersion: result['aeVersion'] ?? null,
+        measuredAt: new Date().toISOString(),
+        safeWidthPx: SUBTITLE_SAFE_WIDTH,
+        maxAttempts: SHRINK_MAX_ATTEMPTS,
+        summary,
+        cards: rows,
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  console.log(
+    `\ntype: ${summary.cards} cards, ${summary.shrunk} shrunk` +
+      (summary.smallestFactor === null
+        ? ''
+        : ` (smallest x${summary.smallestFactor.toFixed(4)})`) +
+      `, widest ${summary.widestAfterPx?.toFixed(2)}px against ${SUBTITLE_SAFE_WIDTH}`,
+  );
+  console.log(`wrote ${path.relative(REPO_ROOT, shrinkPath)}`);
+}
 
 /*
  * What After Effects stored, against what it was asked for.

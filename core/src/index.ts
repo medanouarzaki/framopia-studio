@@ -327,6 +327,20 @@ export {
   type ShapeCensusInputs,
   type TextCompCensus,
 } from './comp-census.js';
+
+export {
+  CardTooWideError,
+  SHRINK_MAX_ATTEMPTS,
+  SHRINK_SIZE_DECIMALS,
+  assertEveryCardFits,
+  cardTooWideMessage,
+  needsShrink,
+  nextFontSize,
+  summariseShrinks,
+  type ShrinkAttempt,
+  type ShrinkRow,
+  type ShrinkSummary,
+} from './shrink-to-fit.js';
 export {
   CLIENT_SNAPSHOT_VERSION,
   snapshotIsBehind,

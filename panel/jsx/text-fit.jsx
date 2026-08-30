@@ -35,7 +35,10 @@ function framopiaSetText(layer, value, style) {
     var doc = prop.value;
     doc.text = value;
     if (style) {
-        doc.font = style.font;
+        // A size-only style is legal: shrink-to-fit re-sets the size on a card
+        // whose client carries no measured font names, and writing `undefined`
+        // to `font` would break the layer rather than leave it alone.
+        if (style.font) doc.font = style.font;
         if (style.fontSize) doc.fontSize = style.fontSize;
         if (style.fillColor) {
             doc.applyFill = true;
@@ -141,4 +144,84 @@ function framopiaFitText(layer, sampleTimeS, candidate, safeWidth, style) {
         }
     }
     return out;
+}
+
+/**
+ * Shrinks a card until it fits, and never breaks it.
+ *
+ * PROJECT_SPEC §3 ruling 3: an overlong card scales down on its own card. It
+ * does not wrap — a wrapped card leaves the locked first-baseline anchor — and
+ * it does not clip.
+ *
+ * **The size is written on the TextDocument, never on the layer's Scale.** The
+ * templates animate Scale, so writing it would fight the animation the user
+ * authored; the ruling is about type size and this sets type size.
+ *
+ * Apply, re-measure, repeat. The factor is arithmetic and the width is a
+ * measurement, so the arithmetic is never trusted: the loop exits on a measured
+ * width at or under the bound, or it runs out of attempts and the caller
+ * refuses. `nextFontSize` mirrors core/src/shrink-to-fit.ts, which a test pins.
+ */
+function framopiaShrinkNextSize(fontSize, measuredWidth, safeWidth) {
+    return Math.floor(fontSize * safeWidth / measuredWidth * 10000) / 10000;
+}
+
+function framopiaShrinkToFit(layer, sampleTimeS, text, safeWidth, style, maxAttempts) {
+    var out = {
+        text: text,
+        baseFontSize: null,
+        finalFontSize: null,
+        factor: 1,
+        widthBeforePx: null,
+        widthAfterPx: null,
+        measurements: [],
+        attempts: 0,
+        fits: false
+    };
+
+    framopiaSetText(layer, text, style);
+    var doc = layer.property('Source Text').value;
+    var size = doc.fontSize;
+    out.baseFontSize = size;
+
+    var measured = framopiaMeasureAt(layer, sampleTimeS);
+    out.widthBeforePx = measured.width;
+    out.measurements.push({ fontSize: size, widthPx: measured.width });
+    out.attempts = 1;
+
+    var limit = maxAttempts || 6;
+    while (measured.width > safeWidth && out.attempts < limit) {
+        size = framopiaShrinkNextSize(size, measured.width, safeWidth);
+        framopiaSetText(layer, text, { fontSize: size });
+        measured = framopiaMeasureAt(layer, sampleTimeS);
+        out.measurements.push({ fontSize: size, widthPx: measured.width });
+        out.attempts = out.attempts + 1;
+    }
+
+    out.finalFontSize = size;
+    out.widthAfterPx = measured.width;
+    out.factor = out.baseFontSize === 0 ? 1 : size / out.baseFontSize;
+    out.fits = measured.width <= safeWidth;
+    return out;
+}
+
+/**
+ * The refusal, built where the measurements are.
+ *
+ * A card that converged the wrong way and one that was already at the bound
+ * look identical from a single width, so the whole sequence goes in the
+ * message — the person reading it cannot re-run the build.
+ */
+function framopiaTooWideMessage(id, kind, shrink, safeWidth, font) {
+    var parts = [];
+    var i;
+    for (i = 0; i < shrink.measurements.length; i++) {
+        var m = shrink.measurements[i];
+        parts.push(m.fontSize + ' -> ' + m.widthPx.toFixed(2) + 'px');
+    }
+    return id + ' (' + kind + ') cannot be brought under ' + safeWidth +
+        'px in ' + shrink.attempts + ' attempts: "' + shrink.text + '" in ' +
+        (font || 'the template\u2019s own face') + ' at ' + shrink.baseFontSize +
+        '. Measured ' + parts.join(', ') +
+        '. The card is not wrapped and not clipped, so the build stops here.';
 }
