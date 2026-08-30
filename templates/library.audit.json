@@ -639,6 +639,223 @@
       "duration": 2.002002002002,
       "layers": [
         {
+          "name": "TXT_MAIN 2",
+          "kind": "text",
+          "parent": null,
+          "position": {
+            "value": [
+              1080,
+              700,
+              0
+            ],
+            "valueAtSampleTime": [
+              1080,
+              700,
+              0
+            ],
+            "keyframes": 2,
+            "unreadable": null
+          },
+          "anchorPoint": {
+            "value": [
+              0,
+              0,
+              0
+            ],
+            "valueAtSampleTime": [
+              0,
+              0,
+              0
+            ],
+            "keyframes": 0,
+            "unreadable": null
+          },
+          "scale": {
+            "value": [
+              100,
+              100,
+              100
+            ],
+            "valueAtSampleTime": [
+              100,
+              100,
+              100
+            ],
+            "keyframes": 0,
+            "unreadable": null
+          },
+          "opacity": {
+            "value": 100,
+            "valueAtSampleTime": 100,
+            "keyframes": 2,
+            "unreadable": null
+          },
+          "width": 2160,
+          "height": 1100,
+          "sampleTime": 1.001001001001,
+          "sourceRect": {
+            "top": -309.2041015625,
+            "left": -767.4072265625,
+            "width": 1557.6416015625,
+            "height": 313.97705078125
+          },
+          "text": {
+            "font": "Inter-SemiBold",
+            "fontSize": 425,
+            "justification": "CENTER_JUSTIFY",
+            "justificationRaw": 7415,
+            "tracking": 0
+          },
+          "animated": [
+            {
+              "path": "Effects/Fast Box Blur/Blur Radius",
+              "keyframes": 2,
+              "keys": [
+                {
+                  "index": 1,
+                  "time": 0,
+                  "value": 30,
+                  "inInterpolation": "BEZIER",
+                  "outInterpolation": "BEZIER",
+                  "inEase": [
+                    {
+                      "influence": 66,
+                      "speed": 0
+                    }
+                  ],
+                  "outEase": [
+                    {
+                      "influence": 14,
+                      "speed": -535.178571428571
+                    }
+                  ],
+                  "unreadable": null
+                },
+                {
+                  "index": 2,
+                  "time": 0.4004004004004,
+                  "value": 0,
+                  "inInterpolation": "BEZIER",
+                  "outInterpolation": "BEZIER",
+                  "inEase": [
+                    {
+                      "influence": 66,
+                      "speed": 0
+                    }
+                  ],
+                  "outEase": [
+                    {
+                      "influence": 14,
+                      "speed": 0
+                    }
+                  ],
+                  "unreadable": null
+                }
+              ]
+            },
+            {
+              "path": "Transform/Position",
+              "keyframes": 2,
+              "keys": [
+                {
+                  "index": 1,
+                  "time": 0,
+                  "value": [
+                    1080,
+                    750,
+                    0
+                  ],
+                  "inInterpolation": "BEZIER",
+                  "outInterpolation": "BEZIER",
+                  "inEase": [
+                    {
+                      "influence": 66,
+                      "speed": 0
+                    }
+                  ],
+                  "outEase": [
+                    {
+                      "influence": 14,
+                      "speed": 891.964285714285
+                    }
+                  ],
+                  "unreadable": null
+                },
+                {
+                  "index": 2,
+                  "time": 0.4004004004004,
+                  "value": [
+                    1080,
+                    700,
+                    0
+                  ],
+                  "inInterpolation": "BEZIER",
+                  "outInterpolation": "BEZIER",
+                  "inEase": [
+                    {
+                      "influence": 66,
+                      "speed": 0
+                    }
+                  ],
+                  "outEase": [
+                    {
+                      "influence": 14,
+                      "speed": 0
+                    }
+                  ],
+                  "unreadable": null
+                }
+              ]
+            },
+            {
+              "path": "Transform/Opacity",
+              "keyframes": 2,
+              "keys": [
+                {
+                  "index": 1,
+                  "time": 0,
+                  "value": 0,
+                  "inInterpolation": "BEZIER",
+                  "outInterpolation": "BEZIER",
+                  "inEase": [
+                    {
+                      "influence": 66,
+                      "speed": 0
+                    }
+                  ],
+                  "outEase": [
+                    {
+                      "influence": 14,
+                      "speed": 1783.92857142857
+                    }
+                  ],
+                  "unreadable": null
+                },
+                {
+                  "index": 2,
+                  "time": 0.4004004004004,
+                  "value": 100,
+                  "inInterpolation": "BEZIER",
+                  "outInterpolation": "BEZIER",
+                  "inEase": [
+                    {
+                      "influence": 66,
+                      "speed": 0
+                    }
+                  ],
+                  "outEase": [
+                    {
+                      "influence": 14,
+                      "speed": 0
+                    }
+                  ],
+                  "unreadable": null
+                }
+              ]
+            }
+          ]
+        },
+        {
           "name": "TXT_MAIN",
           "kind": "text",
           "parent": null,
@@ -864,6 +1081,223 @@
       "height": 1100,
       "duration": 2.002002002002,
       "layers": [
+        {
+          "name": "TXT_MAIN 2",
+          "kind": "text",
+          "parent": null,
+          "position": {
+            "value": [
+              1080,
+              700,
+              0
+            ],
+            "valueAtSampleTime": [
+              1080,
+              700,
+              0
+            ],
+            "keyframes": 2,
+            "unreadable": null
+          },
+          "anchorPoint": {
+            "value": [
+              0,
+              0,
+              0
+            ],
+            "valueAtSampleTime": [
+              0,
+              0,
+              0
+            ],
+            "keyframes": 0,
+            "unreadable": null
+          },
+          "scale": {
+            "value": [
+              100,
+              100,
+              100
+            ],
+            "valueAtSampleTime": [
+              100,
+              100,
+              100
+            ],
+            "keyframes": 0,
+            "unreadable": null
+          },
+          "opacity": {
+            "value": 100,
+            "valueAtSampleTime": 100,
+            "keyframes": 2,
+            "unreadable": null
+          },
+          "width": 2160,
+          "height": 1100,
+          "sampleTime": 1.001001001001,
+          "sourceRect": {
+            "top": -364.000005424023,
+            "left": -1061.03273177147,
+            "width": 2122.12015938759,
+            "height": 558.285012692213
+          },
+          "text": {
+            "font": "Almarai-Bold",
+            "fontSize": 455,
+            "justification": "CENTER_JUSTIFY",
+            "justificationRaw": 7415,
+            "tracking": 0
+          },
+          "animated": [
+            {
+              "path": "Effects/Fast Box Blur/Blur Radius",
+              "keyframes": 2,
+              "keys": [
+                {
+                  "index": 1,
+                  "time": 0,
+                  "value": 30,
+                  "inInterpolation": "BEZIER",
+                  "outInterpolation": "BEZIER",
+                  "inEase": [
+                    {
+                      "influence": 66,
+                      "speed": 0
+                    }
+                  ],
+                  "outEase": [
+                    {
+                      "influence": 14,
+                      "speed": -535.178571428571
+                    }
+                  ],
+                  "unreadable": null
+                },
+                {
+                  "index": 2,
+                  "time": 0.4004004004004,
+                  "value": 0,
+                  "inInterpolation": "BEZIER",
+                  "outInterpolation": "BEZIER",
+                  "inEase": [
+                    {
+                      "influence": 66,
+                      "speed": 0
+                    }
+                  ],
+                  "outEase": [
+                    {
+                      "influence": 14,
+                      "speed": 0
+                    }
+                  ],
+                  "unreadable": null
+                }
+              ]
+            },
+            {
+              "path": "Transform/Position",
+              "keyframes": 2,
+              "keys": [
+                {
+                  "index": 1,
+                  "time": 0,
+                  "value": [
+                    1080,
+                    750,
+                    0
+                  ],
+                  "inInterpolation": "BEZIER",
+                  "outInterpolation": "BEZIER",
+                  "inEase": [
+                    {
+                      "influence": 66,
+                      "speed": 0
+                    }
+                  ],
+                  "outEase": [
+                    {
+                      "influence": 14,
+                      "speed": 891.964285714285
+                    }
+                  ],
+                  "unreadable": null
+                },
+                {
+                  "index": 2,
+                  "time": 0.4004004004004,
+                  "value": [
+                    1080,
+                    700,
+                    0
+                  ],
+                  "inInterpolation": "BEZIER",
+                  "outInterpolation": "BEZIER",
+                  "inEase": [
+                    {
+                      "influence": 66,
+                      "speed": 0
+                    }
+                  ],
+                  "outEase": [
+                    {
+                      "influence": 14,
+                      "speed": 0
+                    }
+                  ],
+                  "unreadable": null
+                }
+              ]
+            },
+            {
+              "path": "Transform/Opacity",
+              "keyframes": 2,
+              "keys": [
+                {
+                  "index": 1,
+                  "time": 0,
+                  "value": 0,
+                  "inInterpolation": "BEZIER",
+                  "outInterpolation": "BEZIER",
+                  "inEase": [
+                    {
+                      "influence": 66,
+                      "speed": 0
+                    }
+                  ],
+                  "outEase": [
+                    {
+                      "influence": 14,
+                      "speed": 1783.92857142857
+                    }
+                  ],
+                  "unreadable": null
+                },
+                {
+                  "index": 2,
+                  "time": 0.4004004004004,
+                  "value": 100,
+                  "inInterpolation": "BEZIER",
+                  "outInterpolation": "BEZIER",
+                  "inEase": [
+                    {
+                      "influence": 66,
+                      "speed": 0
+                    }
+                  ],
+                  "outEase": [
+                    {
+                      "influence": 14,
+                      "speed": 0
+                    }
+                  ],
+                  "unreadable": null
+                }
+              ]
+            }
+          ]
+        },
         {
           "name": "TXT_MAIN",
           "kind": "text",
@@ -1091,13 +1525,13 @@
       "duration": 2.002002002002,
       "layers": [
         {
-          "name": "TXT_MAIN",
+          "name": "TXT_MAIN 2",
           "kind": "text",
           "parent": null,
           "position": {
             "value": [
               1080,
-              750,
+              700.358433330571,
               0
             ],
             "valueAtSampleTime": [
@@ -1137,7 +1571,224 @@
             "unreadable": null
           },
           "opacity": {
-            "value": 0,
+            "value": 99.2831791184843,
+            "valueAtSampleTime": 100,
+            "keyframes": 2,
+            "unreadable": null
+          },
+          "width": 2160,
+          "height": 1100,
+          "sampleTime": 1.001001001001,
+          "sourceRect": {
+            "top": -253.285423278809,
+            "left": -641.366455078125,
+            "width": 1290.939453125,
+            "height": 257.137474060059
+          },
+          "text": {
+            "font": "Inter-SemiBold",
+            "fontSize": 343,
+            "justification": "CENTER_JUSTIFY",
+            "justificationRaw": 7415,
+            "tracking": 0
+          },
+          "animated": [
+            {
+              "path": "Effects/Fast Box Blur/Blur Radius",
+              "keyframes": 2,
+              "keys": [
+                {
+                  "index": 1,
+                  "time": 0,
+                  "value": 30,
+                  "inInterpolation": "BEZIER",
+                  "outInterpolation": "BEZIER",
+                  "inEase": [
+                    {
+                      "influence": 66,
+                      "speed": 0
+                    }
+                  ],
+                  "outEase": [
+                    {
+                      "influence": 14,
+                      "speed": -535.178571428571
+                    }
+                  ],
+                  "unreadable": null
+                },
+                {
+                  "index": 2,
+                  "time": 0.4004004004004,
+                  "value": 0,
+                  "inInterpolation": "BEZIER",
+                  "outInterpolation": "BEZIER",
+                  "inEase": [
+                    {
+                      "influence": 66,
+                      "speed": 0
+                    }
+                  ],
+                  "outEase": [
+                    {
+                      "influence": 14,
+                      "speed": 0
+                    }
+                  ],
+                  "unreadable": null
+                }
+              ]
+            },
+            {
+              "path": "Transform/Position",
+              "keyframes": 2,
+              "keys": [
+                {
+                  "index": 1,
+                  "time": 0,
+                  "value": [
+                    1080,
+                    750,
+                    0
+                  ],
+                  "inInterpolation": "BEZIER",
+                  "outInterpolation": "BEZIER",
+                  "inEase": [
+                    {
+                      "influence": 66,
+                      "speed": 0
+                    }
+                  ],
+                  "outEase": [
+                    {
+                      "influence": 14,
+                      "speed": 891.964285714285
+                    }
+                  ],
+                  "unreadable": null
+                },
+                {
+                  "index": 2,
+                  "time": 0.4004004004004,
+                  "value": [
+                    1080,
+                    700,
+                    0
+                  ],
+                  "inInterpolation": "BEZIER",
+                  "outInterpolation": "BEZIER",
+                  "inEase": [
+                    {
+                      "influence": 66,
+                      "speed": 0
+                    }
+                  ],
+                  "outEase": [
+                    {
+                      "influence": 14,
+                      "speed": 0
+                    }
+                  ],
+                  "unreadable": null
+                }
+              ]
+            },
+            {
+              "path": "Transform/Opacity",
+              "keyframes": 2,
+              "keys": [
+                {
+                  "index": 1,
+                  "time": 0,
+                  "value": 0,
+                  "inInterpolation": "BEZIER",
+                  "outInterpolation": "BEZIER",
+                  "inEase": [
+                    {
+                      "influence": 66,
+                      "speed": 0
+                    }
+                  ],
+                  "outEase": [
+                    {
+                      "influence": 14,
+                      "speed": 1783.92857142857
+                    }
+                  ],
+                  "unreadable": null
+                },
+                {
+                  "index": 2,
+                  "time": 0.4004004004004,
+                  "value": 100,
+                  "inInterpolation": "BEZIER",
+                  "outInterpolation": "BEZIER",
+                  "inEase": [
+                    {
+                      "influence": 66,
+                      "speed": 0
+                    }
+                  ],
+                  "outEase": [
+                    {
+                      "influence": 14,
+                      "speed": 0
+                    }
+                  ],
+                  "unreadable": null
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "TXT_MAIN",
+          "kind": "text",
+          "parent": null,
+          "position": {
+            "value": [
+              1080,
+              700.358433330571,
+              0
+            ],
+            "valueAtSampleTime": [
+              1080,
+              700,
+              0
+            ],
+            "keyframes": 2,
+            "unreadable": null
+          },
+          "anchorPoint": {
+            "value": [
+              0,
+              0,
+              0
+            ],
+            "valueAtSampleTime": [
+              0,
+              0,
+              0
+            ],
+            "keyframes": 0,
+            "unreadable": null
+          },
+          "scale": {
+            "value": [
+              100,
+              100,
+              100
+            ],
+            "valueAtSampleTime": [
+              100,
+              100,
+              100
+            ],
+            "keyframes": 0,
+            "unreadable": null
+          },
+          "opacity": {
+            "value": 99.2831791184843,
             "valueAtSampleTime": 100,
             "keyframes": 2,
             "unreadable": null
@@ -1316,6 +1967,223 @@
       "height": 1100,
       "duration": 2.002002002002,
       "layers": [
+        {
+          "name": "TXT_MAIN 2",
+          "kind": "text",
+          "parent": null,
+          "position": {
+            "value": [
+              1080,
+              700,
+              0
+            ],
+            "valueAtSampleTime": [
+              1080,
+              700,
+              0
+            ],
+            "keyframes": 2,
+            "unreadable": null
+          },
+          "anchorPoint": {
+            "value": [
+              0,
+              0,
+              0
+            ],
+            "valueAtSampleTime": [
+              0,
+              0,
+              0
+            ],
+            "keyframes": 0,
+            "unreadable": null
+          },
+          "scale": {
+            "value": [
+              100,
+              100,
+              100
+            ],
+            "valueAtSampleTime": [
+              100,
+              100,
+              100
+            ],
+            "keyframes": 0,
+            "unreadable": null
+          },
+          "opacity": {
+            "value": 100,
+            "valueAtSampleTime": 100,
+            "keyframes": 2,
+            "unreadable": null
+          },
+          "width": 2160,
+          "height": 1100,
+          "sampleTime": 1.001001001001,
+          "sourceRect": {
+            "top": -262.772007524967,
+            "left": -651.633052941412,
+            "width": 1298.07905730233,
+            "height": 273.782007962465
+          },
+          "text": {
+            "font": "Almarai-Bold",
+            "fontSize": 367,
+            "justification": "CENTER_JUSTIFY",
+            "justificationRaw": 7415,
+            "tracking": 0
+          },
+          "animated": [
+            {
+              "path": "Effects/Fast Box Blur/Blur Radius",
+              "keyframes": 2,
+              "keys": [
+                {
+                  "index": 1,
+                  "time": 0,
+                  "value": 30,
+                  "inInterpolation": "BEZIER",
+                  "outInterpolation": "BEZIER",
+                  "inEase": [
+                    {
+                      "influence": 66,
+                      "speed": 0
+                    }
+                  ],
+                  "outEase": [
+                    {
+                      "influence": 14,
+                      "speed": -535.178571428571
+                    }
+                  ],
+                  "unreadable": null
+                },
+                {
+                  "index": 2,
+                  "time": 0.4004004004004,
+                  "value": 0,
+                  "inInterpolation": "BEZIER",
+                  "outInterpolation": "BEZIER",
+                  "inEase": [
+                    {
+                      "influence": 66,
+                      "speed": 0
+                    }
+                  ],
+                  "outEase": [
+                    {
+                      "influence": 14,
+                      "speed": 0
+                    }
+                  ],
+                  "unreadable": null
+                }
+              ]
+            },
+            {
+              "path": "Transform/Position",
+              "keyframes": 2,
+              "keys": [
+                {
+                  "index": 1,
+                  "time": 0,
+                  "value": [
+                    1080,
+                    750,
+                    0
+                  ],
+                  "inInterpolation": "BEZIER",
+                  "outInterpolation": "BEZIER",
+                  "inEase": [
+                    {
+                      "influence": 66,
+                      "speed": 0
+                    }
+                  ],
+                  "outEase": [
+                    {
+                      "influence": 14,
+                      "speed": 891.964285714285
+                    }
+                  ],
+                  "unreadable": null
+                },
+                {
+                  "index": 2,
+                  "time": 0.4004004004004,
+                  "value": [
+                    1080,
+                    700,
+                    0
+                  ],
+                  "inInterpolation": "BEZIER",
+                  "outInterpolation": "BEZIER",
+                  "inEase": [
+                    {
+                      "influence": 66,
+                      "speed": 0
+                    }
+                  ],
+                  "outEase": [
+                    {
+                      "influence": 14,
+                      "speed": 0
+                    }
+                  ],
+                  "unreadable": null
+                }
+              ]
+            },
+            {
+              "path": "Transform/Opacity",
+              "keyframes": 2,
+              "keys": [
+                {
+                  "index": 1,
+                  "time": 0,
+                  "value": 0,
+                  "inInterpolation": "BEZIER",
+                  "outInterpolation": "BEZIER",
+                  "inEase": [
+                    {
+                      "influence": 66,
+                      "speed": 0
+                    }
+                  ],
+                  "outEase": [
+                    {
+                      "influence": 14,
+                      "speed": 1783.92857142857
+                    }
+                  ],
+                  "unreadable": null
+                },
+                {
+                  "index": 2,
+                  "time": 0.4004004004004,
+                  "value": 100,
+                  "inInterpolation": "BEZIER",
+                  "outInterpolation": "BEZIER",
+                  "inEase": [
+                    {
+                      "influence": 66,
+                      "speed": 0
+                    }
+                  ],
+                  "outEase": [
+                    {
+                      "influence": 14,
+                      "speed": 0
+                    }
+                  ],
+                  "unreadable": null
+                }
+              ]
+            }
+          ]
+        },
         {
           "name": "TXT_MAIN",
           "kind": "text",
@@ -1536,5 +2404,5 @@
       ]
     }
   ],
-  "aepSha256": "dac234ce443ec581d75ac7a5c497075b7a618e1d603109901a72d3872fa238fa"
+  "aepSha256": "1d265d1ffce75efd11bdfa6b937570998a0161be086d2537949366cd5a51b3f3"
 }
