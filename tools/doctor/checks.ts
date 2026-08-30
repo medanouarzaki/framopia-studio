@@ -44,8 +44,31 @@ function env(name: string): string | undefined {
 
 const LOCAL = (): string => env(OVERRIDES.localDir) ?? path.join(REPO_ROOT, '.local');
 
-/** Chosen, not measured: nothing in the repo states a disk figure. */
-export const MIN_FREE_GB = 20;
+/**
+ * Derived, not chosen — measured on this machine 2026-08-31 and summed:
+ *
+ * ```
+ *   the checked-out repository (714 tracked files)   0.033 GB
+ *   node_modules, after npm install                  0.164
+ *   tools/cv/.venv, after tools/cv/setup.sh          0.801
+ *   the segmentation model                           0.015
+ *   the cutout model                                 0.906
+ *   the five source reels                           11.926
+ *   the cache copy                                   0.052
+ *   the generated pictures and cutouts               0.052
+ *   frames and masks, generated on the machine       0.584
+ *   built .aep files and measurements                0.106
+ *   extracted audio                                  0.003
+ *                                                   ------
+ *                                                   14.643 GB
+ * ```
+ *
+ * Rounded up with a quarter again for headroom. **`benchmarks/whisper/models`
+ * (4.0 GB) is deliberately out**: the local Whisper baseline is optional, Apple
+ * Silicon only, and not part of `npm run check`. So is
+ * `benchmarks/results` (0.24 GB), which regenerates and is gitignored.
+ */
+export const MIN_FREE_GB = 19;
 
 function sha256Of(file: string): string {
   return createHash('sha256').update(readFileSync(file)).digest('hex');
@@ -694,8 +717,11 @@ function checkDisk(): CheckResult {
     state: ok ? 'present' : 'absent',
     detail: `${gb.toFixed(1)} GB free on the volume holding the repo`,
     blocking: 'run',
-    caveat: `${minGb} GB is chosen, not measured: nothing in the repo states a figure. ` +
-      'The two CV models are ~945 MiB and the corpus footage is 11.9 GB.',
+    caveat:
+      `${minGb} GB is derived: 14.6 GB measured on 2026-08-31 across the repo, node_modules, ` +
+      'the venv, both CV models, the footage, the cache, the cutouts, the frames and masks ' +
+      'and the built files, plus a quarter again. The components are in MIN_FREE_GB in ' +
+      'tools/doctor/checks.ts. The optional Whisper baseline (4.0 GB) is not counted.',
     ...(ok ? {} : { remedy: 'free space on the volume holding the repo', remedyVerified: false }),
   };
 }
