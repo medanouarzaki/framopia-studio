@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { copyFileSync, mkdtempSync } from 'node:fs';
+import { copyFileSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { REPO_ROOT } from '@framopia/core';
@@ -69,11 +69,36 @@ describe('imagesView', () => {
     expect(view.reelSpentUsd).toBeCloseTo(1.550444, 6);
   });
 
+  /*
+   * `test-1` was the corpus's only slots-without-candidates reel and stopped
+   * being one at Block 9 session 12, which generated its eight images to test
+   * the new image prompt. The pricing path is still worth covering, so the
+   * empty state is made rather than borrowed from whatever the corpus happens
+   * to hold.
+   */
   it('prices a slot with nothing generated from the dry run', async () => {
-    const view = await imagesView('test-1');
+    const planPath = scratch('test 1');
+    const plan = await readEditPlan(planPath);
+    for (const slot of plan.images.slots) {
+      slot.candidates = [];
+      slot.status = 'pending';
+      slot.presentation = null;
+      slot.chosenCandidateId = null;
+    }
+    writeFileSync(planPath, JSON.stringify(plan, null, 2));
+
+    const view = await imagesViewForPlan(planPath);
     expect(view.slots).toHaveLength(4);
     expect(view.slots.every((s) => s.candidates.length === 0)).toBe(true);
     expect(view.generationNote).toContain('8');
+  });
+
+  it('carries the eight candidates the image-prompt test generated', async () => {
+    const view = await imagesView('test-1');
+    expect(view.slots).toHaveLength(4);
+    expect(view.slots.flatMap((s) => s.candidates)).toHaveLength(8);
+    expect(view.slots.every((s) => s.candidates.length === 2)).toBe(true);
+    expect(view.reelSpentUsd).toBeCloseTo(1.22066, 5);
   });
 
   it('names the client the plan records', async () => {

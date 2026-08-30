@@ -65,6 +65,7 @@
     "probe:audio-start": "npm run build:core && npm run probe:audio-start --workspace framopia-service --",
     "migrate:client-mode": "npm run build:core && npm run migrate:client-mode --workspace framopia-service --",
     "place:images": "npm run build:core && npm run place:images --workspace framopia-service --",
-    "migrate:client-snapshot": "npm run build:core && npm run migrate:client-snapshot --workspace framopia-service --"
+    "migrate:client-snapshot": "npm run build:core && npm run migrate:client-snapshot --workspace framopia-service --",
+    "prompt-page": "npm run build:core && npm run prompt-page --workspace framopia-service --"
   }
 }
