@@ -17,6 +17,7 @@ import {
   loadMode,
   redact,
   resolveFfmpegPath,
+  scriptingVerdict,
   resolveNodePath,
   type CheckResult,
 } from '@framopia/core';
@@ -719,6 +720,14 @@ function checkXmllint(): CheckResult {
 export interface AeState {
   reachable: boolean;
   reason?: string;
+  /**
+   * A script ran to completion — `DoScript` returned 0. This needs no file, so
+   * it is the one thing an After Effects with the scripting preference off can
+   * still tell us.
+   */
+  answering?: boolean | null;
+  /** The file-writing probe produced its result. */
+  wroteResult?: boolean;
   appVersion?: string;
   scriptingAllowed?: boolean | null;
   fontNames?: string[];
@@ -757,43 +766,20 @@ function checkAeRunning(ae: AeState): CheckResult {
  * session 9.
  */
 function checkScripting(ae: AeState): CheckResult {
-  if (!ae.reachable) {
-    return {
-      id: 'ae-scripting',
-      what: 'After Effects allowed to let scripts write files',
-      state: 'unknown',
-      detail: 'After Effects is not answering, so the preference could not be read',
-      blocking: 'build',
-      remedy: 'Preferences > Scripting & Expressions > Allow Scripts to Write Files and Access Network',
-      remedyVerified: false,
-    };
-  }
-  if (ae.scriptingAllowed === null || ae.scriptingAllowed === undefined) {
-    return {
-      id: 'ae-scripting',
-      what: 'After Effects allowed to let scripts write files',
-      state: 'unknown',
-      detail: 'the preference could not be read from this After Effects',
-      blocking: 'build',
-      remedy: 'Preferences > Scripting & Expressions > Allow Scripts to Write Files and Access Network',
-      remedyVerified: false,
-    };
-  }
+  const verdict = scriptingVerdict({
+    answering: ae.answering ?? null,
+    wroteResult: ae.wroteResult === true,
+    preference: ae.scriptingAllowed ?? null,
+  });
   return {
     id: 'ae-scripting',
     what: 'After Effects allowed to let scripts write files',
-    state: ae.scriptingAllowed ? 'present' : 'absent',
-    detail: ae.scriptingAllowed
-      ? 'the preference is on, which is what lets a driven build return its result'
-      : 'the preference is OFF; every driven script will fail to write its result file',
+    state: verdict.state,
+    detail: verdict.detail,
     blocking: 'build',
-    ...(ae.scriptingAllowed
+    ...(verdict.remedy === undefined
       ? {}
-      : {
-          remedy:
-            'Preferences > Scripting & Expressions > Allow Scripts to Write Files and Access Network',
-          remedyVerified: false,
-        }),
+      : { remedy: verdict.remedy, remedyVerified: false }),
   };
 }
 

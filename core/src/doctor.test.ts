@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   FATAL_BLOCKING,
+  SCRIPTING_PREFERENCE_PATH,
+  scriptingVerdict,
   exitCodeFor,
   formatCheck,
   formatReport,
@@ -131,5 +133,58 @@ describe('formatReport', () => {
 describe('redact', () => {
   it('carries no part of the value', () => {
     expect(redact()).toBe('present (value not shown)');
+  });
+});
+
+/*
+ * Session 9 could not tell "the scripting preference is off" from "nothing is
+ * running": the only probe wrote its answer to a file, and both cases produce
+ * the same silence. `DoScript` returning 0 for a script that completes is a
+ * channel that needs no file, and it is what splits them.
+ *
+ * Every case here is an injected probe result. Nothing reaches a live host.
+ */
+describe('scriptingVerdict', () => {
+  it('is present when the file arrived and the preference reads on', () => {
+    const v = scriptingVerdict({ answering: true, wroteResult: true, preference: true });
+    expect(v.state).toBe('present');
+    expect(v.remedy).toBeUndefined();
+  });
+
+  /* The case this function exists for, and the likeliest cold-machine failure. */
+  it('is absent when a script completed and no file arrived', () => {
+    const v = scriptingVerdict({ answering: true, wroteResult: false, preference: null });
+    expect(v.state).toBe('absent');
+    expect(v.detail).toContain('ran a script to completion but no result file appeared');
+    expect(v.remedy).toBe(SCRIPTING_PREFERENCE_PATH);
+  });
+
+  it('is absent when After Effects reports the preference off outright', () => {
+    const v = scriptingVerdict({ answering: true, wroteResult: true, preference: false });
+    expect(v.state).toBe('absent');
+    expect(v.remedy).toBe(SCRIPTING_PREFERENCE_PATH);
+  });
+
+  /*
+   * Nothing completed, so nothing is established. A `DoScript` that returns 1
+   * did nothing and says nothing about the script, so false is not evidence of
+   * anything — only the true case is.
+   */
+  it.each([[false], [null]] as const)('is unknown when answering is %s and no file arrived', (answering) => {
+    const v = scriptingVerdict({ answering, wroteResult: false, preference: null });
+    expect(v.state).toBe('unknown');
+    expect(v.detail).toContain('either After Effects is not running, or a DoScript was refused');
+    expect(v.remedy).toBe('open After Effects and run this again');
+  });
+
+  it('is unknown when writing works but the preference could not be read', () => {
+    const v = scriptingVerdict({ answering: true, wroteResult: true, preference: null });
+    expect(v.state).toBe('unknown');
+    expect(v.detail).toContain('would not report the preference itself');
+  });
+
+  it('names the exact Preferences path, so the remedy is one click', () => {
+    expect(SCRIPTING_PREFERENCE_PATH).toContain('Scripting & Expressions');
+    expect(SCRIPTING_PREFERENCE_PATH).toContain('Allow Scripts to Write Files');
   });
 });

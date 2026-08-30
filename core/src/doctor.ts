@@ -157,3 +157,85 @@ export function formatReport(report: DoctorReport): string {
 export function redact(): string {
   return 'present (value not shown)';
 }
+
+/**
+ * What the two After Effects probes between them establish.
+ *
+ * Session 9 could not tell *the scripting preference is off* from *nothing is
+ * running*, because the only probe wrote its answer to a file and both cases
+ * produce the same silence. Block 10 session 10 measured what `DoScript`
+ * actually returns: **0 when a script runs to completion and 1 when it throws**,
+ * which is a channel that needs no file. So a script that merely completes
+ * proves After Effects is answering, and the two cases come apart.
+ */
+export interface AeProbeResult {
+  /**
+   * A script ran to completion — `DoScript` returned 0. Null when it was not
+   * asked. **False is deliberately not "not running"**: a blocked `DoScript`
+   * also returns 1, so only the true case is evidence.
+   */
+  answering: boolean | null;
+  /** The file-writing probe produced its result file. */
+  wroteResult: boolean;
+  /** The preference as the probe read it, when it got far enough to read it. */
+  preference: boolean | null;
+}
+
+export const SCRIPTING_PREFERENCE_PATH =
+  'Preferences > Scripting & Expressions > Allow Scripts to Write Files and Access Network';
+
+export interface ScriptingVerdict {
+  state: CheckState;
+  detail: string;
+  remedy?: string;
+}
+
+/**
+ * Whether After Effects will let a driven build return its result.
+ *
+ * The case this exists for is the middle one: **answering, but no file
+ * arrived.** Every driven script in this repo writes its result for the caller
+ * to read back, so that combination is the preference being off and nothing
+ * else — and it is off by default on a fresh install, which makes it the most
+ * likely cold-machine failure there is.
+ */
+export function scriptingVerdict(probe: AeProbeResult): ScriptingVerdict {
+  if (probe.wroteResult) {
+    if (probe.preference === true) {
+      return {
+        state: 'present',
+        detail: 'the preference is on, which is what lets a driven build return its result',
+      };
+    }
+    if (probe.preference === false) {
+      return {
+        state: 'absent',
+        detail:
+          'After Effects reports the preference as off, though a script still wrote its result',
+        remedy: SCRIPTING_PREFERENCE_PATH,
+      };
+    }
+    return {
+      state: 'unknown',
+      detail:
+        'a script wrote its result, so writing works, but this After Effects would not ' +
+        'report the preference itself',
+    };
+  }
+  if (probe.answering === true) {
+    return {
+      state: 'absent',
+      detail:
+        'After Effects ran a script to completion but no result file appeared, which is ' +
+        'the preference being off: every driven build returns its result through a file',
+      remedy: SCRIPTING_PREFERENCE_PATH,
+    };
+  }
+  return {
+    state: 'unknown',
+    detail:
+      'no script ran to completion, so nothing could be established — either After Effects ' +
+      'is not running, or a DoScript was refused. Check it is open first.',
+    remedy: 'open After Effects and run this again',
+  };
+}

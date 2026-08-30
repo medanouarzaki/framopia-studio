@@ -364,14 +364,18 @@ export {
   FATAL_BLOCKING,
   exitCodeFor,
   formatCheck,
+  SCRIPTING_PREFERENCE_PATH,
   formatReport,
   redact,
+  scriptingVerdict,
   summarise,
   type Blocking,
   type CheckResult,
   type CheckState,
   type DoctorReport,
+  type AeProbeResult,
   type DoctorSummary,
+  type ScriptingVerdict,
 } from './doctor.js';
 export {
   CLIENT_SNAPSHOT_VERSION,

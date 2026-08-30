@@ -69,6 +69,30 @@ function askAfterEffects(): AeState {
     };
   }
 
+  /*
+   * The no-file half, first.
+   *
+   * `DoScript` returns a status and not the script's value — measured: 0 when a
+   * script runs to completion, 1 when it throws. That is one bit, it needs no
+   * file, and it is the only thing an After Effects with the scripting
+   * preference switched off can still tell us. Only the 0 is evidence: a
+   * blocked `DoScript` returns 1 too.
+   */
+  let answering: boolean | null = null;
+  try {
+    execFileSync(
+      'osascript',
+      [
+        '-e',
+        `tell application "${AE_APPLICATION}" to DoScript "if (!app.version) { throw new Error('no version'); }"`,
+      ],
+      { stdio: ['ignore', 'pipe', 'pipe'], encoding: 'utf8' },
+    );
+    answering = true;
+  } catch {
+    answering = false;
+  }
+
   const runDir = path.join(REPO_ROOT, '.local', 'build');
   mkdirSync(runDir, { recursive: true });
   const resultPath = path.join(runDir, '.doctor-probe.json');
@@ -88,15 +112,25 @@ function askAfterEffects(): AeState {
       stdio: 'ignore',
     });
   } catch (error) {
-    return { reachable: false, reason: `DoScript failed: ${(error as Error).message}`, instances };
+    return {
+      reachable: false,
+      answering,
+      wroteResult: false,
+      reason: `DoScript failed: ${(error as Error).message}`,
+      instances,
+    };
   }
   if (!existsSync(resultPath)) {
     return {
       reachable: false,
+      answering,
+      wroteResult: false,
       instances,
       reason:
-        'After Effects wrote no result — it is running but did not answer, which is also ' +
-        'what an off scripting preference looks like from here',
+        answering === true
+          ? 'After Effects ran a script to completion but wrote no result file, which is ' +
+            'the scripting preference being off'
+          : 'After Effects wrote no result and no script ran to completion',
     };
   }
   const raw = JSON.parse(readFileSync(resultPath, 'utf8')) as {
@@ -109,10 +143,18 @@ function askAfterEffects(): AeState {
   };
   unlinkSync(resultPath);
   if (raw.ok !== true) {
-    return { reachable: false, instances, reason: raw.message ?? 'the probe reported no reason' };
+    return {
+      reachable: false,
+      answering,
+      wroteResult: true,
+      instances,
+      reason: raw.message ?? 'the probe reported no reason',
+    };
   }
   return {
     reachable: true,
+    answering,
+    wroteResult: true,
     instances,
     ...(raw.appVersion === undefined ? {} : { appVersion: raw.appVersion }),
     scriptingAllowed: raw.scriptingAllowed ?? null,
