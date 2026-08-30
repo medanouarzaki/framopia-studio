@@ -307,6 +307,26 @@ export {
   type BuildStampComparison,
   type BuildStampVerdict,
 } from './build-stamp.js';
+
+export {
+  COMP_CENSUS_SCHEMA_VERSION,
+  CompCensusError,
+  ELEMENT_COMP_SEPARATOR,
+  MASTER_COMP_PREFIX,
+  parseElementComp,
+  shapeCensus,
+  type CompCensus,
+  type CompCensusSummary,
+  type ElementComp,
+  type MasterCensus,
+  type MasterLayerCensus,
+  type MasterLayerRole,
+  type RawCensus,
+  type RawComp,
+  type RawLayer,
+  type ShapeCensusInputs,
+  type TextCompCensus,
+} from './comp-census.js';
 export {
   CLIENT_SNAPSHOT_VERSION,
   snapshotIsBehind,
