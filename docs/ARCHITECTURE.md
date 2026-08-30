@@ -217,7 +217,12 @@ Sample frames at ~2 fps → person masks → per-frame free rectangles top/left/
 
 ## 6. Caching & costs
 
-- Cache root `.local/cache/<video-sha256>/`. Keys: stage + config-fingerprint (model, prompt version, orthography version, mode version). Any fingerprint change ⇒ miss; identical re-runs are free.
+- Cache root `.local/cache/<video-sha256>/`. Keys: stage + config-fingerprint. Any fingerprint change ⇒ miss; identical re-runs are free. **No key contains the mode version** — see below.
+- **Amended (Block 9 session 14): a cache key never contains `mode.version`.** This section said it did, and the code stopped doing it twice, both times after a bump stranded work that had been paid for. What each stage actually keys on, read from the code:
+  - **transcription** — prompt version, Gemini model, ORTHOGRAPHY_GUIDE version, Scribe model, keyterms. The mode is not an input at all: transcription runs before a client is chosen.
+  - **keywords and image slots** — prompt version, Gemini model, mode **id**, a **content hash of the mode fields that call actually reads** (`[name, vocabulary]` for keywords, `[name]` for slots), the transcript hash, and the candidate count. Block 4 session 4 replaced the version with the content hash after a v3 bump invalidated four entries for an edit the model never saw.
+  - **images** — the composed prompt, the negative prompt, the model id, the resolution, the aspect ratio, the candidate index and the mode **id**. Block 7 session 1 removed the version after a v6 bump added two template ids no image call reads and stranded 14 generated images, $2.06 of billed spend. Every mode field an image request carries reaches the model only through the two prompt strings, and both are hashed verbatim, so a mode edit that changes the request invalidates on its own and one that does not, cannot have.
+  - The general rule: **key on what the call actually sends, never on a number that moves for unrelated reasons.** K2 Syndicalia went v10 → v12 during Block 9 and no cached entry moved.
 - Cached artifacts: extracted audio, raw ASR JSON, Gemini correction output, analysis output, every generated image + cutout + metrics, zone masks/results.
 - Cost ledger: every billable call appends `{ts, stage, model, unit, usd}` to `.local/costs.jsonl`; per-video totals aggregate into the Edit Plan; panel shows running cost per reel. Soft alarm in the panel when a reel crosses $2.00.
 
