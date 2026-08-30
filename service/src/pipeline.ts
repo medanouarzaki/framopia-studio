@@ -465,7 +465,15 @@ export async function runPipeline(options: RunPipelineOptions): Promise<Pipeline
     if (planPath === null) return { skipped: true, reason: 'no plan to illustrate' };
 
     assertWithinCeiling('images');
-    const result = await impl.images({ planPath, modeId, cacheRoot, costsPath, log });
+    /*
+     * The run's ceiling is the image stage's ceiling. Without this the stage
+     * falls back to its own DEFAULT_CEILING_USD, so a caller that asked for a
+     * tighter bound got $3 — and Block 10 session 7 had to inject the real
+     * stage function through the `stages` hook to make an authorised figure
+     * bind. The stage re-reads the ledger before every candidate, so passing it
+     * down is what turns one pre-flight check into twelve.
+     */
+    const result = await impl.images({ planPath, modeId, cacheRoot, costsPath, log, ceilingUsd });
     return {
       costUsd: result.totalUsd,
       reason: result.billedImages === 0 ? 'cached' : null,

@@ -13,6 +13,7 @@ import {
   type PipelineStageImpl,
 } from './pipeline.js';
 import { PIPELINE_STAGES } from './pipeline-stages.js';
+import { DEFAULT_CEILING_USD } from './images/config.js';
 import { readEditPlan } from './editplan/io.js';
 
 const FOOTAGE = path.join(REPO_ROOT, 'my files', 'test videos');
@@ -328,6 +329,34 @@ describe('the ceiling', () => {
       expect(detail.retryable).toBe(false);
       expect(detail.cause).toContain('aborted, not truncated');
     }
+  });
+
+  /*
+   * The stage re-reads the ledger before every candidate, so the run's ceiling
+   * has to *reach* it: without this the image stage fell back to its own
+   * DEFAULT_CEILING_USD of $3 and session 7 had to inject the real stage
+   * function through the `stages` hook to make an authorised $2.30 bind.
+   */
+  it('is the ceiling the image stage enforces, not the stage’s own default', async () => {
+    let seen: number | undefined = -1;
+    const images = vi.fn(async (opts: { ceilingUsd?: number }) => {
+      seen = opts.ceilingUsd;
+      return { totalUsd: 0, generated: 0, cached: 0 };
+    }) as unknown as PipelineStageImpl['images'];
+
+    await runPipeline({
+      ...fakeHooks(),
+      reel: 'vitasilk',
+      modeId: 'k2-syndicalia',
+      only: ['images'],
+      redo: ['images'],
+      ceilingUsd: 2.6,
+      stages: fakeStages({ images }),
+    });
+
+    expect(images).toHaveBeenCalledTimes(1);
+    expect(seen).toBe(2.6);
+    expect(seen).not.toBe(DEFAULT_CEILING_USD);
   });
 
   it('is a hard gate above the panel’s soft alarm, not the same number', () => {
