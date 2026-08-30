@@ -94,6 +94,29 @@ export function candidatesFor(mode: ClientMode, config: ImageGenerationConfig): 
  * `chosenCandidateId` is left null. The editor picks in Block 8, and a stage
  * that picked for them would be making the decision the panel exists for.
  */
+/**
+ * Where a plan's cutouts are written, namespaced by the plan's own filename.
+ *
+ * **It was `<video-dir>/cutouts/` for every plan**, and slot ids restart at
+ * `img001` on every reel, so the second reel in a directory silently
+ * overwrote the first reel's cutouts file for file. Every corpus plan lives
+ * in `my files/test videos/`, so the collision was total: Block 9 session 12
+ * generated `test-1`'s eight images and destroyed eight of `vitasilk`'s ten
+ * cutouts, the set every image measurement in the project is written against.
+ *
+ * They were restorable — a cutout is derived from the cached source image,
+ * free and locally, and regeneration was verified bit-identical against the
+ * two files the collision happened to spare. That is luck, not a design: the
+ * same collision on an input nothing can reproduce would have been permanent.
+ *
+ * The stem is the plan's filename without its extensions, so `test 1` and
+ * `vitasilk` cannot meet. Same shape as `.local/cv/<video-basename>/`.
+ */
+export function cutoutDirFor(planPath: string): string {
+  const stem = path.basename(planPath).replace(/\.editplan\.json$/, '');
+  return path.join(path.dirname(planPath), 'cutouts', stem);
+}
+
 export async function generateImagesForPlan(
   options: GenerateImagesForPlanOptions,
 ): Promise<GenerateImagesForPlanResult> {
@@ -125,7 +148,7 @@ export async function generateImagesForPlan(
     ...(ceilingUsd === undefined ? {} : { ceilingUsd }),
   });
 
-  const cutoutDir = path.join(path.dirname(planPath), 'cutouts');
+  const cutoutDir = cutoutDirFor(planPath);
   mkdirSync(cutoutDir, { recursive: true });
 
   const result = await generateImages({

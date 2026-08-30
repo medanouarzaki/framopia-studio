@@ -7,7 +7,13 @@ import { createEditPlan, readEditPlan, writeEditPlan } from '../editplan/io.js';
 import type { EditPlan, ImageSlot } from '../editplan/types.js';
 import type { GeneratedImage, ImageGenerationClient, ImageGenerationRequest } from './client.js';
 import type { RemoveBgResult } from './sidecar.js';
-import { candidatesFor, generateImagesForPlan, imagesReplacementFlags, ImagesReplaceBlockedError } from './job.js';
+import {
+  candidatesFor,
+  cutoutDirFor,
+  generateImagesForPlan,
+  imagesReplacementFlags,
+  ImagesReplaceBlockedError,
+} from './job.js';
 
 class FakeClient implements ImageGenerationClient {
   readonly requests: ImageGenerationRequest[] = [];
@@ -251,3 +257,32 @@ describe('the text warning', () => {
     expect(c?.textVerdict?.unexpected).toEqual(['luxe']);
   });
 });
+
+describe('cutoutDirFor', () => {
+  // Every corpus plan lives in one directory and slot ids restart at img001 on
+  // every reel, so a shared cutouts/ directory made the second reel's run
+  // overwrite the first's file for file. That is what happened to eight of
+  // vitasilk's ten cutouts in Block 9 session 12.
+  it('gives two plans in one directory two directories', () => {
+    const dir = '/videos';
+    const a = cutoutDirFor(path.join(dir, 'vitasilk.editplan.json'));
+    const b = cutoutDirFor(path.join(dir, 'test 1.editplan.json'));
+    expect(a).not.toBe(b);
+    expect(path.join(a, 'img001-c1.cutout.png')).not.toBe(path.join(b, 'img001-c1.cutout.png'));
+  });
+
+  it('names the directory after the plan, under cutouts/', () => {
+    expect(cutoutDirFor('/videos/vitasilk.editplan.json')).toBe(
+      path.join('/videos', 'cutouts', 'vitasilk'),
+    );
+    expect(cutoutDirFor('/videos/test 1.editplan.json')).toBe(
+      path.join('/videos', 'cutouts', 'test 1'),
+    );
+  });
+
+  it('stays inside the plan\'s own directory', () => {
+    const planPath = '/a/b/reel.editplan.json';
+    expect(cutoutDirFor(planPath).startsWith(path.dirname(planPath) + path.sep)).toBe(true);
+  });
+});
+
