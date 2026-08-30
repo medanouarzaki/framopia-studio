@@ -1,0 +1,322 @@
+{
+  "schemaVersion": 1,
+  "session": "block-10-session-5",
+  "note": "Computed read-only. Nothing was composed into a plan, generated or billed.",
+  "modeVersion": 12,
+  "framingAxisAtV12": [
+    "medium, the subject from the waist",
+    "close, the subject filling most of the height",
+    "macro, a single detail standing for the whole"
+  ],
+  "retiredFramingValue": "wide, the whole subject with air around it",
+  "otherAxes": {
+    "cameraAngle": [
+      "seen straight on at eye level",
+      "seen from slightly below, looking up",
+      "seen from slightly above, looking down",
+      "seen at a three-quarter turn"
+    ],
+    "lighting": [
+      "hard directional light with defined shadow",
+      "rim light separating the subject from the ground"
+    ]
+  },
+  "invariantStyleFragments": [
+    "a single clear idea, readable at a glance",
+    "one subject, centred and unobstructed",
+    "the brighter end of the palette leads: #C9A96E and #F8F6F2 carry the subject, with #820000 for depth and #1A0000 kept to the ground behind it",
+    "lit so the subject reads immediately at a glance, bright and clearly separated from its ground, not sunk into it"
+  ],
+  "negativePrompt": "no extraneous objects, no background clutter, no incidental detail, nothing in frame that is not carrying the idea, no busy or competing composition, no watermark, no logo",
+  "groundTruth": {
+    "planId": "2b3957559a491ee90e17966f7de514e3",
+    "durationS": 23.256567,
+    "slotsPlannerWouldAskFor": 6,
+    "candidatesAskedOfTheModel": 12,
+    "clientOnPlan": {
+      "id": "k2-syndicalia",
+      "version": 12,
+      "path": "/Volumes/T7 Shield/INSEA/Projects/framopia-studio/modes/k2-syndicalia.json"
+    },
+    "perSlotDraw": [
+      {
+        "cameraAngle": "seen at a three-quarter turn",
+        "framingTightness": "close, the subject filling most of the height",
+        "lighting": "rim light separating the subject from the ground"
+      },
+      {
+        "cameraAngle": "seen straight on at eye level",
+        "framingTightness": "medium, the subject from the waist",
+        "lighting": "hard directional light with defined shadow"
+      },
+      {
+        "cameraAngle": "seen from slightly below, looking up",
+        "framingTightness": "macro, a single detail standing for the whole",
+        "lighting": "rim light separating the subject from the ground"
+      },
+      {
+        "cameraAngle": "seen from slightly above, looking down",
+        "framingTightness": "medium, the subject from the waist",
+        "lighting": "hard directional light with defined shadow"
+      },
+      {
+        "cameraAngle": "seen from slightly below, looking up",
+        "framingTightness": "macro, a single detail standing for the whole",
+        "lighting": "rim light separating the subject from the ground"
+      },
+      {
+        "cameraAngle": "seen from slightly above, looking down",
+        "framingTightness": "close, the subject filling most of the height",
+        "lighting": "hard directional light with defined shadow"
+      }
+    ],
+    "composedPromptSlot0": "<the idea the model will write for this moment>. a single clear idea, readable at a glance. one subject, centred and unobstructed. the brighter end of the palette leads: #C9A96E and #F8F6F2 carry the subject, with #820000 for depth and #1A0000 kept to the ground behind it. lit so the subject reads immediately at a glance, bright and clearly separated from its ground, not sunk into it. seen at a three-quarter turn. close, the subject filling most of the height. rim light separating the subject from the ground.",
+    "ideaPlaceholder": "<the idea the model will write for this moment>"
+  },
+  "slotIdeaPrompt": {
+    "activeVersion": 2,
+    "v1": "You are choosing the moments in a short vertical video that should be\nillustrated with a generated image.\n\nThe transcript below is one word per line, as \"word_id<TAB>start_seconds<TAB>text\".\nIt is Moroccan Darija written in Latin Arabizi, mixed with French and English,\nand some words are in Arabic script. Do not translate it and do not rewrite it.\n\nThe reel is 23.3 seconds long.\n\nEach slot illustrates ONE idea or sentence — a thing being explained, claimed\nor shown, that a picture could carry. Choose spans spread across the whole\nreel, not clustered in one part of it, and do not choose two slots that\noverlap in time.\n\nFor each slot give the word_ids of the span it illustrates, copied exactly\nfrom the transcript, and a one-line idea in English describing what the image\nshould show. The idea is a description of a picture, not a translation of the\nwords and not a caption.\n\nWhen the words name something concrete and depictable — a brand, a product,\na place, a country, an ingredient, a tool, a number of things — the picture\nshould usually be that thing, and the idea should name it as she named it.\nA viewer should recognise it at a glance without working out what it stands\nfor.\n\nWhen the words name no such thing — a question, a feeling, a promise, a\nresult — the picture should carry the mood or the outcome instead, and the\nidea should describe that.\n\nDecide this for each slot on its own. Both kinds are right, and neither is\nthe default. The test is what a viewer would recognise fastest in the two\nseconds the picture is on screen.\n\nDo not blend the two. A concrete thing beside an abstract one is two\nsubjects, and a slot idea depicts one.\n\nDo not describe colours, lighting, framing or art style. Those come from the\nclient's own visual identity and are added after you answer.\n\nClient: K2 Syndicalia.\n\nReturn the 12 strongest slots, best first. How many the video\nactually uses is imposed downstream and is not yours to decide.\n\nRespond with strict JSON only, no prose, no markdown fences, in this shape:\n{\"slots\":[{\"wordIds\":[\"w0000\"],\"idea\":\"...\"}]}\n\nTRANSCRIPT:\nw0000\t0.10\t3ndk\nw0001\t0.36\tles\nw0002\t0.52\tcernes\nw0003\t0.74\tpigmentés\nw0004\t1.32\ttb3i\nw0005\t1.62\tm3aya\nw0006\t1.89\ttal\nw0007\t1.92\tlkher\nw0008\t2.28\tdial\nw0009\t2.44\tla\nw0010\t2.58\tvidéo\nw0011\t3.02\tAlors\nw0012\t3.24\t3ndi\nw0013\t3.46\tlik\nw0014\t3.66\tjoj\nw0015\t3.87\tdial\nw0016\t3.88\tl7loul\nw0017\t4.32\tawal\nw0018\t4.56\t7el\nw0019\t4.76\thoua\nw0020\t5.06\tالإبرة\nw0021\t5.30\tالحريرية\nw0022\t5.92\tli\nw0023\t6.08\thia\nw0024\t6.32\tles\nw0025\t6.46\tpolynucléotides\nw0026\t7.34\tli\nw0027\t7.48\tjaya\nw0028\t7.76\tmn\nw0029\t7.86\tl'ADN\nw0030\t8.30\tdu\nw0031\t8.44\tsaumon\nw0032\t8.76\tkat7taji\nw0033\t9.42\tjoj\nw0034\t9.58\tdial\nw0035\t10.00\tl7essass\nw0036\t10.08\tmabin\nw0037\t10.26\t7essa\nw0038\t10.56\tw7essa\nw0039\t11.04\t15\nw0040\t11.66\ttal\nw0041\t11.82\t20\nw0042\t12.32\tyom\nw0043\t12.54\twl'effet\nw0044\t12.84\tdialha\nw0045\t13.22\tkidom\nw0046\t13.52\tlmoddat\nw0047\t14.04\tsana\nw0048\t14.32\tl7el\nw0049\t14.64\tttani\nw0050\t15.10\thoua\nw0051\t15.38\tla\nw0052\t15.48\tmésothérapie\nw0053\t16.12\tli\nw0054\t16.26\thoua\nw0055\t16.38\twa7d\nw0056\t16.40\tlcocktail\nw0057\t16.96\tdial\nw0058\t16.98\tlvitaminat\nw0059\t17.72\twzayd\nw0060\t18.04\t3lih\nw0061\t18.24\tالكافيين\nw0062\t18.88\tli\nw0063\t19.04\tkadiri\nw0064\t19.38\t4\nw0065\t19.58\tdial\nw0066\t20.12\tl7essass\nw0067\t20.22\tmabin\nw0068\t20.38\t7essa\nw0069\t20.62\tw7essa\nw0070\t20.96\t15\nw0071\t21.42\tyom\nw0072\t21.62\twki3tiw\nw0073\t22.04\tنتائج\nw0074\t22.70\tجد\nw0075\t22.86\tفعالة",
+    "v2": "You are choosing the moments in a short vertical video that should be\nillustrated with a generated image.\n\nThe transcript below is one word per line, as \"word_id<TAB>start_seconds<TAB>text\".\nIt is Moroccan Darija written in Latin Arabizi, mixed with French and English,\nand some words are in Arabic script. Do not translate it and do not rewrite it.\n\nThe reel is 23.3 seconds long.\n\nEach slot illustrates ONE idea or sentence — a thing being explained, claimed\nor shown, that a picture could carry. Choose spans spread across the whole\nreel, not clustered in one part of it, and do not choose two slots that\noverlap in time.\n\nFor each slot give the word_ids of the span it illustrates, copied exactly\nfrom the transcript, and a one-line idea in English describing what the image\nshould show. The idea is a description of a picture, not a translation of the\nwords and not a caption.\n\nWhen the words name something concrete and depictable — a brand, a product,\na place, a country, an ingredient, a tool, a number of things — the picture\nshould usually be that thing, and the idea should name it as she named it.\nA viewer should recognise it at a glance without working out what it stands\nfor.\n\nWhen the words name no such thing — a question, a feeling, a promise, a\nresult — the picture should carry the mood or the outcome instead, and the\nidea should describe that.\n\nDecide this for each slot on its own. Both kinds are right, and neither is\nthe default. The test is what a viewer would recognise fastest in the two\nseconds the picture is on screen.\n\nDo not blend the two. A concrete thing beside an abstract one is two\nsubjects, and a slot idea depicts one.\n\nDo not describe colours, lighting, framing or art style. Those come from the\nclient's own visual identity and are added after you answer.\n\nClient: K2 Syndicalia.\n\nReturn the 12 strongest slots, best first. How many the video\nactually uses is imposed downstream and is not yours to decide.\n\nRespond with strict JSON only, no prose, no markdown fences, in this shape:\n{\"slots\":[{\"wordIds\":[\"w0000\"],\"idea\":\"...\"}]}\n\nTRANSCRIPT:\nw0000\t0.10\t3ndk\nw0001\t0.36\tles\nw0002\t0.52\tcernes\nw0003\t0.74\tpigmentés\nw0004\t1.32\ttb3i\nw0005\t1.62\tm3aya\nw0006\t1.89\ttal\nw0007\t1.92\tlkher\nw0008\t2.28\tdial\nw0009\t2.44\tla\nw0010\t2.58\tvidéo\nw0011\t3.02\tAlors\nw0012\t3.24\t3ndi\nw0013\t3.46\tlik\nw0014\t3.66\tjoj\nw0015\t3.87\tdial\nw0016\t3.88\tl7loul\nw0017\t4.32\tawal\nw0018\t4.56\t7el\nw0019\t4.76\thoua\nw0020\t5.06\tالإبرة\nw0021\t5.30\tالحريرية\nw0022\t5.92\tli\nw0023\t6.08\thia\nw0024\t6.32\tles\nw0025\t6.46\tpolynucléotides\nw0026\t7.34\tli\nw0027\t7.48\tjaya\nw0028\t7.76\tmn\nw0029\t7.86\tl'ADN\nw0030\t8.30\tdu\nw0031\t8.44\tsaumon\nw0032\t8.76\tkat7taji\nw0033\t9.42\tjoj\nw0034\t9.58\tdial\nw0035\t10.00\tl7essass\nw0036\t10.08\tmabin\nw0037\t10.26\t7essa\nw0038\t10.56\tw7essa\nw0039\t11.04\t15\nw0040\t11.66\ttal\nw0041\t11.82\t20\nw0042\t12.32\tyom\nw0043\t12.54\twl'effet\nw0044\t12.84\tdialha\nw0045\t13.22\tkidom\nw0046\t13.52\tlmoddat\nw0047\t14.04\tsana\nw0048\t14.32\tl7el\nw0049\t14.64\tttani\nw0050\t15.10\thoua\nw0051\t15.38\tla\nw0052\t15.48\tmésothérapie\nw0053\t16.12\tli\nw0054\t16.26\thoua\nw0055\t16.38\twa7d\nw0056\t16.40\tlcocktail\nw0057\t16.96\tdial\nw0058\t16.98\tlvitaminat\nw0059\t17.72\twzayd\nw0060\t18.04\t3lih\nw0061\t18.24\tالكافيين\nw0062\t18.88\tli\nw0063\t19.04\tkadiri\nw0064\t19.38\t4\nw0065\t19.58\tdial\nw0066\t20.12\tl7essass\nw0067\t20.22\tmabin\nw0068\t20.38\t7essa\nw0069\t20.62\tw7essa\nw0070\t20.96\t15\nw0071\t21.42\tyom\nw0072\t21.62\twki3tiw\nw0073\t22.04\tنتائج\nw0074\t22.70\tجد\nw0075\t22.86\tفعالة",
+    "v1EqualsV2": true,
+    "finding": "buildSlotPrompt destructures options without reading , so the two are byte-identical. The literal-or-atmospheric paragraphs are unconditional in the single prompt body, added at Block 9 session 12. The change IS live and will be sent; what is false is the doc comment claiming version 1 stays selectable."
+  },
+  "dryRun": {
+    "ground-truth": {
+      "estimateUsd": 2.3508000000000004,
+      "planClientMode": {
+        "id": "k2-syndicalia",
+        "version": 12
+      },
+      "buildBlockedBecause": null,
+      "stages": [
+        {
+          "id": "transcription",
+          "status": "done",
+          "action": "skip",
+          "provenance": "compatible",
+          "estimateUsd": null,
+          "note": "reusing transcription-758a3924d090d1b5, a transcription made against orthography guide v1.0.7 while the guide is now v1.0.8. Same prompt version (v4), so it will not re-transcribe and will not bill. Already on the plan, so a run skips it"
+        },
+        {
+          "id": "analysis",
+          "status": "pending",
+          "action": "run",
+          "provenance": "none",
+          "estimateUsd": 0.18,
+          "note": "keywords: no cache entry for fingerprint 0cc4e6259b47ba9a (analysis prompt v4, 9 candidates); a run would call the model and bill. Image slots: no cache entry for fingerprint 3b04d5928ea1f138 (slot prompt v2, 12 candidates); a run would call the model and bill"
+        },
+        {
+          "id": "images",
+          "status": "pending",
+          "action": "run",
+          "provenance": "none",
+          "estimateUsd": 2.1708000000000003,
+          "note": "no image slots planned yet; a run would plan about 6 for a 23.3s reel and generate 12 candidates, budgeted at most $2.17"
+        },
+        {
+          "id": "zones",
+          "status": "done",
+          "action": "skip",
+          "provenance": null,
+          "estimateUsd": null,
+          "note": "free, and done on this machine. It can take a few minutes the first time for a video. Already on the plan, so a run skips it"
+        }
+      ]
+    },
+    "test-1": {
+      "estimateUsd": 0,
+      "planClientMode": {
+        "id": "k2-syndicalia",
+        "version": 5
+      },
+      "buildBlockedBecause": null,
+      "stages": [
+        {
+          "id": "transcription",
+          "status": "done",
+          "action": "skip",
+          "provenance": "compatible",
+          "estimateUsd": null,
+          "note": "reusing transcription-758a3924d090d1b5, a transcription made against orthography guide v1.0.7 while the guide is now v1.0.8. Same prompt version (v4), so it will not re-transcribe and will not bill. Already on the plan, so a run skips it"
+        },
+        {
+          "id": "analysis",
+          "status": "done",
+          "action": "skip",
+          "provenance": "none",
+          "estimateUsd": null,
+          "note": "keywords: no cache entry for fingerprint 4e75fdb62bf1a4fb (analysis prompt v4, 9 candidates); a run would call the model and bill. Image slots: no cache entry for fingerprint faecde5f3b0aab7e (slot prompt v2, 12 candidates); a run would call the model and bill. Already on the plan, so a run skips it"
+        },
+        {
+          "id": "images",
+          "status": "done",
+          "action": "skip",
+          "provenance": "exact",
+          "estimateUsd": null,
+          "note": "8 of 8 candidate images are cached; a run would bill nothing. Already on the plan, so a run skips it"
+        },
+        {
+          "id": "zones",
+          "status": "done",
+          "action": "skip",
+          "provenance": null,
+          "estimateUsd": null,
+          "note": "free, and done on this machine. It can take a few minutes the first time for a video. Already on the plan, so a run skips it"
+        }
+      ]
+    },
+    "test-2": {
+      "estimateUsd": 0,
+      "planClientMode": {
+        "id": "k2-syndicalia",
+        "version": 5
+      },
+      "buildBlockedBecause": null,
+      "stages": [
+        {
+          "id": "transcription",
+          "status": "done",
+          "action": "skip",
+          "provenance": "compatible",
+          "estimateUsd": null,
+          "note": "reusing transcription-758a3924d090d1b5, a transcription made against orthography guide v1.0.7 while the guide is now v1.0.8. Same prompt version (v4), so it will not re-transcribe and will not bill. Already on the plan, so a run skips it"
+        },
+        {
+          "id": "analysis",
+          "status": "done",
+          "action": "skip",
+          "provenance": "none",
+          "estimateUsd": null,
+          "note": "keywords: exact cache hit analysis-f92a8e4cad748c67. Image slots: no cache entry for fingerprint a83c9da925328aab (slot prompt v2, 12 candidates); a run would call the model and bill. Already on the plan, so a run skips it"
+        },
+        {
+          "id": "images",
+          "status": "pending",
+          "action": "run",
+          "provenance": null,
+          "estimateUsd": null,
+          "note": "no image slots on the plan, and analysis has already run without planning any"
+        },
+        {
+          "id": "zones",
+          "status": "done",
+          "action": "skip",
+          "provenance": null,
+          "estimateUsd": null,
+          "note": "free, and done on this machine. It can take a few minutes the first time for a video. Already on the plan, so a run skips it"
+        }
+      ]
+    },
+    "test-3": {
+      "estimateUsd": 2.3508000000000004,
+      "planClientMode": {
+        "id": "k2-syndicalia",
+        "version": 12
+      },
+      "buildBlockedBecause": null,
+      "stages": [
+        {
+          "id": "transcription",
+          "status": "done",
+          "action": "skip",
+          "provenance": "compatible",
+          "estimateUsd": null,
+          "note": "reusing transcription-758a3924d090d1b5, a transcription made against orthography guide v1.0.7 while the guide is now v1.0.8. Same prompt version (v4), so it will not re-transcribe and will not bill. Already on the plan, so a run skips it"
+        },
+        {
+          "id": "analysis",
+          "status": "pending",
+          "action": "run",
+          "provenance": "none",
+          "estimateUsd": 0.18,
+          "note": "keywords: no cache entry for fingerprint f47fee49a5d087ae (analysis prompt v4, 9 candidates); a run would call the model and bill. Image slots: no cache entry for fingerprint 18b6e950f712a6f5 (slot prompt v2, 12 candidates); a run would call the model and bill"
+        },
+        {
+          "id": "images",
+          "status": "pending",
+          "action": "run",
+          "provenance": "none",
+          "estimateUsd": 2.1708000000000003,
+          "note": "no image slots planned yet; a run would plan about 6 for a 21.2s reel and generate 12 candidates, budgeted at most $2.17"
+        },
+        {
+          "id": "zones",
+          "status": "done",
+          "action": "skip",
+          "provenance": null,
+          "estimateUsd": null,
+          "note": "free, and done on this machine. It can take a few minutes the first time for a video. Already on the plan, so a run skips it"
+        }
+      ]
+    },
+    "vitasilk": {
+      "estimateUsd": 0,
+      "planClientMode": {
+        "id": "k2-syndicalia",
+        "version": 5
+      },
+      "buildBlockedBecause": null,
+      "stages": [
+        {
+          "id": "transcription",
+          "status": "done",
+          "action": "skip",
+          "provenance": "compatible",
+          "estimateUsd": null,
+          "note": "reusing transcription-758a3924d090d1b5, a transcription made against orthography guide v1.0.7 while the guide is now v1.0.8. Same prompt version (v4), so it will not re-transcribe and will not bill. Already on the plan, so a run skips it"
+        },
+        {
+          "id": "analysis",
+          "status": "done",
+          "action": "skip",
+          "provenance": "none",
+          "estimateUsd": null,
+          "note": "keywords: no cache entry for fingerprint 324f3a034ef9c903 (analysis prompt v4, 9 candidates); a run would call the model and bill. Image slots: no cache entry for fingerprint 58e7a919696232a1 (slot prompt v2, 14 candidates); a run would call the model and bill. Already on the plan, so a run skips it"
+        },
+        {
+          "id": "images",
+          "status": "done",
+          "action": "skip",
+          "provenance": "exact",
+          "estimateUsd": null,
+          "note": "10 of 10 candidate images are cached; a run would bill nothing. Already on the plan, so a run skips it"
+        },
+        {
+          "id": "zones",
+          "status": "done",
+          "action": "skip",
+          "provenance": null,
+          "estimateUsd": null,
+          "note": "free, and done on this machine. It can take a few minutes the first time for a video. Already on the plan, so a run skips it"
+        }
+      ]
+    }
+  },
+  "estimateBasis": {
+    "analysis": "STAGE_ESTIMATES.analysis = 0.18, a fixed order-of-magnitude figure from recorded actuals, not derived from this reel. dry-run.ts:139.",
+    "images": "derived: imageSlotCountFor(durationS) x DEFAULT_IMAGE_CONFIG.candidatesPerSlot x perImageCeilingUsd(). For ground-truth 6 slots x 2 = 12 candidates x $0.1809 = $2.1708. $0.1809 is the published pro-2K $0.134 x IMAGE_COST_MULTIPLIER 1.35.",
+    "assumption": "the planner returns at least as many usable slots as imageSlotCountFor asks for; fewer means a lower actual."
+  },
+  "freshSlotPlanWrites": [
+    "subtitles.groups",
+    "keywords",
+    "sfx",
+    "images",
+    "clientMode",
+    "clientSnapshot",
+    "pipeline.analysis",
+    "pipeline.images",
+    "costs (recordStageSpend)",
+    "meta.updatedAt"
+  ],
+  "freshSlotPlanDoesNotWrite": [
+    "transcript (and therefore transcript.words and contentHash)",
+    "zones",
+    "watermark",
+    "build",
+    ".local/ground-truth/*.txt",
+    "benchmarks/references/align/*"
+  ],
+  "gitHead": "44a4793252212b9645e7a1fb894c635168b1e1c2",
+  "generatedAt": "2026-08-30T19:20:35.313800+00:00"
+}
