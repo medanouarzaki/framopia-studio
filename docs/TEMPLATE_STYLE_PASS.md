@@ -136,3 +136,34 @@ choose is what renders for everyone.
 
 The four colours a client already has are the ground `#1A0000`, the text
 `#F8F6F2`, the highlight `#C9A96E` and the red `#820000`.
+
+
+## 6. What the pass turned out to be, and what was not built
+
+**Recorded after the fact, Block 9 sessions 8–11.**
+
+**There is no stroke, and none is wanted.** The contour and the shadow are one
+thing: `TXT_MAIN_SHADOW`, a duplicate of the word in Rouge K2 `#820000`, offset
++8 across and +15 down by a Transform effect, sitting behind the pale `TXT_MAIN`
+on top. §3 above measured what a stroke would cost the layout; **a stroke reader
+was deliberately not built**, because reading a property nothing sets would be a
+reader with nothing to read and no way to know it works.
+
+**The build fills both layers.** The shadow is a copy of the word, so it has to
+say the word — the same text, font and size as the placeholder, and never the
+colour. `templates/manifest.json` declares it as `shadowLayers`, and an
+undeclared text layer now fails validation: the first version of this pass left
+a duplicated layer holding `kan9olo`, and nothing noticed.
+
+**The shadow's reach is read from the audit, not measured by rendering.** Block
+9 session 10 tried to measure the rendered extent by nesting each template comp
+in a probe and asking for its rectangle. **That cannot work**: a nested comp's
+`sourceRectAtTime` is the comp's own rectangle rather than its ink, and an
+effect is applied after the source rect is taken, so neither the offset nor the
+blur is visible to it. A rendered extent needs rendering, and this project never
+renders. The script was deleted rather than kept as a warning.
+
+It does not need rendering. The Transform offset is in the audit, and **the Fast
+Box Blur animates 30 → 0 across the entrance**, so at rest — which is what the
+subtitle band has to clear — the offset is the whole of the shadow's reach. That
+figure now feeds `SUBTITLE_BAND` directly from `templates/library.audit.json`.
