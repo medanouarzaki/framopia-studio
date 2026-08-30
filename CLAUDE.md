@@ -300,6 +300,13 @@ AI-generated contextual images, SFX, and a watermark. Full spec in
   given string sets in a given face at a given size, from `sourceRectAtTime`.
   Takes an options file and writes a result file; shows no dialog. Adds one
   temporary comp to the open project and removes it; **never saves**.
+- `tools/font-metrics/measure.py` — free, local, run by hand when a face is
+  added. Ink extents in font units from the font files themselves, through a
+  pen rather than the OS/2 table. **It reproduces the two committed faces
+  before reporting a third**; a tool that cannot reproduce a known answer has
+  no business producing an unknown one. Uses fontTools out of `tools/cv/.venv`,
+  which is an incidental of that stack rather than a declared dependency — so
+  it is not part of `npm run check`.
 - `tools/ae/measure-fonts.jsx` — free, local. A session drives it over
   AppleScript `DoScript` (`framopiaDriven` set, `quiet` true); a person can also
   run it from File > Scripts > Run Script File and gets a message box. Lists what After Effects has for each of the
@@ -995,6 +1002,90 @@ client** (decision taken by the conversation). Baking them in gives every future
 client K2's black shadow and K2's gold edge, which is what per-client type
 already solved. Two mode fields carry them alongside the palette and the faces.
 **Neither field exists yet and this session did not add them.**
+
+### Two text layers per card, and the shadow is filled
+
+**The user's style pass, ruled and settled.** Each of the four text comps has
+two text layers: `TXT_MAIN` on top, the visible word in pale `#F4F4F4`, and
+`TXT_MAIN_SHADOW` beneath it in Rouge K2 `#820000`, offset **+8 across and +15
+down** by a Transform effect with a Fast Box Blur that animates **30 → 0 across
+the entrance**. It does the work of a contour and a shadow at once. **There is
+no stroke and none is wanted.**
+
+**The build fills both**, with the same text, font and size — and **never the
+shadow's colour**, which is the design. `framopiaFittedText` returns the string
+the fit actually left on the layer, so a wrapped card's shadow wraps identically
+rather than being drawn from the unwrapped form. `shadowLayers` in the manifest
+declares it, **optional with a default** so a one-layer template builds as it
+always did, and a declared shadow that is not in the comp makes the build refuse
+by name.
+
+**Verified by reading a built file, not by assertion** (Block 9 session 11):
+`vitasilk` 71 text comps and `test-2` 67, **no placeholder word surviving
+anywhere**, every shadow `#820000`, mains exactly crème `#F8F6F2` and gold
+`#C9A96E`, and the wrapped case checked on the corpus's own — `filler glow` at
+the retired 1.3479 ratio and `ترطيب عميق` in Almarai, both carrying the identical
+two-line form on both layers.
+
+### Every text layer in a template is accounted for
+
+**A hand pass duplicated `TXT_MAIN` and the copy kept the template's placeholder
+word.** The build fills by exact name, so nothing filled the duplicate and
+nothing noticed — one build away from `kan9olo` on every card of every reel.
+
+Every text layer in a template comp is now a **placeholder**, a declared
+**shadow**, or a declared **decorative** layer the build leaves alone. An
+undeclared one fails validation, naming the comp and the layer. Silence used to
+mean two different things — "the build fills this" and "the build ignores this"
+— and a layer nobody had decided about looked exactly like one somebody had.
+`TEMPLATE_LIBRARY_GUIDE` §4's "only placeholders are touched" is amended.
+
+### Never import a project into itself
+
+Block 9 session 10 imported `templates/library.aep` while that same file was the
+open project. **After Effects does it without complaint**: the result was a
+project holding two of every comp, dirty, and both the audit and the build then
+correctly refused it — which cost a session. The file on disk was never in
+danger and nothing said so at the time.
+
+`panel/jsx/library-guard.jsx` is the one check, loaded by both drivers, called
+by `build-reel.jsx`, `build.jsx`, `measure-survey.jsx` and `audit.jsx` **before**
+they open anything. It compares `fsName`, After Effects' own absolute path, so a
+relative path or a symlink cannot slip past; a project with no file is let
+through, because a never-saved project cannot be the file being imported.
+Demonstrated firing, and pinned by reading the sources the way the unsaved-work
+refusal is.
+
+### The band knows the shadow and all three faces
+
+`SUBTITLE_BAND` was derived from two faces while three are drawn, and knew
+nothing about a shadow that reaches past the ink.
+
+**`FONT_METRICS` gains the emphasis face** — CormorantGaramondItalic-SemiBoldItalic
+at **1000/806/281**, instanced at wght 600 from the *italic* family. Derived by
+`tools/font-metrics/measure.py`, which **reproduces Inter's 2048/1970/480 and
+Almarai's 1000/1100/427 exactly before it reports a third**: a tool that cannot
+reproduce a known answer has no business producing an unknown one. Cormorant
+wins neither direction — Almarai still dominates both — so **the extent term did
+not move**. It is in the derivation because being right by luck is not the same
+as being right.
+
+**`SHADOW_DESCENT_PX` comes from the audit**, not from a number typed in:
+`shadowDescentPx` reads the declared shadow layers' Transform offsets out of
+`templates/library.audit.json`. Downward only, because the band is full frame
+width. **The blur is not a term** — it is zero at rest and it is on the visible
+layer too.
+
+The band's bottom moves **2997.578 → 3012.578 px**, height **1017.403 →
+1032.403**. Proven to track the file rather than a constant: no declaration
+gives 1017.403, the real templates 1032.403, a forced 40 px offset 1057.403.
+**An audit predating `effectOffsets` yields zero, indistinguishable from a
+shadow that does not move** — the defence is that `validateTemplates` refuses an
+audit whose sha256 does not match the `.aep`.
+
+**Nothing downstream moved.** Zones and placements re-derived identically on all
+five reels: the band's bottom edge constrains nothing now that torso zones are
+retired.
 
 ### The build sets the face and the colour on the placeholder
 
