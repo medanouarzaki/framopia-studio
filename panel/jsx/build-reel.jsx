@@ -186,6 +186,32 @@ function framopiaBuildReel(optionsPath, outPath) {
                 e.fit = framopiaFitText(
                     ph, instance.duration / 2, e.candidate, o.safeWidth, e.textStyle
                 );
+                /*
+                 * The shadow is a copy of the word drawn behind it, so it has
+                 * to say the word. Block 9 session 8 found the duplicated layer
+                 * still holding the template's own placeholder text, one build
+                 * away from putting `kan9olo` on every card of every reel.
+                 *
+                 * Same text, same font, same size — and **never the colour**:
+                 * the shadow's #820000 is the design, and the build overwriting
+                 * it would erase the effect it exists for. `framopiaSetText`
+                 * leaves the colour alone when the style carries none.
+                 */
+                if (e.shadowLayers) {
+                    for (var si = 0; si < e.shadowLayers.length; si++) {
+                        var shadowName = e.shadowLayers[si];
+                        var shadow = findLayer(instance, shadowName);
+                        if (!shadow) {
+                            throw new Error('comp "' + e.templateId + '" declares shadow layer "' +
+                                            shadowName + '" but has no layer of that name');
+                        }
+                        var shadowStyle = null;
+                        if (e.textStyle) {
+                            shadowStyle = { font: e.textStyle.font, fontSize: e.textStyle.fontSize };
+                        }
+                        framopiaSetText(shadow, framopiaFittedText(e.fit, e.candidate), shadowStyle);
+                    }
+                }
                 // Read back rather than assumed: After Effects substitutes a
                 // face it cannot resolve and reports the name it was given, so
                 // this proves only that the write took, not that the face is

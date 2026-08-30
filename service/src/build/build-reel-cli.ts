@@ -331,6 +331,12 @@ const built = buildReel({
    * measured font names, which leaves the template's own type exactly as it
    * was — the state every build was in before Block 9 session 6.
    */
+  /*
+   * Declared by the manifest, not guessed from the audit: a text layer the
+   * build finds and fills has to be one the template says is there, or a
+   * duplicated layer becomes something the build quietly writes to.
+   */
+  shadowLayersFor: (templateId) => entries.get(templateId)?.shadowLayers ?? [],
   textStyleFor: (card) => {
     if (identity.snapshot === null) return undefined;
     const c = audit.find((x) => x.name === card.templateId);

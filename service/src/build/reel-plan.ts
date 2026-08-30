@@ -38,6 +38,13 @@ export interface ReelElement {
   /** The card frame's colour, as three floats in 0..1 for After Effects. */
   cardColor?: [number, number, number];
   /**
+   * Text layers carrying a copy of this card's word, drawn behind it.
+   *
+   * Declared by the template, filled with the same word, font and size, and
+   * **never given a colour** — the shadow's own is the design.
+   */
+  shadowLayers?: string[];
+  /**
    * The face, size and colour this card is set in.
    *
    * Absent for a client with no measured font names, and then the template's
@@ -170,6 +177,8 @@ export function buildReel(options: {
   cardTemplateId?: string;
   /** The face, size and colour for one card. Absent leaves the template's own. */
   textStyleFor?: (card: { id: string; kind: 'subtitle' | 'keyword'; templateId: string }) => TextStyle | undefined;
+  /** The shadow layers a template declares, filled with the same word. */
+  shadowLayersFor?: (templateId: string) => string[];
   /** Extra placements, each a copy of the image set at a different size. */
   imageVariants?: {
     name: ImageSizeVariant;
@@ -180,6 +189,7 @@ export function buildReel(options: {
 }): ReelBuild {
   const { plan, audit, introFor, minHoldFor, sfxFileFor, candidateFileFor, topLeftFor, cardTemplateId } = options;
   const styleFor = options.textStyleFor ?? ((): undefined => undefined);
+  const shadowsFor = options.shadowLayersFor ?? ((): string[] => []);
   const shortened: { id: string; stretchPercent: number; introS: number; onFloor: boolean }[] = [];
 
   const elements: ReelElement[] = [];
@@ -251,6 +261,9 @@ export function buildReel(options: {
       text: card.text,
       candidate: chooseBreak(card.text),
       ...(styleFor(card) === undefined ? {} : { textStyle: styleFor(card) as TextStyle }),
+      ...(shadowsFor(card.templateId).length === 0
+        ? {}
+        : { shadowLayers: shadowsFor(card.templateId) }),
     });
     const inPointS = inPoints[i] as number;
     // A card too short for the standard entrance gets a faster one rather than

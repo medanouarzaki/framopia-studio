@@ -45,6 +45,18 @@ function framopiaSetText(layer, value, style) {
     prop.setValue(doc);
 }
 
+/**
+ * The string the fit actually left on the layer.
+ *
+ * A card that wrapped carries the two-line form; one that did not carries the
+ * single line. A shadow drawn from the other one would not line up with the
+ * word it is behind, and the difference is only knowable after the measurement.
+ */
+function framopiaFittedText(fit, candidate) {
+    if (fit && fit.wrapped && candidate.twoLines) return candidate.twoLines;
+    return candidate.oneLine;
+}
+
 /** What After Effects has on the layer now, for a caller that checks. */
 function framopiaReadTextStyle(layer) {
     var doc = layer.property('Source Text').value;
