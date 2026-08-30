@@ -639,13 +639,13 @@
       "duration": 2.002002002002,
       "layers": [
         {
-          "name": "TXT_MAIN 2",
+          "name": "TXT_MAIN",
           "kind": "text",
           "parent": null,
           "position": {
             "value": [
               1080,
-              700,
+              750,
               0
             ],
             "valueAtSampleTime": [
@@ -685,7 +685,7 @@
             "unreadable": null
           },
           "opacity": {
-            "value": 100,
+            "value": 0,
             "valueAtSampleTime": 100,
             "keyframes": 2,
             "unreadable": null
@@ -856,13 +856,13 @@
           ]
         },
         {
-          "name": "TXT_MAIN",
+          "name": "TXT_MAIN_SHADOW",
           "kind": "text",
           "parent": null,
           "position": {
             "value": [
               1080,
-              700,
+              750,
               0
             ],
             "valueAtSampleTime": [
@@ -902,7 +902,7 @@
             "unreadable": null
           },
           "opacity": {
-            "value": 100,
+            "value": 0,
             "valueAtSampleTime": 100,
             "keyframes": 2,
             "unreadable": null
@@ -1082,7 +1082,7 @@
       "duration": 2.002002002002,
       "layers": [
         {
-          "name": "TXT_MAIN 2",
+          "name": "TXT_MAIN",
           "kind": "text",
           "parent": null,
           "position": {
@@ -1299,7 +1299,7 @@
           ]
         },
         {
-          "name": "TXT_MAIN",
+          "name": "TXT_MAIN_SHADOW",
           "kind": "text",
           "parent": null,
           "position": {
@@ -1525,7 +1525,7 @@
       "duration": 2.002002002002,
       "layers": [
         {
-          "name": "TXT_MAIN 2",
+          "name": "TXT_MAIN",
           "kind": "text",
           "parent": null,
           "position": {
@@ -1742,7 +1742,7 @@
           ]
         },
         {
-          "name": "TXT_MAIN",
+          "name": "TXT_MAIN_SHADOW",
           "kind": "text",
           "parent": null,
           "position": {
@@ -1968,13 +1968,13 @@
       "duration": 2.002002002002,
       "layers": [
         {
-          "name": "TXT_MAIN 2",
+          "name": "TXT_MAIN",
           "kind": "text",
           "parent": null,
           "position": {
             "value": [
               1080,
-              700,
+              750,
               0
             ],
             "valueAtSampleTime": [
@@ -2014,7 +2014,7 @@
             "unreadable": null
           },
           "opacity": {
-            "value": 100,
+            "value": 0,
             "valueAtSampleTime": 100,
             "keyframes": 2,
             "unreadable": null
@@ -2185,13 +2185,13 @@
           ]
         },
         {
-          "name": "TXT_MAIN",
+          "name": "TXT_MAIN_SHADOW",
           "kind": "text",
           "parent": null,
           "position": {
             "value": [
               1080,
-              700,
+              750,
               0
             ],
             "valueAtSampleTime": [
@@ -2231,7 +2231,7 @@
             "unreadable": null
           },
           "opacity": {
-            "value": 100,
+            "value": 0,
             "valueAtSampleTime": 100,
             "keyframes": 2,
             "unreadable": null
@@ -2404,5 +2404,5 @@
       ]
     }
   ],
-  "aepSha256": "1d265d1ffce75efd11bdfa6b937570998a0161be086d2537949366cd5a51b3f3"
+  "aepSha256": "1d7553e894e10f82051131e8c1b37305fa8ad14a1d6843df4a40415d2bc4a5d8"
 }
