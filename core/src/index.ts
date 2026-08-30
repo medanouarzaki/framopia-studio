@@ -344,6 +344,20 @@ export {
   type ShrinkRow,
   type ShrinkSummary,
 } from './card-fit.js';
+
+export {
+  RATE_LIMITED_STATUS,
+  RETRY_BASE_DELAY_MS,
+  RETRY_MAX_ATTEMPTS,
+  RETRY_MAX_DELAY_MS,
+  TRANSIENT_MESSAGE_MARKERS,
+  isTransientFailure,
+  retryDelayMs,
+  statusOf,
+  withTransientRetry,
+  type RetryAttemptReport,
+  type TransientRetryOptions,
+} from './transient-failure.js';
 export {
   CLIENT_SNAPSHOT_VERSION,
   snapshotIsBehind,

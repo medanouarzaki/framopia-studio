@@ -1,5 +1,10 @@
 import { GoogleGenAI } from '@google/genai';
-import { loadConfig, type ImageResolution } from '@framopia/core';
+import {
+  loadConfig,
+  withTransientRetry,
+  type ImageResolution,
+  type RetryAttemptReport,
+} from '@framopia/core';
 import { readImageDimensions } from './image-dimensions.js';
 import {
   ImageGenerationError,
@@ -23,9 +28,11 @@ function imageSizeFor(resolution: ImageResolution): string {
  */
 export class GeminiImageClient implements ImageGenerationClient {
   private readonly ai: GoogleGenAI;
+  private readonly onRetry: ((report: RetryAttemptReport) => void) | undefined;
 
-  constructor(apiKey = loadConfig().googleApiKey) {
+  constructor(apiKey = loadConfig().googleApiKey, onRetry?: (report: RetryAttemptReport) => void) {
     this.ai = new GoogleGenAI({ apiKey });
+    this.onRetry = onRetry;
   }
 
   async generate(request: ImageGenerationRequest): Promise<GeneratedImage> {
@@ -36,18 +43,29 @@ export class GeminiImageClient implements ImageGenerationClient {
 
     let response;
     try {
-      response = await this.ai.models.generateContent({
-        model: request.modelId,
-        contents: text,
-        config: {
-          imageConfig: {
-            imageSize: imageSizeFor(request.resolution),
-            // Sent explicitly: the API picks its own ratio otherwise, and
-            // picked 16:9 for a 2K request in Block 4 session 2.
-            aspectRatio: request.aspectRatio,
-          },
-        },
-      });
+      /*
+       * ARCHITECTURE §8. Block 10 session 7 lost a twelve-request batch to a
+       * 503 on the first call, because this was the one billable client with no
+       * retry. Only the request is inside the retry: everything below reads a
+       * response that has already arrived, so a decode that throws is a defect
+       * rather than something to send again.
+       */
+      response = await withTransientRetry(
+        () =>
+          this.ai.models.generateContent({
+            model: request.modelId,
+            contents: text,
+            config: {
+              imageConfig: {
+                imageSize: imageSizeFor(request.resolution),
+                // Sent explicitly: the API picks its own ratio otherwise, and
+                // picked 16:9 for a 2K request in Block 4 session 2.
+                aspectRatio: request.aspectRatio,
+              },
+            },
+          }),
+        this.onRetry === undefined ? {} : { onRetry: this.onRetry },
+      );
     } catch (error) {
       throw new ImageGenerationError(
         `Image generation failed for ${request.modelId}: ${String(error)}`,

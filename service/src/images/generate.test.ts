@@ -3,6 +3,8 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
+  RETRY_MAX_ATTEMPTS,
+  withTransientRetry,
   COSTS_PATH,
   GEMINI_IMAGE_MODEL_FLASH,
   GEMINI_IMAGE_MODEL_PRO,
@@ -243,6 +245,84 @@ describe('the ledger', () => {
         client: new FakeClient(), videoSha256: VIDEO, cacheRoot, bill: true,
       }),
     ).rejects.toThrow(ImageBudgetExceededError);
+    expect(existsSync(COSTS_PATH) ? readFileSync(COSTS_PATH, 'utf8') : '').toBe(before);
+  });
+});
+
+/*
+ * A retried request must bill once, not once per attempt. The retry lives in
+ * `GeminiImageClient`, so from `generateImages`' side one successful
+ * `client.generate` is one image and one ledger line however many attempts it
+ * took — and the fake proves the attempts without a network.
+ */
+describe('a request that had to be retried', () => {
+  /** Fails `failures` times with a 503, then succeeds. Never reaches a network. */
+  class FlakyClient implements ImageGenerationClient {
+    attempts = 0;
+    constructor(private readonly failures: number) {}
+    async generate(): Promise<GeneratedImage> {
+      return await withTransientRetry(
+        async () => {
+          this.attempts += 1;
+          if (this.attempts <= this.failures) {
+            throw new Error(
+              'ApiError: {"error":{"code":503,"message":"high demand","status":"UNAVAILABLE"}}',
+            );
+          }
+          return {
+            bytes: Uint8Array.from([1, 2, 3]),
+            mimeType: 'image/png',
+            usage: { promptTokenCount: 10, candidatesTokenCount: 1120 },
+            text: null,
+            width: 2048,
+            height: 2048,
+          } satisfies GeneratedImage;
+        },
+        { sleep: async () => undefined, random: () => 0 },
+      );
+    }
+  }
+
+  let before: string;
+  beforeEach(() => {
+    before = existsSync(COSTS_PATH) ? readFileSync(COSTS_PATH, 'utf8') : '';
+  });
+  afterEach(() => {
+    if (before !== '') writeFileSync(COSTS_PATH, before, 'utf8');
+  });
+
+  it('counts one image, not one per attempt', async () => {
+    const client = new FlakyClient(2);
+    const result = await generateImages({
+      slots: [SLOTS[0] as ImageSlot], mode, config: parseImageConfig({ candidatesPerSlot: 2 }),
+      client, videoSha256: VIDEO, cacheRoot, limit: 1,
+    });
+    expect(client.attempts).toBe(3);
+    expect(result.billedImages).toBe(1);
+    expect(result.candidates).toHaveLength(1);
+  });
+
+  it('appends one ledger line for a request that took three attempts', async () => {
+    const client = new FlakyClient(2);
+    await generateImages({
+      slots: [SLOTS[0] as ImageSlot], mode, config: parseImageConfig({ candidatesPerSlot: 2 }),
+      client, videoSha256: VIDEO, cacheRoot, bill: true, limit: 1,
+    });
+    const after = existsSync(COSTS_PATH) ? readFileSync(COSTS_PATH, 'utf8') : '';
+    const added = after.slice(before.length).trim().split('\n').filter((l) => l.length > 0);
+    expect(client.attempts).toBe(3);
+    expect(added).toHaveLength(1);
+  });
+
+  it('gives up after the bound and generates nothing', async () => {
+    const client = new FlakyClient(99);
+    await expect(
+      generateImages({
+        slots: [SLOTS[0] as ImageSlot], mode, config: parseImageConfig({ candidatesPerSlot: 2 }),
+        client, videoSha256: VIDEO, cacheRoot, bill: true, limit: 1,
+      }),
+    ).rejects.toThrow();
+    expect(client.attempts).toBe(RETRY_MAX_ATTEMPTS);
     expect(existsSync(COSTS_PATH) ? readFileSync(COSTS_PATH, 'utf8') : '').toBe(before);
   });
 });

@@ -1,5 +1,6 @@
 import { createUserContent, GoogleGenAI } from '@google/genai';
 import {
+  isTransientFailure,
   appendCost,
   computeGeminiCost,
   modelConfig,
@@ -139,12 +140,6 @@ export function parseSlotResponse(text: string): SlotCandidate[] {
   }));
 }
 
-const OVERLOAD_MARKERS = ['503', 'UNAVAILABLE', 'high demand', 'overloaded'];
-
-function isTransientOverload(error: unknown): boolean {
-  const message = error instanceof Error ? error.message : String(error);
-  return OVERLOAD_MARKERS.some((marker) => message.includes(marker));
-}
 
 export interface SlotAnalysisOptions {
   apiKey: string;
@@ -191,7 +186,7 @@ export async function runSlotAnalysis(options: SlotAnalysisOptions): Promise<Slo
   try {
     response = await ai.models.generateContent(request);
   } catch (error) {
-    if (!isTransientOverload(error)) {
+    if (!isTransientFailure(error)) {
       throw new AnalysisError('slots', error instanceof Error ? error.message : String(error), false);
     }
     try {

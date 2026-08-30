@@ -1,5 +1,6 @@
 import { createUserContent, GoogleGenAI } from '@google/genai';
 import {
+  isTransientFailure,
   appendCost,
   computeGeminiCost,
   modelConfig,
@@ -246,12 +247,6 @@ export function parseKeywordResponse(text: string): KeywordResponse {
   return { candidates, terms };
 }
 
-const OVERLOAD_MARKERS = ['503', 'UNAVAILABLE', 'high demand', 'overloaded'];
-
-function isTransientOverload(error: unknown): boolean {
-  const message = error instanceof Error ? error.message : String(error);
-  return OVERLOAD_MARKERS.some((marker) => message.includes(marker));
-}
 
 export interface KeywordAnalysisOptions {
   apiKey: string;
@@ -305,7 +300,7 @@ export async function runKeywordAnalysis(
   try {
     response = await ai.models.generateContent(request);
   } catch (error) {
-    if (!isTransientOverload(error)) {
+    if (!isTransientFailure(error)) {
       throw new AnalysisError(
         'keywords',
         error instanceof Error ? error.message : String(error),

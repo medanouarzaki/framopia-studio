@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { createPartFromBase64, createUserContent, GoogleGenAI } from '@google/genai';
 import {
+  isTransientFailure,
   ACTIVE_PROMPT_VERSION,
   computeGeminiCost,
   DOCS_DIR,
@@ -204,12 +205,6 @@ export function parseCorrectionResponseText(text: string): string[] {
   return parseCorrectionResponse(text).map((w) => w.text);
 }
 
-const OVERLOAD_MARKERS = ['503', 'UNAVAILABLE', 'high demand', 'overloaded'];
-
-function isTransientOverload(error: unknown): boolean {
-  const message = error instanceof Error ? error.message : String(error);
-  return OVERLOAD_MARKERS.some((marker) => message.includes(marker));
-}
 
 export interface CorrectionOptions {
   apiKey: string;
@@ -260,7 +255,7 @@ export async function correctTranscript(options: CorrectionOptions): Promise<Cor
   } catch (error) {
     // Gemini 3.1 Pro Preview returns 503 "high demand" often enough to be
     // worth one retry; anything else is a real problem and surfaces at once.
-    if (!isTransientOverload(error)) {
+    if (!isTransientFailure(error)) {
       throw new TranscriptionError(
         'correction',
         error instanceof Error ? error.message : String(error),
