@@ -8419,3 +8419,80 @@ Footage hashing is **off by default** (`--hash-footage`, 18.6 s for five 2.4 GB
 reels, streamed in 1 MiB chunks because `readFileSync` refuses past 2 GiB); the
 two CV models are checked **by size**, with `tools/cv/verify-models.sh` still the
 thing that hashes.
+
+
+## Block 10 session 10 — the sharing document, and the two things under it
+
+**Spent $0.00.** Ledger 118 lines / `3f657131…` at both ends; library, the seven
+references, all five plans and the cache byte-identical; `app.fonts.allFonts`
+**1198 → 1198**. **No secret printed or written** — verified by running the repo's
+own `classifyFile` over every file the session touched.
+
+### `DoScript` returns a status, and that status is a channel
+
+**Measured:** `DoScript` returns **0 when a script runs to completion and 1 when
+it throws** — `2+2` → 0, `throw new Error(…)` → 1, `if (!(false)) throw` → 1. It
+never returns the script's value.
+
+That is one bit **that needs no file**, and it closes session 9's hole. The
+doctor sends `if (!app.version) { throw … }` before the file-writing probe, so
+**a script that completes while no result file appears is the scripting
+preference being off** — reported `absent` with the exact Preferences path,
+where session 9 could only say `unknown`. `scriptingVerdict` in
+`core/src/doctor.ts` is the decision, **7 tests driven by injected probe
+results**, nothing touching a live host.
+
+**Only the completing case is evidence.** A `DoScript` returning 1 did nothing
+and says nothing about the script, so `answering: false` falls to `unknown`, and
+that unknown names both possibilities. **Untested edge:** if the preference
+prevented script *execution* rather than *writing*, the liveness probe would
+return 1 and the answer would be `unknown` — correct, but the assumption that
+the preference gates writing is inferred from the code, not observed.
+
+### A copied cache entry still hits — measured, not reasoned about
+
+**This is what the golden run rests on.** Every transcription manifest stores an
+**absolute** `audioPath`, but `readTranscriptionCache`
+(`service/src/transcription/cache.ts:181`) recomputes it as
+`path.join(ref.dir, AUDIO)` and **overwrites the stored value**. Proven by
+copying an entry into a temp directory: it hit, and its audio resolved from
+`<tmp>` while the manifest still said `<repo>`. **The stored path is provenance
+and is never read.**
+
+**The Edit Plans carry 52 absolute paths across the five, and every one points
+inside the repository root — none outside.** So the plans are portable **if and
+only if the repo sits at the same absolute path on both machines**, which is
+requirement 1 and what the doctor's `repo` check looks for.
+
+### `benchmarks/footage.json` has a fetch note now
+
+Every reel carries `sha256` and `bytes`; the file carries a `fetchNote` saying
+the reels are the agency's own footage, live beside the repo on the SSD, have no
+download, and that a mismatch is a different cut whose cached transcription will
+miss. The doctor reads the catalogue's hash, with the Edit Plan's as fallback.
+All five verify in 18 s.
+
+### `MIN_FREE_GB` is derived: 19 GB
+
+From **14.643 GB** measured across eleven components — repo 0.033, node_modules
+0.164, venv 0.801, the two models 0.921, footage 11.926, cache 0.052, cutouts
+0.052, frames and masks 0.584, built files 0.106, audio 0.003 — plus a quarter
+again. Components listed at the constant. **`benchmarks/whisper/models` (4.0 GB)
+is excluded**: optional, Apple Silicon only, not in `npm run check`, and only its
+`setup.sh` is tracked. **The git repository is 254 KiB packed.**
+
+### `docs/SECOND_MACHINE.md`
+
+Fourteen pasteable steps for a motion designer, each with what he should see,
+ending at **`npm run doctor` until it stops printing blockers**. It states in its
+own opening that **every remedy is a first attempt written from the code and none
+has been executed**, names the three checks never seen failing (`repo`, `node`,
+`dependencies`) as things his machine tests first, and ends with a table for him
+to record what he actually saw — including *"anything this document said that
+turned out to be untrue"*.
+
+**The transfer set, measured:** `.local/cache/` 53 MB, `cutouts/` 53 MB, the five
+plans 308 KB, footage 11.9 GB. **Never travels:** the API key (`classifyFile`
+flags `.local/config.json` by its bytes and the backup names it when skipping),
+the ledger, `.local/build/watermark.json` and the loudness records (measurements
+of that machine, taken there), and any client's own picture.
