@@ -121,10 +121,20 @@ function askAfterEffects(): AeState {
   };
 }
 
+/*
+ * A synthetic After Effects state, so the checks that depend on one can be
+ * watched failing without touching the real application — the font check must
+ * never write a name to prove itself, and the scripting preference is the
+ * user's to set.
+ */
+const injected = process.env['FRAMOPIA_DOCTOR_AE_STATE'];
 const skipAe = process.argv.includes('--no-after-effects');
-const ae: AeState = skipAe
-  ? { reachable: false, reason: 'not asked (--no-after-effects)' }
-  : askAfterEffects();
+const ae: AeState =
+  injected !== undefined && injected !== ''
+    ? (JSON.parse(readFileSync(injected, 'utf8')) as AeState)
+    : skipAe
+      ? { reachable: false, reason: 'not asked (--no-after-effects)' }
+      : askAfterEffects();
 
 const checks = runChecks(ae, {
   modeId: flag('mode') ?? 'k2-syndicalia',

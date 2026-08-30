@@ -29,6 +29,8 @@ export const OVERRIDES = {
   rembg: 'FRAMOPIA_DOCTOR_REMBG_DIR',
   localDir: 'FRAMOPIA_DOCTOR_LOCAL_DIR',
   extensions: 'FRAMOPIA_DOCTOR_EXTENSIONS_DIR',
+  templatesDir: 'FRAMOPIA_DOCTOR_TEMPLATES_DIR',
+  panelDist: 'FRAMOPIA_DOCTOR_PANEL_DIST',
   footageDir: 'FRAMOPIA_DOCTOR_FOOTAGE_DIR',
   aeState: 'FRAMOPIA_DOCTOR_AE_STATE',
   minFreeGb: 'FRAMOPIA_DOCTOR_MIN_FREE_GB',
@@ -351,8 +353,9 @@ function checkModel(id: string, blocking: 'build'): CheckResult {
 }
 
 function checkTemplates(): CheckResult {
-  const aep = path.join(REPO_ROOT, 'templates', 'library.aep');
-  const auditPath = path.join(REPO_ROOT, 'templates', 'library.audit.json');
+  const dir = env(OVERRIDES.templatesDir) ?? path.join(REPO_ROOT, 'templates');
+  const aep = path.join(dir, 'library.aep');
+  const auditPath = path.join(dir, 'library.audit.json');
   if (!existsSync(aep)) {
     return {
       id: 'templates',
@@ -414,7 +417,7 @@ function checkPanelInstalled(): CheckResult {
 }
 
 function checkPanelBuilt(): CheckResult {
-  const dist = path.join(REPO_ROOT, 'panel', 'dist', 'panel.js');
+  const dist = env(OVERRIDES.panelDist) ?? path.join(REPO_ROOT, 'panel', 'dist', 'panel.js');
   const present = existsSync(dist);
   return {
     id: 'panel-built',
