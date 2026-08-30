@@ -58,8 +58,10 @@ describe('what a build requires', () => {
    * A check that always fires is as wrong as one that never can. A
    * subtitles-only reel needs no masks and no loudness.
    */
+  // `ground truth` was the subtitles-only reel until session 6 planned its
+  // slots and its sounds; `test 3` is that reel now.
   it('asks for nothing a subtitles-only reel does not use', async () => {
-    const plan = await readEditPlan(planPath('ground truth'));
+    const plan = await readEditPlan(planPath('test 3'));
     const needed = buildRequirements(plan, ABSENT).filter((n) => n.needed).map((n) => n.id);
     // client-identity is unconditional; every card has type to set.
     expect(needed).toEqual(['client-identity', 'watermark-facts']);
@@ -68,14 +70,14 @@ describe('what a build requires', () => {
   });
 
   it('refuses a reel that carries the mark with no watermark measurement', async () => {
-    const plan = await readEditPlan(planPath('ground truth'));
+    const plan = await readEditPlan(planPath('test 3'));
     const missing = missingRequirements(buildRequirements(plan, { ...PRESENT, watermarkFacts: false }));
     expect(missing.map((m) => m.id)).toEqual(['watermark-facts']);
     expect(missing[0]?.command).toBe('npm run watermark:measure');
   });
 
   it('does not ask for a watermark measurement when the reel refuses the mark', async () => {
-    const plan = await readEditPlan(planPath('ground truth'));
+    const plan = await readEditPlan(planPath('test 3'));
     plan.watermark = { assetPath: 'a.mov', startS: 0, durationS: 1, enabled: false };
     const needed = buildRequirements(plan, ABSENT).filter((n) => n.needed).map((n) => n.id);
     expect(needed).toEqual(['client-identity']);

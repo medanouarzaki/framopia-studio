@@ -81,12 +81,14 @@ describe('the image estimate', () => {
     const { DEFAULT_IMAGE_CONFIG } = await import('./images/config.js');
     const { estimateImageRunCost } = await import('@framopia/core');
 
-    const plan = await dryRun('ground-truth', 'k2-syndicalia');
+    // `ground-truth` was the reel with nothing planned until Block 10
+    // session 6 planned its six slots; `test-3` is that reel now.
+    const plan = await dryRun('test-3', 'k2-syndicalia');
     const images = plan.stages.find((s) => s.id === 'images');
     const expected = estimateImageRunCost({
       modelId: DEFAULT_IMAGE_CONFIG.modelId,
       resolution: DEFAULT_IMAGE_CONFIG.resolution,
-      slots: imageSlotCountFor(23.256567),
+      slots: imageSlotCountFor(21.187833),
       candidatesPerSlot: DEFAULT_IMAGE_CONFIG.candidatesPerSlot,
     }).usd;
 
@@ -138,13 +140,14 @@ describe('the image estimate', () => {
  */
 describe('Build availability', () => {
   it('opens for a reel with cards but no keywords, images or sfx', () => {
-    const build = stepsFor('ground-truth', 'k2-syndicalia').steps.find((s) => s.id === 'build');
+    const build = stepsFor('test-3', 'k2-syndicalia').steps.find((s) => s.id === 'build');
     expect(build?.available).toBe(true);
   });
 
+  /* `ground-truth` carried these figures until session 6 analysed it. */
   it('says what the comp would and would not contain', () => {
-    const build = stepsFor('ground-truth', 'k2-syndicalia').steps.find((s) => s.id === 'build');
-    expect(build?.summary).toContain('76 subtitle cards');
+    const build = stepsFor('test-3', 'k2-syndicalia').steps.find((s) => s.id === 'build');
+    expect(build?.summary).toContain('58 subtitle cards');
     expect(build?.summary).toContain('no emphasised keywords');
     expect(build?.summary).toContain('no images');
   });
@@ -180,12 +183,12 @@ describe('the estimate for a reel with nothing planned', () => {
     const { DEFAULT_IMAGE_CONFIG } = await import('./images/config.js');
     const { estimateImageRunCost } = await import('@framopia/core');
 
-    const plan = await dryRun('ground-truth', 'k2-syndicalia');
+    const plan = await dryRun('test-3', 'k2-syndicalia');
     const images = plan.stages.find((s) => s.id === 'images');
     const expected = estimateImageRunCost({
       modelId: DEFAULT_IMAGE_CONFIG.modelId,
       resolution: DEFAULT_IMAGE_CONFIG.resolution,
-      slots: imageSlotCountFor(23.256567),
+      slots: imageSlotCountFor(21.187833),
       candidatesPerSlot: DEFAULT_IMAGE_CONFIG.candidatesPerSlot,
     }).usd;
 
@@ -241,7 +244,7 @@ describe('the build preview', () => {
    * the picker even on a reel whose analysis has never run.
    */
   it('says the client came from the plan, not the picker', () => {
-    const preview = stepsFor('ground-truth', 'k2-syndicalia').build;
+    const preview = stepsFor('test-3', 'k2-syndicalia').build;
     expect(preview?.modeSource).not.toBe('the picker');
     expect(preview?.keywords).toBe(0);
     expect(preview?.images).toBe(0);

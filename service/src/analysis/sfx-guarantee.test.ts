@@ -135,8 +135,9 @@ describe('the corpus, with keywords silent', () => {
       total += detail.events.length;
       expect(detail.events.every((e) => e.sfxId.startsWith('whoosh')), reel).toBe(true);
     }
-    // One per image slot, with nothing left unreachable.
-    expect(total).toBe(9);
+    // One per image slot, with nothing left unreachable. Nine until Block 10
+    // session 6 planned `ground-truth`'s six slots.
+    expect(total).toBe(15);
   });
 
   it('is stable: deriving twice gives the same events', async () => {

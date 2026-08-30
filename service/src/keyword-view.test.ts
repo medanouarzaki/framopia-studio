@@ -98,7 +98,8 @@ describe('keywordsView', () => {
  */
 describe('a reel with no keywords', () => {
   it('says the analysis has not run, and names the stage', async () => {
-    for (const reel of ['ground-truth', 'test-3']) {
+    // `ground-truth` was here until Block 10 session 6 planned its keywords.
+    for (const reel of ['test-3']) {
       const view = await keywordsView(reel);
       expect(view.keywords, reel).toHaveLength(0);
       expect(view.emptyReason, reel).toContain('has not run');
@@ -108,10 +109,13 @@ describe('a reel with no keywords', () => {
 
   it('says nothing at all when there are keywords', async () => {
     expect((await keywordsView('vitasilk')).emptyReason).toBeNull();
+    // Planned fresh in Block 10 session 6, the first reel analysed under v12.
+    expect((await keywordsView('ground-truth')).emptyReason).toBeNull();
+    expect((await keywordsView('ground-truth')).keywords).toHaveLength(3);
   });
 
   it('names where the choice came from, whether or not there is one', async () => {
-    for (const reel of ['vitasilk', 'ground-truth']) {
+    for (const reel of ['vitasilk', 'test-3']) {
       const view = await keywordsView(reel);
       expect(view.source.promptVersion, reel).toBe(4);
       expect(view.source.mode, reel).toBe('auto');

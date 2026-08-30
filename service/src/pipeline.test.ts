@@ -173,9 +173,10 @@ describe('runPipeline over a plan that is already complete', () => {
 
 describe('a reel that has never been analysed', () => {
   /*
-   * `ground-truth` is transcribed and nothing else, so analysis is the first
-   * stage that would bill. Its stage function is injected, so the assertion is
-   * about what the runner *asks for*, never about a call being made.
+   * `test-3` is transcribed and nothing else, so analysis is the first stage
+   * that would bill. Its stage function is injected, so the assertion is about
+   * what the runner *asks for*, never about a call being made. `ground-truth`
+   * was this reel until Block 10 session 6 analysed it.
    */
   it('skips transcription and asks for analysis', async () => {
     const keywords = vi.fn(async () => ({
@@ -195,7 +196,7 @@ describe('a reel that has never been analysed', () => {
     const before = ledgerSha();
     const progress = await runPipeline({
       ...fakeHooks(),
-      reel: 'ground-truth',
+      reel: 'test-3',
       modeId: 'k2-syndicalia',
       stages: fakeStages({ keywords, slots }),
     });
@@ -215,7 +216,7 @@ describe('a reel that has never been analysed', () => {
     const images = vi.fn();
     const progress = await runPipeline({
       ...fakeHooks(),
-      reel: 'ground-truth',
+      reel: 'test-3',
       modeId: 'k2-syndicalia',
       stages: fakeStages({
         keywords: vi.fn(async () => ({
@@ -300,7 +301,7 @@ describe('the ceiling', () => {
     await expect(
       runPipeline({
         ...fakeHooks(),
-        reel: 'ground-truth',
+        reel: 'test-3',
         modeId: 'k2-syndicalia',
         // Zero leaves no room at all, so the first billable stage refuses.
         ceilingUsd: 0,
@@ -315,7 +316,7 @@ describe('the ceiling', () => {
     try {
       await runPipeline({
       ...fakeHooks(),
-        reel: 'ground-truth',
+        reel: 'test-3',
         modeId: 'k2-syndicalia',
         ceilingUsd: 0,
         stages: fakeStages(),
@@ -348,7 +349,7 @@ describe('a failing stage', () => {
     await expect(
       runPipeline({
         ...fakeHooks(),
-        reel: 'ground-truth',
+        reel: 'test-3',
         modeId: 'k2-syndicalia',
         stages: fakeStages({ keywords, images: images as unknown as PipelineStageImpl['images'] }),
       }),
