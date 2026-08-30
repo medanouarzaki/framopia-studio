@@ -7654,3 +7654,111 @@ layer above the mark) is asserted nowhere.
 plans carry `dialogueLufs`. The driven measurement path has been exercised on
 exactly one reel and the freshness comparison has one sample; a second machine
 has none.
+
+
+## Block 10 session 2 — the corpus measured, and the census made a tool
+
+**Spent $0.00.** Ledger 116 lines / sha `e5e0a6e9…` at both ends;
+`templates/library.aep` `1d7553e894…`; **all five Edit Plans byte-identical**;
+cache byte-identical (44 entries, 55,355,647 bytes, 77 files);
+`app.fonts.allFonts` **1198 names at both ends**. After Effects pid unchanged,
+0 `aerender`, nothing opened, nothing saved.
+
+### `npm run census:comp` reads a built comp back out of After Effects
+
+`-- --aep <abs path> [--out <path>] [--mode <id>]` — free, local, **strictly
+read-only**. `tools/ae/census.jsx` reads, `core/src/comp-census.ts` shapes and
+derives every count, `tools/ae/census-cli.ts` drives. **It opens nothing, sets
+nothing, saves nothing and never writes a font name**, and it **refuses when the
+requested `.aep` is not the project already open** rather than replacing what is
+on screen — which is also its limitation: a golden run can only census a build
+in the moments after it was made.
+
+Every count is derived from the layers in the dump, never carried: placeholder
+words surviving, comps missing a declared layer, comps carrying an **undeclared**
+text layer, comps where placeholder and shadow differ, fonts seen, and fonts
+outside the client's declared set. `PLACEHOLDER_WORDS` is the one
+hand-maintained list, because the audit does not record a layer's text.
+
+**Run against session 1's `vitasilk-full.aep`, every figure reproduces** — 84
+comps, 83/72 master layers, 71 text comps, 142 text layers, 0 placeholder words
+surviving, 0 unexpected layer sets, 0 text mismatches, the same two fonts, none
+outside `k2-syndicalia`. `reports/block-10-vitasilk-census.json`.
+
+### Every card in the corpus is measured, and nine overflow
+
+`reports/block-10-card-widths.json` — 338 rows, the corpus's 330 rendered
+subtitle cards plus its 8 keyword spans. **The text is `buildReel`'s**, not
+re-derived, wired through the same audit, manifest and
+`resolveClientIdentity` → `textStyleFor` chain the build uses. Measured with
+`tools/ae/measure-widths.jsx` on a **point-text** probe layer — no bounding box,
+so no wrap — at `sourceRectAtTime(t, false)`. **0 of 338 font read-backs differ
+from the name asked for.**
+
+**9 of 338 cards exceed `SUBTITLE_SAFE_WIDTH` 1940**: ground-truth 2, test-1 1,
+test-2 2, test-3 3, **vitasilk 1**. Widest is `محفزات الكولاجين` at **3471.20 px**
+(×0.5589 to fit); the rest run 2617.38 down to `matrddadich` at **2047.95**.
+**Seven are single words with no break point**, so the builder cannot wrap them
+and they overhang; the two that can be broken are Arabic keyword spans and the
+builder wraps them — so the corpus contradicts PROJECT_SPEC §3 ruling 3 in both
+directions at once. The widest card that fits is `شد خفيف` at **1921.01**, under
+by 19 px.
+
+**`vitasilk` overflows on `g071` `matrddadich`, 2047.95 against 1940.** So the
+reel most likely to be pinned as golden is **not** free of the shrink-to-fit
+question, and pinning it today bakes in one card that shrink-to-fit will later
+move.
+
+**The proxy has no false positive and two false negatives.**
+`OVERLONG_WORD_CHARS = 11` against the measurement: **7 agreed overflow, 329
+agreed fit, 0 false alarms, 2 missed** — `محفزات الكولاجين` and `ترطيب عميق`,
+both two-word Arabic spans whose individual words are 5–8 characters. The proxy
+is not miscalibrated; it counts characters in a **word** while the ruling is
+about a **card**, and Almarai at 455 sets far wider per character than Inter at
+343. Its 7 are exactly the transcript editor's recorded 2/0/1/3/1.
+
+**The measurement is stable: all five Block 9 keyword widths reproduce** —
+3471.1952 / 2449.7201 / 1921.0100 / 1816.0279 / 1547.3829 against a published
+3471.2 / 2449.7 / 1921.0 / 1816.0 / 1547.4, worst deviation 15 parts per
+million. **Same machine, same AE 26.0x67, same font files** — this establishes
+stability over time, not across machines, which is Block 10's actual question.
+The probe's paragraph direction is AE's default rather than the `_ar` comps'
+RTL; Block 9 measured the same way, and whether direction moves advance width
+has never been checked.
+
+**Arabic runs, over the display sequence: 42 of 338 cards, 18 runs, 12 of two or
+more.** `تحفيز طبيعي للكولاجين` — the term §6 names verbatim — is three cards,
+twice, on `test-1`. **`vitasilk` has no Arabic card at all**, so the term ruling
+cannot be exercised on it. **12 is a card-level count and does not contradict
+the recorded 13**, which is `splitArabicRuns` counting **words**; both were
+re-derived this session and both are right about different units.
+
+### Three questions answered from disk
+
+**The watermark's flat second is sourced.** `WATERMARK_DURATION_S = 1` at
+`service/src/placement/constants.ts:180`, read at `build-reel-cli.ts:512`, ruled
+by the user and recorded in `docs/PROJECT_SPEC.md` §5. It is deliberately
+shorter than the 2.035367 s asset; the beeps (last ending 0.400 s) are checked to
+finish before the mark leaves, with 0.600 s of margin.
+
+**`snapshotsAgree` says no pinned reel is behind.** `test-1`, `test-2` and
+`vitasilk` all return **true** against K2 v12 from a v10 pin, and a field-by-field
+diff finds exactly one difference on each — `version`, which the function
+deliberately excludes. Block 9 session 13's fix is doing its job.
+`ground-truth` and `test-3` have no snapshot to compare.
+
+**`chosenCandidateId` has one writer and no choice has ever been persisted.**
+`chooseCandidate` (`service/src/image-view.ts:350`), reachable only through
+`POST /images/choose` from the panel's picture editor; three other sites write
+null. Evidence rather than inference: all nine slots read null, **no plan and no
+plan backup carries `overriddenGateFailures`**, which a rejected-candidate choice
+always writes — and eight of `vitasilk`'s ten candidates are rejected. With
+nothing chosen `buildChoiceFor` takes the **first** candidate, reporting
+`first candidate, nothing chosen`; on `vitasilk` that is `img001-c1` … `img005-c1`.
+
+**A reel with no client builds in the template's own type, silently.**
+`ground-truth` and `test-3` resolve `source: 'none'` — no snapshot, `clientMode`
+null — so `textStyleFor` returns nothing. Invisible today only because the
+templates carry Inter-SemiBold and Almarai-Bold, which are K2's own faces, and
+neither reel has a keyword so the emphasis face never arises. Reported, not
+changed.
