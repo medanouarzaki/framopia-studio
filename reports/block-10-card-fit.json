@@ -1,0 +1,895 @@
+{
+  "schemaVersion": 2,
+  "session": "block-10-session-4",
+  "generatedAt": "2026-08-30T18:56:40.605830+00:00",
+  "gitHead": "e04d02a3a9db24c4a45c3968a4bd6c09a4001ead",
+  "aeVersion": "26.0x67",
+  "rule": "PROJECT_SPEC §3 ruling 3 as amended 2026-08-30: break an overlong card onto two lines at full size where it can be broken; shrink only where it cannot.",
+  "safeWidthPx": 1940,
+  "maxAttempts": 6,
+  "libraryAepSha256": "1d7553e894e10f82051131e8c1b37305fa8ad14a1d6843df4a40415d2bc4a5d8",
+  "measuredBy": "panel/jsx/text-fit.jsx framopiaFitCard, inside the real instance comp at build time",
+  "reels": {
+    "ground-truth": {
+      "aepPath": "/Volumes/T7 Shield/INSEA/Projects/framopia-studio/.local/build/ground_truth-full.aep",
+      "aepSha256": "3dce094543c35c99795a35f82ed093b1ffacab3ce5de94bde692adcc77cef3b6",
+      "fitSummary": {
+        "cards": 76,
+        "untouched": 74,
+        "broken": 0,
+        "shrunk": 2,
+        "smallestFactor": 0.74119766763848,
+        "totalAttempts": 78,
+        "maxAttempts": 2,
+        "widestAfterPx": 1939.99966090918,
+        "safeWidthPx": 1940
+      },
+      "cardsOverBound": [],
+      "acted": [
+        {
+          "reel": "ground_truth",
+          "id": "g026",
+          "kind": "subtitle",
+          "text": "polynucléotides",
+          "lines": [
+            "polynucléotides"
+          ],
+          "broken": false,
+          "templateId": "sub_pop",
+          "font": "Inter-SemiBold",
+          "baseFontSize": 343,
+          "finalFontSize": 254.2308,
+          "factor": 0.74119766763848,
+          "widthBeforePx": 2617.384765625,
+          "widthAfterPx": 1939.99947090447,
+          "lineWidthsPx": [
+            1939.99947090447
+          ],
+          "safeWidthPx": 1940,
+          "attempts": 2,
+          "measurements": [
+            {
+              "fontSize": 343,
+              "broken": false,
+              "widthPx": 2617.384765625
+            },
+            {
+              "fontSize": 254.2308,
+              "broken": false,
+              "widthPx": 1939.99947090447
+            }
+          ],
+          "fits": true
+        },
+        {
+          "reel": "ground_truth",
+          "id": "g053",
+          "kind": "subtitle",
+          "text": "mésothérapie",
+          "lines": [
+            "mésothérapie"
+          ],
+          "broken": false,
+          "templateId": "sub_pop",
+          "font": "Inter-SemiBold",
+          "baseFontSize": 343,
+          "finalFontSize": 296.7007,
+          "factor": 0.8650166180758,
+          "widthBeforePx": 2242.73095703125,
+          "widthAfterPx": 1939.99966090918,
+          "lineWidthsPx": [
+            1939.99966090918
+          ],
+          "safeWidthPx": 1940,
+          "attempts": 2,
+          "measurements": [
+            {
+              "fontSize": 343,
+              "broken": false,
+              "widthPx": 2242.73095703125
+            },
+            {
+              "fontSize": 296.7007,
+              "broken": false,
+              "widthPx": 1939.99966090918
+            }
+          ],
+          "fits": true
+        }
+      ],
+      "censusSummary": {
+        "compCount": 84,
+        "masterCount": 2,
+        "elementCompCount": 76,
+        "libraryCompCount": 6,
+        "textCompCount": 76,
+        "textLayersChecked": 152,
+        "placeholderWordsSurviving": 0,
+        "compsWithMissingDeclaredLayer": 0,
+        "compsWithUndeclaredTextLayer": 0,
+        "compsWherePlaceholderAndShadowDiffer": 0,
+        "fontsSeen": [
+          "Almarai-Bold",
+          "Inter-SemiBold"
+        ],
+        "unexpectedFonts": [],
+        "emptyTextLayers": 0,
+        "cardsAtFullSize": 74,
+        "cardsShrunk": 2,
+        "smallestSizeFactor": 0.7411976805928834,
+        "compsWherePlaceholderAndShadowSizesDiffer": 0,
+        "textCompsComparedAgainstPlan": 76,
+        "textMismatchesAgainstPlan": 0
+      },
+      "sizeGroups": [
+        {
+          "templateId": "sub_pop",
+          "font": "Inter-SemiBold",
+          "fullSizePx": 343,
+          "cards": 70,
+          "shrunkCards": 2,
+          "smallestFactor": 0.7411976805928834
+        },
+        {
+          "templateId": "sub_pop_ar",
+          "font": "Almarai-Bold",
+          "fullSizePx": 367,
+          "cards": 6,
+          "shrunkCards": 0,
+          "smallestFactor": 1
+        }
+      ],
+      "faceAndColour": {
+        "placeholder|Inter-SemiBold|#F4F4F4": 70,
+        "shadow|Inter-SemiBold|#820000": 70,
+        "placeholder|Almarai-Bold|#F4F4F4": 6,
+        "shadow|Almarai-Bold|#820000": 6
+      },
+      "clientOnPlan": null,
+      "clientSnapshotOnPlan": null
+    },
+    "test-1": {
+      "aepPath": "/Volumes/T7 Shield/INSEA/Projects/framopia-studio/.local/build/test_1-full.aep",
+      "aepSha256": "46851027bb383c07892cff2251612d3e7e84954f0906b03ad566e2f79278fb6b",
+      "fitSummary": {
+        "cards": 66,
+        "untouched": 65,
+        "broken": 1,
+        "shrunk": 0,
+        "smallestFactor": null,
+        "totalAttempts": 67,
+        "maxAttempts": 2,
+        "widestAfterPx": 1815.90501651913,
+        "safeWidthPx": 1940
+      },
+      "cardsOverBound": [],
+      "acted": [
+        {
+          "reel": "test_1",
+          "id": "k002",
+          "kind": "keyword",
+          "text": "محفزات\rالكولاجين",
+          "lines": [
+            "محفزات",
+            "الكولاجين"
+          ],
+          "broken": true,
+          "templateId": "kw_slam_ar",
+          "font": "Almarai-Bold",
+          "baseFontSize": 455,
+          "finalFontSize": 455,
+          "factor": 1,
+          "widthBeforePx": 3471.19521904737,
+          "widthAfterPx": 1815.90501651913,
+          "lineWidthsPx": [
+            1508.77997338772,
+            1815.90501651913
+          ],
+          "safeWidthPx": 1940,
+          "attempts": 2,
+          "measurements": [
+            {
+              "fontSize": 455,
+              "broken": false,
+              "widthPx": 3471.19521904737
+            },
+            {
+              "fontSize": 455,
+              "broken": true,
+              "widthPx": 1815.90501651913
+            }
+          ],
+          "fits": true
+        }
+      ],
+      "censusSummary": {
+        "compCount": 78,
+        "masterCount": 2,
+        "elementCompCount": 70,
+        "libraryCompCount": 6,
+        "textCompCount": 66,
+        "textLayersChecked": 132,
+        "placeholderWordsSurviving": 0,
+        "compsWithMissingDeclaredLayer": 0,
+        "compsWithUndeclaredTextLayer": 0,
+        "compsWherePlaceholderAndShadowDiffer": 0,
+        "fontsSeen": [
+          "Almarai-Bold",
+          "Inter-SemiBold"
+        ],
+        "unexpectedFonts": [],
+        "emptyTextLayers": 0,
+        "cardsAtFullSize": 66,
+        "cardsShrunk": 0,
+        "smallestSizeFactor": null,
+        "compsWherePlaceholderAndShadowSizesDiffer": 0,
+        "textCompsComparedAgainstPlan": 66,
+        "textMismatchesAgainstPlan": 0
+      },
+      "sizeGroups": [
+        {
+          "templateId": "kw_slam_ar",
+          "font": "Almarai-Bold",
+          "fullSizePx": 455,
+          "cards": 2,
+          "shrunkCards": 0,
+          "smallestFactor": 1
+        },
+        {
+          "templateId": "sub_pop",
+          "font": "Inter-SemiBold",
+          "fullSizePx": 343,
+          "cards": 48,
+          "shrunkCards": 0,
+          "smallestFactor": 1
+        },
+        {
+          "templateId": "sub_pop_ar",
+          "font": "Almarai-Bold",
+          "fullSizePx": 367,
+          "cards": 16,
+          "shrunkCards": 0,
+          "smallestFactor": 1
+        }
+      ],
+      "faceAndColour": {
+        "placeholder|Inter-SemiBold|#F8F6F2": 48,
+        "shadow|Inter-SemiBold|#820000": 48,
+        "placeholder|Almarai-Bold|#F8F6F2": 16,
+        "shadow|Almarai-Bold|#820000": 18,
+        "placeholder|Almarai-Bold|#C9A96E": 2
+      },
+      "clientOnPlan": {
+        "id": "k2-syndicalia",
+        "version": 5,
+        "path": "/Volumes/T7 Shield/INSEA/Projects/framopia-studio/modes/k2-syndicalia.json"
+      },
+      "clientSnapshotOnPlan": "k2-syndicalia"
+    },
+    "test-2": {
+      "aepPath": "/Volumes/T7 Shield/INSEA/Projects/framopia-studio/.local/build/test_2-full.aep",
+      "aepSha256": "1e87e2229f1f63ef4610886964d1e812b47fcb1bb29aed85fcdb637cffff7854",
+      "fitSummary": {
+        "cards": 67,
+        "untouched": 65,
+        "broken": 1,
+        "shrunk": 1,
+        "smallestFactor": 0.91222536443149,
+        "totalAttempts": 69,
+        "maxAttempts": 2,
+        "widestAfterPx": 1939.99967813492,
+        "safeWidthPx": 1940
+      },
+      "cardsOverBound": [],
+      "acted": [
+        {
+          "reel": "test_2",
+          "id": "g026",
+          "kind": "subtitle",
+          "text": "hyaluronique",
+          "lines": [
+            "hyaluronique"
+          ],
+          "broken": false,
+          "templateId": "sub_pop",
+          "font": "Inter-SemiBold",
+          "baseFontSize": 343,
+          "finalFontSize": 312.8933,
+          "factor": 0.91222536443149,
+          "widthBeforePx": 2126.6669921875,
+          "widthAfterPx": 1939.99967813492,
+          "lineWidthsPx": [
+            1939.99967813492
+          ],
+          "safeWidthPx": 1940,
+          "attempts": 2,
+          "measurements": [
+            {
+              "fontSize": 343,
+              "broken": false,
+              "widthPx": 2126.6669921875
+            },
+            {
+              "fontSize": 312.8933,
+              "broken": false,
+              "widthPx": 1939.99967813492
+            }
+          ],
+          "fits": true
+        },
+        {
+          "reel": "test_2",
+          "id": "k002",
+          "kind": "keyword",
+          "text": "ترطيب\rعميق",
+          "lines": [
+            "ترطيب",
+            "عميق"
+          ],
+          "broken": true,
+          "templateId": "kw_slam_ar",
+          "font": "Almarai-Bold",
+          "baseFontSize": 455,
+          "finalFontSize": 455,
+          "factor": 1,
+          "widthBeforePx": 2449.72006195784,
+          "widthAfterPx": 1295.38503998518,
+          "lineWidthsPx": [
+            1295.38503998518,
+            1020.56499183178
+          ],
+          "safeWidthPx": 1940,
+          "attempts": 2,
+          "measurements": [
+            {
+              "fontSize": 455,
+              "broken": false,
+              "widthPx": 2449.72006195784
+            },
+            {
+              "fontSize": 455,
+              "broken": true,
+              "widthPx": 1295.38503998518
+            }
+          ],
+          "fits": true
+        }
+      ],
+      "censusSummary": {
+        "compCount": 75,
+        "masterCount": 2,
+        "elementCompCount": 67,
+        "libraryCompCount": 6,
+        "textCompCount": 67,
+        "textLayersChecked": 134,
+        "placeholderWordsSurviving": 0,
+        "compsWithMissingDeclaredLayer": 0,
+        "compsWithUndeclaredTextLayer": 0,
+        "compsWherePlaceholderAndShadowDiffer": 0,
+        "fontsSeen": [
+          "Almarai-Bold",
+          "CormorantGaramondItalic-SemiBoldItalic",
+          "Inter-SemiBold"
+        ],
+        "unexpectedFonts": [],
+        "emptyTextLayers": 0,
+        "cardsAtFullSize": 66,
+        "cardsShrunk": 1,
+        "smallestSizeFactor": 0.9122253951803936,
+        "compsWherePlaceholderAndShadowSizesDiffer": 0,
+        "textCompsComparedAgainstPlan": 67,
+        "textMismatchesAgainstPlan": 0
+      },
+      "sizeGroups": [
+        {
+          "templateId": "kw_slam",
+          "font": "CormorantGaramondItalic-SemiBoldItalic",
+          "fullSizePx": 494.742004394531,
+          "cards": 1,
+          "shrunkCards": 0,
+          "smallestFactor": 1
+        },
+        {
+          "templateId": "kw_slam_ar",
+          "font": "Almarai-Bold",
+          "fullSizePx": 455,
+          "cards": 2,
+          "shrunkCards": 0,
+          "smallestFactor": 1
+        },
+        {
+          "templateId": "sub_pop",
+          "font": "Inter-SemiBold",
+          "fullSizePx": 343,
+          "cards": 59,
+          "shrunkCards": 1,
+          "smallestFactor": 0.9122253951803936
+        },
+        {
+          "templateId": "sub_pop_ar",
+          "font": "Almarai-Bold",
+          "fullSizePx": 367,
+          "cards": 5,
+          "shrunkCards": 0,
+          "smallestFactor": 1
+        }
+      ],
+      "faceAndColour": {
+        "placeholder|Inter-SemiBold|#F8F6F2": 59,
+        "shadow|Inter-SemiBold|#820000": 59,
+        "placeholder|Almarai-Bold|#F8F6F2": 5,
+        "shadow|Almarai-Bold|#820000": 7,
+        "placeholder|CormorantGaramondItalic-SemiBoldItalic|#C9A96E": 1,
+        "shadow|CormorantGaramondItalic-SemiBoldItalic|#820000": 1,
+        "placeholder|Almarai-Bold|#C9A96E": 2
+      },
+      "clientOnPlan": {
+        "id": "k2-syndicalia",
+        "version": 5,
+        "path": "/Volumes/T7 Shield/INSEA/Projects/framopia-studio/modes/k2-syndicalia.json"
+      },
+      "clientSnapshotOnPlan": "k2-syndicalia"
+    },
+    "test-3": {
+      "aepPath": "/Volumes/T7 Shield/INSEA/Projects/framopia-studio/.local/build/test_3-full.aep",
+      "aepSha256": "3d1d3857adbc791e9623501f0d4444283faa7e7b0408920a6b55d187b40eb6ca",
+      "fitSummary": {
+        "cards": 58,
+        "untouched": 55,
+        "broken": 0,
+        "shrunk": 3,
+        "smallestFactor": 0.8650166180758,
+        "totalAttempts": 61,
+        "maxAttempts": 2,
+        "widestAfterPx": 1939.99967813492,
+        "safeWidthPx": 1940
+      },
+      "cardsOverBound": [],
+      "acted": [
+        {
+          "reel": "test_3",
+          "id": "g007",
+          "kind": "subtitle",
+          "text": "mésothérapie",
+          "lines": [
+            "mésothérapie"
+          ],
+          "broken": false,
+          "templateId": "sub_pop",
+          "font": "Inter-SemiBold",
+          "baseFontSize": 343,
+          "finalFontSize": 296.7007,
+          "factor": 0.8650166180758,
+          "widthBeforePx": 2242.73095703125,
+          "widthAfterPx": 1939.99966090918,
+          "lineWidthsPx": [
+            1939.99966090918
+          ],
+          "safeWidthPx": 1940,
+          "attempts": 2,
+          "measurements": [
+            {
+              "fontSize": 343,
+              "broken": false,
+              "widthPx": 2242.73095703125
+            },
+            {
+              "fontSize": 296.7007,
+              "broken": false,
+              "widthPx": 1939.99966090918
+            }
+          ],
+          "fits": true
+        },
+        {
+          "reel": "test_3",
+          "id": "g019",
+          "kind": "subtitle",
+          "text": "mésothérapie",
+          "lines": [
+            "mésothérapie"
+          ],
+          "broken": false,
+          "templateId": "sub_pop",
+          "font": "Inter-SemiBold",
+          "baseFontSize": 343,
+          "finalFontSize": 296.7007,
+          "factor": 0.8650166180758,
+          "widthBeforePx": 2242.73095703125,
+          "widthAfterPx": 1939.99966090918,
+          "lineWidthsPx": [
+            1939.99966090918
+          ],
+          "safeWidthPx": 1940,
+          "attempts": 2,
+          "measurements": [
+            {
+              "fontSize": 343,
+              "broken": false,
+              "widthPx": 2242.73095703125
+            },
+            {
+              "fontSize": 296.7007,
+              "broken": false,
+              "widthPx": 1939.99966090918
+            }
+          ],
+          "fits": true
+        },
+        {
+          "reel": "test_3",
+          "id": "g023",
+          "kind": "subtitle",
+          "text": "hyaluronique",
+          "lines": [
+            "hyaluronique"
+          ],
+          "broken": false,
+          "templateId": "sub_pop",
+          "font": "Inter-SemiBold",
+          "baseFontSize": 343,
+          "finalFontSize": 312.8933,
+          "factor": 0.91222536443149,
+          "widthBeforePx": 2126.6669921875,
+          "widthAfterPx": 1939.99967813492,
+          "lineWidthsPx": [
+            1939.99967813492
+          ],
+          "safeWidthPx": 1940,
+          "attempts": 2,
+          "measurements": [
+            {
+              "fontSize": 343,
+              "broken": false,
+              "widthPx": 2126.6669921875
+            },
+            {
+              "fontSize": 312.8933,
+              "broken": false,
+              "widthPx": 1939.99967813492
+            }
+          ],
+          "fits": true
+        }
+      ],
+      "censusSummary": {
+        "compCount": 66,
+        "masterCount": 2,
+        "elementCompCount": 58,
+        "libraryCompCount": 6,
+        "textCompCount": 58,
+        "textLayersChecked": 116,
+        "placeholderWordsSurviving": 0,
+        "compsWithMissingDeclaredLayer": 0,
+        "compsWithUndeclaredTextLayer": 0,
+        "compsWherePlaceholderAndShadowDiffer": 0,
+        "fontsSeen": [
+          "Almarai-Bold",
+          "Inter-SemiBold"
+        ],
+        "unexpectedFonts": [],
+        "emptyTextLayers": 0,
+        "cardsAtFullSize": 55,
+        "cardsShrunk": 3,
+        "smallestSizeFactor": 0.8650166592166998,
+        "compsWherePlaceholderAndShadowSizesDiffer": 0,
+        "textCompsComparedAgainstPlan": 58,
+        "textMismatchesAgainstPlan": 0
+      },
+      "sizeGroups": [
+        {
+          "templateId": "sub_pop",
+          "font": "Inter-SemiBold",
+          "fullSizePx": 343,
+          "cards": 47,
+          "shrunkCards": 3,
+          "smallestFactor": 0.8650166592166998
+        },
+        {
+          "templateId": "sub_pop_ar",
+          "font": "Almarai-Bold",
+          "fullSizePx": 367,
+          "cards": 11,
+          "shrunkCards": 0,
+          "smallestFactor": 1
+        }
+      ],
+      "faceAndColour": {
+        "placeholder|Inter-SemiBold|#F4F4F4": 47,
+        "shadow|Inter-SemiBold|#820000": 47,
+        "placeholder|Almarai-Bold|#F4F4F4": 11,
+        "shadow|Almarai-Bold|#820000": 11
+      },
+      "clientOnPlan": null,
+      "clientSnapshotOnPlan": null
+    },
+    "vitasilk": {
+      "aepPath": "/Volumes/T7 Shield/INSEA/Projects/framopia-studio/.local/build/vitasilk-full.aep",
+      "aepSha256": "05d4445ead6e477e261f0e710b9bc758fd5d5e8e84bb25c94221b9726f98a33f",
+      "fitSummary": {
+        "cards": 71,
+        "untouched": 70,
+        "broken": 0,
+        "shrunk": 1,
+        "smallestFactor": 0.94728804664723,
+        "totalAttempts": 72,
+        "maxAttempts": 2,
+        "widestAfterPx": 1939.99966514111,
+        "safeWidthPx": 1940
+      },
+      "cardsOverBound": [],
+      "acted": [
+        {
+          "reel": "vitasilk",
+          "id": "g071",
+          "kind": "subtitle",
+          "text": "matrddadich",
+          "lines": [
+            "matrddadich"
+          ],
+          "broken": false,
+          "templateId": "sub_pop",
+          "font": "Inter-SemiBold",
+          "baseFontSize": 343,
+          "finalFontSize": 324.9198,
+          "factor": 0.94728804664723,
+          "widthBeforePx": 2047.951171875,
+          "widthAfterPx": 1939.99966514111,
+          "lineWidthsPx": [
+            1939.99966514111
+          ],
+          "safeWidthPx": 1940,
+          "attempts": 2,
+          "measurements": [
+            {
+              "fontSize": 343,
+              "broken": false,
+              "widthPx": 2047.951171875
+            },
+            {
+              "fontSize": 324.9198,
+              "broken": false,
+              "widthPx": 1939.99966514111
+            }
+          ],
+          "fits": true
+        }
+      ],
+      "censusSummary": {
+        "compCount": 84,
+        "masterCount": 2,
+        "elementCompCount": 76,
+        "libraryCompCount": 6,
+        "textCompCount": 71,
+        "textLayersChecked": 142,
+        "placeholderWordsSurviving": 0,
+        "compsWithMissingDeclaredLayer": 0,
+        "compsWithUndeclaredTextLayer": 0,
+        "compsWherePlaceholderAndShadowDiffer": 0,
+        "fontsSeen": [
+          "CormorantGaramondItalic-SemiBoldItalic",
+          "Inter-SemiBold"
+        ],
+        "unexpectedFonts": [],
+        "emptyTextLayers": 0,
+        "cardsAtFullSize": 70,
+        "cardsShrunk": 1,
+        "smallestSizeFactor": 0.9472880460778076,
+        "compsWherePlaceholderAndShadowSizesDiffer": 0,
+        "textCompsComparedAgainstPlan": 71,
+        "textMismatchesAgainstPlan": 0
+      },
+      "sizeGroups": [
+        {
+          "templateId": "kw_slam",
+          "font": "CormorantGaramondItalic-SemiBoldItalic",
+          "fullSizePx": 494.742004394531,
+          "cards": 3,
+          "shrunkCards": 0,
+          "smallestFactor": 1
+        },
+        {
+          "templateId": "sub_pop",
+          "font": "Inter-SemiBold",
+          "fullSizePx": 343,
+          "cards": 68,
+          "shrunkCards": 1,
+          "smallestFactor": 0.9472880460778076
+        }
+      ],
+      "faceAndColour": {
+        "placeholder|Inter-SemiBold|#F8F6F2": 68,
+        "shadow|Inter-SemiBold|#820000": 68,
+        "placeholder|CormorantGaramondItalic-SemiBoldItalic|#C9A96E": 3,
+        "shadow|CormorantGaramondItalic-SemiBoldItalic|#820000": 3
+      },
+      "clientOnPlan": {
+        "id": "k2-syndicalia",
+        "version": 5,
+        "path": "/Volumes/T7 Shield/INSEA/Projects/framopia-studio/modes/k2-syndicalia.json"
+      },
+      "clientSnapshotOnPlan": "k2-syndicalia"
+    }
+  },
+  "totals": {
+    "cards": 338,
+    "untouched": 329,
+    "broken": 2,
+    "shrunk": 7,
+    "over": 0,
+    "placeholderWordsSurviving": 0,
+    "compsWithMissingDeclaredLayer": 0,
+    "compsWithUndeclaredTextLayer": 0,
+    "compsWherePlaceholderAndShadowDiffer": 0,
+    "compsWherePlaceholderAndShadowSizesDiffer": 0,
+    "textMismatchesAgainstPlan": 0,
+    "textCompsComparedAgainstPlan": 338
+  },
+  "againstSession2Prediction": {
+    "session2OverflowingCards": 9,
+    "actedOnThisSession": 9,
+    "broken": [
+      {
+        "reel": "test-1",
+        "id": "k002",
+        "text": "محفزات\rالكولاجين",
+        "lines": [
+          "محفزات",
+          "الكولاجين"
+        ],
+        "font": "Almarai-Bold",
+        "fontSize": 455,
+        "lineWidthsPx": [
+          1508.77997338772,
+          1815.90501651913
+        ],
+        "widestPx": 1815.90501651913
+      },
+      {
+        "reel": "test-2",
+        "id": "k002",
+        "text": "ترطيب\rعميق",
+        "lines": [
+          "ترطيب",
+          "عميق"
+        ],
+        "font": "Almarai-Bold",
+        "fontSize": 455,
+        "lineWidthsPx": [
+          1295.38503998518,
+          1020.56499183178
+        ],
+        "widestPx": 1295.38503998518
+      }
+    ],
+    "shrunk": [
+      {
+        "reel": "ground-truth",
+        "id": "g026",
+        "text": "polynucléotides",
+        "font": "Inter-SemiBold",
+        "baseFontSize": 343,
+        "finalFontSize": 254.2308,
+        "factor": 0.74119766763848,
+        "widthBeforePx": 2617.384765625,
+        "widthAfterPx": 1939.99947090447,
+        "attempts": 2
+      },
+      {
+        "reel": "ground-truth",
+        "id": "g053",
+        "text": "mésothérapie",
+        "font": "Inter-SemiBold",
+        "baseFontSize": 343,
+        "finalFontSize": 296.7007,
+        "factor": 0.8650166180758,
+        "widthBeforePx": 2242.73095703125,
+        "widthAfterPx": 1939.99966090918,
+        "attempts": 2
+      },
+      {
+        "reel": "test-2",
+        "id": "g026",
+        "text": "hyaluronique",
+        "font": "Inter-SemiBold",
+        "baseFontSize": 343,
+        "finalFontSize": 312.8933,
+        "factor": 0.91222536443149,
+        "widthBeforePx": 2126.6669921875,
+        "widthAfterPx": 1939.99967813492,
+        "attempts": 2
+      },
+      {
+        "reel": "test-3",
+        "id": "g007",
+        "text": "mésothérapie",
+        "font": "Inter-SemiBold",
+        "baseFontSize": 343,
+        "finalFontSize": 296.7007,
+        "factor": 0.8650166180758,
+        "widthBeforePx": 2242.73095703125,
+        "widthAfterPx": 1939.99966090918,
+        "attempts": 2
+      },
+      {
+        "reel": "test-3",
+        "id": "g019",
+        "text": "mésothérapie",
+        "font": "Inter-SemiBold",
+        "baseFontSize": 343,
+        "finalFontSize": 296.7007,
+        "factor": 0.8650166180758,
+        "widthBeforePx": 2242.73095703125,
+        "widthAfterPx": 1939.99966090918,
+        "attempts": 2
+      },
+      {
+        "reel": "test-3",
+        "id": "g023",
+        "text": "hyaluronique",
+        "font": "Inter-SemiBold",
+        "baseFontSize": 343,
+        "finalFontSize": 312.8933,
+        "factor": 0.91222536443149,
+        "widthBeforePx": 2126.6669921875,
+        "widthAfterPx": 1939.99967813492,
+        "attempts": 2
+      },
+      {
+        "reel": "vitasilk",
+        "id": "g071",
+        "text": "matrddadich",
+        "font": "Inter-SemiBold",
+        "baseFontSize": 343,
+        "finalFontSize": 324.9198,
+        "factor": 0.94728804664723,
+        "widthBeforePx": 2047.951171875,
+        "widthAfterPx": 1939.99966514111,
+        "attempts": 2
+      }
+    ]
+  },
+  "imageFramingInvestigation": {
+    "decidedAt": "service/src/analysis/slot-select.ts drawVariation (line 82) and composePrompt (line 152); called from planSlots (line 240) and from service/src/analysis/recompose.ts line 43. The instruction is fixed into the slot's stored `prompt` string at compose time; nothing at generation time re-reads the axes.",
+    "storedOn": "ImageSlot.prompt on the Edit Plan; ImageSlot.variation is null on every slot in the corpus, so the drawn values survive only inside the composed string.",
+    "amendmentRemovedWideAt": "modes/k2-syndicalia.json version 12, Block 9 session 13",
+    "test1": {
+      "promptModeVersion": 11,
+      "analysisConfig": "keywords-prompt-v3-k2-syndicalia-v5",
+      "imagesCompletedAt": "2026-08-30T02:20:16.411Z",
+      "imagesCostUsd": 1.22066,
+      "slotTheUserIsLookingAt": "img002, 4.599-6.759s",
+      "storedFraming": "wide, the whole subject with air around it",
+      "storedIdea": "A female doctor in a medical coat holding a small vial.",
+      "regenerationRewroteIdeas": false,
+      "note": "Block 9 session 12 regenerated the eight candidates from prompts recomposed at mode v11. v11 still offered `wide`; the amendment that removed it is v12, which landed the session after."
+    },
+    "vitasilk": {
+      "promptModeVersion": 5,
+      "analysisConfig": "keywords-prompt-v3-k2-syndicalia-v5",
+      "imagesCompletedAt": "2026-08-25T18:37:04.371Z",
+      "imagesCostUsd": 0,
+      "slotCarryingWide": "img004, 16.94s",
+      "storedFraming": "wide, the whole subject with air around it",
+      "storedIdea": "A woman looking at a mirror touching her hair with a thoughtful expression",
+      "note": "Composed at mode v5 in Block 4 and never recomposed since."
+    },
+    "whatARecomposeWouldGive": {
+      "test-1": {
+        "img001": "medium",
+        "img002": "close",
+        "img003": "macro",
+        "img004": "close"
+      },
+      "vitasilk": {
+        "img001": "macro",
+        "img002": "medium",
+        "img003": "close",
+        "img004": "medium",
+        "img005": "close"
+      },
+      "note": "Computed read-only through drawVariation against mode v12; nothing was written. No slot draws `wide`, because v12 does not offer it."
+    },
+    "spendingConsequence": "Neither change can be exercised by any reel on disk without spending. Recomposing is free but only rewrites the prompt string; the generated pictures are cached under the OLD composed prompt, so a recomposed slot misses its cache and its existing images are stranded — exercising the framing change means regenerating. The literal-versus-atmospheric change lives in ACTIVE_SLOT_PROMPT_VERSION 2 and governs which IDEAS are written, so it can only be exercised by a reel whose slot stage runs fresh. ground-truth and test-3 are the only reels with no slots planned at all, and each costs about $2.35."
+  }
+}
