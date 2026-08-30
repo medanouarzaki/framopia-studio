@@ -259,3 +259,120 @@ describe('shapeCensus', () => {
     expect(c.schemaVersion).toBe(1);
   });
 });
+
+describe('shrink-to-fit, seen from the census', () => {
+  function card(id: string, size: number, shadowSize = size, font = 'Inter-SemiBold') {
+    return textComp(`${id}__sub_pop`, [
+      textLayer('TXT_MAIN', id, { fontSize: size, font }),
+      textLayer('TXT_MAIN_SHADOW', id, { index: 2, fontSize: shadowSize, font }),
+    ]);
+  }
+
+  it('records the placeholder’s size on the comp', () => {
+    const c = shape([card('g001', 343)]);
+    expect(c.textComps[0]?.fontSizePx).toBe(343);
+  });
+
+  it('derives the full size from the dump and counts what is below it', () => {
+    const c = shape([card('g001', 343), card('g002', 343), card('g071', 324.9)]);
+    expect(c.summary.cardsAtFullSize).toBe(2);
+    expect(c.summary.cardsShrunk).toBe(1);
+    expect(c.summary.smallestSizeFactor).toBeCloseTo(324.9 / 343, 9);
+    expect(c.sizeGroups).toEqual([
+      {
+        templateId: 'sub_pop',
+        font: 'Inter-SemiBold',
+        fullSizePx: 343,
+        cards: 3,
+        shrunkCards: 1,
+        smallestFactor: 324.9 / 343,
+      },
+    ]);
+  });
+
+  /*
+   * A Latin keyword is set at the emphasis ratio rather than at the template's
+   * own size, so one authored number per template would read every keyword as
+   * enlarged. Grouping by face keeps the two apart.
+   */
+  it('keeps each face’s own full size', () => {
+    const c = shape([
+      card('g001', 343),
+      textComp('k001__kw_slam', [
+        textLayer('TXT_MAIN', 'filler glow', {
+          fontSize: 494.742,
+          font: 'CormorantGaramondItalic-SemiBoldItalic',
+        }),
+      ]),
+    ], {
+      templates: [
+        template(),
+        template({ id: 'kw_slam', type: 'keyword', shadowLayers: [] }),
+      ],
+    });
+    expect(c.summary.cardsShrunk).toBe(0);
+    expect(c.sizeGroups.map((g) => g.fullSizePx).sort((a, b) => a - b)).toEqual([343, 494.742]);
+  });
+
+  it('reports nothing shrunk when a set is uniform', () => {
+    const c = shape([card('g001', 343), card('g002', 343)]);
+    expect(c.summary.cardsShrunk).toBe(0);
+    expect(c.summary.smallestSizeFactor).toBeNull();
+  });
+
+  it('catches a shadow left at full size behind a shrunk word', () => {
+    const c = shape([card('g001', 343), card('g071', 324.9, 343)]);
+    expect(c.textComps[1]?.placeholderShadowSameSize).toBe(false);
+    expect(c.summary.compsWherePlaceholderAndShadowSizesDiffer).toBe(1);
+  });
+
+  it('is satisfied when both layers moved together', () => {
+    const c = shape([card('g001', 343), card('g071', 324.9, 324.9)]);
+    expect(c.summary.compsWherePlaceholderAndShadowSizesDiffer).toBe(0);
+  });
+});
+
+describe('the plan comparison', () => {
+  const comps = [
+    textComp('g001__sub_pop', [
+      textLayer('TXT_MAIN', 'dernière'),
+      textLayer('TXT_MAIN_SHADOW', 'dernière', { index: 2 }),
+    ]),
+  ];
+
+  it('is left unmade rather than passed when no plan is supplied', () => {
+    const c = shape(comps);
+    expect(c.summary.textCompsComparedAgainstPlan).toBeNull();
+    expect(c.summary.textMismatchesAgainstPlan).toBeNull();
+    expect(c.textComps[0]?.textMatchesPlan).toBeNull();
+  });
+
+  it('passes a card that reads what the plan says', () => {
+    const c = shape(comps, { expectedTexts: { g001: 'dernière' } });
+    expect(c.summary.textCompsComparedAgainstPlan).toBe(1);
+    expect(c.summary.textMismatchesAgainstPlan).toBe(0);
+    expect(c.textComps[0]?.textMatchesPlan).toBe(true);
+  });
+
+  it('names a card that does not', () => {
+    const c = shape(comps, { expectedTexts: { g001: 'génération' } });
+    expect(c.summary.textMismatchesAgainstPlan).toBe(1);
+    expect(c.textComps[0]?.expectedText).toBe('génération');
+    expect(c.textComps[0]?.textMatchesPlan).toBe(false);
+  });
+
+  /* A break character is not a disagreement about which words a card carries. */
+  it('normalises a break and repeated spaces before comparing', () => {
+    const wrapped = [
+      textComp('k001__sub_pop', [textLayer('TXT_MAIN', 'filler\rglow')]),
+    ];
+    const c = shape(wrapped, { expectedTexts: { k001: 'filler  glow' } });
+    expect(c.textComps[0]?.textMatchesPlan).toBe(true);
+  });
+
+  it('leaves a card the plan says nothing about uncompared', () => {
+    const c = shape(comps, { expectedTexts: { g999: 'x' } });
+    expect(c.summary.textCompsComparedAgainstPlan).toBe(0);
+    expect(c.summary.textMismatchesAgainstPlan).toBe(0);
+  });
+});

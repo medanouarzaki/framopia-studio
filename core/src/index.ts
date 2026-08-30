@@ -313,6 +313,8 @@ export {
   CompCensusError,
   ELEMENT_COMP_SEPARATOR,
   MASTER_COMP_PREFIX,
+  deriveSizeGroups,
+  normaliseCardText,
   parseElementComp,
   shapeCensus,
   type CompCensus,
@@ -325,6 +327,7 @@ export {
   type RawComp,
   type RawLayer,
   type ShapeCensusInputs,
+  type SizeGroup,
   type TextCompCensus,
 } from './comp-census.js';
 

@@ -119,6 +119,42 @@ export interface TextCompCensus {
   }[];
   /** Placeholder and shadow carrying different strings is a filling defect. */
   placeholderShadowAgree: boolean | null;
+  /**
+   * A shrunk card whose shadow stayed at full size draws a larger word behind a
+   * smaller one, and both layers carry the same string so nothing else shows it.
+   */
+  placeholderShadowSameSize: boolean | null;
+  /** The placeholder's size, which is what a shrink moves. */
+  fontSizePx: number | null;
+  /**
+   * What the Edit Plan says this element reads.
+   *
+   * Null when the caller supplied no plan. Comparing it here rather than in a
+   * session's own script is the point: whatever asserts a property is emitted
+   * by the thing that verifies it, and this comparison had been done by hand in
+   * two consecutive sessions.
+   */
+  expectedText: string | null;
+  textMatchesPlan: boolean | null;
+}
+
+/**
+ * One face at one authored size, and how far below it any card has been taken.
+ *
+ * The full size is **derived from the dump**, as the largest size seen among
+ * cards sharing a template and a face — not from the manifest, which does not
+ * know that a Latin keyword is set at the emphasis ratio rather than at the
+ * template's own 425. The limitation is the mirror of that: a group in which
+ * *every* card was shrunk would report none, because there would be nothing
+ * unshrunk left to measure against.
+ */
+export interface SizeGroup {
+  templateId: string;
+  font: string | null;
+  fullSizePx: number;
+  cards: number;
+  shrunkCards: number;
+  smallestFactor: number;
 }
 
 export type MasterLayerRole = 'footage' | 'watermark' | 'sfx' | 'image' | 'text' | 'unknown';
@@ -167,6 +203,15 @@ export interface CompCensusSummary {
   /** Fonts on a text layer that the caller did not list as expected. */
   unexpectedFonts: string[];
   emptyTextLayers: number;
+  /** Cards at the largest size seen for their template and face. */
+  cardsAtFullSize: number;
+  cardsShrunk: number;
+  /** Null when nothing was shrunk. */
+  smallestSizeFactor: number | null;
+  compsWherePlaceholderAndShadowSizesDiffer: number;
+  /** Null when no plan was supplied to compare against. */
+  textCompsComparedAgainstPlan: number | null;
+  textMismatchesAgainstPlan: number | null;
 }
 
 export interface CompCensus {
@@ -182,6 +227,7 @@ export interface CompCensus {
   fontNameCount: number | null;
   masters: MasterCensus[];
   textComps: TextCompCensus[];
+  sizeGroups: SizeGroup[];
   summary: CompCensusSummary;
 }
 
@@ -200,6 +246,11 @@ export interface ShapeCensusInputs {
   placeholderWords: string[];
   /** PostScript names this client declares. A font outside it is reported. */
   expectedFonts?: string[];
+  /**
+   * What each element should read, keyed by element id, resolved the way the
+   * build resolves it. Absent leaves the comparison unmade rather than passed.
+   */
+  expectedTexts?: Record<string, string>;
   /** How a master comp is recognised. `build-reel.jsx` names them `master_*`. */
   masterPrefix?: string;
 }
@@ -336,12 +387,30 @@ export function shapeCensus(inputs: ShapeCensusInputs): CompCensus {
       });
     }
 
-    const placeholderTexts = layers.filter((l) => l.role === 'placeholder').map((l) => l.text);
-    const shadowTexts = layers.filter((l) => l.role === 'shadow').map((l) => l.text);
+    const placeholders = layers.filter((l) => l.role === 'placeholder');
+    const shadows = layers.filter((l) => l.role === 'shadow');
+    const placeholderTexts = placeholders.map((l) => l.text);
     const agree =
-      placeholderTexts.length === 0 || shadowTexts.length === 0
+      placeholders.length === 0 || shadows.length === 0
         ? null
-        : shadowTexts.every((t) => t === placeholderTexts[0]);
+        : shadows.every((t) => t.text === placeholderTexts[0]);
+    const mainSize = placeholders[0]?.fontSize ?? null;
+    const sameSize =
+      placeholders.length === 0 || shadows.length === 0 || mainSize === null
+        ? null
+        : shadows.every((l) => l.fontSize === mainSize);
+
+    /*
+     * Whitespace is normalised on both sides. A break character the builder no
+     * longer inserts, and the plan's own single spaces, are not a disagreement
+     * about which words a card carries.
+     */
+    const expectedText = inputs.expectedTexts?.[parsed.elementId] ?? null;
+    const got = placeholderTexts[0];
+    const matches =
+      expectedText === null || got === null || got === undefined
+        ? null
+        : normaliseCardText(got) === normaliseCardText(expectedText);
 
     textComps.push({
       compName: c.name,
@@ -352,8 +421,16 @@ export function shapeCensus(inputs: ShapeCensusInputs): CompCensus {
       undeclaredTextLayers,
       layers,
       placeholderShadowAgree: agree,
+      placeholderShadowSameSize: sameSize,
+      fontSizePx: mainSize,
+      expectedText,
+      textMatchesPlan: matches,
     });
   }
+
+  const sizeGroups = deriveSizeGroups(textComps);
+  const shrunk = countShrunkCards(textComps, sizeGroups);
+  const compared = textComps.filter((t) => t.textMatchesPlan !== null);
 
   const sortedFonts = [...fontsSeen].sort();
   const summary: CompCensusSummary = {
@@ -372,6 +449,17 @@ export function shapeCensus(inputs: ShapeCensusInputs): CompCensus {
     fontsSeen: sortedFonts,
     unexpectedFonts: expected === null ? [] : sortedFonts.filter((f) => !expected.has(f)),
     emptyTextLayers,
+    cardsAtFullSize: textComps.length - shrunk.count,
+    cardsShrunk: shrunk.count,
+    smallestSizeFactor: shrunk.smallestFactor,
+    compsWherePlaceholderAndShadowSizesDiffer: textComps.filter(
+      (t) => t.placeholderShadowSameSize === false,
+    ).length,
+    textCompsComparedAgainstPlan: inputs.expectedTexts === undefined ? null : compared.length,
+    textMismatchesAgainstPlan:
+      inputs.expectedTexts === undefined
+        ? null
+        : textComps.filter((t) => t.textMatchesPlan === false).length,
   };
 
   return {
@@ -387,6 +475,62 @@ export function shapeCensus(inputs: ShapeCensusInputs): CompCensus {
     fontNameCount: raw.fontNameCount ?? null,
     masters,
     textComps,
+    sizeGroups,
     summary,
   };
+}
+
+/** A break character is not a word, and neither is a repeated space. */
+export function normaliseCardText(text: string): string {
+  return text.replace(/[\r\n\u2028\u2029]+/gu, ' ').trim().replace(/\s+/gu, ' ');
+}
+
+function groupKey(templateId: string, font: string | null): string {
+  return `${templateId}\u0000${font ?? ''}`;
+}
+
+export function deriveSizeGroups(textComps: TextCompCensus[]): SizeGroup[] {
+  const buckets = new Map<string, { templateId: string; font: string | null; sizes: number[] }>();
+  for (const t of textComps) {
+    const main = t.layers.find((l) => l.role === 'placeholder');
+    if (main === undefined || main.fontSize === null) continue;
+    const key = groupKey(t.templateId, main.font);
+    const bucket = buckets.get(key) ?? { templateId: t.templateId, font: main.font, sizes: [] };
+    bucket.sizes.push(main.fontSize);
+    buckets.set(key, bucket);
+  }
+  const groups: SizeGroup[] = [];
+  for (const b of buckets.values()) {
+    const fullSizePx = Math.max(...b.sizes);
+    const below = b.sizes.filter((s) => s < fullSizePx);
+    groups.push({
+      templateId: b.templateId,
+      font: b.font,
+      fullSizePx,
+      cards: b.sizes.length,
+      shrunkCards: below.length,
+      smallestFactor: below.length === 0 ? 1 : Math.min(...below) / fullSizePx,
+    });
+  }
+  groups.sort((a, b) => a.templateId.localeCompare(b.templateId));
+  return groups;
+}
+
+function countShrunkCards(
+  textComps: TextCompCensus[],
+  groups: SizeGroup[],
+): { count: number; smallestFactor: number | null } {
+  const full = new Map(groups.map((g) => [groupKey(g.templateId, g.font), g.fullSizePx]));
+  let count = 0;
+  let smallest: number | null = null;
+  for (const t of textComps) {
+    const main = t.layers.find((l) => l.role === 'placeholder');
+    if (main === undefined || main.fontSize === null) continue;
+    const fullSize = full.get(groupKey(t.templateId, main.font));
+    if (fullSize === undefined || main.fontSize >= fullSize) continue;
+    count += 1;
+    const factor = main.fontSize / fullSize;
+    smallest = smallest === null ? factor : Math.min(smallest, factor);
+  }
+  return { count, smallestFactor: smallest };
 }
