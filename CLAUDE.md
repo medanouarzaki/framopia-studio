@@ -8093,3 +8093,107 @@ the change **is live and will be sent**. What is false is the doc comment above
 the constant: *"Version 1 stays selectable"* — asking for version 1 returns the
 version 2 text. **So a disappointing result cannot be A/B'd by flipping the
 constant.** Reported, not changed; it is live and the next run depends on it.
+
+
+## Block 10 session 6 — the first spend of the block: eighteen cents for six ideas
+
+**Spent $0.176484** against a $0.18 projection and a $0.30 ceiling. **Ledger
+116 → 118 lines, sha `e5e0a6e9…` → `3f657131e5cda5c903acaf6db1ca34cddd478789042d07b636499fb36559a58c`.**
+All-time **$12.365734**; **about $6.64 of credit remains**. The image stage was
+**not** run and no image cache entry exists. Library, the seven hand-made
+references and the other four plans all unchanged; `app.fonts.allFonts`
+1198 → 1198.
+
+### The analysis stage alone, and how it was bounded
+
+**`only: ['analysis']` is the control** — the runner's own way to run one stage,
+skipping the rest with the reason *not part of this run*. `PIPELINE_STAGES` puts
+keyword selection **and slot planning** inside `analysis`; `images` is generation
+alone. Two ledger lines: `analysis-keywords` **$0.111662** and `analysis-slots`
+**$0.064822**.
+
+**`assertWithinCeiling` cannot bound a single call.** It runs *before* each
+request against a run-start baseline, so it aborts a run rather than truncating
+one — but had the first call billed $0.29 and the second $0.20 there would have
+been no refusal. **The projection is what bounded this run**, not the ceiling.
+
+### The literal-versus-atmospheric rule works; two ideas are wrong anyway
+
+Six slots on `ground-truth`, the first reel analysed under mode v12.
+
+| slot | words | idea | verdict |
+|---|---|---|---|
+| img001 | `les cernes pigmentés` | A face showing dark circles under the eyes | literal, correct |
+| img002 | `joj dial l7loul` ("two solutions") | Two open doors side by side presenting a choice | atmospheric, correct — **but two subjects** |
+| img003 | `l'ADN du saumon` | A swimming salmon fish | literal, depicts the depictable half |
+| img004 | `15 tal 20 yom` | A calendar page with a block of days marked off | literal, correct |
+| img005 | `la mésothérapie` | A cosmetic microneedling tool | **the wrong procedure** |
+| img006 | `4 dial l7essass` | Four medical appointment reminder cards | literal — **but four subjects** |
+
+**Five windows name something concrete and got literal ideas; the one that names
+an abstraction got the only atmospheric idea.** That is the change working, and
+it is the first time it has been observed in three blocks.
+
+**Two faults, and neither is that rule.** `img005` describes **microneedling
+where she said mesotherapy** — the transcript names it as a vitamin cocktail two
+clauses later — which is the open fidelity defect with a fresh instance. And
+**two of six ideas name plural objects**, against PROJECT_SPEC §5's one-subject
+rule; `checkSlotIdea` did not fire, its marker list being enumerated and known
+incomplete. **Re-planning the ideas costs $0.18, not $2.35.**
+
+**Coverage note:** `الإبرة الحريرية`, the treatment she names first and which
+became keyword `k001`, **got no image slot** while the second treatment did.
+
+### Session 5's framing prediction was exact
+
+Predicted from the plan id before any money moved: close, medium, macro, medium,
+macro, close. **All six match, and no slot drew `wide`.** Slot count **6**, which
+is what the $2.17 image estimate assumed — so the picture half is 12 candidates
+at most $2.1708.
+
+### Three keywords, and all three are overlong
+
+`ground-truth` had none. `k003` `cernes pigmentés` (promise), `k001`
+`الإبرة الحريرية` (label, Arabic), `k002` `mésothérapie` (label).
+
+Measured in After Effects through the builder's own resolution: **all three
+exceed `SUBTITLE_SAFE_WIDTH` at their authored size** — 2916.59, 2515.24 and
+2275.16 px. The first two **break at full size**; `mésothérapie` is one word with
+no break point and **shrinks ×0.8527**. Session 4's break-before-shrink ruling
+handles all three with no clipped card.
+
+### `ground-truth` is unbuildable until its pictures are bought
+
+**The build refuses**: `UnplaceableElementsError: 6 element(s) have no
+placement`. Every new slot has `position: null`, `scale: null` **and 0
+candidates** — two separate absences, so the free placement solver would only
+move the refusal to `no candidate file on disk`. `assertAllPlaced` doing what it
+was written for. **No other reel is affected and the picture half restores it.**
+
+### `plan.transcript` does move — session 5's claim corrected
+
+Session 5 reported the analysis stage does not write `plan.transcript`. **It
+writes one field**: `plan.transcript.terms`, at
+`service/src/analysis/job.ts:162`, null → three §6 spans
+(`الإبرة الحريرية`, `الكافيين`, `نتائج جد فعالة`). Session 5 grepped for
+whole-object assignments, which was true and not sufficient.
+
+**`transcript.words` is byte-identical and `contentHash` is unchanged**
+(`30c99cf5fada1608`), so nothing derived from word text moved. The terms are
+still **unread by grouping**.
+
+### `promptModeVersion` is null on a freshly planned slot
+
+It is set by `recompose`, not by `planSlots`, so it records **recomposition**
+rather than the mode version a prompt was first composed at. `test-1` reads 11
+and `vitasilk` 5 because both were recomposed; `ground-truth`'s six read null.
+A later session reading it as "the version this prompt was built at" would be
+wrong.
+
+### `test-3` is the corpus's un-analysed reel now
+
+**Seventeen tests asserted `ground-truth` being empty and were rewritten**, named
+in `reports/block-10-session-6.md` — fixtures moved to `test-3` across
+`keyword-view`, `steps`, `pipeline` and `requirements` tests, the corpus sfx
+total went **9 → 15**, and `keyword-view` gained a test pinning `ground-truth`'s
+three keywords.
