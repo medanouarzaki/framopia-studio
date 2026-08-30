@@ -380,6 +380,7 @@ function framopiaAudit(aepPath, outPath) {
     }
 
     try {
+        framopiaRefuseSelfImport(aepPath);
         app.open(new File(aepPath));
 
         var comps = [];

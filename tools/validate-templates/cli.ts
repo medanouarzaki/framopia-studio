@@ -30,11 +30,16 @@ const REPO_ROOT = path.resolve(HERE, '..', '..');
 
 function runAudit(aepPath: string, auditPath: string): void {
   const jsx = path.join(HERE, 'audit.jsx');
+  // The self-import guard lives with the other ExtendScript the build drives.
+  const guard = path.join(REPO_ROOT, 'panel', 'jsx', 'library-guard.jsx');
   const tmp = path.join(HERE, '.audit-raw.json');
   if (existsSync(tmp)) unlinkSync(tmp);
 
   const script =
-    `$.evalFile("${jsx}"); framopiaAudit("${aepPath}", "${tmp}");`.replace(/"/g, '\\"');
+    `$.evalFile("${guard}"); $.evalFile("${jsx}"); framopiaAudit("${aepPath}", "${tmp}");`.replace(
+      /"/g,
+      '\\"',
+    );
   console.log('driving After Effects (it must already be running)...');
   execFileSync('osascript', ['-e', `tell application "Adobe After Effects 2026" to DoScript "${script}"`], {
     stdio: 'inherit',

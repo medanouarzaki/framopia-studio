@@ -110,6 +110,7 @@ function runJsx(
     `$.evalFile("${path.join(JSX_DIR, 'json2.jsx')}");`,
     `$.evalFile("${path.join(JSX_DIR, 'text-fit.jsx')}");`,
     `$.evalFile("${path.join(JSX_DIR, 'fonts.jsx')}");`,
+    `$.evalFile("${path.join(JSX_DIR, 'library-guard.jsx')}");`,
     `$.evalFile("${path.join(JSX_DIR, file)}");`,
     `${entry}("${optionsPath}", "${resultPath}");`,
   ]

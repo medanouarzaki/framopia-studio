@@ -79,6 +79,7 @@ function framopiaMeasureSurvey(optionsPath, outPath) {
         stage = 'import-templates';
         var aepFile = new File(o.templatesAepPath);
         if (!aepFile.exists) throw new Error('template library not found: ' + o.templatesAepPath);
+        framopiaRefuseSelfImport(aepFile.fsName);
         app.project.importFile(new ImportOptions(aepFile));
 
         stage = 'scratch-instances';

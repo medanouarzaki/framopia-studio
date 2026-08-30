@@ -130,6 +130,7 @@ function framopiaBuild(optionsPath, outPath) {
         var aepFile = new File(o.templatesAepPath);
         if (!aepFile.exists) throw new Error('template library not found: ' + o.templatesAepPath);
         var beforeCount = app.project.numItems;
+        framopiaRefuseSelfImport(aepFile.fsName);
         app.project.importFile(new ImportOptions(aepFile));
         var imported = [];
         for (var i = 1; i <= app.project.numItems; i++) {
