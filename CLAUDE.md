@@ -7762,3 +7762,123 @@ null — so `textStyleFor` returns nothing. Invisible today only because the
 templates carry Inter-SemiBold and Almarai-Bold, which are K2's own faces, and
 neither reel has a keyword so the emphasis face never arises. Reported, not
 changed.
+
+
+## Block 10 session 3 — an overlong card shrinks, and nothing wraps
+
+**Spent $0.00.** Ledger 116 lines / `e5e0a6e9…` at both ends; `library.aep`
+`1d7553e894…`; **all five Edit Plans byte-identical**; cache byte-identical;
+`app.fonts.allFonts` **1198 → 1198**. Nothing saved but the three builds' own
+output.
+
+### Shrink-to-fit is in force
+
+PROJECT_SPEC §3 ruling 3, implemented. **A card too wide for
+`SUBTITLE_SAFE_WIDTH` is set whole, on one line, and its type scales down until
+After Effects measures it under the bound.** It is never wrapped and never
+clipped.
+
+- **Measured in the real instance comp at build time**, by `framopiaShrinkToFit`
+  in `panel/jsx/text-fit.jsx` — never a probe layer, never a stored figure.
+- **The size is written on the `TextDocument`, never on the layer's `Scale`**,
+  which the templates animate. A test reads the function's source and fails if
+  it ever touches `Scale`.
+- **Apply, re-measure, iterate**, bounded by `SHRINK_MAX_ATTEMPTS` = 6. The loop
+  exits on a measured width, never on the arithmetic that produced the size, and
+  `assertEveryCardFits` re-checks the whole set afterwards.
+  `nextFontSize` **floors** rather than rounds, because rounding up could put a
+  card back over a bound the arithmetic had just cleared.
+- **Both text layers get the identical size.** The shadow takes
+  `shrink.finalFontSize`, not the style's, and the builder reads both back and
+  throws if they differ. The census checks the same property independently.
+- **A card that cannot be brought under the bound fails the build**, at
+  `build-elements`, before anything is saved, naming the card and **every
+  measured width in the attempt sequence**. No clip fallback, no wrap fallback,
+  and **no minimum shrink factor** — the corpus's worst case is ×0.5589 and it
+  built.
+- Pure logic in `core/src/shrink-to-fit.ts` (29 tests), four of which read the
+  `.jsx` and pin the mirrored arithmetic. The build writes
+  `.local/build/<reel>-shrink.json` per reel; the three built here are
+  consolidated in `reports/block-10-shrink.json`.
+
+**Three real builds, 204 cards, zero over the bound.** Four cards shrank, each
+converging in **two** attempts and landing at 1939.9997:
+
+| reel | id | text | face | size | factor |
+|---|---|---|---|---:|---:|
+| test-1 | k002 | `محفزات الكولاجين` | Almarai-Bold | 455 → 254.2928 | **×0.5589** |
+| test-2 | k002 | `ترطيب عميق` | Almarai-Bold | 455 → 360.3268 | ×0.7919 |
+| test-2 | g026 | `hyaluronique` | Inter-SemiBold | 343 → 312.8933 | ×0.9122 |
+| vitasilk | g071 | `matrddadich` | Inter-SemiBold | 343 → 324.9198 | ×0.9473 |
+
+### The RTL question is closed: direction does not change advance width
+
+Session 2 measured every card on a point-text probe at AE's default paragraph
+direction and flagged that the `_ar` comps are authored RTL. Measured inside the
+real `sub_pop_ar` and `kw_slam_ar` instances, **all 204 cards are bit-identical
+to the probe — 25 Arabic and 179 Latin, max delta 0.000000 px.** Session 2's
+artifact is correct for its Arabic figures too.
+
+**Four base sizes differ by 4.4e-6 and the widths do not**: AE stores `fontSize`
+as float32, so 494.742 reads back as 494.742004394531 — the same artefact class
+as the frame rate reading 29.9700317382812.
+
+### `Almarai-Bold` is on screen for the first time
+
+`test-1` places Almarai-Bold and Inter-SemiBold; **`test-2` is the first build to
+place all three K2 faces at once**. **No font outside the client's declared set
+in any reel.**
+
+### The census sees sizes and checks the plan itself
+
+`npm run census:comp` gained `--plan`. It now records every text layer's font
+size, **derives the full size from the dump** as the largest size among cards
+sharing a template *and a face* (which keeps a Latin keyword at 494.742 from
+reading as an enlarged `sub_pop`), reports `cardsShrunk` and
+`smallestSizeFactor` and a per-group breakdown, checks that placeholder and
+shadow carry the same **size**, and **compares every card's string against the
+Edit Plan through `buildReel`, the builder's own resolution**. Absent `--plan`
+both plan figures are **null** — unmade, not passed. Two consecutive sessions
+had made that comparison by hand.
+
+Across the three builds: **0 placeholder words surviving, 0 undeclared text
+layers, 0 text mismatches, 0 size mismatches between word and shadow.**
+
+### The shadow at a reduced size, measured and not changed
+
+The `TXT_MAIN_SHADOW` Transform offset is **+8 / +15 px** and is a user ruling;
+it does not scale with the type. Against cap height measured in After Effects:
+
+| card | factor | offset ÷ cap height | reads further out by |
+|---|---:|---|---:|
+| vitasilk g071 | ×0.9473 | 0.0601 → 0.0635 | 1.056× |
+| test-2 g026 | ×0.9122 | 0.0601 → 0.0659 | 1.096× |
+| test-2 k002 | ×0.7919 | 0.0460 → 0.0581 | 1.263× |
+| **test-1 k002** | **×0.5589** | **0.0460 → 0.0824** | **1.789×** |
+
+Three of four move 6–26%, which is small. The ×0.5589 card is the one where the
+question is real, and it is the user's eye.
+
+### The wrap path is unreachable, and the band is now unearned debt
+
+Against session 2's measurement of all 338 cards: **2 would have wrapped and 7
+would have overhung; both are now 0.** Nothing was deleted.
+**`framopiaFittedText` is dead** — defined, called nowhere.
+`framopiaFitText` and `chooseBreak` survive because `npm run wrap:survey` and
+`reel-plan.ts` still call them; `LINE_SEPARATOR`, `BreakCandidate.twoLines`,
+`MAX_SUBTITLE_LINES`, `LINE_SPACING` and `EXTRA_LINES_RENDER_BELOW` are produced
+and unread by the builder.
+
+**`SUBTITLE_BAND` adds `(MAX_SUBTITLE_LINES - 1) * LINE_SPACING` = 323 px of
+descent for a second line no card can now have.** The band bounds where every
+picture is placed, so narrowing it moves image placement on every reel. **Named
+debt; not touched.**
+
+### What is not yet built
+
+**`ground-truth` and `test-3` were not built**, so shrink-to-fit is exercised on
+204 of 338 cards. The five remaining overflowing cards are on those two reels —
+`polynucléotides` (2617.38 px, the corpus's widest Latin card),
+`mésothérapie` ×3 and `hyaluronique` ×1 — and both reels are also the
+client-less pair, so that path stays untested. **The refusal path has never
+fired**: every real card converged in two attempts.
