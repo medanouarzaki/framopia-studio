@@ -269,12 +269,11 @@ describe('the build preview', () => {
     const preview = stepsFor('vitasilk', 'k2-syndicalia').build;
     expect(preview?.client?.source).toBe('plan');
     expect(preview?.client?.name).toBe('K2 Syndicalia');
-    // True since Block 9 session 12 took the client to v11: the reel stays
-    // pinned at v10 because moving it forward is a control someone presses.
-    // Every field that decides the build is identical at both versions —
-    // `snapshotsAgree` compares the client's version too, so this reports a
-    // bump that changed nothing the build reads.
-    expect(preview?.client?.behind).toBe(true);
+    // False although the reel is pinned at v10 and the client is at v12: a reel
+    // is behind when the *look* differs, not when the number does. Both bumps
+    // since changed image prompts, which no build reads, and a warning that
+    // fires when nothing has changed trains him to ignore the one that matters.
+    expect(preview?.client?.behind).toBe(false);
     expect(preview?.client?.note).toContain('as it was saved for this video');
   });
 });

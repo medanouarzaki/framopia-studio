@@ -62,17 +62,34 @@ export function snapshotOfMode(mode: ClientMode, capturedAt: string): ClientSnap
 /**
  * Whether two snapshots would build the same reel.
  *
- * `capturedAt` is excluded deliberately: it records when a copy was taken, and
- * two copies of the same client taken a minute apart must compare equal or the
- * migration could never be checked against a fresh pin.
+ * **`capturedAt` and `version` are both excluded, and for the same reason:
+ * neither changes a single pixel.** `capturedAt` records when a copy was taken,
+ * so two copies of one client a minute apart must compare equal or the
+ * migration could never be checked against a fresh pin. `version` is the
+ * client's own counter, and it moves for edits a build never reads — Block 9
+ * session 12 replaced two image-prompt fragments and took K2 Syndicalia from
+ * v10 to v11, whereupon all three pinned reels reported themselves behind while
+ * their palette, faces, colour roles and image scale were byte-identical.
+ *
+ * A warning that fires when nothing has changed trains the person reading it to
+ * ignore the one that matters. So a reel is behind when the **look** differs,
+ * not when the number does.
+ *
+ * The version stays *recorded* — which version a reel was pinned at is worth
+ * knowing, and it is the only thing that says so — it simply does not decide.
  */
 export function snapshotsAgree(a: ClientSnapshot, b: ClientSnapshot): boolean {
   const strip = (s: ClientSnapshot): string =>
-    JSON.stringify({ ...s, capturedAt: null });
+    JSON.stringify({ ...s, capturedAt: null, version: null });
   return strip(a) === strip(b);
 }
 
-/** Whether the client has moved on since this reel was pinned. */
+/**
+ * Whether the client has moved on since this reel was pinned.
+ *
+ * Never re-pins: moving a reel forward is `POST /client-snapshot`, a control
+ * someone presses. A reel approved in March must rebuild in June as approved.
+ */
 export function snapshotIsBehind(snapshot: ClientSnapshot, mode: ClientMode): boolean {
   return !snapshotsAgree(snapshot, snapshotOfMode(mode, snapshot.capturedAt));
 }
