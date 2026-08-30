@@ -147,61 +147,96 @@ function framopiaFitText(layer, sampleTimeS, candidate, safeWidth, style) {
 }
 
 /**
- * Shrinks a card until it fits, and never breaks it.
+ * Makes a card fit: **break it if it can be broken, shrink it only if it
+ * cannot.**
  *
- * PROJECT_SPEC §3 ruling 3: an overlong card scales down on its own card. It
- * does not wrap — a wrapped card leaves the locked first-baseline anchor — and
- * it does not clip.
+ * PROJECT_SPEC §3 ruling 3 as the user settled it on 2026-08-30. The previous
+ * reading forced every overlong card onto one line and scaled it down, which
+ * made `test-1`'s keyword 56% the height of the ordinary cards around it — and
+ * a keyword is meant to be the largest thing on screen. So a card with a space
+ * to break at goes onto two lines at its authored size, and only a single word
+ * with nowhere to break comes down in size.
  *
  * **The size is written on the TextDocument, never on the layer's Scale.** The
  * templates animate Scale, so writing it would fight the animation the user
- * authored; the ruling is about type size and this sets type size.
+ * authored.
  *
- * Apply, re-measure, repeat. The factor is arithmetic and the width is a
- * measurement, so the arithmetic is never trusted: the loop exits on a measured
- * width at or under the bound, or it runs out of attempts and the caller
- * refuses. `nextFontSize` mirrors core/src/shrink-to-fit.ts, which a test pins.
+ * Every branch is taken on a width After Effects measured. The bound applies to
+ * the **widest line**, which for a point-text layer is the width of the whole
+ * layer's source rect — the rect is the union of the lines. Each line is also
+ * measured on its own for the record, and the full text put back afterwards.
  */
 function framopiaShrinkNextSize(fontSize, measuredWidth, safeWidth) {
     return Math.floor(fontSize * safeWidth / measuredWidth * 10000) / 10000;
 }
 
-function framopiaShrinkToFit(layer, sampleTimeS, text, safeWidth, style, maxAttempts) {
+/** Each line on its own, with the card's real text restored afterwards. */
+function framopiaLineWidths(layer, sampleTimeS, lines, placed, style) {
+    var widths = [];
+    var i;
+    for (i = 0; i < lines.length; i++) {
+        framopiaSetText(layer, lines[i], style);
+        widths.push(framopiaMeasureAt(layer, sampleTimeS).width);
+    }
+    framopiaSetText(layer, placed, style);
+    return widths;
+}
+
+function framopiaFitCard(layer, sampleTimeS, candidate, safeWidth, style, maxAttempts) {
     var out = {
-        text: text,
+        text: candidate.oneLine,
+        lines: [candidate.oneLine],
+        broken: false,
         baseFontSize: null,
         finalFontSize: null,
         factor: 1,
         widthBeforePx: null,
         widthAfterPx: null,
+        lineWidthsPx: null,
         measurements: [],
         attempts: 0,
         fits: false
     };
 
-    framopiaSetText(layer, text, style);
-    var doc = layer.property('Source Text').value;
-    var size = doc.fontSize;
+    framopiaSetText(layer, candidate.oneLine, style);
+    var size = layer.property('Source Text').value.fontSize;
     out.baseFontSize = size;
 
-    var measured = framopiaMeasureAt(layer, sampleTimeS);
-    out.widthBeforePx = measured.width;
-    out.measurements.push({ fontSize: size, widthPx: measured.width });
+    var width = framopiaMeasureAt(layer, sampleTimeS).width;
+    out.widthBeforePx = width;
+    out.measurements.push({ fontSize: size, broken: false, widthPx: width });
     out.attempts = 1;
 
-    var limit = maxAttempts || 6;
-    while (measured.width > safeWidth && out.attempts < limit) {
-        size = framopiaShrinkNextSize(size, measured.width, safeWidth);
-        framopiaSetText(layer, text, { fontSize: size });
-        measured = framopiaMeasureAt(layer, sampleTimeS);
-        out.measurements.push({ fontSize: size, widthPx: measured.width });
+    /* Step 2: a break is preferred over any reduction in size. */
+    if (width > safeWidth && candidate.twoLines) {
+        framopiaSetText(layer, candidate.twoLines, style);
+        width = framopiaMeasureAt(layer, sampleTimeS).width;
+        out.broken = true;
+        out.text = candidate.twoLines;
+        out.lines = candidate.lines;
+        out.measurements.push({ fontSize: size, broken: true, widthPx: width });
         out.attempts = out.attempts + 1;
     }
 
+    /* Step 3: only now, and keeping whatever break was made. */
+    var limit = maxAttempts || 6;
+    while (width > safeWidth && out.attempts < limit) {
+        size = framopiaShrinkNextSize(size, width, safeWidth);
+        framopiaSetText(layer, out.text, { fontSize: size });
+        width = framopiaMeasureAt(layer, sampleTimeS).width;
+        out.measurements.push({ fontSize: size, broken: out.broken, widthPx: width });
+        out.attempts = out.attempts + 1;
+    }
+
+    var finalStyle = { fontSize: size };
+    if (style && style.font) finalStyle.font = style.font;
+    out.lineWidthsPx = out.broken
+        ? framopiaLineWidths(layer, sampleTimeS, out.lines, out.text, finalStyle)
+        : [width];
     out.finalFontSize = size;
-    out.widthAfterPx = measured.width;
+    out.widthAfterPx = width;
     out.factor = out.baseFontSize === 0 ? 1 : size / out.baseFontSize;
-    out.fits = measured.width <= safeWidth;
+    out.fits = width <= safeWidth;
     return out;
 }
 
@@ -212,16 +247,17 @@ function framopiaShrinkToFit(layer, sampleTimeS, text, safeWidth, style, maxAtte
  * look identical from a single width, so the whole sequence goes in the
  * message — the person reading it cannot re-run the build.
  */
-function framopiaTooWideMessage(id, kind, shrink, safeWidth, font) {
+function framopiaTooWideMessage(id, kind, fit, safeWidth, font) {
     var parts = [];
     var i;
-    for (i = 0; i < shrink.measurements.length; i++) {
-        var m = shrink.measurements[i];
-        parts.push(m.fontSize + ' -> ' + m.widthPx.toFixed(2) + 'px');
+    for (i = 0; i < fit.measurements.length; i++) {
+        var m = fit.measurements[i];
+        parts.push(m.fontSize + (m.broken ? ' broken' : '') + ' -> ' + m.widthPx.toFixed(2) + 'px');
     }
     return id + ' (' + kind + ') cannot be brought under ' + safeWidth +
-        'px in ' + shrink.attempts + ' attempts: "' + shrink.text + '" in ' +
-        (font || 'the template\u2019s own face') + ' at ' + shrink.baseFontSize +
+        'px in ' + fit.attempts + ' attempts: "' + fit.text + '" in ' +
+        (font || 'the template\u2019s own face') + ' at ' + fit.baseFontSize + ', ' +
+        (fit.broken ? 'broken onto two lines' : 'with no break point') +
         '. Measured ' + parts.join(', ') +
-        '. The card is not wrapped and not clipped, so the build stops here.';
+        '. The card is not clipped, so the build stops here.';
 }

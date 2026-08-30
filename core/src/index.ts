@@ -343,7 +343,7 @@ export {
   type ShrinkAttempt,
   type ShrinkRow,
   type ShrinkSummary,
-} from './shrink-to-fit.js';
+} from './card-fit.js';
 export {
   CLIENT_SNAPSHOT_VERSION,
   snapshotIsBehind,

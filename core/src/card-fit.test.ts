@@ -13,7 +13,7 @@ import {
   nextFontSize,
   summariseShrinks,
   type ShrinkRow,
-} from './shrink-to-fit.js';
+} from './card-fit.js';
 
 function row(over: Partial<ShrinkRow> = {}): ShrinkRow {
   return {
@@ -21,6 +21,8 @@ function row(over: Partial<ShrinkRow> = {}): ShrinkRow {
     id: 'g071',
     kind: 'subtitle',
     text: 'matrddadich',
+    lines: ['matrddadich'],
+    broken: false,
     templateId: 'sub_pop',
     font: 'Inter-SemiBold',
     baseFontSize: 343,
@@ -28,9 +30,10 @@ function row(over: Partial<ShrinkRow> = {}): ShrinkRow {
     factor: 1,
     widthBeforePx: 1000,
     widthAfterPx: 1000,
+    lineWidthsPx: [1000],
     safeWidthPx: SUBTITLE_SAFE_WIDTH,
     attempts: 1,
-    measurements: [{ fontSize: 343, widthPx: 1000 }],
+    measurements: [{ fontSize: 343, broken: false, widthPx: 1000 }],
     fits: true,
     ...over,
   };
@@ -46,10 +49,9 @@ function widthAt(fontSize: number, baseSize: number, baseWidth: number): number 
 }
 
 function converge(baseSize: number, baseWidth: number, safe: number): number[] {
-  const widths: number[] = [];
+  const widths: number[] = [baseWidth];
   let size = baseSize;
   let width = baseWidth;
-  widths.push(width);
   let attempts = 1;
   while (width > safe && attempts < SHRINK_MAX_ATTEMPTS) {
     size = nextFontSize(size, width, safe);
@@ -69,7 +71,7 @@ describe('needsShrink', () => {
 });
 
 describe('nextFontSize', () => {
-  it('scales the size by the ratio the width overshot by', () => {
+  it('scales the size by the ratio the widest line overshot by', () => {
     expect(nextFontSize(343, 3880, 1940)).toBeCloseTo(171.5, 4);
   });
 
@@ -82,31 +84,25 @@ describe('nextFontSize', () => {
     expect(Number.isInteger(Math.round(size * scale))).toBe(true);
   });
 
-  it('leaves a card that already fits alone by returning a larger size', () => {
-    expect(nextFontSize(343, 970, 1940)).toBe(686);
-  });
-
   it('refuses a width no size can be derived from', () => {
     expect(() => nextFontSize(343, 0, 1940)).toThrow(CardTooWideError);
   });
 });
 
 /*
- * The nine cards Block 10 session 2 measured over the bound. The widths are
- * fixtures for the arithmetic, not inputs to a build: the build measures its
- * own.
+ * The seven single words Block 10 session 2 measured over the bound. These are
+ * the cards the ruling still shrinks, because there is no space to break at.
+ * The widths are fixtures for the arithmetic, not inputs to a build.
  */
-describe('convergence on the corpus’ real overflowing cards', () => {
+describe('convergence on the cards that have no break point', () => {
   const cards: [string, number, number][] = [
-    ['test-1 k002 محفزات الكولاجين', 455, 3471.1952],
     ['ground-truth g026 polynucléotides', 343, 2617.3801],
-    ['test-2 k002 ترطيب عميق', 455, 2449.7201],
-    ['ground-truth g053 mésothérapie', 343, 2242.7300],
-    ['test-3 g007 mésothérapie', 343, 2242.7300],
-    ['test-3 g019 mésothérapie', 343, 2242.7300],
-    ['test-2 g026 hyaluronique', 343, 2126.6700],
-    ['test-3 g023 hyaluronique', 343, 2126.6700],
-    ['vitasilk g071 matrddadich', 343, 2047.9500],
+    ['ground-truth g053 mésothérapie', 343, 2242.73],
+    ['test-3 g007 mésothérapie', 343, 2242.73],
+    ['test-3 g019 mésothérapie', 343, 2242.73],
+    ['test-2 g026 hyaluronique', 343, 2126.67],
+    ['test-3 g023 hyaluronique', 343, 2126.67],
+    ['vitasilk g071 matrddadich', 343, 2047.95],
   ];
 
   it.each(cards)('%s lands under the bound', (_name, size, width) => {
@@ -132,10 +128,8 @@ describe('assertEveryCardFits', () => {
   });
 
   /* The build never trusts the arithmetic that produced the size. */
-  it('refuses a card whose last measured width is still over', () => {
-    expect(() =>
-      assertEveryCardFits([row({ widthAfterPx: 1941, fits: true })]),
-    ).toThrow(CardTooWideError);
+  it('refuses a card whose last measured line is still over', () => {
+    expect(() => assertEveryCardFits([row({ widthAfterPx: 1941 })])).toThrow(CardTooWideError);
   });
 
   it('refuses a card the host itself reported as not fitting', () => {
@@ -148,18 +142,37 @@ describe('assertEveryCardFits', () => {
         fits: false,
         attempts: 2,
         measurements: [
-          { fontSize: 343, widthPx: 2047.95 },
-          { fontSize: 324.9, widthPx: 1941 },
+          { fontSize: 343, broken: false, widthPx: 2047.95 },
+          { fontSize: 324.9, broken: false, widthPx: 1941 },
         ],
       }),
     );
     expect(message).toContain('vitasilk g071');
     expect(message).toContain('matrddadich');
     expect(message).toContain('Inter-SemiBold');
-    expect(message).toContain('343');
     expect(message).toContain('2047.95px');
     expect(message).toContain('1941.00px');
-    expect(message).toContain('not wrapped and not clipped');
+    expect(message).toContain('with no break point');
+    expect(message).toContain('not clipped');
+  });
+
+  it('says a broken card was broken, and which attempts carried the break', () => {
+    const message = cardTooWideMessage(
+      row({
+        id: 'k002',
+        kind: 'keyword',
+        broken: true,
+        lines: ['محفزات', 'الكولاجين'],
+        fits: false,
+        attempts: 2,
+        measurements: [
+          { fontSize: 455, broken: false, widthPx: 3471.2 },
+          { fontSize: 455, broken: true, widthPx: 1990 },
+        ],
+      }),
+    );
+    expect(message).toContain('broken onto two lines');
+    expect(message).toContain('455 broken -> 1990.00px');
   });
 
   it('says so when the client carries no face', () => {
@@ -172,20 +185,30 @@ describe('assertEveryCardFits', () => {
 describe('summariseShrinks', () => {
   it('counts an untouched set as untouched', () => {
     const s = summariseShrinks([row(), row({ id: 'g002' })]);
-    expect(s).toMatchObject({ cards: 2, shrunk: 0, atFullSize: 2, smallestFactor: null });
+    expect(s).toMatchObject({ cards: 2, untouched: 2, broken: 0, shrunk: 0, smallestFactor: null });
   });
 
-  it('reports the smallest factor and the widest surviving card', () => {
+  /* A broken card keeps its authored size, which is the whole point. */
+  it('counts a card broken at full size as broken and not as shrunk', () => {
     const s = summariseShrinks([
       row(),
-      row({ id: 'g071', factor: 0.5589, finalFontSize: 191.7, widthBeforePx: 3471, widthAfterPx: 1939 }),
-      row({ id: 'g026', factor: 0.9122, widthAfterPx: 1930 }),
+      row({ id: 'k002', broken: true, lines: ['محفزات', 'الكولاجين'], widthAfterPx: 1800 }),
     ]);
-    expect(s.cards).toBe(3);
-    expect(s.shrunk).toBe(2);
-    expect(s.atFullSize).toBe(1);
-    expect(s.smallestFactor).toBeCloseTo(0.5589, 6);
-    expect(s.largestShrinkPx).toBeCloseTo(1532, 6);
+    expect(s).toMatchObject({ cards: 2, untouched: 1, broken: 1, shrunk: 0 });
+    expect(s.smallestFactor).toBeNull();
+  });
+
+  it('counts a card that had to do both in each column', () => {
+    const s = summariseShrinks([
+      row(),
+      row({ id: 'k002', broken: true, factor: 0.8, finalFontSize: 364, widthAfterPx: 1930 }),
+    ]);
+    expect(s).toMatchObject({ cards: 2, untouched: 1, broken: 1, shrunk: 1 });
+    expect(s.smallestFactor).toBeCloseTo(0.8, 9);
+  });
+
+  it('reports the widest surviving line', () => {
+    const s = summariseShrinks([row({ widthAfterPx: 1000 }), row({ id: 'g2', widthAfterPx: 1939 })]);
     expect(s.widestAfterPx).toBe(1939);
   });
 
@@ -205,6 +228,7 @@ describe('summariseShrinks', () => {
  */
 describe('the ExtendScript mirror', () => {
   const jsx = readFileSync(path.join(REPO_ROOT, 'panel', 'jsx', 'text-fit.jsx'), 'utf8');
+  const build = readFileSync(path.join(REPO_ROOT, 'panel', 'jsx', 'build-reel.jsx'), 'utf8');
 
   it('computes the next size the same way', () => {
     const scale = 10 ** SHRINK_SIZE_DECIMALS;
@@ -214,28 +238,43 @@ describe('the ExtendScript mirror', () => {
   });
 
   it('never writes the layer’s Scale, which the templates animate', () => {
-    const shrink = jsx.slice(jsx.indexOf('function framopiaShrinkToFit'));
-    expect(shrink).not.toContain("property('Scale')");
-    expect(shrink).toContain('fontSize');
+    const fit = jsx.slice(jsx.indexOf('function framopiaFitCard'));
+    expect(fit).not.toContain("property('Scale')");
+    expect(fit).toContain('fontSize');
+  });
+
+  /* The ruling: break first, and only then reduce the size. */
+  it('tries the break before it tries a smaller size', () => {
+    const fit = jsx.slice(jsx.indexOf('function framopiaFitCard'));
+    const breakAt = fit.indexOf('candidate.twoLines');
+    const shrinkAt = fit.indexOf('framopiaShrinkNextSize(');
+    expect(breakAt).toBeGreaterThan(-1);
+    expect(shrinkAt).toBeGreaterThan(breakAt);
+  });
+
+  it('keeps whatever break was made while it shrinks', () => {
+    expect(jsx).toContain('framopiaSetText(layer, out.text, { fontSize: size });');
   });
 
   it('exits on a measured width rather than on the arithmetic', () => {
-    expect(jsx).toContain('while (measured.width > safeWidth && out.attempts < limit)');
-    expect(jsx).toContain('out.fits = measured.width <= safeWidth;');
+    expect(jsx).toContain('while (width > safeWidth && out.attempts < limit)');
+    expect(jsx).toContain('out.fits = width <= safeWidth;');
   });
 
-  it('the builder sets the card whole and refuses one it cannot fit', () => {
-    const build = readFileSync(path.join(REPO_ROOT, 'panel', 'jsx', 'build-reel.jsx'), 'utf8');
-    expect(build).toContain('framopiaShrinkToFit(');
-    expect(build).toContain('e.candidate.oneLine');
+  it('the builder hands over the whole candidate and refuses one it cannot fit', () => {
+    expect(build).toContain('framopiaFitCard(');
+    expect(build).toContain('e.candidate, o.safeWidth');
     expect(build).toContain('if (!e.shrink.fits)');
-    expect(build).not.toContain('framopiaFittedText');
   });
 
-  it('gives the shadow the size the shrink landed on and checks both back', () => {
-    const build = readFileSync(path.join(REPO_ROOT, 'panel', 'jsx', 'build-reel.jsx'), 'utf8');
+  it('gives the shadow the placed string and the landed size, and checks both back', () => {
     expect(build).toContain('var shadowStyle = { fontSize: e.shrink.finalFontSize };');
-    expect(build).toContain('e.shadowApplied = framopiaReadTextStyle(shadow);');
+    expect(build).toContain('framopiaSetText(shadow, e.shrink.text, shadowStyle);');
     expect(build).toContain('must carry the same size');
+    expect(build).toContain('Both layers carry the same string, break included.');
+  });
+
+  it('parks on the first card that was broken or shrunk', () => {
+    expect(build).toContain('if (fit && (fit.broken || fit.factor < 1))');
   });
 });

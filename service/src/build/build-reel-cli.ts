@@ -663,13 +663,16 @@ if (result.ok) {
     font: string | null;
     shrink: {
       text: string;
+      lines: string[];
+      broken: boolean;
       baseFontSize: number;
       finalFontSize: number;
       factor: number;
       widthBeforePx: number;
       widthAfterPx: number;
+      lineWidthsPx: number[];
       attempts: number;
-      measurements: { fontSize: number; widthPx: number }[];
+      measurements: { fontSize: number; broken: boolean; widthPx: number }[];
       fits: boolean;
     };
   }[];
@@ -678,6 +681,8 @@ if (result.ok) {
     id: f.id,
     kind: f.kind,
     text: f.shrink.text,
+    lines: f.shrink.lines,
+    broken: f.shrink.broken,
     templateId: f.templateId,
     font: f.font,
     baseFontSize: f.shrink.baseFontSize,
@@ -685,6 +690,7 @@ if (result.ok) {
     factor: f.shrink.factor,
     widthBeforePx: f.shrink.widthBeforePx,
     widthAfterPx: f.shrink.widthAfterPx,
+    lineWidthsPx: f.shrink.lineWidthsPx,
     safeWidthPx: SUBTITLE_SAFE_WIDTH,
     attempts: f.shrink.attempts,
     measurements: f.shrink.measurements,
@@ -714,11 +720,12 @@ if (result.ok) {
     )}\n`,
   );
   console.log(
-    `\ntype: ${summary.cards} cards, ${summary.shrunk} shrunk` +
+    `\ntype: ${summary.cards} cards, ${summary.untouched} on one line at full size, ` +
+      `${summary.broken} broken onto two, ${summary.shrunk} shrunk` +
       (summary.smallestFactor === null
         ? ''
         : ` (smallest x${summary.smallestFactor.toFixed(4)})`) +
-      `, widest ${summary.widestAfterPx?.toFixed(2)}px against ${SUBTITLE_SAFE_WIDTH}`,
+      `, widest line ${summary.widestAfterPx?.toFixed(2)}px against ${SUBTITLE_SAFE_WIDTH}`,
   );
   console.log(`wrote ${path.relative(REPO_ROOT, shrinkPath)}`);
 }
