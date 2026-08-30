@@ -6,28 +6,36 @@
       "path": "/Volumes/T7 Shield/INSEA/Projects/framopia-studio/my files/test videos/test 1.mov",
       "durationS": 21.988646,
       "groundTruth": false,
-      "audioPath": ".local/bench-audio/test-1.wav"
+      "audioPath": ".local/bench-audio/test-1.wav",
+      "sha256": "365967c9fd2c82f7f62ee05c8bedf47673e5effd4b529ffa698f6daf67028e1c",
+      "bytes": 2454029392
     },
     {
       "label": "test-2",
       "path": "/Volumes/T7 Shield/INSEA/Projects/framopia-studio/my files/test videos/test 2.mov",
       "durationS": 22.322313,
       "groundTruth": false,
-      "audioPath": ".local/bench-audio/test-2.wav"
+      "audioPath": ".local/bench-audio/test-2.wav",
+      "sha256": "c3a2ac59de3dc1ec662aa5ae19c32169d58873e3b46f43d8f0806326c6e1100e",
+      "bytes": 2481948148
     },
     {
       "label": "test-3",
       "path": "/Volumes/T7 Shield/INSEA/Projects/framopia-studio/my files/test videos/test 3.mov",
       "durationS": 21.187833,
       "groundTruth": false,
-      "audioPath": ".local/bench-audio/test-3.wav"
+      "audioPath": ".local/bench-audio/test-3.wav",
+      "sha256": "20f8c61d4f01f867865cd348a455999f7ba8721891f6d6c7f817e7ec3c1ad091",
+      "bytes": 2402073330
     },
     {
       "label": "ground-truth",
       "path": "/Volumes/T7 Shield/INSEA/Projects/framopia-studio/my files/test videos/ground truth.mov",
       "durationS": 23.256567,
       "groundTruth": true,
-      "audioPath": ".local/bench-audio/ground-truth.wav"
+      "audioPath": ".local/bench-audio/ground-truth.wav",
+      "sha256": "2b3957559a491ee90e17966f7de514e3709508ec695739a250e09c916c325313",
+      "bytes": 2594226244
     },
     {
       "label": "vitasilk",
@@ -35,7 +43,10 @@
       "durationS": 25.692333,
       "groundTruth": false,
       "audioPath": ".local/bench-audio/vitasilk.wav",
-      "notes": "Second speaker (woman), hair-product domain, one-off test footage rather than a client. Added in Block 2 to widen an evidence base that was one speaker in one domain. No hand-written ground truth exists for this reel, so it is run with --no-ground-truth and is deliberately absent from the scored REELS list in aggregate.ts."
+      "notes": "Second speaker (woman), hair-product domain, one-off test footage rather than a client. Added in Block 2 to widen an evidence base that was one speaker in one domain. No hand-written ground truth exists for this reel, so it is run with --no-ground-truth and is deliberately absent from the scored REELS list in aggregate.ts.",
+      "sha256": "99dfe0e530ab85d12e2c5e756dc907dca09c75f1257e2bdded28e32795327e72",
+      "bytes": 2873609310
     }
-  ]
+  ],
+  "fetchNote": "The reels are the agency's own footage and are not in git. They live on the external SSD alongside the repository. To put them on another machine, copy the five files below into 'my files/test videos/' from the SSD or from the agency's own store; there is no download. Each sha256 is the figure the reel's Edit Plan was built against, so a file that does not match is a different cut and every cached transcription for it will miss."
 }

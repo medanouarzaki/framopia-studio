@@ -574,14 +574,18 @@ function checkLoudness(): CheckResult {
 interface Reel {
   label: string;
   path: string;
+  /** Recorded in benchmarks/footage.json since Block 10 session 10. */
+  sha256?: string;
+  bytes?: number;
 }
 
 /**
- * The footage, against the only hash the repo records for it.
+ * The footage, against the hash the catalogue records for it.
  *
- * `benchmarks/footage.json` carries no hash and no fetch note, so the sha256 on
- * each reel's own Edit Plan is the only figure there is — and where no plan
- * exists the check can report presence and nothing more. It says which.
+ * `benchmarks/footage.json` carries a sha256, a byte count and a fetch note per
+ * reel since Block 10 session 10; before that the only figure was `source.sha256`
+ * on the reel's own Edit Plan, which is still the fallback. A file that does not
+ * match is a different cut, and every cached transcription for it will miss.
  */
 function checkFootage(options: { hash: boolean }): CheckResult {
   const catalogue = JSON.parse(
@@ -603,13 +607,14 @@ function checkFootage(options: { hash: boolean }): CheckResult {
       unchecked += 1;
       continue;
     }
-    const planPath = file.replace(/\.[^.]+$/u, '.editplan.json');
-    if (!existsSync(planPath)) {
-      unhashed += 1;
-      continue;
+    let recorded = reel.sha256;
+    if (typeof recorded !== 'string') {
+      const planPath = file.replace(/\.[^.]+$/u, '.editplan.json');
+      if (existsSync(planPath)) {
+        const plan = JSON.parse(readFileSync(planPath, 'utf8')) as { source?: { sha256?: string } };
+        recorded = plan.source?.sha256;
+      }
     }
-    const plan = JSON.parse(readFileSync(planPath, 'utf8')) as { source?: { sha256?: string } };
-    const recorded = plan.source?.sha256;
     if (typeof recorded !== 'string') {
       unhashed += 1;
       continue;
@@ -631,11 +636,16 @@ function checkFootage(options: { hash: boolean }): CheckResult {
     detail: parts.join('; '),
     blocking: 'run',
     caveat:
-      'benchmarks/footage.json records no hash and no fetch note, so the only figure to ' +
-      'check against is source.sha256 on each reel’s own Edit Plan',
+      'checked against the sha256 in benchmarks/footage.json, which also carries the fetch ' +
+      'note saying where the files come from; a reel’s own Edit Plan is the fallback',
     ...(state === 'present'
       ? {}
-      : { remedy: 'copy the reels onto this machine at the paths benchmarks/footage.json names', remedyVerified: false }),
+      : {
+          remedy:
+            'copy the five reels into "my files/test videos/"; benchmarks/footage.json’s ' +
+            'fetchNote says where they come from',
+          remedyVerified: false,
+        }),
   };
 }
 

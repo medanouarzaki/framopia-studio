@@ -38,10 +38,24 @@ nothing, `dev` blocks the checks rather than the product.
 
 ## What is recorded nowhere
 
-- **`benchmarks/footage.json` carries no hash and no fetch note.** The only
-  recorded hash for a reel is `source.sha256` on its own Edit Plan, so a machine
-  with the wrong cut of a video can only discover it by transcribing. The doctor
-  checks footage against the plan's hash for that reason and says where the
-  figure came from.
-- **No disk-space figure is stated anywhere in the repo.** The doctor's threshold
-  is chosen, and says so.
+- ~~**`benchmarks/footage.json` carries no hash and no fetch note.**~~ **Closed
+  in Block 10 session 10**: every reel now carries its `sha256` and `bytes`, and
+  the file carries a `fetchNote` saying where the files come from. The doctor
+  checks against that, with the reel's own Edit Plan as the fallback.
+- ~~**No disk-space figure is stated anywhere in the repo.**~~ **Closed in the
+  same session**: `MIN_FREE_GB` in `tools/doctor/checks.ts` is **19 GB**, derived
+  from 14.6 GB measured across eleven components plus a quarter again, with the
+  components listed at the constant.
+
+## Known limitation
+
+**A cache entry copied to another machine resolves correctly, and this was
+measured rather than reasoned about.** `readTranscriptionCache` recomputes
+`audioPath` from the entry's own directory, so the absolute path stored in the
+manifest is provenance and is never read: an entry copied into a temporary
+directory still hits, with its audio resolved from where it now lives.
+
+**Every absolute path on every Edit Plan points inside the repository root** —
+52 of them across the five plans, none outside. So the plans are portable **if
+and only if the repository sits at the same absolute path on both machines**,
+which is requirement 1 above and what the doctor's `repo` check looks for.
