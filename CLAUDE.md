@@ -9136,3 +9136,75 @@ Nine of the audit's 39 differing fields are `position.value` reading 750, 700.03
 and 775.358 across comps while **`valueAtSampleTime` is 700 on every one** — the
 playhead's position, not a change. Block 7 session 3 lost 50 px of baseline to
 this exact field.
+
+
+## Block 10 session 24 — the library is settled and both gates are green
+
+**Spent $0.00.** Ledger 118 lines / `3f657131…` at both ends; all five plans and
+the six references byte-identical; cache 46 entries unchanged;
+`app.fonts.allFonts` 1198 → 1198. **`templates/library.aep` was not edited by
+this session** — the user's file,
+`d2bbb6b727f819078b5e8dec08a59722b018dc6c0d1d77c123476f8241c84d9c`, 552,745 bytes.
+
+### The shadow offset is back, and the tests came back with it
+
+Setting the Transform effect's Position to **[1088, 640]** against its Anchor
+Point of [1080, 625] restored the ruled **[8, 15]** on all four text comps. Audit
+diff: **1342 fields compared, 13 differ** — 8 the effect (`offset[1]` and
+`position[1]` on four comps), 4 the CTI artifact, 1 the stamp. Nothing else moved:
+comps still 2160×1250, `Transform/Position` keys 750 → 700 on both layers, image
+comps 1200×1200, every font, size, tracking, fill, name, anchor, scale,
+`sourceRect`, blur and opacity key identical.
+
+**The three tests that sessions 22 and 23 left failing pass on their own, and
+none was edited.** `shadowDescentPx` reads 15; `SUBTITLE_BAND`'s bottom is
+**3012.57825**. Refusing to edit a test to match a measured value was the right
+call twice over — the number came back.
+
+**Headroom went 51.2 → 53.3 px** on the corpus's two two-line cards, which is
+exactly the 2.045 the shadow gave back. 262 cards, 0 overrunning.
+
+### `npm run golden` passes, 4 of 4, field for field
+
+**17,174 fields** — test-1 4415, test-2 4280, test-3 3709, vitasilk 4770.
+
+Before recording, all **524** differing fields were checked directly rather than
+from the log, which caps its listing at 40 a reel and showed 160: every one is
+`masters[].layers[].position[]` moving 2330.39990234375 → 2405.39990234375, and
+**0 are anything else**. The baseline was read back inside After Effects on five
+layers — **2480.39990234375**, exactly `SUBTITLE_ANCHOR_BASELINE_Y` — so the comp
+layer's Position moved because `placeholder − anchor` went 150 → 75 and the type
+did not move at all.
+
+### The watermark was not already at the top, and now it is guarded
+
+**User ruling, 2026-08-31: always the top of the frame, never the bottom.** The
+premise that this was already true is **false, and the corpus proved it**: all
+four corners were candidates, the subtitle band (y 0.516–0.785) never reaches a
+bottom corner (y 0.877–0.972), the seeded shuffle chose a bottom corner in **93 of
+200 seeds**, and **`test-1` built its mark at y 3550.6 of 3840**.
+
+Only the two top corners are candidates now (`placeWatermark`,
+`service/src/placement/watermark.ts`); position, size and both margins are
+untouched and the seeded draw still picks between the two. Guarded twice, because
+a placement rule and a built comp are different claims: `watermark.test.ts`
+asserts no seed over 400 yields a bottom corner and that the `free.length === 0`
+fallback cannot reintroduce one — **proven to fail against the old candidate
+list** — and `CompCensusSummary.watermarksBelowMidFrame` is derived from the built
+master so a low mark fails golden. `test-1` moved bottom-left → top-right and
+`test-3` top-left → top-right, because removing two candidates changes what the
+shuffle draws from.
+
+### The audit refuses a dirty project; only the builder saves one
+
+`audit.jsx`'s `refuseIfUnsafe` **refuses** when `app.project.dirty` — the
+save-and-proceed policy for `.local/build/` lives in `build-reel.jsx`, not here.
+So a build output left open and scrubbed blocks the audit, and a stale audit then
+blocks every build. Worth knowing before assuming the guard will step aside.
+
+### The panel flake is not parallel load
+
+It failed 5 under the full check, failed 4 with the panel workspace run **alone**,
+then passed 190/192 alone and 190/192 under a second full check. Sessions 14–23
+recorded it as flaking under parallel load; that does not fit. Genuinely
+intermittent, cause unknown.
