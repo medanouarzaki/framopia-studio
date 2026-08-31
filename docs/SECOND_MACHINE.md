@@ -319,6 +319,25 @@ installed and simply refuses to appear.
 **Then quit After Effects and open it again**, because it only reads that folder
 when it starts. The panel is under **Window → Extensions → Framopia Studio**.
 
+### If the panel says the service was built from different code
+
+You may see a line like *"The background service was built from different code
+than this panel, so the two may not agree about what a video contains."* **This
+is the tool checking itself and it is doing its job** — it happened on the first
+Mac the first time the panel was used, and the fix worked exactly as the message
+said.
+
+It means the two halves were built at different moments, which is easy to do
+while setting up. Do what the line tells you:
+
+```
+npm run service -- --force
+```
+
+Then **close the panel and open it again** — Window → Extensions → Framopia
+Studio. The line should be gone. If it is still there after that, send us what
+it says rather than trying anything else.
+
 ---
 
 ## 10. Your API keys

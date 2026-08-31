@@ -639,6 +639,44 @@ its tests while the panel was broken in After Effects. Prefer stubbing what the
 and never stub a method the code does not call. Full statement in
 `docs/CLAUDE_CODE_GUIDELINES.md` §3.
 
+### The panel has been driven by hand, and it works
+
+**2026-08-31, by the user, for the first time in the project's life.** He picked
+`vitasilk`, pressed Build, and got a comp in **5.7 s** with its path on screen
+and nothing rendered. So **the panel, CEP `evalScript` and the service's HTTP
+layer are no longer untested**, and neither is the reentrancy question — see
+*Build runs from the panel* above.
+
+**The build-stamp banner fired against a real mismatch** in that same run, named
+the cause, gave the command, and cleared when he reopened the panel. First time
+it has been exercised by anything but a test.
+
+**Two things it said were wrong, and both are fixed.** The pre-build summary
+counted groups and called them cards, promising **73** against a comp carrying
+**68** — see *The pre-build figure is the build's own* below. And after the
+build it printed the same path twice, once as the composition and once as work
+"saved first", when the second was the file the first had just overwritten — see
+`core/src/saved-output.ts`.
+
+### The pre-build figure is the build's own
+
+`plannedCards` in `service/src/build/planned-cards.ts` is the one declaration of
+which groups become cards, read by `buildReel` and by `steps.ts`. A group is a
+card unless a keyword superseded it, it carries no template, or it has no
+display timing — the three reasons the builder skips one.
+
+The panel had been reporting `plan.subtitles.groups.length`, which is the right
+number for validating a plan and the wrong one for telling someone what they are
+about to get. Per reel, groups against cards: ground-truth 76 → **71**, test-1
+67 → **64**, test-2 69 → **64**, test-3 58 → **58**, vitasilk 73 → **68**. All
+four buildable ones are confirmed against the golden reference, which was
+measured inside After Effects from real comps.
+
+**`BuildPreview.words` is a schema addition, optional with a default**, because
+the Words opener's badge was reading `subtitleCards` and was right only by
+coincidence — a card is one word today and nothing superseded is listed, so the
+two numbers happened to agree until a keyword superseded a group.
+
 ### `npm run golden` is what the second machine is measured against
 
 `-- [--record] [--reference <path>]` — free, local. Builds each reel of the
@@ -1752,15 +1790,21 @@ then the last line — because an uncaught throw ends with a stack and a Node
 version banner, and taking the last line would put `Node.js v24.14.1` on screen
 as the reason a build failed.
 
-**The reentrancy question is NOT settled.** The panel runs inside After Effects
-and the build drives that same After Effects over AppleScript `DoScript`. The
-reasoning says it should work — the panel's JS is in `CEPHtmlEngine`, the
-service is a separate Node process, and the blocking `execFileSync` is in a
-spawned child, so nothing the panel depends on is waiting on AE's main thread —
-but **whether AE accepts a `DoScript` Apple event while a CEP extension is open
-has never been observed.** Session 38 could not test it without running a build.
-If a build ever hangs, `pkill -f build-reel-cli` frees the service without
-touching After Effects.
+**The reentrancy question is settled, by the user's own hands on 2026-08-31.**
+He drove the panel for the first time in the project's life: picked `vitasilk`,
+pressed Build, and **After Effects accepted the `DoScript` while the CEP
+extension was open** — comp built in 5.7 s, path reported, nothing rendered.
+The reasoning had said it should work — the panel's JS is in `CEPHtmlEngine`,
+the service is a separate Node process, and the blocking `execFileSync` is in a
+spawned child, so nothing the panel depends on waits on AE's main thread — and
+it is now an observation rather than an argument. **The panel, CEP `evalScript`
+and the service's HTTP layer are no longer untested.** If a build ever hangs,
+`pkill -f build-reel-cli` frees the service without touching After Effects.
+
+**The build-stamp banner earned its keep in that same run.** The panel detected
+that the service was a different build from the bundle, named the cause and gave
+the command; the user ran it, reopened the panel, and the banner cleared. That
+is the first time the staleness check has fired against a real mismatch.
 
 `plan.build` on `GET /steps` is the **build preview**: reel, client and where it
 came from, the output path, what the comp will contain, the watermark and its
