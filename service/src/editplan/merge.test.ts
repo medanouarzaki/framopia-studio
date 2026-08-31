@@ -1,4 +1,9 @@
+import { mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+
 import { describe, expect, it } from 'vitest';
+import { buildRecordFor } from '../build/build-record.js';
 import { createEditPlan } from './io.js';
 import {
   humanFlaggedItems,
@@ -308,5 +313,55 @@ describe('the watermark survives a re-run', () => {
       size: 'small',
     };
     expect(humanFlaggedItems(existing)).toEqual([]);
+  });
+});
+
+
+describe('the stale branch, end to end', () => {
+  /*
+   * The branch had a unit test from the day it was written and could not run in
+   * production, because nothing wrote `status: 'built'` — every plan on disk
+   * said `none` however many times it had been built. This closes the loop: the
+   * record comes from `buildRecordFor`, the function the build itself calls,
+   * rather than from a literal a test chose.
+   */
+  function aSavedAep(): string {
+    const dir = mkdtempSync(path.join(tmpdir(), 'framopia-stale-'));
+    const p = path.join(dir, 'reel-full.aep');
+    writeFileSync(p, 'x');
+    return p;
+  }
+
+  it('a real build record is what a transcript edit turns stale', () => {
+    const existing = enriched(words);
+    existing.build = buildRecordFor({
+      aepPath: aSavedAep(),
+      builtAt: '2026-08-31T10:00:00.000Z',
+    });
+    expect(existing.build.status).toBe('built');
+
+    const edited = words.map((w, i) => (i === 0 ? { ...w, text: `${w.text}X` } : w));
+    const result = mergeIntoExistingPlan({ existing, fresh: freshFrom(edited) });
+
+    expect(result.transcriptChanged).toBe(true);
+    expect(result.plan.build.status).toBe('stale');
+  });
+
+  it('keeps which file was built and when, because both are still true', () => {
+    const existing = enriched(words);
+    const aep = aSavedAep();
+    existing.build = buildRecordFor({ aepPath: aep, builtAt: '2026-08-31T10:00:00.000Z' });
+    const edited = words.map((w, i) => (i === 0 ? { ...w, text: `${w.text}X` } : w));
+    const result = mergeIntoExistingPlan({ existing, fresh: freshFrom(edited) });
+    expect(result.plan.build.aepPath).toBe(aep);
+    expect(result.plan.build.builtAt).toBe('2026-08-31T10:00:00.000Z');
+  });
+
+  it('leaves a plan that was never built alone', () => {
+    const existing = enriched(words);
+    existing.build = { status: 'none', aepPath: null, builtAt: null };
+    const edited = words.map((w, i) => (i === 0 ? { ...w, text: `${w.text}X` } : w));
+    const result = mergeIntoExistingPlan({ existing, fresh: freshFrom(edited) });
+    expect(result.plan.build.status).toBe('none');
   });
 });
