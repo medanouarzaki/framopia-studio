@@ -9285,3 +9285,87 @@ Failed 4 in the first full check, **failed 5 with the panel workspace run alone*
 passed 190/192 in the second full check. Third session running where alone did not
 help, so session 24's correction stands: the old "parallel load" explanation is
 wrong and the cause is unknown.
+
+
+## Block 10 session 26 — the panel starts and repairs the service itself
+
+**Spent $0.00.** Ledger 118 lines / `3f657131…` at both ends; `templates/library.aep`
+untouched at `d2bbb6b7…`; the six references and the five plans byte-identical;
+fonts 1198 → 1198. `npm run check` **PASS** on its first run, `npm run golden`
+**PASS** at 17,174 fields.
+
+### No message in the panel names a command any more
+
+**User ruling: the product is usable without a terminal.** Two things broke that
+and both are fixed. The panel already started the service — `connect()` →
+`host.spawnService()`, the Node binary directly at a resolved path, never `npm` and
+never through a shell — and it already handled two panels racing and a
+terminal-started service. What it could not do was **prepare a service that had
+never been compiled** and **repair a build mismatch**.
+
+**It compiles the service now.** npm's own CLI is a JavaScript file beside the Node
+binary, so a resolved Node runs it with no shell and no `PATH` — **2.8 s measured**.
+The old message read *"the service is not built … Run `npm run service:build`"*;
+`SpawnResult.reason: 'not-built'` is a state `connect` handles, tried once, and a
+second failure is reported naming what was missing and why preparing it failed.
+
+### A mismatch is two different problems, and only one is a restart
+
+**The detection is untouched** — it was right every time; only the remedy was
+wrong. `repairFor` in `core/src/build-stamp.ts`:
+
+- **`restart`** — the compiled service on disk already matches the panel and the
+  process is simply older.
+- **`rebuild`** — `service/dist` is itself behind, so restarting would re-read the
+  same stale file. **This is the ordinary case after `npm run check`**, which
+  rebuilds the panel bundle through the panel workspace's own test script and
+  **never touches `service/dist`**.
+- **`unknown`** — a stamp is missing; nothing is repaired on a guess.
+
+**`repairService` stops before it starts.** `--force` takes the lock without
+stopping the old process, so two services run and stopping the loser deletes the
+winner's handshake — a defect already paid for once. SIGTERM, so the service clears
+its own handshake. **Bounded at `MAX_REPAIR_ATTEMPTS = 1` per panel session**: a
+panel restarting a service in a loop is worse than a banner.
+
+**What a restart cannot fix** is the `rebuild` case, which is why that branch
+exists. What is left is a compile that genuinely fails — the code is broken rather
+than the machine — and the panel says so with no command in the sentence.
+
+### Proven against a live service
+
+The machine was already in the failing condition. Running service
+`f6225b1554+9d80ac26…`, compiled service `76b9c06b0a+c73f2c53…`, rebuilt panel
+bundle `76b9c06b0a+484c1864…`.
+
+**Rebuild branch:** `repairFor` chose `rebuild`, the rebuild ran, `service/dist`
+came out **byte-identical to the panel bundle**, the old service was stopped.
+**Restart branch, unbroken:** pid 53739 → `restart` → old process dead → pid 54157
+reporting the panel's own stamp. Both drove the real `repairService` with a host
+built from ordinary Node calls in place of CEP's.
+
+**And seen in a real browser**: the build-stamp test loads the built bundle with a
+wrong stamp and the panel starts repairing on its own, so what renders is the
+repair rather than an instruction.
+
+**Not seen inside After Effects.** CEP's `cep_node.require('child_process')` doing
+the *stop* and the *rebuild* is unexercised there; only the spawn is long
+established.
+
+### Three tests asserted the retired remedy and were rewritten
+
+`staleness.test.ts`, `render.browser.test.ts` and `build-stamp.test.ts` each pinned
+that the banner names `npm run service -- --force`. All three now assert the
+opposite — that no screen contains `npm run` or the word *terminal*.
+`REBUILD_COMMAND` stays exported and is shown to nobody: the repair does what it
+did.
+
+### What still needs a terminal, recorded
+
+In `docs/SECOND_MACHINE.md`. **Making a video needs none** — client setup, video,
+pipeline, words, keywords, pictures, watermark and build are all on screen, and the
+watermark and loudness measurements are taken by the pipeline as it runs. What
+remains: installing the machine once; **a client's own photographs**, the next
+session and the last gap in ordinary use; `npm run doctor`; `npm run backup`; and
+`npm run audit:templates` after someone edits the templates. Everything else in
+`package.json` is a developer's tool.
