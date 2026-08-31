@@ -1266,3 +1266,71 @@ review, which **invalidates every hand-made reference under
 `benchmarks/references/align/`** — files nobody can regenerate, because they are
 a human's judgement. Any change to it is a deliberate, reported act with the
 references re-collected, never a side effect of another change.
+
+## 10. Any video, not only the corpus
+
+**`benchmarks/footage.json` is the catalogue of the five test reels. It was
+never a list of what the product may open**, and until Block 10 session 30 it
+was one: every stage looked a reel up by label in that file alone, so the first
+real client video picked through Browse was refused with `no reel labelled
+"sora" in benchmarks/footage.json` — a sentence about a benchmark fixture, on
+the screen of someone trying to caption a client's reel. Six call sites did it
+(`pipeline.ts`, `dry-run.ts`, `steps.ts`, `transcript-view.ts`,
+`keyword-view.ts`, `image-view.ts`), all through `listReels()`.
+
+**The panel sends a label on every call**, and nothing on the service side
+remembered what a browsed label meant. So a browsed video is written down:
+
+- **`service/src/videos.ts`** holds the registry, `.local/videos.json`. Opening
+  a video through `GET /video?path=` reads its duration, frame rate, dimensions
+  and sha256 from the file itself and records them with a label. Nothing is
+  copied and nothing is written beside the file.
+- **`listReels()` is the corpus plus the registry**, deduplicated by path. The
+  corpus catalogue keeps its own job — the fetch note, the sha256 and the byte
+  count `npm run doctor` verifies are still only about those five reels.
+- **`FRAMOPIA_VIDEO_REGISTRY`** re-points the registry, so a test's answer does
+  not depend on which videos the machine happens to have opened.
+
+**What a corpus reel takes from the catalogue, a browsed video takes from the
+file.** Duration and frame rate from ffprobe; dimensions from ffprobe; the
+sha256 by streaming the file once, at open time, so the dry run never has to
+hash 4.5 GB again; the label from the file's own name.
+
+**The label is the file's name without its extension.** A second file wanting
+the same name gets its folder in front of it (`Work in Progress/sora`), and a
+third a short hash of its full path. Two different files may never share a
+label, because the label is what every later call sends. It is not editable: a
+name the user can change is a second identifier to keep in step with the plan,
+the cache and the build.
+
+**A browsed video's plan does not sit beside it.** `editPlanPathFor` is the one
+declaration and it branches on `classifyStoredPath`: a video inside the
+repository keeps its plan beside it — that is the five corpus reels, and every
+path in every report depends on it — while a video outside gets
+`.local/plans/<name>-<hash of its path>.editplan.json`. Writing a JSON file
+into a client's *Work in Progress* folder is this tool leaving something behind
+in work that is not its own. Cache entries and cutouts were already keyed by
+video hash under `.local/`, and the built `.aep` was already
+`.local/build/<reel>-full.aep`.
+
+**A video the tool cannot use is refused at the moment it is opened**, before
+any money can move, each refusal naming which: not a video file, no duration,
+no audio track, or not 2160 x 3840 — the one frame size every placement
+constant, the subtitle band and the watermark inset are derived from
+(PROJECT_SPEC §4).
+
+### No message sends the user out of the panel
+
+Session 26 made the panel start, prepare and restart the companion service
+itself and pinned it with two assertions: no screen contains `npm run`, and none
+contains *terminal*. **Both passed while the Build pane was telling a user to
+quit After Effects**, because neither word appears in that sentence — the rule
+had been written as two examples of itself.
+
+`panel/src/leave-the-panel.test.ts` reads the source instead, the way
+`path-fields.test.ts` pins that no path is typed, and fails on any instruction
+to quit, restart, reopen or relaunch anything, or on any command to type.
+**`host.ts` is the one exemption and it is a real one**: a panel loaded without
+CEP's Node bridge has no service to repair and no bundle to rebuild, and After
+Effects reads its extensions folder at launch, so naming the restart is the only
+true sentence available.

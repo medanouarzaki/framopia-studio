@@ -41,6 +41,9 @@ a saved `.aep` for a human to review. Full spec in `docs/PROJECT_SPEC.md`.
 - `modes/` — one file per client. `k2-syndicalia.json` is the real one.
 - `assets/` — brand, SFX and the watermark.
 - `.local/` — machine-local config, secrets, caches, run state. Gitignored.
+  `videos.json` is every video opened through Browse; `plans/` holds the Edit
+  Plan for each, because a client's own footage never gets a file written
+  beside it.
 
 ## Everyday commands
 
