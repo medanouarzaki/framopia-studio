@@ -648,12 +648,12 @@
           "position": {
             "value": [
               1080,
-              775,
+              700,
               0
             ],
             "valueAtSampleTime": [
               1080,
-              775,
+              700,
               0
             ],
             "keyframes": 2,
@@ -774,7 +774,7 @@
                   "time": 0,
                   "value": [
                     1080,
-                    825,
+                    750,
                     0
                   ],
                   "inInterpolation": "BEZIER",
@@ -798,7 +798,7 @@
                   "time": 0.4004004004004,
                   "value": [
                     1080,
-                    775,
+                    700,
                     0
                   ],
                   "inInterpolation": "BEZIER",
@@ -875,12 +875,12 @@
           "position": {
             "value": [
               1080,
-              775,
+              700,
               0
             ],
             "valueAtSampleTime": [
               1080,
-              775,
+              700,
               0
             ],
             "keyframes": 2,
@@ -1001,7 +1001,7 @@
                   "time": 0,
                   "value": [
                     1080,
-                    825,
+                    750,
                     0
                   ],
                   "inInterpolation": "BEZIER",
@@ -1025,7 +1025,7 @@
                   "time": 0.4004004004004,
                   "value": [
                     1080,
-                    775,
+                    700,
                     0
                   ],
                   "inInterpolation": "BEZIER",
@@ -1128,12 +1128,12 @@
           "position": {
             "value": [
               1080,
-              775,
+              750,
               0
             ],
             "valueAtSampleTime": [
               1080,
-              775,
+              700,
               0
             ],
             "keyframes": 2,
@@ -1168,7 +1168,7 @@
             "unreadable": null
           },
           "opacity": {
-            "value": 100,
+            "value": 0,
             "valueAtSampleTime": 100,
             "keyframes": 2,
             "unreadable": null
@@ -1254,7 +1254,7 @@
                   "time": 0,
                   "value": [
                     1080,
-                    825,
+                    750,
                     0
                   ],
                   "inInterpolation": "BEZIER",
@@ -1278,7 +1278,7 @@
                   "time": 0.4004004004004,
                   "value": [
                     1080,
-                    775,
+                    700,
                     0
                   ],
                   "inInterpolation": "BEZIER",
@@ -1355,12 +1355,12 @@
           "position": {
             "value": [
               1080,
-              775,
+              750,
               0
             ],
             "valueAtSampleTime": [
               1080,
-              775,
+              700,
               0
             ],
             "keyframes": 2,
@@ -1395,7 +1395,7 @@
             "unreadable": null
           },
           "opacity": {
-            "value": 100,
+            "value": 0,
             "valueAtSampleTime": 100,
             "keyframes": 2,
             "unreadable": null
@@ -1481,7 +1481,7 @@
                   "time": 0,
                   "value": [
                     1080,
-                    825,
+                    750,
                     0
                   ],
                   "inInterpolation": "BEZIER",
@@ -1505,7 +1505,7 @@
                   "time": 0.4004004004004,
                   "value": [
                     1080,
-                    775,
+                    700,
                     0
                   ],
                   "inInterpolation": "BEZIER",
@@ -1608,12 +1608,12 @@
           "position": {
             "value": [
               1080,
-              775.358509818199,
+              700,
               0
             ],
             "valueAtSampleTime": [
               1080,
-              775,
+              700,
               0
             ],
             "keyframes": 2,
@@ -1648,7 +1648,7 @@
             "unreadable": null
           },
           "opacity": {
-            "value": 99.2831791184843,
+            "value": 100,
             "valueAtSampleTime": 100,
             "keyframes": 2,
             "unreadable": null
@@ -1734,7 +1734,7 @@
                   "time": 0,
                   "value": [
                     1080,
-                    825,
+                    750,
                     0
                   ],
                   "inInterpolation": "BEZIER",
@@ -1758,7 +1758,7 @@
                   "time": 0.4004004004004,
                   "value": [
                     1080,
-                    775,
+                    700,
                     0
                   ],
                   "inInterpolation": "BEZIER",
@@ -1835,12 +1835,12 @@
           "position": {
             "value": [
               1080,
-              775.358509818199,
+              700,
               0
             ],
             "valueAtSampleTime": [
               1080,
-              775,
+              700,
               0
             ],
             "keyframes": 2,
@@ -1875,7 +1875,7 @@
             "unreadable": null
           },
           "opacity": {
-            "value": 99.2831791184843,
+            "value": 100,
             "valueAtSampleTime": 100,
             "keyframes": 2,
             "unreadable": null
@@ -1961,7 +1961,7 @@
                   "time": 0,
                   "value": [
                     1080,
-                    825,
+                    750,
                     0
                   ],
                   "inInterpolation": "BEZIER",
@@ -1985,7 +1985,7 @@
                   "time": 0.4004004004004,
                   "value": [
                     1080,
-                    775,
+                    700,
                     0
                   ],
                   "inInterpolation": "BEZIER",
@@ -2088,12 +2088,12 @@
           "position": {
             "value": [
               1080,
-              775,
+              700.031056588141,
               0
             ],
             "valueAtSampleTime": [
               1080,
-              775,
+              700,
               0
             ],
             "keyframes": 2,
@@ -2128,7 +2128,7 @@
             "unreadable": null
           },
           "opacity": {
-            "value": 100,
+            "value": 99.9279988265195,
             "valueAtSampleTime": 100,
             "keyframes": 2,
             "unreadable": null
@@ -2214,7 +2214,7 @@
                   "time": 0,
                   "value": [
                     1080,
-                    825,
+                    750,
                     0
                   ],
                   "inInterpolation": "BEZIER",
@@ -2238,7 +2238,7 @@
                   "time": 0.4004004004004,
                   "value": [
                     1080,
-                    775,
+                    700,
                     0
                   ],
                   "inInterpolation": "BEZIER",
@@ -2315,12 +2315,12 @@
           "position": {
             "value": [
               1080,
-              775,
+              700.031056588141,
               0
             ],
             "valueAtSampleTime": [
               1080,
-              775,
+              700,
               0
             ],
             "keyframes": 2,
@@ -2355,7 +2355,7 @@
             "unreadable": null
           },
           "opacity": {
-            "value": 100,
+            "value": 99.9279988265195,
             "valueAtSampleTime": 100,
             "keyframes": 2,
             "unreadable": null
@@ -2441,7 +2441,7 @@
                   "time": 0,
                   "value": [
                     1080,
-                    825,
+                    750,
                     0
                   ],
                   "inInterpolation": "BEZIER",
@@ -2465,7 +2465,7 @@
                   "time": 0.4004004004004,
                   "value": [
                     1080,
-                    775,
+                    700,
                     0
                   ],
                   "inInterpolation": "BEZIER",
@@ -2555,5 +2555,5 @@
       ]
     }
   ],
-  "aepSha256": "e9e26d49d62d2cf8dc6e643f4b0b00a40623c081423822873d9dafac7c14a10b"
+  "aepSha256": "103cc1f1d02018df9f189e646cf96393de73c4286e35487586c5abdf7c0a13e1"
 }
