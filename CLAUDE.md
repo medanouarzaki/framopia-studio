@@ -635,6 +635,45 @@ its tests while the panel was broken in After Effects. Prefer stubbing what the
 and never stub a method the code does not call. Full statement in
 `docs/CLAUDE_CODE_GUIDELINES.md` §3.
 
+### The gate counts the hand-made references, and says what it counted
+
+**A hand-made reference is a file a person authored that nothing can
+regenerate.** Six of them: four transcripts in `.local/ground-truth/*.txt` and
+two alignment references in `benchmarks/references/align/`.
+`core/src/references.ts` is the one declaration — `REFERENCE_FILES`, each entry
+naming what reads it so a failure says what stops working.
+
+**A README in a reference directory is documentation, not a reference**, and the
+gate prints `REFERENCE_SET_DEFINITION` beside its count so the number cannot mean
+two things in two reports again. It already had: Block 10 session 10 measured
+"3 alignment references" by walking the directory, session 11 said "6" by
+excluding the README, and session 12 found seven files against six references —
+all true of different sets, none saying which.
+
+**Before session 13 the gate could not see a lost reference.** A deleted
+transcript failed `npm run check` only as an uncaught `ENOENT` from
+`verify-references.ts`'s unguarded `readFileSync`; a deleted **alignment**
+reference failed nothing at all, because nothing in the gate read those files.
+`benchmarks/src/reference-set.ts` now checks every declared file is present,
+readable and parses — an alignment reference through `parseAlignReference`, a
+transcript for having text under its header — and names the file, the problem
+and what reads it. The version check stays separate: **absent is a lost file,
+non-conformant is a text to correct**, and a reader has to be able to tell them
+apart.
+
+**The declaration cannot fall behind the disk.** A hand-made file sitting in a
+reference directory that `REFERENCE_FILES` does not declare fails the gate —
+the same shape as `REPO_ANCHORS` pinned against `readdirSync`. Documentation is
+excluded by name, never by extension; the tagged `.local/ground-truth/*.json`
+are excluded because `npm run bench:tag` rebuilds them.
+
+**Every failure has been watched, and no real reference was touched to watch
+it.** `FRAMOPIA_REFERENCE_ROOT` re-roots the declared set onto a scratch tree
+(`referenceFilesRootedAt`), so an absence is simulated by never creating a file
+rather than by removing one. Six absences, an unreadable file, three
+unparseable shapes and an undeclared file were each exercised; all exit 1 and
+name the path.
+
 ### A stored path is re-rooted onto the repository running now
 
 **The Edit Plans store absolute paths — 52 across the five plans — and every one
