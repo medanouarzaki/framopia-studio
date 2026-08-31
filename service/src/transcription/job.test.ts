@@ -93,6 +93,9 @@ describe('transcribeVideo — composition', () => {
   });
 
   afterEach(() => {
+    // The video is outside the repository, so its plan is not inside `dir`.
+    // A test cleans up what it wrote, wherever the rule sent it.
+    rmSync(editPlanPathFor(videoPath), { force: true });
     rmSync(dir, { recursive: true, force: true });
   });
 
@@ -212,6 +215,9 @@ describe('transcribeVideo — re-run on an unchanged video', () => {
   });
 
   afterEach(() => {
+    // The video is outside the repository, so its plan is not inside `dir`.
+    // A test cleans up what it wrote, wherever the rule sent it.
+    rmSync(editPlanPathFor(videoPath), { force: true });
     rmSync(dir, { recursive: true, force: true });
   });
 
@@ -338,6 +344,9 @@ describe('transcribeVideo — media work is not repeated', () => {
   });
 
   afterEach(() => {
+    // The video is outside the repository, so its plan is not inside `dir`.
+    // A test cleans up what it wrote, wherever the rule sent it.
+    rmSync(editPlanPathFor(videoPath), { force: true });
     rmSync(dir, { recursive: true, force: true });
   });
 
