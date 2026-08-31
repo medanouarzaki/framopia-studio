@@ -69,6 +69,19 @@ function aeVersionFrom(census: Record<string, unknown>): string {
 }
 
 /**
+ * How many faces this machine has, recorded rather than compared.
+ *
+ * It says nothing about the comp — the face set on each text layer is what the
+ * comparison checks — but it is worth printing beside a difference, because a
+ * font library that does not match is one of the few things that could change
+ * how a card was set.
+ */
+function fontNamesFrom(census: Record<string, unknown>): number | null {
+  const n = census['fontNameCount'];
+  return typeof n === 'number' ? n : null;
+}
+
+/**
  * Nothing here can spend, and the pre-flight says why rather than sampling it.
  *
  * The golden run **builds**; it never runs the pipeline. `runBuildJob` places
@@ -150,10 +163,12 @@ async function main(): Promise<void> {
   const workDir = mkdtempSync(path.join(tmpdir(), 'framopia-golden-'));
   const measured: Record<string, unknown> = {};
   let aeVersion = 'unknown';
+  let fontNames: number | null = null;
   try {
     for (const reel of reels) {
       const census = await censusOf(reel, workDir);
       aeVersion = aeVersionFrom(census);
+      fontNames = fontNamesFrom(census);
       measured[reel] = normaliseCensus(census, REPO_ROOT);
       console.log(`  built  ${reel.padEnd(9)} ${countFields(measured[reel])} fields censused`);
     }
@@ -167,7 +182,7 @@ async function main(): Promise<void> {
       schemaVersion: GOLDEN_SCHEMA_VERSION,
       recordedBy: 'npm run golden -- --record',
       recordedAt: started,
-      recordedOn: { machine: hostname(), aeVersion, commit: gitCommit() },
+      recordedOn: { machine: hostname(), aeVersion, fontNames, commit: gitCommit() },
       excluded: GOLDEN_EXCLUDED_FIELDS,
       reels: measured,
     };
@@ -191,8 +206,18 @@ async function main(): Promise<void> {
     }
     const reference = parseGoldenReference(parsed, referencePath);
     console.log(`reference ${referencePath}`);
-    console.log(`          sha256 ${createHash('sha256').update(raw).digest('hex').slice(0, 16)}, recorded ${reference.recordedAt} on ${reference.recordedOn.machine} (After Effects ${reference.recordedOn.aeVersion})`);
-    console.log(`this run  After Effects ${aeVersion}`);
+    console.log(
+      `          sha256 ${createHash('sha256').update(raw).digest('hex').slice(0, 16)}, recorded ` +
+        `${reference.recordedAt} on ${reference.recordedOn.machine} ` +
+        `(After Effects ${reference.recordedOn.aeVersion}, ${reference.recordedOn.fontNames ?? '?'} font names)`,
+    );
+    console.log(`this run  After Effects ${aeVersion}, ${fontNames ?? '?'} font names installed`);
+    if (aeVersion !== reference.recordedOn.aeVersion) {
+      console.log(
+        '          the two were measured on different After Effects builds. That is not a ' +
+          'difference in what was built: if every field below matches, this is a pass.',
+      );
+    }
     console.log('');
 
     let matched = 0;

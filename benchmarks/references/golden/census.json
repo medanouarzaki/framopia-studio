@@ -1,31 +1,46 @@
 {
   "schemaVersion": 1,
   "recordedBy": "npm run golden -- --record",
-  "recordedAt": "2026-08-31T02:42:04.830Z",
+  "recordedAt": "2026-08-31T03:16:47.875Z",
   "recordedOn": {
     "machine": "192.168.1.5",
     "aeVersion": "26.0x67",
-    "commit": "9921470c390f908b972b5bba1a462aba090ba5db"
+    "fontNames": 1198,
+    "commit": "a5506633427dd2adf02fd4a82a34f32d1fed3901"
   },
   "excluded": [
     {
       "path": "measuredAt",
       "reason": "the wall clock when the census ran",
       "observed": "02:25:14.137Z, 02:25:32.804Z, 02:25:50.426Z on test-1",
-      "runs": 24
+      "runs": 24,
+      "because": "measured"
     },
     {
       "path": "aepSha256",
       "reason": "After Effects embeds a timestamp in the project file, so two builds of one comp never have the same bytes",
       "observed": "6f39b804…, 4614e47e…, b127023b… on test-1",
-      "runs": 24
+      "runs": 24,
+      "because": "measured"
+    },
+    {
+      "path": "aeVersion",
+      "reason": "which After Effects took the measurement, not what it built; a different build laying out identical comps is a pass, and it is printed on both sides",
+      "observed": "26.0x67 here; the second machine will very likely differ",
+      "runs": 0,
+      "because": "not-about-the-comp"
+    },
+    {
+      "path": "fontNameCount",
+      "reason": "how many faces are installed on the machine, which no comp depends on; the face set on every text layer is compared and is the check that matters",
+      "observed": "1198 here; any machine with different fonts installed differs",
+      "runs": 0,
+      "because": "not-about-the-comp"
     }
   ],
   "reels": {
     "test-1": {
-      "aeVersion": "26.0x67",
       "aepPath": ".local/build/test_1-full.aep",
-      "fontNameCount": 1198,
       "imageComps": [
         {
           "compName": "img001__img_float",
@@ -6736,9 +6751,7 @@
       "toolVersion": 1
     },
     "test-2": {
-      "aeVersion": "26.0x67",
       "aepPath": ".local/build/test_2-full.aep",
-      "fontNameCount": 1198,
       "imageComps": [],
       "masters": [
         {
@@ -13219,9 +13232,7 @@
       "toolVersion": 1
     },
     "test-3": {
-      "aeVersion": "26.0x67",
       "aepPath": ".local/build/test_3-full.aep",
-      "fontNameCount": 1198,
       "imageComps": [],
       "masters": [
         {
@@ -18839,9 +18850,7 @@
       "toolVersion": 1
     },
     "vitasilk": {
-      "aeVersion": "26.0x67",
       "aepPath": ".local/build/vitasilk-full.aep",
-      "fontNameCount": 1198,
       "imageComps": [
         {
           "compName": "img001__img_float",

@@ -12,6 +12,16 @@
  *
  * The comparison is pure and lives here so `npm run check` runs it: the harness
  * in `tools/golden/` builds and censuses, and does no deciding.
+ *
+ * **Two of the excluded fields were excluded by ruling rather than by
+ * measurement**, and the list says which is which. `aeVersion` and
+ * `fontNameCount` describe the machine that took the census, not the comp it
+ * built: the partner's After Effects will very likely be a different build and
+ * his font library certainly is, so comparing them would fail his first run on
+ * two facts that say nothing about whether the system works. They are recorded
+ * as run inputs and printed on both sides of any difference, where context
+ * belongs. What replaced `fontNameCount` as a check is the face set on every
+ * individual text layer, which was always the one that mattered.
  */
 
 /** The reels the golden run covers. */
@@ -36,8 +46,15 @@ export interface ExcludedField {
   readonly reason: string;
   /** What it was observed to take, so the exclusion can be re-judged. */
   readonly observed: string;
-  /** Builds behind the observation. */
+  /** Builds behind the observation, or 0 for a field excluded by ruling. */
   readonly runs: number;
+  /**
+   * `measured` — it moved between builds here, so comparing it is noise.
+   * `not-about-the-comp` — it describes the machine, not what was built, so a
+   * difference says nothing about whether the system works. A ruling, and each
+   * one names what still covers the ground it left.
+   */
+  readonly because: 'measured' | 'not-about-the-comp';
 }
 
 /**
@@ -59,6 +76,7 @@ export const GOLDEN_EXCLUDED_FIELDS: readonly ExcludedField[] = [
     reason: 'the wall clock when the census ran',
     observed: '02:25:14.137Z, 02:25:32.804Z, 02:25:50.426Z on test-1',
     runs: 24,
+    because: 'measured',
   },
   {
     path: 'aepSha256',
@@ -67,6 +85,25 @@ export const GOLDEN_EXCLUDED_FIELDS: readonly ExcludedField[] = [
       'one comp never have the same bytes',
     observed: '6f39b804…, 4614e47e…, b127023b… on test-1',
     runs: 24,
+    because: 'measured',
+  },
+  {
+    path: 'aeVersion',
+    reason:
+      'which After Effects took the measurement, not what it built; a different ' +
+      'build laying out identical comps is a pass, and it is printed on both sides',
+    observed: '26.0x67 here; the second machine will very likely differ',
+    runs: 0,
+    because: 'not-about-the-comp',
+  },
+  {
+    path: 'fontNameCount',
+    reason:
+      'how many faces are installed on the machine, which no comp depends on; ' +
+      'the face set on every text layer is compared and is the check that matters',
+    observed: '1198 here; any machine with different fonts installed differs',
+    runs: 0,
+    because: 'not-about-the-comp',
   },
 ];
 
@@ -175,7 +212,17 @@ export interface GoldenReference {
   /** What produced it, for a reader who finds the file alone. */
   readonly recordedBy: string;
   readonly recordedAt: string;
-  readonly recordedOn: { machine: string; aeVersion: string; commit: string };
+  /**
+   * The machine, not the comp. `aeVersion` and `fontNames` live here rather
+   * than in the compared fields: see {@link GOLDEN_EXCLUDED_FIELDS}.
+   */
+  readonly recordedOn: {
+    machine: string;
+    aeVersion: string;
+    /** Optional with a default: a reference recorded before session 15 has none. */
+    fontNames?: number | null;
+    commit: string;
+  };
   readonly excluded: readonly ExcludedField[];
   /** Reel to its normalised census. */
   readonly reels: Record<string, unknown>;
@@ -223,7 +270,9 @@ export function countFields(value: unknown): number {
 export function excludedFieldsSummary(
   fields: readonly ExcludedField[] = GOLDEN_EXCLUDED_FIELDS,
 ): string[] {
-  return fields.map(
-    (f) => `${f.path} — ${f.reason}; measured varying across ${f.runs} builds (${f.observed})`,
+  return fields.map((f) =>
+    f.because === 'measured'
+      ? `${f.path} — ${f.reason}; measured varying across ${f.runs} builds (${f.observed})`
+      : `${f.path} — ${f.reason}; recorded as a run input instead (${f.observed})`,
   );
 }

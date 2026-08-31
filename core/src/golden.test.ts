@@ -35,11 +35,15 @@ const census = {
 };
 
 describe('normalising a census', () => {
-  it('drops exactly the fields measured to vary', () => {
+  it('drops every excluded field, measured or ruled', () => {
     const out = normaliseCensus(census, REPO) as Record<string, unknown>;
     expect(out['measuredAt']).toBeUndefined();
     expect(out['aepSha256']).toBeUndefined();
-    expect(out['aeVersion']).toBe('26.0x67');
+    // Ruled out in session 15: they describe the machine, not the comp.
+    expect(out['aeVersion']).toBeUndefined();
+    expect(out['fontNameCount']).toBeUndefined();
+    // What is left is the built thing itself.
+    expect(out['masters']).toBeDefined();
   });
 
   it('makes a repo path relative instead of dropping it', () => {
@@ -138,14 +142,12 @@ describe('the golden reference', () => {
     expect(GOLDEN_REELS_EXCLUDED['ground-truth']).toContain('pre-flight');
   });
 
-  it('every exclusion carries the measurement behind it', () => {
+  it('every exclusion carries its reason and what it was observed to take', () => {
     expect(GOLDEN_EXCLUDED_FIELDS.length).toBeGreaterThan(0);
     for (const field of GOLDEN_EXCLUDED_FIELDS) {
       expect(field.reason).not.toBe('');
       expect(field.observed).not.toBe('');
-      expect(field.runs).toBeGreaterThanOrEqual(3);
     }
-    for (const line of excludedFieldsSummary()) expect(line).toMatch(/measured varying across \d+ builds/);
   });
 
   /**
@@ -153,8 +155,51 @@ describe('the golden reference', () => {
    * adding a path here makes a real difference invisible. It stays two until a
    * measurement says otherwise.
    */
-  it('excludes only the two fields measured to vary', () => {
-    expect(GOLDEN_EXCLUDED_FIELDS.map((f) => f.path).sort()).toEqual(['aepSha256', 'measuredAt']);
+  it('excludes exactly these four, and says which are measured and which are ruled', () => {
+    expect(GOLDEN_EXCLUDED_FIELDS.map((f) => f.path).sort()).toEqual([
+      'aeVersion',
+      'aepSha256',
+      'fontNameCount',
+      'measuredAt',
+    ]);
+    const measured = GOLDEN_EXCLUDED_FIELDS.filter((f) => f.because === 'measured');
+    const ruled = GOLDEN_EXCLUDED_FIELDS.filter((f) => f.because === 'not-about-the-comp');
+    expect(measured.map((f) => f.path).sort()).toEqual(['aepSha256', 'measuredAt']);
+    expect(ruled.map((f) => f.path).sort()).toEqual(['aeVersion', 'fontNameCount']);
+  });
+
+  /**
+   * A field excluded because it was measured to vary must carry the builds
+   * behind it; one excluded by ruling must not claim a measurement it never had.
+   */
+  it('a measured exclusion has runs behind it and a ruled one does not', () => {
+    for (const f of GOLDEN_EXCLUDED_FIELDS) {
+      if (f.because === 'measured') expect(f.runs).toBeGreaterThanOrEqual(3);
+      else expect(f.runs).toBe(0);
+    }
+    const lines = excludedFieldsSummary();
+    expect(lines.filter((l) => l.includes('measured varying across'))).toHaveLength(2);
+    expect(lines.filter((l) => l.includes('recorded as a run input instead'))).toHaveLength(2);
+  });
+
+  /**
+   * The face on each text layer is what replaced `fontNameCount`. If that ever
+   * stopped being compared, dropping the count would have removed a check
+   * rather than moved one.
+   */
+  it('still compares the face set on every text layer', () => {
+    const withFont = {
+      textComps: [{ layers: [{ name: 'TXT_MAIN', font: 'Inter-SemiBold' }] }],
+      fontNameCount: 1198,
+    };
+    const other = {
+      textComps: [{ layers: [{ name: 'TXT_MAIN', font: 'Almarai-Bold' }] }],
+      fontNameCount: 42,
+    };
+    const diffs = compareCensus(normaliseCensus(withFont, REPO), normaliseCensus(other, REPO));
+    expect(diffs).toEqual([
+      { path: 'textComps[0].layers[0].font', expected: 'Inter-SemiBold', actual: 'Almarai-Bold' },
+    ]);
   });
 
   it('counts leaves, so a match reports its own weight', () => {
