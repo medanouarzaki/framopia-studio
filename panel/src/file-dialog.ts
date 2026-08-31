@@ -81,20 +81,32 @@ export function fileDialogSupport(): DialogSupport {
 }
 
 /**
- * Opens the dialog and returns one absolute path, or null if he cancelled.
+ * Opens the dialog and returns one absolute path, or null if he chose nothing.
  *
  * CEP answers `{ err, data }` where `data` is a list even for one file, and a
  * cancel is a non-zero `err` rather than an exception — so both are handled as
- * "he chose nothing", which is not an error to report.
+ * "he chose nothing", which is not an error to report and, at every call site,
+ * must leave whatever he already had alone.
  */
-export function pickVideoFile(startIn: string): string | null {
+function pick(
+  title: string,
+  startIn: string,
+  chooseDirectory: boolean,
+  fileTypes?: readonly string[],
+): string | null {
   const fs = cepFs();
   if (fs === null) return null;
   const open = fs.showOpenDialogEx ?? fs.showOpenDialog;
   if (typeof open !== 'function') return null;
   let result: CepDialogResult;
   try {
-    result = open(false, false, 'Choose a video', startIn, [...VIDEO_EXTENSIONS_WITHOUT_DOT]);
+    result = open(
+      false,
+      chooseDirectory,
+      title,
+      startIn,
+      fileTypes === undefined ? undefined : [...fileTypes],
+    );
   } catch {
     return null;
   }
@@ -103,4 +115,26 @@ export function pickVideoFile(startIn: string): string | null {
   if (!Array.isArray(data) || data.length === 0) return null;
   const first = data[0];
   return typeof first === 'string' && first !== '' ? first : null;
+}
+
+export function pickVideoFile(startIn: string): string | null {
+  return pick('Choose a video', startIn, false, VIDEO_EXTENSIONS_WITHOUT_DOT);
+}
+
+/**
+ * A folder, for a field that names a directory.
+ *
+ * `chooseDirectory` is CEP's own second argument; the same call that opens the
+ * video chooser opens a folder chooser, which is why nothing new was invented
+ * for this.
+ */
+export function pickFolder(title: string, startIn: string): string | null {
+  return pick(title, startIn, true);
+}
+
+/** Image types a logo could reasonably be, in the form CEP wants: no dot. */
+export const IMAGE_EXTENSIONS_WITHOUT_DOT = ['png', 'jpg', 'jpeg', 'tif', 'tiff', 'svg'] as const;
+
+export function pickImageFile(title: string, startIn: string): string | null {
+  return pick(title, startIn, false, IMAGE_EXTENSIONS_WITHOUT_DOT);
 }

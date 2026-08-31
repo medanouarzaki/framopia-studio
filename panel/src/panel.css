@@ -541,6 +541,18 @@ section.client .say, section.video .say { margin: 8px 0 0; color: var(--muted); 
 }
 .field.stacked input:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
 .field .hint { color: var(--faint); font-size: 0.75em; font-style: normal; line-height: 1.5; }
+
+/* A path is chosen, never typed: the button is the control and the path is the
+   receipt underneath it. */
+.pathfield > span { color: var(--faint); font-size: 0.62em; letter-spacing: 0.08em; text-transform: uppercase; }
+.pathfield .choose { justify-self: start; }
+.pathfield .chosenpath {
+  margin: 0;
+  font-size: 0.72em;
+  color: var(--text);
+  word-break: break-all;
+  line-height: 1.4;
+}
 .check { display: flex; align-items: center; gap: 8px; }
 
 /* The client's own pictures, offered beside the made ones. */

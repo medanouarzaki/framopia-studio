@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { createClient, type Connection } from './service.js';
+import { fileDialogSupport, pickFolder, pickImageFile } from './file-dialog.js';
 import type { ClientMode } from './types.js';
 
 /**
@@ -39,6 +40,7 @@ export function NewClient({
   const [error, setError] = useState<string | null>(null);
 
   const permanent = kind === 'permanent';
+  const dialog = fileDialogSupport();
 
   const save = async (): Promise<void> => {
     if (connection === null) return;
@@ -96,11 +98,14 @@ export function NewClient({
           onChange={setNote}
         />
         {permanent ? (
-          <Field
+          <PathField
             label="Video folder"
-            hint="The full path to where their footage lives. This is what fills the video list. Blank keeps the old list."
+            hint="Where their footage lives. This is what fills the video list. Blank keeps the old list."
             value={videoFolder}
             onChange={setFolder}
+            choose={() => pickFolder('Choose their video folder', videoFolder)}
+            chooseLabel="Choose folder…"
+            dialog={dialog.available}
           />
         ) : null}
 
@@ -134,11 +139,14 @@ export function NewClient({
 
         {permanent ? (
           <>
-            <Field
+            <PathField
               label="Logo"
-              hint="The full path to their logo. Optional."
+              hint="Their logo. Optional."
               value={logoPath}
               onChange={setLogo}
+              choose={() => pickImageFile('Choose their logo', logoPath)}
+              chooseLabel="Choose file…"
+              dialog={dialog.available}
             />
             <label className="field">
               <span>Video shape</span>
@@ -221,5 +229,81 @@ function Field({
       />
       <em className="hint">{hint}</em>
     </label>
+  );
+}
+
+/**
+ * A path he points at, never one he types.
+ *
+ * **User ruling, 2026-08-31**, made while setting up a client for the first
+ * time and stated for the whole product: no path is written by hand anywhere.
+ * A path is something the machine already knows how to find, and asking someone
+ * to reproduce one character for character is asking him to do the machine's
+ * work and to get it wrong.
+ *
+ * The chooser is CEP's own `showOpenDialogEx`, the same call the video picker
+ * has used since Block 8 session 44 — `chooseDirectory` is its second argument,
+ * so a folder chooser and a file chooser are one call. Nothing new was invented.
+ *
+ * **A cancel leaves the field exactly as it was.** `pickFolder` and
+ * `pickImageFile` answer null both for a cancel and for a host with no dialog,
+ * and null here means "he chose nothing", never "clear what he had".
+ *
+ * The path is still shown, because he has to see what he picked, and the field
+ * falls back to text on a host with no chooser at all — a real case this project
+ * has been wrong about before, and why the button appears only when the call is
+ * genuinely there.
+ */
+function PathField({
+  label,
+  hint,
+  value,
+  onChange,
+  choose,
+  chooseLabel,
+  dialog,
+}: {
+  label: string;
+  hint: string;
+  value: string;
+  onChange: (value: string) => void;
+  choose: () => string | null;
+  chooseLabel: string;
+  dialog: boolean;
+}): JSX.Element {
+  return (
+    <div className="field stacked pathfield">
+      <span>{label}</span>
+      {dialog ? (
+        <>
+          <button
+            className="ghost choose"
+            type="button"
+            onClick={() => {
+              const picked = choose();
+              if (picked !== null) onChange(picked);
+            }}
+          >
+            {chooseLabel}
+          </button>
+          {value === '' ? null : (
+            <p className="chosenpath" aria-label={`${label} chosen`}>
+              {value}
+            </p>
+          )}
+        </>
+      ) : (
+        <input
+          type="text"
+          aria-label={label}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+        />
+      )}
+      <em className="hint">
+        {hint}
+        {dialog ? '' : ' This copy of After Effects offers no file chooser, so type the full path.'}
+      </em>
+    </div>
   );
 }
