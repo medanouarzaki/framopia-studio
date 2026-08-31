@@ -667,6 +667,92 @@ case for the second machine.
 `panel/src/path-fields.test.ts` pins the rule by reading every `.tsx`: a text
 input whose label names a path fails unless it is `PathField`'s own fallback.
 
+### The font sample draws the real face, or says it cannot
+
+**Session 16's sample was a silent substitution.** It set `font-family` to After
+Effects' name and let the browser resolve it, so choosing the *italic*
+`AdobeClean-It` drew upright text in a plain sans — a face nobody picked,
+presented as the sample. That is the same shape as the defect PROJECT_SPEC
+guards against in the build, where After Effects accepts a name it cannot
+resolve and quietly sets something else. **A plain name is honest; a wrong
+sample is not.**
+
+**The panel is a browser and can only draw a face it can load as a file**, so
+the name has to become a path. `tools/font-resolve/resolve.py` asks **CoreText**
+through `ctypes` — stdlib only, no venv — because CoreText is the thing that
+owns After Effects' naming for a variable font's instance. Measured this
+session: matching on the PostScript name macOS publishes resolves **900 of
+1188** and **misses two of the three faces this studio uses**; CoreText resolves
+**1164 of 1188 with zero substitutions**, including both.
+
+**The 24 that resolve to no file are Adobe's own application faces**
+(`AdobeClean`, `AdobeCleanUX`, `AdobeCleanHanSC`, `SourceCodePro` — 14), **Skia's
+nine named instances**, and `EmojiOneColor`. An application registers them
+without a file another process can read. **A face with no file is reported as
+unpreviewable, never approximated.**
+
+**A substitution is rejected rather than returned.** CoreText answers a
+descriptor for a name it does not have, so the resolver compares the name it got
+back against the name asked for and calls a mismatch unresolvable.
+
+**The variation axes come back with the file, and they are load-bearing.** The
+file behind `Inter-SemiBold` is `Inter-VariableFont`, whose default instance is
+Regular — measured in Chromium, the same file renders **366.89 px at `wght 600`
+against 352.89 at its default and 325.63 at `wght 100`** for one string. Without
+`font-variation-settings` the sample would be the wrong weight and still look
+plausible. CoreText gives `wght: 600` exactly, so nothing is inferred from a
+weight name.
+
+**Verified by measurement, not by asserting the CSS**: all four real font files
+load from `file://` under CEP's own manifest flags, and each draws at a width
+distinct from the sans-serif fallback — Cormorant italic 289.97, Almarai on
+Arabic 218.64 against a 169.75 fallback. **Observed in Playwright's Chromium,
+not in CEP**; `FontFace` (Chrome 35) and `font-variation-settings` (62) are both
+well inside CEP 12's Chromium 99, but it has not been seen there.
+
+**The Arabic field samples with Arabic** — `شنو كتعرفي`, from the corpus's own
+speech, short enough for the field and exercising initial, medial and final
+forms. Arabic has no conventional pangram and a made-up string would show
+nothing about a face.
+
+### The font list narrows and hides nothing
+
+**1,188 names is not a list you can scroll**: finding `Inter-SemiBold` meant
+passing every Adobe UI face on the machine. The field filters as he types and
+reports `N of 1188`. **Nothing is ever removed** — a hidden font is a font he
+cannot choose, and this is his tool for his clients' brands — so clearing the
+box gives the whole list back, and a test asserts it. *The standard one* stays
+first. **The order is untouched**: the alphabetical order the service already
+returns is defensible, and no rule for promoting faces was found that was better
+than arbitrary.
+
+### 1198 and 1188 are one reading counted two ways
+
+Session 12 measured **1198**, session 16 reported **1188** without remarking on
+it. Both are right and **no font appeared or disappeared**: 1198 is the raw
+comma-split count and 1188 the distinct one. The difference is **10 duplicate
+occurrences across 6 names** — `PingFangHK-Medium`, `PingFangMO-Medium`,
+`PingFangSC-Medium`, `PingFangTC-Medium`, `Helvetica-Light` and
+`HalyardMicro-BoldItalic` — each listed under more than one family entry.
+`framopiaInstalledFontNames` does not dedupe; `fontListView` does. Measured
+again this session on the same unrestarted instance: **445 / 1198 / 1188**.
+
+### What a client's logo may be
+
+**Ruling, 2026-08-31**: a PNG with a transparent background is intended, and the
+field also takes the other still-image formats After Effects imports.
+**No authority for that set existed anywhere in the repository** — the video list
+is mirrored from `service/src/clients/videos.ts` and pinned by a test, and
+nothing equivalent had been written down for stills — so it is recorded as a
+decision in `docs/PROJECT_SPEC.md` §5 and declared once in
+`panel/src/logo-formats.ts`, which the dialog filters on.
+
+**The panel can draw only png, jpg, jpeg, gif and bmp.** A `.psd` is a
+legitimate choice and still cannot be shown, so the screen says which of the two
+happened the moment he picks — not at build time three steps later. That
+distinction exists because **the only consumer of `logoPath` today is the panel's
+client card**; no build places it.
+
 ### The client setup screen finishes a client
 
 **Three more rulings from the same sitting**, all his, all built rather than
