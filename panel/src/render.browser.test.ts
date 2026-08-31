@@ -2208,7 +2208,18 @@ describe.skipIf(!built)('the Build step', () => {
       const shown = await loaded.page.textContent('.buildpane .savepath');
       expect(shown?.trim()).toBe('/repo/.local/build/vitasilk-full.aep');
       expect(text).toContain('It is open in After Effects now, and nothing was rendered');
-      expect(text).toContain('your previous build was open'.replace('your', 'Your'));
+      /*
+       * The user's first panel build printed the same path twice: once as the
+       * composition, once as work "saved first" — and the second was the file
+       * the first had just overwritten. Rebuilding over itself says what
+       * happened without claiming anything was preserved, and names the path once.
+       */
+      expect(text).toContain('The previous build of this reel was open');
+      expect(text).not.toContain('so it was saved first');
+        // Scoped to the result card: the pre-build line legitimately names the
+        // same path ("Writes …, replacing what is there") and is still on screen.
+        const done = (await loaded.page.textContent('.buildpane [role="status"]')) ?? '';
+        expect(done.split('/repo/.local/build/vitasilk-full.aep').length - 1).toBe(1);
       // No reveal-in-Finder control: CEP runs Chromium 99 and whether it can
       // reveal a file has never been proven on the host, so nothing claims it.
       expect(await loaded.page.$('.buildpane button.reveal')).toBeNull();

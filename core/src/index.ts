@@ -80,6 +80,13 @@ export {
 } from './references.js';
 
 export {
+  SAME_FILE_SAVE_IS_POINTLESS,
+  savedOutputNote,
+  savedOutputSentence,
+  type SavedOutputNote,
+} from './saved-output.js';
+
+export {
   GOLDEN_EXCLUDED_FIELDS,
   GOLDEN_PATH_FIELDS,
   GOLDEN_REELS,

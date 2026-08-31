@@ -2,6 +2,8 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import {
+  savedOutputNote,
+  savedOutputSentence,
   REPO_ROOT,
   SUBTITLE_SAFE_WIDTH,
   SHRINK_MAX_ATTEMPTS,
@@ -643,8 +645,16 @@ const result = runBuildReel({
 const wallS = (Date.now() - startedAt) / 1000;
 emitBuildStage('check');
 
-if (result.ok && typeof result['savedOwnOutput'] === 'string') {
-  console.log(`\nsaved the previous build that was open: ${String(result['savedOwnOutput'])}`);
+if (result.ok) {
+  // The same sentence the panel shows, through the same rule: saving the file
+  // the build is about to overwrite is not a rescue and must not read as one.
+  const note = savedOutputSentence(
+    savedOutputNote(
+      typeof result['savedOwnOutput'] === 'string' ? String(result['savedOwnOutput']) : null,
+      typeof result['savePath'] === 'string' ? String(result['savePath']) : null,
+    ),
+  );
+  if (note !== null) console.log(`\n${note}`);
 }
 
 console.log(`\n${JSON.stringify(result, null, 2)}`);

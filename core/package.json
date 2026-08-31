@@ -49,6 +49,10 @@
     "./build-fonts": {
       "types": "./dist/build-fonts.d.ts",
       "default": "./dist/build-fonts.js"
+    },
+    "./saved-output": {
+      "types": "./dist/saved-output.d.ts",
+      "default": "./dist/saved-output.js"
     }
   },
   "files": [

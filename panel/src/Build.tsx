@@ -1,3 +1,4 @@
+import { savedOutputNote, savedOutputSentence } from '@framopia/core/saved-output';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { fetchBuildJob, startBuild, updateClientLook, type Connection } from './service.js';
 import type { BuildJob, BuildPreview, BuildProgress } from './types.js';
@@ -306,6 +307,7 @@ function BuildStages({ detail }: { detail: BuildProgress }): JSX.Element {
  * all and this sentence was always empty.
  */
 function BuildDone({ detail }: { detail: BuildProgress }): JSX.Element {
+  const savedNote = savedOutputSentence(savedOutputNote(detail.savedOwnOutput, detail.savePath));
   return (
     <div className="card" role="status">
       <p className="detail">Built in {(detail.wallS ?? 0).toFixed(1)}s.</p>
@@ -320,12 +322,7 @@ function BuildDone({ detail }: { detail: BuildProgress }): JSX.Element {
           <p className="savepath">{detail.savePath}</p>
         </>
       )}
-      {detail.savedOwnOutput === null ? null : (
-        <p className="detail">
-          Your previous build was open with unsaved changes, so it was saved first:{' '}
-          {detail.savedOwnOutput}
-        </p>
-      )}
+      {savedNote === null ? null : <p className="detail">{savedNote}</p>}
       <p className="note">
         It is open in After Effects now, and nothing was rendered.
       </p>
