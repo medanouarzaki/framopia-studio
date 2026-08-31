@@ -52,7 +52,7 @@ framopia-studio/
 ├── CLAUDE.md                     # Claude Code operating memory (kept current; see guidelines)
 ├── README.md                     # human tone, short
 ├── docs/                         # the 7 foundation docs + amendments
-├── reports/                      # block-N-session-M.md Claude Code reports
+├── reports/                      # block-N-session-M.md per-session reports
 ├── handoffs/                     # conversation handoff documents
 ├── panel/                        # CEP extension (React+TS, bundled to panel/dist)
 │   ├── src/
