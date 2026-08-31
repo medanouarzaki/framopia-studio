@@ -534,3 +534,53 @@ Please fill this in as you go. What you actually saw matters more than a tick.
 **Anything this document said that turned out to be untrue:**
 
 **How long the whole thing took:**
+
+
+## What you can and cannot do without a terminal
+
+Recorded 2026-08-31, after the panel learned to start and repair the background
+service itself.
+
+### The whole of making a video needs no terminal
+
+Open After Effects, open the panel, and everything below is a control on screen:
+choosing a client, setting a new client up (their colours, fonts, logo and
+subtitle height), choosing a video, running the pipeline, editing the words,
+changing which words are emphasised, choosing between the generated pictures,
+turning the watermark on or off and picking its size, and building the
+composition. **The background service starts itself when the panel opens**, and if
+it is ever out of step with the panel it prepares and restarts itself, saying so
+afterwards.
+
+Two measurements that used to be terminal commands — the watermark's timing and
+the loudness of the speech — are taken by the pipeline as it runs, so they are not
+in the list below.
+
+### What still needs someone at a terminal
+
+**Setting the machine up, once.** None of this is part of using the product; it is
+part of installing it, and `docs/MACHINE_REQUIREMENTS.md` lists all of it. In
+short: install Node, ffmpeg, the three fonts and After Effects; run `npm install`;
+run `tools/cv/setup.sh` for the picture tools; run `npm run panel:install` once so
+After Effects can see the panel. After that, opening the panel is enough.
+
+**Adding a client's own photographs.** The service has taken them since Block 9 and
+the picture editor already offers them beside the generated ones — the only missing
+piece is a control on the client screen that adds one. This is the next session's
+work and it is the last gap in ordinary use.
+
+**Checking a machine is set up right** — `npm run doctor`. It reports what is
+missing and never repairs anything.
+
+**Backing up what cannot be regenerated** — `npm run backup`. Transcriptions, the
+hand-written ground truth, the alignment references, the generated pictures and the
+cost ledger.
+
+**Re-measuring the templates after editing `templates/library.aep`** —
+`npm run audit:templates`, then `npm run golden` to confirm nothing moved. Only
+whoever edits the templates needs this.
+
+**Everything else in `package.json` is a developer's tool**: the benchmarks, the
+diagnostics, the one-shot migrations and the report generators. None of them is
+needed to make a video, and none of them should be run by someone who has not read
+what it does.
