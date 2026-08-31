@@ -189,7 +189,7 @@ panel/service banner; client pictures; Arabic-first; and
 
 | | |
 |---|---|
-| Edit Plans | four gained a build record, `ground truth` byte-identical; shas in the table above |
+| Edit Plans | four gained a build record; `ground truth` byte-identical at `0712e4124d8b`. **Final shas differ from the table above** because `npm run golden` rebuilt all four afterwards and each build writes a fresh `builtAt` — that is the consequence noted under Both gates, not a second change: `test 1` `b518bf6156d6`, `test 2` `d945ce92f09a`, `test 3` `46704f5c4b43`, `vitasilk` `399b3377adf2` |
 | references | all six byte-identical |
 | cache | 46 entries, 80 files unchanged; the `.DS_Store` in `.local/cache/` is still there and was left alone |
 | After Effects | pid 79146, 1 instance, 0 `aerender` |
