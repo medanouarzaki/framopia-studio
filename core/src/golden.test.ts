@@ -43,10 +43,14 @@ describe('normalising a census', () => {
   });
 
   it('makes a repo path relative instead of dropping it', () => {
-    const out = normaliseCensus(census, REPO) as Record<string, never>;
-    expect(out['aepPath']).toBe('.local/build/vitasilk-full.aep');
-    expect(out['masters'][0]['layers'][0]['sourceFile']).toBe('my files/test videos/vitasilk.mov');
-    expect(out['imageComps'][0]['layers'][0]['sourceFile']).toBe('.local/cache/x/image.jpg');
+    const out = normaliseCensus(census, REPO) as {
+      aepPath: string;
+      masters: { layers: { sourceFile: string }[] }[];
+      imageComps: { layers: { sourceFile: string }[] }[];
+    };
+    expect(out.aepPath).toBe('.local/build/vitasilk-full.aep');
+    expect(out.masters[0]?.layers[0]?.sourceFile).toBe('my files/test videos/vitasilk.mov');
+    expect(out.imageComps[0]?.layers[0]?.sourceFile).toBe('.local/cache/x/image.jpg');
   });
 
   it('two roots that differ only by prefix normalise equal', () => {
