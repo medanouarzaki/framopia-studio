@@ -762,6 +762,57 @@ is a control that calls it**: `addClientPicture` is declared and no component
 invokes it. There is no precondition; the screen has not been built. The
 sentence now says that.
 
+### A card fits its comp in both directions, and only width was ever checked
+
+**A two-line card was being cut off and nothing could see it.** Block 10 session
+20 found `test-1`'s `محفزات الكولاجين` and `test-2`'s `ترطيب عميق` — both
+`kw_slam_ar` — reaching past the bottom of their own 2160x1100 card comp, which
+is rasterised at its bounds and clips whatever leaves them.
+`assertEveryCardFits` asked `widthAfterPx <= safeWidthPx` and **nothing asked
+anything about height**, which is why 17,170 golden fields matched while a card
+was cut in half.
+
+**The geometry**: the first baseline rests at y = 700 and the entrance animates
+Position from **750** down to it, so a card sits 50 px lower on its way in; the
+shadow copy is offset a further **+15** by its Transform effect. A card is cut
+when `750 + inkTop + inkHeight + 15` passes 1100. Both offenders reach
+**1196.7 px — 96.7 px outside**. Session 20's 31.7 is the same card measured at
+rest with the shadow excluded; the check takes the worst case.
+
+**The shadow term is composed, and no single call can give it.** Measured in
+session 21: `sourceRectAtTime` returns an **identical rect at both `extents`
+settings** on a layer carrying a Transform effect, so it never includes the
+effect. Both terms are measured — the rect from the layer, the offset off the
+effect's own Position and Anchor Point — and the sum is arithmetic over two
+measurements.
+
+**Two lines cost `LINE_SPACING` = 323 px and almost nothing has that room.**
+260 of the corpus's 262 cards are one line with **178.3 px of headroom at
+worst**; every template's worst card would be cut if it broke — `sub_pop_ar`
+−144.7, `kw_slam` −127.0, `kw_slam_ar` −80.4, `sub_pop` −62.0. **One line never
+overruns at these sizes**, needing a descent past 335 px, but that is a property
+of the faces in use rather than a guarantee.
+
+**`assertEveryCardFits` checks both now**, with `CardClippedError` beside
+`CardTooWideError` and a failure that names the card, the extent, the comp
+height and the overrun. **The rule is that a card is never cut, not that it fits
+its comp**: `CardVerticalExtent.collapsed` records whether the master layer
+collapses, because a comp that does not enforce its bounds cannot cut anything.
+
+**Option D — collapsing transformations so the card draws outside its comp — was
+tried and rejected on measurement.** It works mechanically: settable on the
+instance, `library.aep` untouched, all four reels build, the blur and the
+Transform provably undisturbed inside the comp. But `sourceRectAtTime` reports
+`0..1100` with collapse either way and carries no signal, so it was settled on
+pixels: two frames of the same card, one collapsed and one not, differ across
+**rows 1978-3181** — the whole card body, up to **230 levels of 255**, in a
+region that was never being clipped. It does not preserve the look.
+
+**The fix is C and it is the user's**: the four text card comps go from 1100 px
+to at least **1197**. Until then the build **refuses** those two reels and
+`npm run golden` cannot pass — which is the check doing its job on cards that
+have been shipping cut on every build.
+
 ### The font sample draws the real face, or says it cannot
 
 **Session 16's sample was a silent substitution.** It set `font-family` to After
