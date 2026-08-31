@@ -102,29 +102,30 @@ depends on the client fonts Block 9 collects.
    rejected on measurement**: it recovers the strip, and it also changes the
    card's whole body by up to 230 levels, so it does not preserve the look.
 
-   **He made the four card comps 1250 tall on 2026-08-30, and it is not enough**
-   (Block 10 session 22). The edit was verified to change only the height: fonts,
-   sizes, tracking, fills, layer names, anchor points, scale, x offsets, blur and
-   opacity keys are all identical. But the type re-centred with the comp — the
-   placeholder's Position keys moved 750/700 → 825/775, half the 150 px added,
-   and the shadow's Transform offset scaled 15.0 → 17.045 — so **+150 of comp
-   height bought +72.955 of room below the card**. `test-1` `k002` reaches
-   **1273.8 px in a 1250 comp, 23.8 px short**, and `test-2` `k002` fails the
-   same way; both builds refuse and `npm run golden` cannot run.
+   **The comps are 1250 tall and the type is back at a first baseline of 700, and
+   the cards fit** (2026-08-31). `test-1` `k002` and `test-2` `k002` each reach
+   **1198.8 px in a 1250 comp — 51.2 px of headroom**; they are the corpus's only
+   two-line cards and the next tightest card anywhere has 326.2 px. All four
+   buildable reels build, 262 cards, none overrunning.
 
-   **The number he needs: ≥ 1298.8 if the type keeps re-centring** — 1300 leaves
-   0.6 px, 1400 leaves 49.2. **Or keep 1250 and put the first baseline back at
-   700**, worth +53.3 px on its own and sufficient. The second costs no height
-   and is the smaller edit; both are his to make, and this session made neither.
+   It took two edits because **After Effects re-centres a comp's contents when the
+   canvas grows**. Height alone moved the type down 75 px — half the 150 added —
+   so 1250 left the same cards 23.8 px short; putting the baseline back at 700
+   recovered exactly that 75.
 
-   **The re-centring does not move type on screen** — verified, not assumed:
-   the builder places an instance as `target − (placeholder − anchor)` and that
-   difference is 150 either way, and `test-3` and `vitasilk` censused **0 of 3708
-   and 0 of 4769 fields differing** from the golden reference. **The shadow's
-   2.045 px does move something**: `SUBTITLE_BAND`'s bottom, 3012.578 → 3014.624,
-   which bounds every image placement. Two tests pin the old figures and fail on
-   purpose, because the +8/+15 shadow offset is a ruling and a resize is not the
-   place to change it.
+   **The type has not moved on screen at any point**, measured rather than
+   assumed: the builder places an instance as `target − (placeholder − anchor)`,
+   and the baseline reads **2480.39990234375** inside After Effects in every
+   state, exactly `SUBTITLE_ANCHOR_BASELINE_Y`. What did move is the comp layer's
+   own Position, 2330.4 → 2405.4, because the comp's internal geometry changed —
+   **all 524 differing golden fields are that one field and no other kind.**
+
+   **One thing is still outstanding and it is his.** Moving the text layer back
+   did not undo AE's scaling of the *separate* Transform effect on
+   `TXT_MAIN_SHADOW`: its offset is **[8, 17.045]** against the ruled **[8, 15]**,
+   so `SUBTITLE_BAND`'s bottom sits at 3014.6237 against 3012.5783 and three tests
+   fail on purpose. Restoring it means setting that effect's Position to
+   **[1088, 640]** against its Anchor Point of [1080, 625].
 
 ## 4. Input / output (locked)
 

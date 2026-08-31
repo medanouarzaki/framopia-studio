@@ -762,27 +762,49 @@ is a **`CardClippedError` naming the comp and the measured figure** — never a
 warning, and never a silent clip. A collapsed instance is exempt because
 collapsing removes the clip.
 
-**1250 is not sufficient and the corpus proves it.** `test-1` `k002`
-(`محفزات الكولاجين`, Almarai-Bold 455, broken to two lines) reaches **1273.8 px**
-in a 1250 comp — **23.8 px short**. `test-2` `k002` fails the same way.
+**1250 with the first baseline at 700 is sufficient, measured 2026-08-31.**
+`test-1` `k002` (`محفزات الكولاجين`, Almarai-Bold 455, broken to two lines) and
+`test-2` `k002` (`ترطيب عميق`) each reach **1198.8 px** in a 1250 comp — **51.2 px
+of headroom**. They are the only two-line cards in the corpus; the next tightest
+card anywhere has 326.2 px. **All four buildable reels build**, 262 cards, 0
+overrunning top or bottom.
+
+The intermediate state is worth keeping, because it is what the trap below costs:
+at the same 1250 height with the baseline left where AE had re-centred it (775),
+both cards reached **1273.8 px** and were refused, 23.8 px short.
 
 **Growing the comp does not buy its full height, and this is the trap.** When
-the four comps went 1100 → 1250, the type re-centred with them: the placeholder's
-Position keys moved 750/700 → 825/775, exactly **half** the 150 px added, and the
-shadow's Transform offset scaled **15.0 → 17.045** with it. So +150 of comp height
-bought **+72.955** of room below the card. The requirement if the type keeps
-re-centring is **≥ 1298.8**; at 1300 the margin is 0.6 px and at 1400 it is 49.2.
-The alternative, which costs no height, is to put the first baseline back at 700
-inside the taller comp — worth **+53.3 px** on its own and enough at 1250.
+the four comps went 1100 → 1250, After Effects re-centred their contents: the
+placeholder's Position keys moved 750/700 → 825/775, exactly **half** the 150 px
+added, and the shadow layer's Transform offset scaled **15.0 → 17.045** with it.
+So +150 of comp height bought **+72.955** of room below the card, and 1250 was
+still short. **Adding height and then putting the type back where it was is two
+edits, not one**, and the second is the one that recovers the room: moving the
+baseline from 775 back to 700 is worth **+75 px** on its own.
 
-**The re-centring itself is invisible on screen and was verified, not assumed.**
-The builder positions an instance as `target − (placeholder − anchor)`, and
-`placeholder − anchor` is 150 both before and after, so the type lands in the same
-place in the master. `test-3` and `vitasilk` were built and censused against the
-recorded golden reference: **0 of 3708 and 0 of 4769 fields differ.**
+**Moving the type back does not undo the effect's scaling.** The Transform
+effect on `TXT_MAIN_SHADOW` is a separate property from the text layer's
+Position, so it stays where AE scaled it. Measured 2026-08-31 with the baseline
+restored: the offset is still **[8, 17.045]**, against the ruled **[8, 15]**.
+Restoring it means setting that effect's Position to **[1088, 640]** against its
+Anchor Point of [1080, 625].
 
-**The shadow's 2.045 px is not invisible.** `shadowDescentPx` reads that offset
-out of the audit and `SUBTITLE_BAND` is derived from it, so the band's bottom
-moved **3012.578 → 3014.624 px**. The band bounds where every image is placed.
-Two tests pin the old figures and **fail on purpose** — the +8/+15 offset is a
-user ruling and a resize is not the place to change it.
+**The type lands in the same place on screen throughout, and it was measured
+rather than assumed.** The builder positions an instance as
+`target − (placeholder − anchor)`. At 1100 that was 700 − 550 = 150; at 1250
+re-centred it was 775 − 625 = 150, so the census matched the golden reference in
+**0 of 3708 and 0 of 4769 fields** on `test-3` and `vitasilk`. With the baseline
+restored it is 700 − 625 = **75**, so the comp layer's own Position compensates
+by +75 — 2330.4 → 2405.4 — on **all 524 differing golden fields, which are that
+one field and no other kind**. Read back inside After Effects, the baseline lands
+at **2480.39990234375**, exactly `SUBTITLE_ANCHOR_BASELINE_Y`, in all three
+states. **A moved comp-layer Position is bookkeeping; the baseline is the check.**
+
+**The shadow's 2.045 px is still outstanding.** `shadowDescentPx` reads that
+offset out of the audit and `SUBTITLE_BAND` is derived from it, so the band's
+bottom sits at **3014.6237** against a ruled **3012.5783**. Three tests pin the
+old figures and **fail on purpose** — the +8/+15 offset is a user ruling and a
+resize is not the place to change it. What the band reaches is narrow: image
+placement does not read it at all, and the only consumer in a built comp is the
+watermark's corner test, which rejects a corner overlapping y 1980–3014 — the
+mark sits 108 px from the top, so 2 px cannot flip it.
