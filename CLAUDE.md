@@ -684,7 +684,7 @@ Measured in Block 10 session 18, from the code and then from four real builds:
 | `light` | `#F8F6F2` | **254 ordinary subtitle words** across the corpus; the frame drawn round **all five** of `vitasilk`'s pictures |
 | `accent` | `#C9A96E` | **8 emphasised keyword words**; **can never be a picture frame** |
 | `background` | `#1A0000` | the ground **baked behind a cut-out** — `#1A0000` at all four corners of `img002-c1.cutout.on-fill.png`; the frame on a picture bright enough for the dark one to win |
-| `primary` | `#820000` | **nothing in the built comp comes from it** |
+| `primary` | `#820000` | **the shadow copy behind every word** — 262 layers across the corpus |
 
 **The picture frame is not fixed to a role.** `cardFrameColour` takes whichever
 role separates best from the picture's own edge, so the frame is chosen per
@@ -692,13 +692,12 @@ picture. Swept over every edge luminance against K2's palette, **only `light`
 and `background` can ever win** — a mid-tone loses to both extremes, so `accent`
 and `primary` can never be a frame at all.
 
-**The 262 shadow layers reading `#820000` are the templates', not the
-palette's.** The colour is baked into the four text comps and the build never
-sets it — `reel-plan.ts` says the shadow is "never given a colour — the shadow's
-own is the design", and the audit shows `TXT_MAIN_SHADOW` at `#820000` in all
-four. It equals K2's `primary` by coincidence of the brand, and **a different
-client's `primary` would not move it.** What `primary` really does is reach the
-image model: all four roles are named in `imageStyle.stylePrompt`.
+**The 262 shadow layers took the templates' own `#820000` until 2026-08-31.**
+The colour is baked into the four text comps, the build never set it, and it
+equalled K2's `primary` only by coincidence of the brand — so every other client
+got K2's red behind their words with nothing saying so. **See the section below**
+for the ruling that fixed it. All four roles are also named in
+`imageStyle.stylePrompt`, so all four shape the generated pictures.
 
 **One stale comment found doing this**: `core/src/text-colours.ts` says "Nothing
 reads this at build time yet". It is read — `textStyleFor` calls
@@ -714,6 +713,43 @@ own subpath.
 
 **The two subtitle colours come first** on screen: they are on every card of
 every video, and the other two only touch pictures.
+
+### The shadow follows the client, not the template
+
+**User ruling, 2026-08-31**, by the person who authored the templates: **the
+shadow copy behind every word takes the client's deeper colour**, the `primary`
+role. He chose it over a fifth swatch on the client screen and over leaving the
+templates' fixed red.
+
+**`textColours.shadow` already existed as an unused optional role** and is what
+carries it — no parallel mechanism. What changed is its default: absent used to
+mean *leave the template's colour alone*, and now means `primary`. K2 names the
+role explicitly anyway, so all three pinned snapshots already carry
+`shadow: 'primary'` and none reports itself behind.
+
+`resolveTextColours` → `textStyleFor` → `TextStyle.shadowFillColor` → the
+duplicated instance's shadow layer, which is the same route the placeholder's
+own fill already took. **The library is never touched**: `build-reel.jsx` works
+on `template.duplicate()`, and `templates/library.aep`'s sha256 is unchanged.
+
+**The build reads the colour back and refuses if it did not take**, comparing
+against what was asked and checking `applyFill` — a carried fill that is not
+applied draws nothing. This is the pair of layers Block 9 session 8 found one
+build away from carrying the template's placeholder word on every card, so a
+property reaching one and not the other is a defect already paid for once.
+
+**K2's output is byte-identical, and that is the check the ruling turns on.**
+K2's `primary` is `#820000`, exactly what the templates carry, so `npm run
+golden` passes with **4 of 4 reels matched and zero differing fields out of
+17,170** — twice, before and after the caption change. The reference was not
+re-recorded; if it had needed to be, the change would have been wrong.
+
+**And it was shown adapting**, which passing an identical-value check does not
+prove on its own: `test-2` built against a scratch client whose `primary` is
+`#00A0FF` came out with **all 67 shadow layers in that colour** — `kw_slam` 1,
+`kw_slam_ar` 2, `sub_pop` 59, `sub_pop_ar` 5 — while the placeholders kept crème
+and gold. The scratch plan lived outside the repository and no real plan or mode
+file was touched.
 
 ### A client's own pictures are not waiting on anything
 
