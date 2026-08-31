@@ -237,3 +237,556 @@ Animations are hand-made by the editors. The system's contract: template AEP fil
 ## 9. Quality bar
 
 This tool processes real client work. Precision over speed, explicitness over cleverness, and the editors always keep final control.
+
+
+## 10. Rulings and product decisions, moved here from CLAUDE.md
+
+The sections below were written one session at a time in `CLAUDE.md`, which
+grew to 530,588 characters — three and a half times the size at which it is
+read whole. Block 10 session 28 moved them here **verbatim**, wording and
+figures untouched, so that a session looking for how something works finds it
+in the document it would already open. Nothing was summarised and nothing was
+dropped; `git show 1c8c850:CLAUDE.md` is the file as it stood before the move.
+
+
+### K2 Syndicalia is a real client, and a reel is built against a copy of it
+
+**The user supplied the brand document at Block 9 session 2 and the mode is
+version 8.** Three faces, all installed on both machines: **Inter Semi-Bold**
+for ordinary words, **Cormorant Garamond SemiBold Italic** for emphasized ones,
+**Almarai Bold** for Arabic. `fonts.emphasis` is a **third, optional** face —
+`buildFonts` returns the ordinary Latin one when a client has none, and reports
+which in `emphasisSource`, so a two-face client builds exactly as before.
+
+**The faces are recorded family-and-style as one string**, the representation
+`LATIN_FONT` and `ARABIC_FONT` already use. **Not a PostScript name**: After
+Effects reports its own as `Inter-SemiBold` and `Almarai-Bold`, and **nothing in
+this project has ever written `TextDocument.font`**, so resolving one form to
+the other is a measurement to take inside After Effects.
+
+**`EMPHASIS_SIZE_RATIO` is 1.0 and is CHOSEN, NOT MEASURED — and near-certainly
+wrong.** Cormorant is an old-style serif and sets optically much smaller than
+Inter at the same nominal size. The right number comes from `sourceRectAtTime`,
+which is the same measurement shrink-to-fit needs. `ARABIC_SIZE_RATIO` 1.07 was
+measured against Inter and is now **unverified against Cormorant**; both facts
+are stated where the constants are declared.
+
+**`textColours` records which palette role carries which kind of word** —
+`light` for ordinary, `accent` for emphasis, both **optional with a default**
+that is what every build has drawn. It is the brand's own chart stated literally:
+crème for body, Or Signature for the key figure of a sentence. **Nothing reads it
+at build time yet**: a subtitle's colour lives in the template comp and
+`framopiaSetText` sets only the string.
+
+**The palette gained names, not values**: Noir Abyssal `#1A0000` the ground,
+Blanc Cassé/Crème `#F8F6F2` text, Or Signature `#C9A96E` highlights and emphasis,
+Rouge K2 `#820000` used sparingly. The four hexes are unchanged.
+
+**`vocabulary` is deliberately still `[]`.** The brand document is full of terms
+— Loi 18-00, CNDP, copropriété, syndic, assemblée générale, recouvrement — and
+they key the keyword cache **and** reach Scribe as keyterms, so adding them is a
+billable decision. `imageStyle` and `imageVariation` are untouched for the same
+reason: editing either strands generated images.
+
+**The 7 → 8 bump invalidated nothing, and that was measured before it was made.**
+Transcription never reads the mode; keywords key on `contentHash([name,
+vocabulary])`, slots on `contentHash([name])`, and images on the composed prompt
+strings with **no mode version and no mode hash** since Block 7 session 1. All
+three hashes, all 18 image keys and all five reels' dry runs were byte-identical
+across the bump, and the 36-entry cache census was unchanged.
+
+**A reel is built against a snapshot, not a pointer.** `plan.clientSnapshot` — a
+**schema addition, optional with a default** — carries the client's palette,
+faces, colour roles and `imageScale` as they stood when the video was attached.
+`resolveClientIdentity` in `service/src/build/client-identity.ts` is the one
+declaration of which look a build uses, read by the builder and by `steps.ts` so
+the panel cannot say one thing while the build does another. The order is:
+`--mode` wins because someone typed it, then the reel's own copy, then the live
+mode file — **and the fallback is reported, never assumed**, because a build
+quietly reading a mode file is the failure the copy exists to prevent.
+
+A reel approved in March must rebuild in June as it was approved; of the two
+possible failures, a rebuild that silently disagrees with what was approved
+cannot be noticed, while one deliberately out of date can be, and can be moved
+forward with one control. Block 10's golden run needs a fixed input for the same
+reason. **Moving a reel forward is `POST /client-snapshot`, a control someone
+presses — never automatic.** The panel says *"Built with K2 Syndicalia's look as
+it was when this video was set up"* and, when the client has moved on, offers
+*"Use the client's look as it is now"*. No version numbers on screen.
+
+**A client's own pictures are deliberately not in the snapshot**: they are paths
+to files chosen by hand, and a pinned path breaks the moment one is moved.
+
+`npm run migrate:client-snapshot [-- --apply]` — free, local. Pins every plan
+that names a client. **It does not read through `readEditPlan`**, per the
+standing schema rule, changes exactly `clientSnapshot`, and asserts that by
+comparing the file before and after. Run: **`test-1`, `test-2` and `vitasilk`
+pinned to K2 Syndicalia v8; `ground-truth` and `test-3` left alone**, because
+their analysis never ran and nothing on disk says which client they belong to.
+
+### Nothing typed that can be chosen
+
+**User ruling, 2026-08-31**, given while setting up a client for the first time
+and stated for the **whole product**, not that screen: no path is ever typed or
+pasted, every path is chosen through a macOS dialog. A path is something the
+machine already knows how to find, and asking a person to reproduce one
+character for character is asking him to do the machine's work and to get it
+wrong.
+
+**Two typed path fields existed** — the client setup screen's *Video folder* and
+*Logo* — and both are choosers now. **The video picker was already right**: its
+typed field went in Block 8 session 44, and its `showOpenDialogEx` is what both
+new choosers call. `chooseDirectory` is that call's second argument, so a folder
+chooser and a file chooser are one implementation; `pickFolder` and
+`pickImageFile` join `pickVideoFile` in `panel/src/file-dialog.ts`.
+
+**A cancel leaves the field alone.** All three return null both for a cancel and
+for a host with no dialog, and null means *he chose nothing*, never *clear it*.
+The path is still shown beneath the button, and the field falls back to text on
+a host with no chooser — with a sentence saying why, because that host is a real
+case for the second machine.
+
+`panel/src/path-fields.test.ts` pins the rule by reading every `.tsx`: a text
+input whose label names a path fails unless it is `PathField`'s own fallback.
+
+### What each palette colour actually does
+
+**The captions on the client screens described the picture frame and nothing
+else, and two of the four were wrong.** They read *behind a cut-out picture* /
+*the deeper of the two frame colours* / *the frame around a picture* / *the
+lighter of the two frame colours* — while in every comp this system has built,
+`light` is the colour of **ordinary subtitle words** and `accent` the colour of
+**emphasised keywords**. Those are the two most visible uses of any colour in
+the product and neither appeared in a caption.
+
+Measured in Block 10 session 18, from the code and then from four real builds:
+
+| role | hex | what it actually does |
+|---|---|---|
+| `light` | `#F8F6F2` | **254 ordinary subtitle words** across the corpus; the frame drawn round **all five** of `vitasilk`'s pictures |
+| `accent` | `#C9A96E` | **8 emphasised keyword words**; **can never be a picture frame** |
+| `background` | `#1A0000` | the ground **baked behind a cut-out** — `#1A0000` at all four corners of `img002-c1.cutout.on-fill.png`; the frame on a picture bright enough for the dark one to win |
+| `primary` | `#820000` | **the shadow copy behind every word** — 262 layers across the corpus |
+
+**The picture frame is not fixed to a role.** `cardFrameColour` takes whichever
+role separates best from the picture's own edge, so the frame is chosen per
+picture. Swept over every edge luminance against K2's palette, **only `light`
+and `background` can ever win** — a mid-tone loses to both extremes, so `accent`
+and `primary` can never be a frame at all.
+
+**The 262 shadow layers took the templates' own `#820000` until 2026-08-31.**
+The colour is baked into the four text comps, the build never set it, and it
+equalled K2's `primary` only by coincidence of the brand — so every other client
+got K2's red behind their words with nothing saying so. **See the section below**
+for the ruling that fixed it. All four roles are also named in
+`imageStyle.stylePrompt`, so all four shape the generated pictures.
+
+**One stale comment found doing this**: `core/src/text-colours.ts` says "Nothing
+reads this at build time yet". It is read — `textStyleFor` calls
+`resolveTextColours` and sets `fillColor` on every placeholder, which is where
+the 254 and the 8 come from. Corrected.
+
+`core/src/palette-meaning.ts` is the one declaration of the captions and their
+order, read by the client card and the setup screen, which were two copies. It
+imports nothing, and `PALETTE_ROLES` moved into it with `mode.ts` re-exporting —
+the panel reads it, and `mode.ts` reaches `node:crypto` and `node:fs`, which
+esbuild cannot resolve for a browser target. Same reason `build-stamp` is its
+own subpath.
+
+**The two subtitle colours come first** on screen: they are on every card of
+every video, and the other two only touch pictures.
+
+### The shadow follows the client, not the template
+
+**User ruling, 2026-08-31**, by the person who authored the templates: **the
+shadow copy behind every word takes the client's deeper colour**, the `primary`
+role. He chose it over a fifth swatch on the client screen and over leaving the
+templates' fixed red.
+
+**`textColours.shadow` already existed as an unused optional role** and is what
+carries it — no parallel mechanism. What changed is its default: absent used to
+mean *leave the template's colour alone*, and now means `primary`. K2 names the
+role explicitly anyway, so all three pinned snapshots already carry
+`shadow: 'primary'` and none reports itself behind.
+
+`resolveTextColours` → `textStyleFor` → `TextStyle.shadowFillColor` → the
+duplicated instance's shadow layer, which is the same route the placeholder's
+own fill already took. **The library is never touched**: `build-reel.jsx` works
+on `template.duplicate()`, and `templates/library.aep`'s sha256 is unchanged.
+
+**The build reads the colour back and refuses if it did not take**, comparing
+against what was asked and checking `applyFill` — a carried fill that is not
+applied draws nothing. This is the pair of layers Block 9 session 8 found one
+build away from carrying the template's placeholder word on every card, so a
+property reaching one and not the other is a defect already paid for once.
+
+**K2's output is byte-identical, and that is the check the ruling turns on.**
+K2's `primary` is `#820000`, exactly what the templates carry, so `npm run
+golden` passes with **4 of 4 reels matched and zero differing fields out of
+17,170** — twice, before and after the caption change. The reference was not
+re-recorded; if it had needed to be, the change would have been wrong.
+
+**And it was shown adapting**, which passing an identical-value check does not
+prove on its own: `test-2` built against a scratch client whose `primary` is
+`#00A0FF` came out with **all 67 shadow layers in that colour** — `kw_slam` 1,
+`kw_slam_ar` 2, `sub_pop` 59, `sub_pop_ar` 5 — while the placeholders kept crème
+and gold. The scratch plan lived outside the repository and no real plan or mode
+file was touched.
+
+### A client's own photographs are on the client screen
+
+**User ruling, 2026-08-31**: they are added where a client is set up, not in the
+picture editor half-way through a video. Everything else had existed since Block
+9 — `POST /clients/pictures` and its DELETE, the schema, and the picture editor
+offering them per slot beside the generated candidates — and **the only missing
+piece was a control that called it**. That was the last thing in ordinary use the
+panel could not do.
+
+`panel/src/ClientPictures.tsx` is the one component, on **both** client screens,
+because two would drift:
+
+- **The setup form**, where the client does not exist yet, so there is no
+  `/clients/pictures` to call: the list is held on the form and travels with the
+  client. `buildClient` numbers them with the same `nextPictureId` `addPicture`
+  uses, and both go through one `checkPicture` — absolute path, file really
+  there, a description. A setup screen accepting what the client card refuses
+  would write a client file the panel could not have made twice.
+- **The client card**, for a client already saved, where each change goes to the
+  service and the client list is **re-read from it** afterwards.
+  `CatalogueMode.pictures` carries them; **absent means a service older than the
+  panel**, which is not a client with none, so the editor is not rendered at all
+  rather than offering a route that is not there.
+
+**The photograph is chosen, never typed** — `pickImageFile`, the same
+`showOpenDialogEx` the video and logo pickers use — and judged against
+`panel/src/still-formats.ts`, the one declaration of what a still may be, shared
+with the logo. A `.psd` is accepted and reported as unpreviewable; a `.mov` is
+refused by name before he can add it.
+
+**Forgetting is forgetting, and the screen says so**: *"Forgetting a photo leaves
+the file itself exactly where it is."* Nothing copies the file and nothing
+deletes it.
+
+**Driven end to end against the real service, 2026-08-31**: the built panel added
+a photograph to **K2 Syndicalia**, the thumbnail drew from the file itself
+(962x1077 decoded), the picture then appeared on **all five** of `vitasilk`'s
+slots in the picture editor with a Use control, and Forget removed it —
+`modes/k2-syndicalia.json` **byte-identical at both ends**, `sha c600905c…`, and
+no plan touched. Observed in Playwright's Chromium launched with the host's own
+file and cross-origin allowances, **not inside CEP**.
+
+### What a client's logo may be
+
+**Ruling, 2026-08-31**: a PNG with a transparent background is intended, and the
+field also takes the other still-image formats After Effects imports.
+**No authority for that set existed anywhere in the repository** — the video list
+is mirrored from `service/src/clients/videos.ts` and pinned by a test, and
+nothing equivalent had been written down for stills — so it is recorded as a
+decision in `docs/PROJECT_SPEC.md` §5 and declared once in
+`panel/src/still-formats.ts`, which the dialog filters on — the same set governs
+a client's own photographs.
+
+**The panel can draw only png, jpg, jpeg, gif and bmp.** A `.psd` is a
+legitimate choice and still cannot be shown, so the screen says which of the two
+happened the moment he picks — not at build time three steps later. That
+distinction exists because **the only consumer of `logoPath` today is the panel's
+client card**; no build places it.
+
+### The client setup screen finishes a client
+
+**Three more rulings from the same sitting**, all his, all built rather than
+described because he judges by looking.
+
+**Fonts are a list, and the names are After Effects' own.** `GET /fonts` drives
+the running instance through `runFontList` — `panel/jsx/font-list.jsx`, which
+reads `app.fonts.allFonts` and **never writes a font name**, because setting one
+that is not installed pollutes that list for the rest of the application
+session. **445 families, 1188 distinct names**, and a list built from macOS
+would be wrong: it publishes `Inter-Regular_SemiBold` where After Effects wants
+`Inter-SemiBold`. **A list that cannot be built is said out loud** and the field
+falls back to text — an empty chooser and an unfillable one look identical and
+mean opposite things.
+
+**Subtitle height is a slider over a real frame** (he chose this over named
+presets and over a typed number). `GET /subtitle-preview` finds a frame the
+pipeline already extracted, and the line is drawn at `baselineY / 3840` of the
+preview's height. **The preview says what it is showing** — the reel a real
+frame came from, or that it is a plain frame when a client has no footage — and
+states the scale, because a 2160 × 3840 frame drawn 216 px wide would otherwise
+misrepresent a position silently. The number follows the slider, stays visible
+and stays editable; blank still means `SUBTITLE_ANCHOR_BASELINE_Y`, read from
+the constant.
+
+**The four colours are on the screen.** *"Colours and their own pictures are
+added afterwards, once the client exists"* made setting up a client take two
+visits, which is a design mistake rather than a missing nicety. Each colour is a
+swatch he picks with its hex beside it, labelled with the role in the words the
+client card already uses. **The defaults are what a client with no colours gets
+today** — the service inherits the template client's palette — so a client saved
+without touching them is identical to one saved before, and this screen produces
+K2's four ruled values exactly. Verified against `buildClient` both ways.
+**Their own pictures genuinely do come later**: one is chosen per video, against
+the moment it illustrates, and there is nothing to point at until a client has
+footage.
+
+### The three subtitle questions are ruled, and all three land in Block 9
+
+Recorded in `docs/PROJECT_SPEC.md` §3 with the date. **None is implemented**;
+they are the user's decisions on what the transcript editor showed him.
+
+1. **A multi-word §6 term occupies one card together.** `MAX_WORDS_PER_CARD` = 1
+   stands for ordinary speech; a §6 term overrides it.
+2. **A card stays tight to its word; the animation compresses.** This ratifies
+   Block 7's short-card entrance stretching, so the **23 clipped holds are a
+   recorded decision, not an open defect. Nothing to build.**
+3. **An overlong word shrinks to fit** — never clipped, never wrapped to a
+   second line; the type scales down for that word on its own card.
+
+**Ruling 1 needs a term source the project does not have.** The split-term
+detector flags every run of consecutive Arabic-script words, and §6 defines a
+term semantically: some of the 13 are not terms. `Transcript.terms`,
+`service/src/analysis/terms.ts` and `ACTIVE_ANALYSIS_PROMPT_VERSION` 4 all exist
+and are **unread by grouping**, because Block 6 session 5 got three different
+term sets from three identical calls and two of them broke a term the guide
+names verbatim. A trustworthy source is either a hand-made reference of term
+spans — the same shape as the alignment references, and the same cost in the
+user's time — or a prompt that returns them stably, which n=3 says the current
+one does not.
+
+**Ruling 3 needs a width measurement the panel cannot take.** Rendered width
+comes from `sourceRectAtTime` inside After Effects — the panel's 11-character
+proxy is not it. A per-word scale touches `service/src/build/` (a scale computed
+per card from the measured rect against `SUBTITLE_SAFE_WIDTH`) and the template
+contract (`TXT_MAIN`'s scale becomes a per-instance value). **The system never
+edits a template's keyframes**, so the scale is set on the instance, not the
+comp. It also depends on the K2 fonts Block 9 collects: a different face changes
+every width.
+
+### The emphasis ratio is ruled; the Arabic one is still the user's eye
+
+**`EMPHASIS_SIZE_RATIO` is 1.1641, from cap height — RULED BY THE USER on
+2026-08-30.** He was built `vitasilk` twice from one plan, once at 1.3479 and
+once at 1.1641, differing in that number and nothing else, and he chose the
+smaller. **Where a measurement and the user's eye disagree, his eye decides** —
+the same principle that settled `IMPACT_THRESHOLD`.
+
+Measured through `sourceRectAtTime`, Inter-SemiBold against
+CormorantGaramondItalic-SemiBoldItalic. Every quantity is identical at 343 and
+at 425 to five decimal places, so each is a property of the faces rather than of
+a size.
+
+| quantity | ratio | |
+|---|---:|---|
+| **cap height, rendered `H`** | **1.1641** | **ruled** |
+| x-height, rendered `x` | 1.3479 | what the derivation preferred |
+| advance width, one word / a phrase | 1.3562 / 1.3730 | |
+
+**`chooseRatio` still refuses cap height** on the numbers alone, 16.5% from
+advance, and is still right to: **the gate exists to stop an underived number
+reaching the code, not to overrule a ruling.** `RULED_EMPHASIS_QUANTITY` is the
+named way past it and nothing else has one; `font-ratios.test.ts` pins the
+constant against a derivation from that quantity, so a re-measurement that moved
+cap height fails rather than leaving a stale number.
+
+**What the derivation preferred, and why it lost:**
+
+x-height wins because **the corpus is lowercase** — one Arabizi or French word
+per card — and advance width, an independent measure of the same thing, lands
+within 1.2% of it. Cap height is the outlier because Cormorant is an old-style
+face whose capitals are large against its lowercase. Two measures agreeing
+against one is the reason.
+
+**The gate is `chooseRatio` in `core/src/font-ratios.ts`, and it tests the
+quantity that is written.** Session 5 reported "one word 1.35622 against phrase
+1.37296, 1.234% apart, passed" beside a written value of 1.3479 — which lies
+outside both, because those are **advance widths** and the value is an
+**x-height**. The gate passed and had tested nothing about the number next to
+it. What it checks now: the chosen quantity is the same at both sizes, and an
+independent quantity agrees within 3%. x-height 1.34790 against advance 1.35622
+is **0.617% apart**. The same gate **refuses cap height**, 16.5% from advance,
+and refuses an advance corroboration taken on different strings — which is the
+Arabic case, where Inter was measured on `glow` and Almarai on `شنو`.
+
+**`ARABIC_SIZE_RATIO` stays 1.07 and was not overwritten.** The metrics do not
+reproduce it — cap height gives 1.0161 and x-height 1.0300 — but 1.07 came from
+the user's eye on a delivered reel, and a metric ratio is not evidence his eye
+was wrong. Lowering every Arabic word on every build by 4% is a change he should
+see before it happens. **Cormorant does not bear on it**: the Arabic companion
+is sized against the ordinary Latin face, and an Arabic keyword takes
+`kw_slam_ar`, which is Almarai again, so the emphasis face never sits beside
+Arabic.
+
+### The client's `note` is the maintainer's and never reaches the screen
+
+The panel printed it under the client picker for a session: *"Stub. The palette
+is locked (PROJECT_SPEC §5); vocabulary is deliberately empty…"* — developer
+prose on a motion designer's screen. `note` stays in the file for whoever edits
+it; **`about` is his line** — "Dr Jenna, dermatologist, Casablanca" — and is the
+only text about a client the panel shows.
+
+**What he sees instead is the client.** `ClientCard` paints the four palette
+colours as swatches labelled by what each does in a build, the two fonts set in
+their own face, the logo when there is one, and a line saying which values are
+his and which are the standard ones — read from `clientDefaults`, which already
+told them apart. It sits between two pickers, so it stays four swatches, two
+lines of type and one line of text.
+
+### A client is a person, and their folder is where the videos come from
+
+**User ruling, 2026-08-29.** A client was a palette; it is now who the agency
+works for. `ClientMode` gains **`videoFolder`, `logoPath`, `pictures`,
+`language`, `subtitleBaselineY`, `videoShape` and `watermarkByDefault`**, every
+one **optional with a default**, and `core/src/client-defaults.ts` is the one
+declaration of what a blank means:
+
+| field | blank means | which is |
+|---|---|---|
+| `language` | `mixed` | what every corpus reel is |
+| `videoShape` | `vertical` | 2160 x 3840, what everything assumes — **recorded, not yet acted on** |
+| `watermarkByDefault` | `true` | what every build has done; the per-video control still overrides |
+| `subtitleBaselineY` | `SUBTITLE_ANCHOR_BASELINE_Y` | where every build has put it |
+| `fonts` | the standard pair | Inter Semi-Bold and Almarai Bold |
+| `videoFolder` | `benchmarks/footage.json` | so the five corpus reels list as they did |
+
+`k2-syndicalia` carries **none** of them and is asserted unchanged at version 7,
+so `vitasilk` builds identically.
+
+**`POST /clients` makes one from the panel**, through `validateMode` before it
+reaches disk. It inherits the **style half** of `k2-syndicalia` — the palette,
+the prompt fragments, the variation axes — by named field and not by spread: a
+spread carried K2's own `note` onto every new client. A **one-off** is the same
+form with the client-only fields hidden.
+
+**Client comes before Video on screen**, because the client decides which videos
+exist. `GET /reels?client=` lists their folder; **Refresh re-reads it and
+nothing watches the disk** — the T7 is not always plugged in, and a watcher
+would have to decide what to do every time it vanished. A missing folder reads
+as *"plug it in and press Refresh"*, a fact about the disk rather than a fault.
+`GET /video?path=` opens one from anywhere. **A file the tool will not offer says
+why** (`old.wmv — this tool does not open .wmv files`) rather than vanishing.
+
+### The client's own pictures are chosen by hand, and never leave the machine
+
+`ClientMode.pictures` is a list of `{ id, path, description }` — his words, "the
+clinic exterior" — offered in the picture editor beside the generated
+candidates. `ImageSlot.chosenClientPictureId` is a **schema addition, optional
+with a default**, is a **human-flagged marker** so a re-run cannot discard it,
+and **wins over `chosenCandidateId`**: he pointed at a photograph.
+
+**Two properties, both asserted rather than described.** A client's picture is
+**never sent anywhere** — a test reads every file in `service/src/images/` and
+fails if one mentions it, because a doctor's patient results do not go to an
+image model. And it is **never copied**: `core/src/client-pictures.ts` writes no
+file and names no cache path, checked with the comments stripped.
+
+**What actually broke was the shape.** Every generated image is 2048x2048, so
+the builder scaled by width and the height followed for free; a phone's
+3024x4032 at a 1000 px width draws **1333 px tall inside a 1200 px comp**, over
+the top and the bottom and far outside the 1080 px frame. `fitByLongEdge` fits
+the long edge instead, so the whole picture lands inside the box at any shape
+and **nothing is cropped** — cropping a photograph a doctor chose is the tool
+deciding which half of her results matter. On a square it is the same arithmetic
+as before.
+
+**Automatic matching is not attempted, and waits on Block 9.** Deciding that
+"the clinic exterior" is what a moment wants is the same judgement as knowing a
+clock reads quarter past rather than five minutes, which is the open
+image-prompt defect in `docs/DECISION-image-config.md`.
+
+### The panel is one screen, not a five-step form
+
+**User ruling, 2026-08-29**, after session 41 rewrote the words and changed
+nothing for him: *"You should reconsider everything... think about user
+experience."* The decisive fact, which he gave when asked how he works: *"I will
+click on Run and then Build and then see the results, and if there is a problem,
+I will change it."*
+
+**He is not filling in a form.** The five-step rail is gone. One screen, top to
+bottom: the wordmark, **one readiness line**, Video, Client, Cost, **Run
+pipeline**, **Build the composition** directly beneath it, and a row of three —
+**Words**, **Emphasis**, **Pictures**, each with its count — under *Change
+something first*. The three editors are unchanged in content and behaviour; only
+how they are reached changed, and each opens over the main screen with Back.
+
+**Readiness is one word.** ffmpeg, ffprobe, the picture tools, the Node path,
+the template count, the service pid and who started it all moved behind
+**Details** — none of them changes what he does next while everything works.
+**A real problem comes forward** on the main screen as a sentence with what to
+do about it, because then it is the only thing that matters.
+
+**The type scale is 17px**, up from 13. Everything else is in `em`, so one
+number moves the whole panel; headings are 0.62em uppercase, secondary text
+0.72–0.85em, the spend figure 1.05em.
+
+**The two-column layout above 830 px is retired** (supersedes the session 9
+ruling): the screen is short enough not to need it and a docked panel is a
+column. `panel/src/panel-width.ts` is deleted. One column at every width from
+380 to 1920, with nothing overflowing, asserted in a real browser.
+
+**Picking a video always shows the main screen.** `panel/src/steps.ts` — the
+remembered-step store, `stepViews`, `reconcileStep`, `openingStep` and the
+`framopia.panel.last-step` key — is deleted with its tests. The behaviour it
+produced, landing on Build after choosing a video, must not come back in another
+form.
+
+**The Client picker is a `<select>`**, so the next session's "Set up a new
+client…" entry is an added option and moves nothing else on the screen.
+
+### The panel is written in his words, not the code's
+
+**User ruling, 2026-08-29**, after he had used all five steps: the panel *"shows
+so many technical words that are hard, that I don't know what he means by
+them."* He named `alpha_edge_noise 0.0897 > 0.02`, `hole_ratio`, `edge_halo`,
+`gate rejected`, `cacheProvenance`, `img003 11.62-13.96s card z_left_4
+img_float`, `stage: service-lost`, `retryable: yes` and `HTTP 404 from
+/images?reel=vitasilk`.
+
+Four rules, in force for any string this project puts on screen:
+
+- **A field name is not a label.** `cacheProvenance`, `k001`, `g022`,
+  `kw_slam_ar`, `img003` are names from the code.
+- **A number belongs on screen only if it changes a decision he could make.**
+  `0.0897 > 0.02` does not; `912 px` does and stays.
+- **Say the consequence, not the mechanism.** Not `HTTP 404 from /images` but
+  "there is nothing here for this reel yet".
+- **A string that answers no question he could ask is deleted, not reworded.**
+  The keyword picker's source line carried five facts, four of them ids, and now
+  says whether the words were chosen for him or are waiting on him.
+
+Kept deliberately, because they are evidence a dozen sessions paid for: sizes in
+pixels, costs in dollars, which service answered and when, the file a build
+wrote, and every buildability issue by name.
+
+### Every picture in a reel is one size, and the watermark has three
+
+**A reel picks one image size and it is the smallest any of its slots can hold**
+(user ruling, 2026-08-29). Session 36 removed size jitter and `vitasilk` still
+came out 937/837/905/925/913 px, because `img002` is bounded by the space
+*beside* the speaker where the other four are bounded by the space *above* him.
+That is real geometry and it does not matter — on screen it reads as
+inconsistency. `reelPlacements` in `service/src/placement/top-left.ts` is the one
+declaration, read by the builder, `npm run place:images` and the panel's image
+picker, so the three cannot disagree about the size a build will place.
+**`vitasilk` is five pictures at 837 px; `test-1` is four at 917.** The risk is
+that one tight slot shrinks the whole reel, so the report prints each slot's own
+maximum beside the common size and what each gives up.
+
+**Positional jitter is unchanged and still holds by construction** at the common
+size: a slot bounded above may move right, one bounded beside may move down, and
+the second axis is measured after the first.
+
+**The watermark has three sizes — `small` 216 x 242 px, `medium` 324 x 363,
+`large` 432 x 484 — and `medium` is the default.** `small` is what every build
+before this ruling placed. `Watermark.size` is a **schema addition, optional
+with a default**; `POST /watermark` takes `enabled`, `size`, or both, and the
+panel's Build step shows three buttons beside the checkbox. **An existing plan
+records no size, so its next build shows a mark 1.5x the last one.** The 108 px
+inset is measured from the near edge and holds at every size in every corner,
+asserted by test.
+
+**Neither watermark field is a human-flagged item, and neither needs to be.**
+`clearBlocks` clears keywords, images and sfx and never touches
+`plan.watermark`, so a re-run cannot lose either setting. Flagging them would be
+worse than useless: `PlanMergeBlockedError` throws whenever a flag is present,
+so any reel whose watermark had been set would refuse an ordinary
+re-transcription until it was forced. A merge test pins the survival.

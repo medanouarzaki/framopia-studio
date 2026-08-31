@@ -806,3 +806,295 @@ ruled **[8, 15]** on all four comps (2026-08-31), so `shadowDescentPx` reads 15
 and `SUBTITLE_BAND`'s bottom is **3012.57825** again. The three tests that had
 been failing on purpose pass on their own; none was edited. The recovered 2.045 px
 is also why the two-line cards' headroom went 51.2 → **53.3 px**.
+
+
+## 12. Template knowledge, moved here from CLAUDE.md
+
+The sections below were written one session at a time in `CLAUDE.md`, which
+grew to 530,588 characters — three and a half times the size at which it is
+read whole. Block 10 session 28 moved them here **verbatim**, wording and
+figures untouched, so that a session looking for how something works finds it
+in the document it would already open. Nothing was summarised and nothing was
+dropped; `git show 1c8c850:CLAUDE.md` is the file as it stood before the move.
+
+
+### A card fits its comp in both directions, and only width was ever checked
+
+**A two-line card was being cut off and nothing could see it.** Block 10 session
+20 found `test-1`'s `محفزات الكولاجين` and `test-2`'s `ترطيب عميق` — both
+`kw_slam_ar` — reaching past the bottom of their own 2160x1100 card comp, which
+is rasterised at its bounds and clips whatever leaves them.
+`assertEveryCardFits` asked `widthAfterPx <= safeWidthPx` and **nothing asked
+anything about height**, which is why 17,170 golden fields matched while a card
+was cut in half.
+
+**The geometry**: the first baseline rests at y = 700 and the entrance animates
+Position from **750** down to it, so a card sits 50 px lower on its way in; the
+shadow copy is offset a further **+15** by its Transform effect. A card is cut
+when `750 + inkTop + inkHeight + 15` passes 1100. Both offenders reach
+**1196.7 px — 96.7 px outside**. Session 20's 31.7 is the same card measured at
+rest with the shadow excluded; the check takes the worst case.
+
+**The shadow term is composed, and no single call can give it.** Measured in
+session 21: `sourceRectAtTime` returns an **identical rect at both `extents`
+settings** on a layer carrying a Transform effect, so it never includes the
+effect. Both terms are measured — the rect from the layer, the offset off the
+effect's own Position and Anchor Point — and the sum is arithmetic over two
+measurements.
+
+**Two lines cost `LINE_SPACING` = 323 px and almost nothing has that room.**
+260 of the corpus's 262 cards are one line with **178.3 px of headroom at
+worst**; every template's worst card would be cut if it broke — `sub_pop_ar`
+−144.7, `kw_slam` −127.0, `kw_slam_ar` −80.4, `sub_pop` −62.0. **One line never
+overruns at these sizes**, needing a descent past 335 px, but that is a property
+of the faces in use rather than a guarantee.
+
+**`assertEveryCardFits` checks both now**, with `CardClippedError` beside
+`CardTooWideError` and a failure that names the card, the extent, the comp
+height and the overrun. **The rule is that a card is never cut, not that it fits
+its comp**: `CardVerticalExtent.collapsed` records whether the master layer
+collapses, because a comp that does not enforce its bounds cannot cut anything.
+
+**Option D — collapsing transformations so the card draws outside its comp — was
+tried and rejected on measurement.** It works mechanically: settable on the
+instance, `library.aep` untouched, all four reels build, the blur and the
+Transform provably undisturbed inside the comp. But `sourceRectAtTime` reports
+`0..1100` with collapse either way and carries no signal, so it was settled on
+pixels: two frames of the same card, one collapsed and one not, differ across
+**rows 1978-3181** — the whole card body, up to **230 levels of 255**, in a
+region that was never being clipped. It does not preserve the look.
+
+**The fix is C and it is the user's**: the four text card comps go from 1100 px
+to at least **1197**. Until then the build **refuses** those two reels and
+`npm run golden` cannot pass — which is the check doing its job on cards that
+have been shipping cut on every build.
+
+### The impact frame is measured, and it disagrees with the user's eye by 1.25 frames
+
+The audit now carries each key's interpolation type and temporal ease, so the
+crossing is computable. `core/src/impact-crossing.ts` builds AE's bezier —
+`influence` is the fraction of the segment a handle spans, `speed` is the value
+rate, so a handle's vertical extent is `speed × influence/100 × d` — and finds
+where the value first reaches `IMPACT_THRESHOLD` of its delta.
+
+**Every comp and every entrance property crosses at 5.25 frames**, against a
+settle at 12.00 and a linear reading of 11.40. Six comps agreeing exactly is
+what one shared easing preset should produce, and it is the evidence the
+convention is being read correctly.
+
+**The user says `kw_slam`'s word lands at frame 4, and 5.25 is not that.** The
+convention is not the problem — the threshold is. Frame 4 corresponds to a
+threshold of **0.8966**, where `IMPACT_THRESHOLD` was chosen at **0.95**:
+
+| threshold | crossing |
+|---:|---:|
+| 0.8966 | 4.00 f — the user's eye |
+| 0.90 | 4.06 f |
+| 0.95 | 5.25 f — as chosen |
+
+**Nothing was migrated onto 5.25.** The 17 SFX events remain where session 22
+left them, 8 frames late, and the threshold is a judgement about when a motion
+reads as arrived that belongs to the person who drew the curve.
+
+**Two units traps, both found by the numbers disagreeing.** A *spatial* property
+reports one ease for all three dimensions because AE eases along the path, so
+its value axis is the magnitude; a *non-spatial* multi-dimensional property
+reports one ease per dimension. Comparing a 3-D magnitude against dimension
+zero's speed put `img_float`'s Scale at 7.27 frames where everything else gave
+5.25. And a null ease is not linear — AE refused to answer, and reading it as
+zero would put a plausible number where a missing one belongs.
+
+### The impact frame is not the settle frame, and it is still unmeasured
+
+Session 22 placed every sound on **12 frames**, the last entrance keyframe. The
+user built these templates and has settled what that figure is: **the easing
+front-loads the motion, so the word has landed by frame 4 and frames 4 to 12 are
+the tail settling.** The animation is not changing.
+
+`introS = 0.13 s` (4 frames) describes the **arrival**; the last key (12 frames)
+describes the **settle**. Both are right about different things and neither is
+what SFX placement needed. **The 17 events session 22 moved are therefore 8
+frames late** — down from about two seconds, and not corrected, because the
+correction cannot be measured yet.
+
+The impact is where a property first reaches `IMPACT_THRESHOLD` = **0.95** of its
+final value (`core/src/impact-frame.ts`, **CHOSEN NOT MEASURED**). That needs the
+interpolated curve, and the audit recorded only `index`, `time`, `value` — two
+endpoints and a duration, which cannot say when the value arrives between them.
+On `kw_slam` the same two keys give **11.40 frames if linear** against the user's
+**4**; the whole difference is easing.
+
+`audit.jsx` now records `keyIn/OutInterpolationType` and
+`keyIn/OutTemporalEase` (influence and speed per dimension), optional with a
+default so an older audit reads as *not recorded* rather than as linear.
+**One more `npm run audit:templates` run supplies it.** `impactFrameOf` is
+documented as measuring the settle so nothing reads it as the impact again.
+
+### What After Effects does with a font name
+
+**All measured on the user's machine, After Effects 26.0x67, 2026-08-29**, by
+`tools/ae/measure-fonts.jsx`. The run is `.local/build/font-measurements.json`.
+
+**A font name containing a space cannot be written at all.** Setting
+`TextDocument.font` to `Inter Semi-Bold` throws `Unable to set "font". Contains
+invalid character 32`. So the family-and-style strings this repo stores — the
+representation `LATIN_FONT` and `ARABIC_FONT` use — **cannot reach a text
+layer**, and PostScript names must. `modes/k2-syndicalia.json` carries both:
+`fonts.postScriptNames` is a **schema addition, optional with a default**, and
+the family-and-style strings stay because they are what the user gave.
+
+| role | family and style | what After Effects takes |
+|---|---|---|
+| ordinary | Inter Semi-Bold | `Inter-SemiBold` |
+| emphasis | Cormorant Garamond SemiBold Italic | `CormorantGaramondItalic-SemiBoldItalic` |
+| Arabic | Almarai Bold | `Almarai-Bold` |
+
+**After Effects does not name a font the way macOS names it, and the two
+diverge on two of these three faces.** Measured in Block 10 session 12 against
+`system_profiler`, on the same installed files:
+
+| the repo pins, and After Effects reports | what macOS reports for the same file |
+|---|---|
+| `Inter-SemiBold` | `Inter-Regular_SemiBold` (family `Inter`) |
+| `CormorantGaramondItalic-SemiBoldItalic` | `CormorantGaramond-SemiBoldItalic` (family `Cormorant Garamond`) |
+| `Almarai-Bold` | `Almarai-Bold` — agrees |
+
+Both divergent faces are **variable fonts**: After Effects constructs its own
+name for an instance rather than taking the one in the file, and that is the
+mechanism behind the `CormorantGaramondItalic` oddity below rather than a
+separate curiosity. `Almarai-Bold` is static and agrees.
+
+**All three are plain `.ttf` files in `~/Library/Fonts`; none arrives through
+Creative Cloud**, which is why `docs/SECOND_MACHINE.md` can tell the partner to
+install them by double-clicking. Adobe Fonts is active on this machine and
+supplies 28 other faces; it supplies none of these.
+
+**The consequence for a second machine**: a name missing there is not evidence
+the wrong file was installed, because a different After Effects build could
+construct a different name from the correct file. Nothing outside After Effects
+can check these names — the doctor cannot read them from macOS's font list — so
+the font check reports **the names it wanted beside the names the host offered
+under the same family**, and a mismatch is something to report rather than to
+fix by renaming. The three pinned names are ruled and do not move.
+
+**The emphasis family is `CormorantGaramondItalic`, not `CormorantGaramond`** —
+a separate family on this machine, and `CormorantGaramond-SemiBoldItalic` does
+not exist. The obvious construction is the wrong one.
+
+**After Effects accepts a font name it does not have.** `FramopiaNoSuchFaceZZQX`
+was set, threw nothing, and read back **unchanged**. It does not throw and it
+does not report a substitution: a face that is missing produces a comp that
+looks built and is set in the wrong type. **So round-tripping is not evidence a
+face resolved**, and the only defence is to check before anything is placed —
+`build-reel.jsx`'s `check-fonts` stage, from `requiredFonts` off the client
+snapshot, refusing by name. Empty until a build actually names its faces, which
+is not yet.
+
+**`app.fonts.allFonts` is not an array of font objects.** Reading `familyName`
+off an entry gives `undefined`; each entry stringifies to one family's
+PostScript names joined by commas, and a single-face family is one name.
+**And writing pollutes it**: a name that is set but not installed is added to
+`allFonts` and stays for the rest of the application session, so
+`FramopiaNoSuchFaceZZQX` reported itself installed on the next run. A fresh
+launch is the only way to clear it. `panel/jsx/fonts.jsx` is the one reader.
+
+### The template style pass is written down, not done
+
+`docs/TEMPLATE_STYLE_PASS.md` is what the user works from: the four text comps
+and the one layer in each (`TXT_MAIN`), what must not change and what breaks if
+it does, and the order. **The system never edits a template's animation**, so a
+drop shadow and a contour are his to draw.
+
+**Measured 2026-08-30, because it decides whether the layout has to move: a
+stroke of width *w* makes a word 2*w* wider and 2*w* taller** — it sits *w*
+outside the letters on every side, at 6, 12 and 20 px on Inter-SemiBold at 343.
+**A drop shadow changed `sourceRectAtTime` by nothing**, at 20 distance and 30
+softness. `extents=false` and `extents=true` agree exactly for point text.
+
+So the two halves of the layout part company:
+
+- **Line breaking looks after itself.** `framopiaFitText` asks After Effects for
+  the width at build time, so it sees the stroke and wraps a card one word
+  earlier. Nothing to do.
+- **`SUBTITLE_BAND` does not.** It is derived from `FONT_METRICS`, read from the
+  **font files** with fontTools — and a stroke is not in a font file. After the
+  pass the band is short by the stroke width above and below, and **no existing
+  command re-derives it**, because re-running the same derivation would read the
+  same font files. The constant needs a term for the stroke; then
+  `npm run zones -- --all --write-plan` and `npm run place -- --all` re-derive
+  what depends on it. The audit also has to be re-run: it is stamped with the
+  `.aep`'s sha256 and `validate:templates` refuses a stale one.
+
+**The shadow and the contour live in the templates; their colours come from the
+client** (decision taken by the conversation). Baking them in gives every future
+client K2's black shadow and K2's gold edge, which is what per-client type
+already solved. Two mode fields carry them alongside the palette and the faces.
+**Neither field exists yet and this session did not add them.**
+
+### Two text layers per card, and the shadow is filled
+
+**The user's style pass, ruled and settled.** Each of the four text comps has
+two text layers: `TXT_MAIN` on top, the visible word in pale `#F4F4F4`, and
+`TXT_MAIN_SHADOW` beneath it in Rouge K2 `#820000`, offset **+8 across and +15
+down** by a Transform effect with a Fast Box Blur that animates **30 → 0 across
+the entrance**. It does the work of a contour and a shadow at once. **There is
+no stroke and none is wanted.**
+
+**The build fills both**, with the same text, font and size — and **never the
+shadow's colour**, which is the design. `framopiaFittedText` returns the string
+the fit actually left on the layer, so a wrapped card's shadow wraps identically
+rather than being drawn from the unwrapped form. `shadowLayers` in the manifest
+declares it, **optional with a default** so a one-layer template builds as it
+always did, and a declared shadow that is not in the comp makes the build refuse
+by name.
+
+**Verified by reading a built file, not by assertion** (Block 9 session 11):
+`vitasilk` 71 text comps and `test-2` 67, **no placeholder word surviving
+anywhere**, every shadow `#820000`, mains exactly crème `#F8F6F2` and gold
+`#C9A96E`, and the wrapped case checked on the corpus's own — `filler glow` at
+the retired 1.3479 ratio and `ترطيب عميق` in Almarai, both carrying the identical
+two-line form on both layers.
+
+### Every text layer in a template is accounted for
+
+**A hand pass duplicated `TXT_MAIN` and the copy kept the template's placeholder
+word.** The build fills by exact name, so nothing filled the duplicate and
+nothing noticed — one build away from `kan9olo` on every card of every reel.
+
+Every text layer in a template comp is now a **placeholder**, a declared
+**shadow**, or a declared **decorative** layer the build leaves alone. An
+undeclared one fails validation, naming the comp and the layer. Silence used to
+mean two different things — "the build fills this" and "the build ignores this"
+— and a layer nobody had decided about looked exactly like one somebody had.
+`TEMPLATE_LIBRARY_GUIDE` §4's "only placeholders are touched" is amended.
+
+### The band knows the shadow and all three faces
+
+`SUBTITLE_BAND` was derived from two faces while three are drawn, and knew
+nothing about a shadow that reaches past the ink.
+
+**`FONT_METRICS` gains the emphasis face** — CormorantGaramondItalic-SemiBoldItalic
+at **1000/806/281**, instanced at wght 600 from the *italic* family. Derived by
+`tools/font-metrics/measure.py`, which **reproduces Inter's 2048/1970/480 and
+Almarai's 1000/1100/427 exactly before it reports a third**: a tool that cannot
+reproduce a known answer has no business producing an unknown one. Cormorant
+wins neither direction — Almarai still dominates both — so **the extent term did
+not move**. It is in the derivation because being right by luck is not the same
+as being right.
+
+**`SHADOW_DESCENT_PX` comes from the audit**, not from a number typed in:
+`shadowDescentPx` reads the declared shadow layers' Transform offsets out of
+`templates/library.audit.json`. Downward only, because the band is full frame
+width. **The blur is not a term** — it is zero at rest and it is on the visible
+layer too.
+
+The band's bottom moves **2997.578 → 3012.578 px**, height **1017.403 →
+1032.403**. Proven to track the file rather than a constant: no declaration
+gives 1017.403, the real templates 1032.403, a forced 40 px offset 1057.403.
+**An audit predating `effectOffsets` yields zero, indistinguishable from a
+shadow that does not move** — the defence is that `validateTemplates` refuses an
+audit whose sha256 does not match the `.aep`.
+
+**Nothing downstream moved.** Zones and placements re-derived identically on all
+five reels: the band's bottom edge constrains nothing now that torso zones are
+retired.
