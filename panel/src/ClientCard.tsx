@@ -1,4 +1,13 @@
+import { useState } from 'react';
 import { fileUrl } from './picture.js';
+import { ClientPictures, type ShownPicture } from './ClientPictures.js';
+import { fileDialogSupport } from './file-dialog.js';
+import {
+  addClientPicture,
+  fetchModes,
+  removeClientPicture,
+  type Connection,
+} from './service.js';
 import type { ClientMode } from './types.js';
 
 /**
@@ -14,7 +23,16 @@ import type { ClientMode } from './types.js';
  * It sits between two pickers on a one-screen panel, so it stays small: four
  * swatches on a row, two lines of type, one line of text.
  */
-export function ClientCard({ client }: { client: ClientMode }): JSX.Element | null {
+export function ClientCard({
+  client,
+  connection,
+  onModes,
+}: {
+  client: ClientMode;
+  connection: Connection | null;
+  /** The client's file changed, so every screen reading it is re-read. */
+  onModes: (modes: ClientMode[]) => void;
+}): JSX.Element | null {
   const look = client.look;
   if (look === undefined) return null;
   return (
@@ -48,7 +66,65 @@ export function ClientCard({ client }: { client: ClientMode }): JSX.Element | nu
       )}
 
       {client.standards === undefined ? null : <Standards standards={client.standards} />}
+
+      {/*
+        Absent means a service older than this panel, which is not the same as a
+        client with no photographs — offering an editor for a route that is not
+        there would report a failure the moment he pressed it.
+      */}
+      {client.pictures === undefined ? null : (
+        <Photographs client={client} connection={connection} onModes={onModes} />
+      )}
     </div>
+  );
+}
+
+function Photographs({
+  client,
+  connection,
+  onModes,
+}: {
+  client: ClientMode;
+  connection: Connection | null;
+  onModes: (modes: ClientMode[]) => void;
+}): JSX.Element {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const dialog = fileDialogSupport();
+
+  const change = async (make: (c: Connection) => Promise<void>): Promise<void> => {
+    if (connection === null) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await make(connection);
+      onModes(await fetchModes(connection));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <ClientPictures
+      pictures={(client.pictures ?? []).map(
+        (picture): ShownPicture => ({
+          key: picture.id,
+          path: picture.path,
+          description: picture.description,
+        }),
+      )}
+      dialog={dialog.available}
+      busy={busy}
+      error={error}
+      onAdd={(photo) =>
+        void change((c) => addClientPicture(c, { client: client.id, ...photo }))
+      }
+      onRemove={(key) =>
+        void change((c) => removeClientPicture(c, { client: client.id, picture: key }))
+      }
+    />
   );
 }
 

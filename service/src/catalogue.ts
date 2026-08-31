@@ -61,6 +61,12 @@ export interface CatalogueMode {
   };
   /** Whether their videos come from a folder of their own or from the old list. */
   hasFolder: boolean;
+  /**
+   * The client's own photographs, so the client screen can show and edit them.
+   * The path travels to the panel because the panel draws the thumbnail from
+   * the file where it sits; nothing copies it and nothing sends it onward.
+   */
+  pictures: { id: string; path: string; description: string }[];
 }
 
 /**
@@ -222,6 +228,7 @@ export function listModes(): CatalogueMode[] {
             logoPath: mode.logoPath ?? null,
           },
           standards: standardsOf(mode),
+          pictures: (mode.pictures ?? []).map((p) => ({ ...p })),
         };
         if (mode.fonts.status === 'set') {
           entry.fonts = { latin: mode.fonts.latin, arabic: mode.fonts.arabic };

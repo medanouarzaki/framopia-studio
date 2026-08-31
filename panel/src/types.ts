@@ -152,6 +152,12 @@ export interface ClientMode {
   };
   /** Whether their videos come from a folder of their own. */
   hasFolder?: boolean;
+  /**
+   * Their own photographs. Absent from a service older than this panel, which
+   * is a different thing from a client having none — the screen says so rather
+   * than offering an editor that would write into a route that is not there.
+   */
+  pictures?: { id: string; path: string; description: string }[];
 }
 
 export type ServiceState =

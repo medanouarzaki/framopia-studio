@@ -486,7 +486,9 @@ function Panel({
               <option value="__once">Just this video…</option>
             </select>
           </label>
-          {mode === null ? null : <ClientCard client={mode} />}
+          {mode === null ? null : (
+            <ClientCard client={mode} connection={connection} onModes={setModes} />
+          )}
         </section>
 
         <section className="video">

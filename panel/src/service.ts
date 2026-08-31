@@ -410,7 +410,13 @@ export async function createClient(
   return { id: body.id, modes: body.modes ?? [] };
 }
 
-/** Add one of the client's own pictures. Nothing is copied and nothing is sent. */
+/**
+ * Add one of the client's own photographs.
+ *
+ * The file stays where he put it: this sends a path, and the service writes
+ * that path into the client's file. Nothing is copied and nothing reaches an
+ * image model — see `core/src/client-pictures.ts`.
+ */
 export async function addClientPicture(
   connection: Connection,
   edit: { client: string; path: string; description: string },
@@ -423,6 +429,27 @@ export async function addClientPicture(
   if (!res.ok) {
     const body = (await res.json().catch(() => ({}))) as { error?: string };
     throw new Error(body.error ?? 'that picture could not be added');
+  }
+}
+
+/**
+ * Forget one of the client's own photographs.
+ *
+ * It forgets, it does not delete: the file on the disk is untouched and only
+ * the client's file stops naming it.
+ */
+export async function removeClientPicture(
+  connection: Connection,
+  edit: { client: string; picture: string },
+): Promise<void> {
+  const query = `client=${encodeURIComponent(edit.client)}&picture=${encodeURIComponent(edit.picture)}`;
+  const res = await fetch(`http://127.0.0.1:${connection.port}/clients/pictures?${query}`, {
+    method: 'DELETE',
+    headers: { 'x-service-token': connection.token },
+  });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(body.error ?? 'that photo could not be removed');
   }
 }
 

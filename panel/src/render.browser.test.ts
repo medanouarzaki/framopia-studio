@@ -463,6 +463,7 @@ function stubRoutes(steps: unknown, resumeAt: string): string {
             language: 'mixed', videoShape: 'vertical', watermark: true,
             subtitleBaselineY: 2480.4, chosen: [],
           },
+          pictures: [],
         },
       ],
     },
@@ -3024,9 +3025,135 @@ describe.skipIf(!built)('setting up a client', () => {
       // The sentence that made this a two-visit screen is gone.
       const all = (await loaded.page.textContent('main.editor')) ?? '';
       expect(all).not.toContain('Colours and their own pictures are added afterwards');
-      // Not "once there are videos": nothing is waiting, the screen is unbuilt.
-      expect(all).toContain('Adding their own photographs is not built yet');
+      /*
+       * Retired 2026-08-31: this used to assert "Adding their own photographs
+       * is not built yet", which stopped being true the moment the control
+       * landed on this screen.
+       */
+      expect(all).not.toContain('Adding their own photographs is not built yet');
       expect(all).not.toContain('once there are videos to use them in');
+      expect(all).toContain('Their own photographs');
+      expect(loaded.uncaught).toEqual([]);
+    } finally {
+      await loaded.page.close();
+    }
+  });
+
+  /*
+   * A client's own photographs, on the screen where a client is set up.
+   *
+   * **User ruling, 2026-08-31**: they belong here, not in the picture editor
+   * half-way through a video. The client does not exist yet at this point, so
+   * the list is held on the form and travels with the client.
+   */
+  it('takes a photograph, with a description, and shows it back', async () => {
+    const loaded = await openSetup();
+    if (loaded === null) return;
+    try {
+      const page = loaded.page;
+      await page.waitForSelector('.ownphotos', { timeout: 5000 });
+      expect((await page.textContent('.ownphotos')) ?? '').toContain('None yet.');
+      // Nothing can be added until both halves are there.
+      const add = await page.$('.addphoto button.ghost:not(.choose)');
+      expect(await add?.isDisabled()).toBe(true);
+
+      await page.evaluate(`window.__picked = ${JSON.stringify(LOGO)};`);
+      await page.click('.ownphotos button.choose');
+      await page.waitForSelector('.ownphotos .chosenpath', { timeout: 5000 });
+      expect(await page.textContent('.ownphotos .chosenpath')).toBe(LOGO);
+      expect(await (await page.$('.addphoto button.ghost:not(.choose)'))?.isDisabled()).toBe(true);
+
+      await page.fill('.ownphotos input[aria-label="What is it?"]', 'the clinic exterior');
+      await page.click('.addphoto button.ghost:not(.choose)');
+      await page.waitForSelector('.ownphotos ul.photos li', { timeout: 5000 });
+      expect((await page.textContent('.ownphotos ul.photos')) ?? '').toContain(
+        'the clinic exterior',
+      );
+      // Encoded once, in `fileUrl`, because these paths carry spaces.
+      expect(await page.$eval('.ownphotos img.shot', (e) => e.getAttribute('src'))).toBe(
+        `file://${encodeURI(LOGO)}`,
+      );
+      // Forgetting says what it does, and does it.
+      expect((await page.textContent('.ownphotos')) ?? '').toContain(
+        'leaves the file itself exactly where it is',
+      );
+      await page.click('button[aria-label="Forget the clinic exterior"]');
+      expect(await page.$$('.ownphotos ul.photos li')).toHaveLength(0);
+      expect(loaded.uncaught).toEqual([]);
+    } finally {
+      await loaded.page.close();
+    }
+  });
+
+  it('sends the photographs with the new client', async () => {
+    const loaded = await openSetup(`
+      window.__posted = null;
+      const inner = window.fetch;
+      window.fetch = (url, init) => {
+        if (String(url).indexOf('/clients') !== -1 && init && init.method === 'POST') {
+          window.__posted = JSON.parse(init.body);
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ id: 'dr-jenna', modes: window.__payload.modes.modes }),
+          });
+        }
+        return inner(url, init);
+      };
+    `);
+    if (loaded === null) return;
+    try {
+      const page = loaded.page;
+      await page.fill('input[aria-label="Name"]', 'Dr Jenna');
+      await page.evaluate(`window.__picked = ${JSON.stringify(LOGO)};`);
+      await page.click('.ownphotos button.choose');
+      await page.fill('.ownphotos input[aria-label="What is it?"]', 'the clinic exterior');
+      await page.click('.addphoto button.ghost:not(.choose)');
+      await page.waitForSelector('.ownphotos ul.photos li', { timeout: 5000 });
+      await page.click('main.editor > button.ghost');
+      await page.waitForSelector('section.client', { timeout: 5000 });
+      const posted = (await page.evaluate('window.__posted')) as {
+        pictures?: { path: string; description: string }[];
+      };
+      expect(posted.pictures).toEqual([{ path: LOGO, description: 'the clinic exterior' }]);
+      expect(loaded.uncaught).toEqual([]);
+    } finally {
+      await loaded.page.close();
+    }
+  });
+
+  it('says a file it cannot use is one it cannot use, before he adds it', async () => {
+    const loaded = await openSetup();
+    if (loaded === null) return;
+    try {
+      const page = loaded.page;
+      await page.evaluate("window.__picked = '/x/clinic.mov';");
+      await page.click('.ownphotos button.choose');
+      await page.waitForSelector('.ownphotos .say', { timeout: 5000 });
+      expect((await page.textContent('.ownphotos .say')) ?? '').toContain(
+        '.mov cannot be used as a photo',
+      );
+      await page.fill('.ownphotos input[aria-label="What is it?"]', 'the clinic');
+      expect(await (await page.$('.addphoto button.ghost:not(.choose)'))?.isDisabled()).toBe(true);
+      expect(loaded.uncaught).toEqual([]);
+    } finally {
+      await loaded.page.close();
+    }
+  });
+
+  it('accepts a format it cannot draw, and says so instead of a broken image', async () => {
+    const loaded = await openSetup();
+    if (loaded === null) return;
+    try {
+      const page = loaded.page;
+      await page.evaluate("window.__picked = '/x/clinic.psd';");
+      await page.click('.ownphotos button.choose');
+      await page.fill('.ownphotos input[aria-label="What is it?"]', 'the clinic');
+      await page.click('.addphoto button.ghost:not(.choose)');
+      await page.waitForSelector('.ownphotos ul.photos li', { timeout: 5000 });
+      expect(await page.$('.ownphotos img.shot')).toBeNull();
+      expect((await page.textContent('.ownphotos ul.photos')) ?? '').toContain(
+        'cannot show a preview',
+      );
       expect(loaded.uncaught).toEqual([]);
     } finally {
       await loaded.page.close();
@@ -3034,3 +3161,86 @@ describe.skipIf(!built)('setting up a client', () => {
   });
 });
 
+
+/*
+ * The same photographs on the other client screen — the card for a client who
+ * already exists. There is a `/clients/pictures` route here, so every change
+ * goes to the service and the client list is re-read from it afterwards.
+ */
+describe('a saved client’s own photographs', () => {
+  const routeStub = `
+    const inner = window.fetch;
+    window.fetch = (url, init) => {
+      const u = String(url);
+      // A fresh object each time, so the panel cannot appear to update by
+      // holding a reference into the fixture the route just mutated.
+      if (u.indexOf('/modes') !== -1) {
+        const modes = JSON.parse(JSON.stringify(window.__payload.modes));
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(modes) });
+      }
+      if (u.indexOf('/clients/pictures') !== -1) {
+        const pics = window.__payload.modes.modes[0].pictures;
+        if (init && init.method === 'DELETE') {
+          const id = decodeURIComponent(u.split('picture=')[1]);
+          window.__payload.modes.modes[0].pictures = pics.filter((p) => p.id !== id);
+        } else {
+          const body = JSON.parse(init.body);
+          window.__payload.modes.modes[0].pictures = pics.concat([
+            { id: 'pic00' + (pics.length + 1), path: body.path, description: body.description },
+          ]);
+        }
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true }) });
+      }
+      return inner(url, init);
+    };
+    window.__picked = null;
+    window.cep = { fs: { showOpenDialogEx: () => ({ err: 0, data: window.__picked === null ? [] : [window.__picked] }) } };
+  `;
+
+  it('adds one through the service and reads the client back', async () => {
+    const loaded = await loadFlow('build', 'build', 420, routeStub);
+    if (loaded === null) return;
+    try {
+      const page = loaded.page;
+      await page.waitForSelector('.clientcard .ownphotos', { timeout: 5000 });
+      expect((await page.textContent('.clientcard .ownphotos')) ?? '').toContain('None yet.');
+      await page.evaluate(`window.__picked = ${JSON.stringify(LOGO)};`);
+      await page.click('.clientcard .ownphotos button.choose');
+      await page.fill('.clientcard .ownphotos input[aria-label="What is it?"]', 'the clinic');
+      await page.click('.clientcard .addphoto button.ghost:not(.choose)');
+      await page.waitForSelector('.clientcard .ownphotos ul.photos li', { timeout: 5000 });
+      expect((await page.textContent('.clientcard .ownphotos ul.photos')) ?? '').toContain(
+        'the clinic',
+      );
+      await page.click('.clientcard button[aria-label="Forget the clinic"]');
+      await page.waitForSelector('.clientcard .ownphotos ul.photos li', {
+        state: 'detached',
+        timeout: 5000,
+      });
+      expect(loaded.uncaught).toEqual([]);
+    } finally {
+      await loaded.page.close();
+    }
+  });
+
+  /*
+   * A service older than this panel sends no `pictures` at all, which is not
+   * the same as a client with none. Offering an editor there would report a
+   * failure the moment he pressed it — session 32's rule.
+   */
+  it('offers no editor against a service that does not carry them', async () => {
+    const loaded = await loadFlow(
+      'build',
+      'build',
+      420,
+      'delete window.__payload.modes.modes[0].pictures;',
+    );
+    if (loaded === null) return;
+    try {
+      expect(await loaded.page.$('.clientcard .ownphotos')).toBeNull();
+      expect(loaded.uncaught).toEqual([]);
+    } finally {
+      await loaded.page.close();
+    }
+  });
+});

@@ -636,6 +636,23 @@ section.client .say, section.video .say { margin: 8px 0 0; color: var(--muted); 
 .colours .colour .what { flex: 1; font-size: 0.78em; color: var(--muted); }
 .colours .colour code { font-size: 0.72em; color: var(--faint); }
 
+/* The client's own photographs, on both client screens. */
+.ownphotos { display: grid; gap: 8px; margin-top: 12px; }
+.ownphotos ul.photos {
+  display: flex; flex-wrap: wrap; gap: 10px; list-style: none; margin: 0; padding: 0;
+}
+.ownphotos ul.photos li {
+  flex: 0 1 120px; display: grid; gap: 6px; padding: 6px;
+  border: 1px solid var(--line); border-radius: 8px;
+}
+.ownphotos img.shot {
+  width: 100%; height: 84px; object-fit: contain;
+  background: var(--panel-2); border-radius: 6px;
+}
+.ownphotos .cannot { margin: 0; color: var(--faint); font-size: 0.72em; font-style: italic; }
+.ownphotos ul.photos .what { color: var(--muted); font-size: 0.75em; overflow-wrap: anywhere; }
+.ownphotos .addphoto { display: grid; gap: 8px; }
+
 /* The font list is searchable and the sample is drawn in the real face. */
 .fontfield .fontsearch { width: 100%; }
 .fontsample.cannot { color: var(--faint); font-size: 0.78em; font-style: italic; }

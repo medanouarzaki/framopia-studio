@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { existsSync, readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { loadMode, modePathFor, validateMode } from '@framopia/core';
 import { buildClient, clientIdFor, ClientWriteError, createClient } from './create.js';
 
@@ -84,5 +85,56 @@ describe('the client that already exists', () => {
     ]) {
       expect(`${field}: ${String(raw.includes(`"${field}"`))}`).toBe(`${field}: false`);
     }
+  });
+});
+
+/*
+ * The photographs a client gives you, added while the client is being set up.
+ *
+ * There is no `/clients/pictures` to call yet at that point — the client file
+ * does not exist — so they travel with the client. What matters is that the two
+ * routes into the same field agree: the same three refusals, and the same rule
+ * for numbering.
+ */
+describe('a client’s own photographs, given at setup', () => {
+  const here = fileURLToPath(import.meta.url);
+
+  it('numbers them the way adding one to a saved client does', () => {
+    const client = buildClient({
+      name: 'Dr Jenna Photos',
+      pictures: [
+        { path: here, description: 'the clinic exterior' },
+        { path: here, description: '  the waiting room  ' },
+      ],
+    });
+    expect(validateMode(client)).toEqual([]);
+    expect(client.pictures).toEqual([
+      { id: 'pic001', path: here, description: 'the clinic exterior' },
+      { id: 'pic002', path: here, description: 'the waiting room' },
+    ]);
+  });
+
+  it('refuses a photograph that is not there, rather than writing a dead path', () => {
+    expect(() =>
+      buildClient({
+        name: 'Dr Jenna Photos',
+        pictures: [{ path: '/nowhere/at/all.png', description: 'the clinic' }],
+      }),
+    ).toThrow(ClientWriteError);
+  });
+
+  it('refuses a relative path', () => {
+    expect(() =>
+      buildClient({
+        name: 'Dr Jenna Photos',
+        pictures: [{ path: 'clinic.png', description: 'the clinic' }],
+      }),
+    ).toThrow(ClientWriteError);
+  });
+
+  it('refuses one with no description, because nothing else tells them apart', () => {
+    expect(() =>
+      buildClient({ name: 'Dr Jenna Photos', pictures: [{ path: here, description: '   ' }] }),
+    ).toThrow(ClientWriteError);
   });
 });

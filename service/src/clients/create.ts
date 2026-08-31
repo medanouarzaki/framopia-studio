@@ -38,7 +38,12 @@ export interface NewClient {
   fonts?: { latin: string; arabic: string };
   palette?: { background: string; primary: string; accent: string; light: string };
   logoPath?: string;
-  pictures?: ClientPicture[];
+  /**
+   * The client's own photographs. An id is assigned here rather than by the
+   * caller, so the setup screen and `addPicture` cannot number them by two
+   * different rules.
+   */
+  pictures?: { path: string; description: string }[];
   language?: ClientLanguage;
   subtitleBaselineY?: number;
   videoShape?: VideoShape;
@@ -101,7 +106,18 @@ export function buildClient(input: NewClient): ClientMode {
     client.videoFolder = input.videoFolder;
   }
   if (input.logoPath !== undefined && input.logoPath !== '') client.logoPath = input.logoPath;
-  if (input.pictures !== undefined && input.pictures.length > 0) client.pictures = input.pictures;
+  if (input.pictures !== undefined && input.pictures.length > 0) {
+    const pictures: ClientPicture[] = [];
+    for (const picture of input.pictures) {
+      checkPicture(picture);
+      pictures.push({
+        id: nextPictureId(pictures),
+        path: picture.path,
+        description: picture.description.trim(),
+      });
+    }
+    client.pictures = pictures;
+  }
   if (input.language !== undefined) client.language = input.language;
   if (input.subtitleBaselineY !== undefined) client.subtitleBaselineY = input.subtitleBaselineY;
   if (input.videoShape !== undefined) client.videoShape = input.videoShape;
@@ -141,15 +157,7 @@ export function addPicture(
 ): ClientPicture {
   const modePath = modePathFor(modeId);
   if (!existsSync(modePath)) throw new ClientWriteError(`there is no client called ${modeId}`);
-  if (!path.isAbsolute(picture.path)) {
-    throw new ClientWriteError('a picture needs the full path to the file');
-  }
-  if (!existsSync(picture.path)) {
-    throw new ClientWriteError(`there is no file at ${picture.path}`);
-  }
-  if (picture.description.trim() === '') {
-    throw new ClientWriteError('describe the picture, so you can tell it from the others later');
-  }
+  checkPicture(picture);
   const raw = JSON.parse(readFileSync(modePath, 'utf8')) as ClientMode;
   const pictures = raw.pictures ?? [];
   const entry: ClientPicture = {
@@ -170,6 +178,23 @@ export function removePicture(modeId: string, pictureId: string): void {
   if (pictures.length === 0) delete next.pictures;
   else next.pictures = pictures;
   writeMode(modePath, next);
+}
+
+/**
+ * The same three refusals whether the photograph arrives with a new client or
+ * is added to a saved one. A setup screen that accepted what the client card
+ * refuses would write a client file the panel could not have made twice.
+ */
+function checkPicture(picture: { path: string; description: string }): void {
+  if (!path.isAbsolute(picture.path)) {
+    throw new ClientWriteError('a picture needs the full path to the file');
+  }
+  if (!existsSync(picture.path)) {
+    throw new ClientWriteError(`there is no file at ${picture.path}`);
+  }
+  if (picture.description.trim() === '') {
+    throw new ClientWriteError('describe the picture, so you can tell it from the others later');
+  }
 }
 
 function nextPictureId(pictures: ClientPicture[]): string {

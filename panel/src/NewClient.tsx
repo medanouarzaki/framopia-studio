@@ -19,6 +19,7 @@ import {
   judgeStill,
   stillVerdictSentence,
 } from './still-formats.js';
+import { ClientPictures, type ShownPicture } from './ClientPictures.js';
 import type { ClientMode } from './types.js';
 
 /**
@@ -75,6 +76,7 @@ export function NewClient({
   const [baseline, setBaseline] = useState('');
   const [watermark, setWatermark] = useState(true);
   const [palette, setPalette] = useState<Record<string, string>>(DEFAULT_PALETTE);
+  const [photos, setPhotos] = useState<{ path: string; description: string }[]>([]);
   const [fonts, setFonts] = useState<FontList>({
     available: false,
     names: [],
@@ -112,6 +114,10 @@ export function NewClient({
       }
       if (language !== '') body['language'] = language;
       if (!watermark) body['watermarkByDefault'] = false;
+      // The client does not exist yet, so there is no `/clients/pictures` to
+      // call: the photographs travel with the client and the service numbers
+      // them, by the same rule it uses when one is added to a saved client.
+      if (permanent && photos.length > 0) body['pictures'] = photos;
       const created = await createClient(connection, body);
       onSaved(created.id, created.modes);
     } catch (e) {
@@ -247,21 +253,24 @@ export function NewClient({
                 <code>{palette[f.role] ?? f.hex}</code>
               </label>
             ))}
-            {/*
-              **Nothing is waiting on anything.** The service has taken a
-              client's own pictures since Block 9 — `POST /clients/pictures` and
-              its DELETE — the panel's own `addClientPicture` calls that route,
-              and the picture editor already offers a client's pictures beside
-              the generated ones, per slot. **The only missing piece is a control
-              that calls it**: `addClientPicture` is declared and nothing in any
-              component invokes it. So "once there are videos to use them in"
-              named a precondition that is not real and a place that does not
-              exist; what is true is simply that the screen has not been built.
-            */}
-            <p className="note">
-              Adding their own photographs is not built yet. When it is, it will be here.
-            </p>
           </div>
+        ) : null}
+
+        {permanent ? (
+          <ClientPictures
+            pictures={photos.map(
+              (photo): ShownPicture => ({
+                key: photo.path,
+                path: photo.path,
+                description: photo.description,
+              }),
+            )}
+            dialog={dialog.available}
+            busy={saving}
+            error={null}
+            onAdd={(photo) => setPhotos((all) => [...all, photo])}
+            onRemove={(key) => setPhotos((all) => all.filter((photo) => photo.path !== key))}
+          />
         ) : null}
       </div>
 
