@@ -10,6 +10,11 @@ import {
 import { fileDialogSupport, pickFolder, pickImageFile } from './file-dialog.js';
 import { fileUrl } from './picture.js';
 import {
+  PALETTE_MEANING,
+  paletteRolesInDisplayOrder,
+  type PaletteRole,
+} from '@framopia/core/palette-meaning';
+import {
   LOGO_EXTENSIONS_WITHOUT_DOT,
   judgeLogo,
   logoVerdictSentence,
@@ -29,25 +34,20 @@ import type { ClientMode } from './types.js';
  * will not work with again should not put a name in his client list for years.
  */
 /**
- * The four colours, in the words the client card already uses for them.
+ * The four colours, with what each actually does.
  *
- * **Roles, not names.** `accent` is a word from the file; what he needs to know
- * is where he will see it. These four strings are the ones
- * `service/src/catalogue.ts` shows on the client card, kept identical so a
- * colour means the same thing on the screen that sets it and the screen that
- * shows it.
- *
- * The defaults are what a client saved with no colours gets today: the service
- * inherits the template client's palette, and these are its four values. So a
- * client saved without touching them comes out exactly as it did before this
- * screen had them.
+ * The captions and their order are `@framopia/core/palette-meaning`, which the
+ * client card reads too — they were two copies until Block 10 session 18 and had
+ * already drifted from what the builds do. The hexes are the defaults a client
+ * with no colours gets today: the service inherits the template client's
+ * palette, so a client saved without touching them comes out exactly as before.
  */
-const PALETTE_FIELDS: { role: string; what: string; hex: string }[] = [
-  { role: 'background', what: 'behind a cut-out picture', hex: '#1A0000' },
-  { role: 'primary', what: 'the deeper of the two frame colours', hex: '#820000' },
-  { role: 'accent', what: 'the frame around a picture', hex: '#C9A96E' },
-  { role: 'light', what: 'the lighter of the two frame colours', hex: '#F8F6F2' },
-];
+const PALETTE_FIELDS: { role: PaletteRole; what: string; hex: string }[] =
+  paletteRolesInDisplayOrder().map((role) => ({
+    role,
+    what: PALETTE_MEANING[role],
+    hex: { light: '#F8F6F2', accent: '#C9A96E', background: '#1A0000', primary: '#820000' }[role],
+  }));
 
 const DEFAULT_PALETTE: Record<string, string> = Object.fromEntries(
   PALETTE_FIELDS.map((f) => [f.role, f.hex]),
@@ -248,12 +248,18 @@ export function NewClient({
               </label>
             ))}
             {/*
-              Their own pictures genuinely do come later: one is chosen per video,
-              against the moment it illustrates, and there is nothing to point at
-              until the client has footage.
+              **Nothing is waiting on anything.** The service has taken a
+              client's own pictures since Block 9 — `POST /clients/pictures` and
+              its DELETE — the panel's own `addClientPicture` calls that route,
+              and the picture editor already offers a client's pictures beside
+              the generated ones, per slot. **The only missing piece is a control
+              that calls it**: `addClientPicture` is declared and nothing in any
+              component invokes it. So "once there are videos to use them in"
+              named a precondition that is not real and a place that does not
+              exist; what is true is simply that the screen has not been built.
             */}
             <p className="note">
-              Their own pictures are added later, once there are videos to use them in.
+              Adding their own photographs is not built yet. When it is, it will be here.
             </p>
           </div>
         ) : null}

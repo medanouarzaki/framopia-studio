@@ -2,7 +2,8 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import {
   MODES_DIR,
-  PALETTE_ROLES,
+  PALETTE_MEANING,
+  paletteRolesInDisplayOrder,
   REPO_ROOT,
   STANDARD_FONTS,
   clientDefaults,
@@ -79,18 +80,7 @@ export interface VideoListing {
   skipped: { name: string; why: string }[];
 }
 
-/**
- * What each colour does in a build, so a swatch is not four hex codes.
- *
- * Roles, not names: `accent` is a word from the file, and what he needs to know
- * is where he will see it.
- */
-const PALETTE_MEANING: Record<(typeof PALETTE_ROLES)[number], string> = {
-  background: 'behind a cut-out picture',
-  primary: 'the deeper of the two frame colours',
-  accent: 'the frame around a picture',
-  light: 'the lighter of the two frame colours',
-};
+
 
 function standardsOf(mode: ClientMode): CatalogueMode['standards'] {
   const d = clientDefaults(mode);
@@ -220,7 +210,7 @@ export function listModes(): CatalogueMode[] {
           fontsResolved: mode.fonts.status === 'set',
           hasFolder: mode.videoFolder !== undefined,
           look: {
-            palette: PALETTE_ROLES.map((role) => ({
+            palette: paletteRolesInDisplayOrder().map((role) => ({
               role,
               hex: mode.palette[role],
               what: PALETTE_MEANING[role],

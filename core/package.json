@@ -53,6 +53,10 @@
     "./saved-output": {
       "types": "./dist/saved-output.d.ts",
       "default": "./dist/saved-output.js"
+    },
+    "./palette-meaning": {
+      "types": "./dist/palette-meaning.d.ts",
+      "default": "./dist/palette-meaning.js"
     }
   },
   "files": [

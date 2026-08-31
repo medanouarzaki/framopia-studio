@@ -64,8 +64,16 @@ import { REPO_ROOT } from './paths.js';
  */
 export const MODE_SCHEMA_VERSION = 1;
 
-export const PALETTE_ROLES = ['background', 'primary', 'accent', 'light'] as const;
-export type PaletteRole = (typeof PALETTE_ROLES)[number];
+/*
+ * Declared in `palette-meaning.ts` and re-exported here, so every existing
+ * importer is unchanged. That module has no imports at all, which is what lets
+ * the panel read it: the barrel reaches `node:crypto` and `node:fs` through this
+ * file, and esbuild cannot resolve those for a browser target — the same reason
+ * `build-stamp` is its own subpath.
+ */
+import { PALETTE_ROLES, type PaletteRole } from './palette-meaning.js';
+
+export { PALETTE_ROLES, type PaletteRole };
 
 export const TEMPLATE_KINDS = ['subtitle', 'keyword', 'image'] as const;
 export type TemplateKind = (typeof TEMPLATE_KINDS)[number];

@@ -80,6 +80,12 @@ export {
 } from './references.js';
 
 export {
+  PALETTE_DISPLAY_ORDER,
+  PALETTE_MEANING,
+  paletteRolesInDisplayOrder,
+} from './palette-meaning.js';
+
+export {
   SAME_FILE_SAVE_IS_POINTLESS,
   savedOutputNote,
   savedOutputSentence,

@@ -2984,21 +2984,36 @@ describe.skipIf(!built)('setting up a client', () => {
     if (loaded === null) return;
     try {
       const text = (await loaded.page.textContent('.colours')) ?? '';
+      /*
+       * The old captions described the picture frame and nothing else, and two
+       * of the four were wrong: `accent` was called "the frame around a picture"
+       * when it can never be one, and neither of the two subtitle colours —
+       * which is what 254 words and 8 keywords are actually drawn in — was
+       * mentioned at all. Session 18 measured where each colour goes and wrote
+       * these from that.
+       */
       for (const what of [
+        'your ordinary subtitle words',
+        'the words you emphasise',
         'behind a cut-out picture',
-        'the deeper of the two frame colours',
-        'the frame around a picture',
-        'the lighter of the two frame colours',
+        'depth in the generated pictures',
       ]) {
         expect(text).toContain(what);
       }
+      expect(text).not.toContain('the deeper of the two frame colours');
+      expect(text).not.toContain('the frame around a picture');
+      // The two subtitle colours come first: they are on every card of every
+      // video, and the other two only touch pictures.
       const values = await loaded.page.$$eval('.colours input[type="color"]', (els) =>
         els.map((e) => (e as HTMLInputElement).value.toUpperCase()),
       );
-      expect(values).toEqual(['#1A0000', '#820000', '#C9A96E', '#F8F6F2']);
+      expect(values).toEqual(['#F8F6F2', '#C9A96E', '#1A0000', '#820000']);
       // The sentence that made this a two-visit screen is gone.
       const all = (await loaded.page.textContent('main.editor')) ?? '';
       expect(all).not.toContain('Colours and their own pictures are added afterwards');
+      // Not "once there are videos": nothing is waiting, the screen is unbuilt.
+      expect(all).toContain('Adding their own photographs is not built yet');
+      expect(all).not.toContain('once there are videos to use them in');
       expect(loaded.uncaught).toEqual([]);
     } finally {
       await loaded.page.close();
