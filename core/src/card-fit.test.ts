@@ -4,6 +4,10 @@ import { describe, expect, it } from 'vitest';
 import { REPO_ROOT } from './paths.js';
 import { SUBTITLE_SAFE_WIDTH } from './typography.js';
 import {
+  type CardVerticalExtent,
+  cardOverrunPx,
+  cardClippedMessage,
+  CardClippedError,
   CardTooWideError,
   SHRINK_MAX_ATTEMPTS,
   SHRINK_SIZE_DECIMALS,
@@ -276,5 +280,65 @@ describe('the ExtendScript mirror', () => {
 
   it('parks on the first card that was broken or shrunk', () => {
     expect(build).toContain('if (fit && (fit.broken || fit.factor < 1))');
+  });
+});
+
+describe('a card that its own comp cuts off', () => {
+  const row = (vertical: CardVerticalExtent): ShrinkRow => ({
+    reel: 'test_1', id: 'k002', kind: 'keyword', text: 'محفزات\rالكولاجين',
+    lines: ['محفزات', 'الكولاجين'], broken: true, templateId: 'kw_slam_ar',
+    font: 'Almarai-Bold', baseFontSize: 455, finalFontSize: 455, factor: 1,
+    widthBeforePx: 3471.2, widthAfterPx: 1815.9, lineWidthsPx: [1508.8, 1815.9],
+    safeWidthPx: 1940, attempts: 2, measurements: [], fits: true, vertical,
+  });
+
+  /** The real card, measured in After Effects in Block 10 session 21. */
+  const cut: CardVerticalExtent = {
+    compHeightPx: 1100, inkTopPx: 374.2, inkBottomPx: 1181.7, shadowDropPx: 15,
+  };
+
+  it('refuses it, naming both values and the overrun', () => {
+    expect(() => assertEveryCardFits([row(cut)])).toThrow(CardClippedError);
+    const said = cardClippedMessage(row(cut), cut);
+    expect(said).toContain('1100px tall');
+    expect(said).toContain('96.7px below');
+    expect(said).toContain('1196.7px');
+  });
+
+  /**
+   * The shadow is why 96.7 and not 81.7. `sourceRectAtTime` excludes the
+   * Transform effect at either `extents` setting — measured — so the drop is a
+   * separate term and must be in the sum.
+   */
+  it('counts the shadow’s drop, which no single measurement includes', () => {
+    expect(cardOverrunPx({ ...cut, shadowDropPx: 0 }).bottom).toBeCloseTo(81.7, 1);
+    expect(cardOverrunPx(cut).bottom).toBeCloseTo(96.7, 1);
+  });
+
+  it('passes a card that fits, with the same shape of record', () => {
+    const fits: CardVerticalExtent = { ...cut, inkBottomPx: 900, shadowDropPx: 15 };
+    expect(() => assertEveryCardFits([row(fits)])).not.toThrow();
+  });
+
+  /**
+   * The rule is that a card is never cut, not that it fits its comp: a comp that
+   * does not enforce its bounds cannot cut anything. Option D would have relied
+   * on this and was rejected on measurement, so nothing sets it today — but the
+   * check must not fail a card that genuinely is not being cut.
+   */
+  it('does not fail a card whose comp does not clip it', () => {
+    expect(() => assertEveryCardFits([row({ ...cut, collapsed: true })])).not.toThrow();
+  });
+
+  it('is silent about height on a build that reported none', () => {
+    const noHeight = { ...row(cut) };
+    delete (noHeight as { vertical?: unknown }).vertical;
+    expect(() => assertEveryCardFits([noHeight])).not.toThrow();
+  });
+
+  it('still refuses a card that is too wide, before it looks at height', () => {
+    expect(() => assertEveryCardFits([{ ...row(cut), widthAfterPx: 9999 }])).toThrow(
+      CardTooWideError,
+    );
   });
 });
