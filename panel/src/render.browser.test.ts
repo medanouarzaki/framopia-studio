@@ -501,9 +501,29 @@ function stubRoutes(steps: unknown, resumeAt: string): string {
     },
     fonts: {
       available: true,
-      names: ['Almarai-Bold', 'CormorantGaramondItalic-SemiBoldItalic', 'Inter-SemiBold'],
+      names: [
+        'AdobeClean-It',
+        'Almarai-Bold',
+        'CormorantGaramondItalic-SemiBoldItalic',
+        'Inter-SemiBold',
+      ],
       families: 445,
       trouble: null,
+      faces: {
+        // What the resolver really answers for these four, measured this session.
+        'AdobeClean-It': { file: null, axes: {}, why: 'the system offers no file for this font' },
+        'Almarai-Bold': { file: '/Users/x/Library/Fonts/Almarai-Bold.ttf', axes: {}, why: null },
+        'CormorantGaramondItalic-SemiBoldItalic': {
+          file: '/Users/x/Library/Fonts/CormorantGaramond-Italic-VariableFont_wght.ttf',
+          axes: { wght: 600 },
+          why: null,
+        },
+        'Inter-SemiBold': {
+          file: '/Users/x/Library/Fonts/Inter-VariableFont_opsz,wght.ttf',
+          axes: { wght: 600 },
+          why: null,
+        },
+      },
     },
     preview: {
       framePath: '/repo/.local/cv/vitasilk/frames-2fps/frame-0020.png',
@@ -2777,6 +2797,119 @@ describe.skipIf(!built)('setting up a client', () => {
       // After Effects' own name, not the system's `Inter-Regular_SemiBold`.
       expect(options).toContain('Inter-SemiBold');
       expect(options).toContain('Almarai-Bold');
+      expect(loaded.uncaught).toEqual([]);
+    } finally {
+      await loaded.page.close();
+    }
+  });
+
+  /*
+   * The user photographed this: with the italic `AdobeClean-It` chosen, the
+   * sample drew upright in a plain sans — a font nobody picked, presented as
+   * the sample. A name is honest; a wrong face is not.
+   */
+  it('says a face cannot be shown rather than drawing a different one', async () => {
+    const loaded = await openSetup();
+    if (loaded === null) return;
+    try {
+      await loaded.page.selectOption('select[aria-label="Latin font"]', 'AdobeClean-It');
+      await loaded.page.waitForSelector('.fontsample.cannot', { timeout: 5000 });
+      const said = (await loaded.page.textContent('.fontsample.cannot')) ?? '';
+      expect(said).toContain('cannot be shown here');
+      expect(said).toContain('the system offers no file for this font');
+      expect(said).toContain('will still be used in the composition');
+      // Nothing was drawn in its place.
+      expect(await loaded.page.$('p.fontsample:not(.cannot)')).toBeNull();
+      expect(loaded.uncaught).toEqual([]);
+    } finally {
+      await loaded.page.close();
+    }
+  });
+
+  it('loads the real file for a face that resolves, with its axes', async () => {
+    const loaded = await openSetup();
+    if (loaded === null) return;
+    try {
+      await loaded.page.selectOption('select[aria-label="Latin font"]', 'Inter-SemiBold');
+      await loaded.page.waitForSelector('p.fontsample:not(.cannot)', { timeout: 5000 });
+      const family = await loaded.page.$eval(
+        'p.fontsample:not(.cannot)',
+        (e) => (e as HTMLElement).style.fontFamily,
+      );
+      // Its own family name, not After Effects' — so nothing can silently match
+      // an installed face of the same name.
+      expect(family).toContain('framopia-sample-Inter-SemiBold');
+      const settings = await loaded.page.$eval(
+        'p.fontsample:not(.cannot)',
+        (e) => (e as HTMLElement).style.fontVariationSettings,
+      );
+      expect(settings).toContain('wght');
+      expect(settings).toContain('600');
+      const rule = (await loaded.page.textContent('main.editor style')) ?? '';
+      expect(rule).toContain('@font-face');
+      expect(rule).toContain('Inter-VariableFont');
+      expect(loaded.uncaught).toEqual([]);
+    } finally {
+      await loaded.page.close();
+    }
+  });
+
+  it('samples the Arabic field with Arabic', async () => {
+    const loaded = await openSetup();
+    if (loaded === null) return;
+    try {
+      await loaded.page.selectOption('select[aria-label="Arabic font"]', 'Almarai-Bold');
+      await loaded.page.waitForSelector('p.fontsample[dir="rtl"]', { timeout: 5000 });
+      expect(await loaded.page.textContent('p.fontsample[dir="rtl"]')).toBe('شنو كتعرفي');
+      expect(loaded.uncaught).toEqual([]);
+    } finally {
+      await loaded.page.close();
+    }
+  });
+
+  it('narrows the list as he types, and hides nothing', async () => {
+    const loaded = await openSetup();
+    if (loaded === null) return;
+    try {
+      const all = await loaded.page.$$eval(
+        'select[aria-label="Latin font"] option',
+        (els) => els.length,
+      );
+      await loaded.page.fill('input[aria-label="Search latin fonts"]', 'inter');
+      const narrowed = await loaded.page.$$eval(
+        'select[aria-label="Latin font"] option',
+        (els) => els.map((e) => (e as HTMLOptionElement).value),
+      );
+      expect(narrowed).toEqual(['', 'Inter-SemiBold']);
+      const said = (await loaded.page.textContent('main.editor')) ?? '';
+      expect(said).toContain('Nothing is hidden');
+      // Clearing gives everything back: nothing was removed from the list.
+      await loaded.page.fill('input[aria-label="Search latin fonts"]', '');
+      const back = await loaded.page.$$eval(
+        'select[aria-label="Latin font"] option',
+        (els) => els.length,
+      );
+      expect(back).toBe(all);
+      expect(loaded.uncaught).toEqual([]);
+    } finally {
+      await loaded.page.close();
+    }
+  });
+
+  it('says what a logo may be, and judges the file at once', async () => {
+    const loaded = await openSetup();
+    if (loaded === null) return;
+    try {
+      const text = (await loaded.page.textContent('main.editor')) ?? '';
+      expect(text).toContain('A PNG with a transparent background');
+      expect(text).toContain('psd');
+      await loaded.page.evaluate("window.__picked = '/x/brand.psd';");
+      const buttons = await loaded.page.$$('main.editor button.choose');
+      await buttons[1]?.click();
+      await loaded.page.waitForSelector('.pathfield .say', { timeout: 5000 });
+      const said = (await loaded.page.textContent('.pathfield .say')) ?? '';
+      expect(said).toContain('.psd works');
+      expect(said).toContain('cannot show you a preview');
       expect(loaded.uncaught).toEqual([]);
     } finally {
       await loaded.page.close();
