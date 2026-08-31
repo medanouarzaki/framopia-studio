@@ -418,6 +418,11 @@ export {
   type RetryAttemptReport,
   type TransientRetryOptions,
 } from './transient-failure.js';
+export {
+  OutgoingPathError,
+  assertSendsNoLocalPath,
+  localPathIn,
+} from './outgoing-text.js';
 
 export {
   DOCTOR_SCHEMA_VERSION,

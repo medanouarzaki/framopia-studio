@@ -1,6 +1,7 @@
 import path from 'node:path';
 import {
   appendCost,
+  assertSendsNoLocalPath,
   computeImageCost,
   computeImageCostFromUsage,
   modelConfig,
@@ -231,6 +232,14 @@ export async function generateImages(options: {
         imagesDone: billedImages,
         costsPath,
       });
+
+      /*
+       * The last point before the request leaves. A client's own photograph
+       * must never reach an image model, and the only way it could is as a
+       * path in one of these two strings — see `core/src/outgoing-text.ts`.
+       */
+      assertSendsNoLocalPath(`${slot.id}: the prompt`, slot.prompt);
+      assertSendsNoLocalPath(`${slot.id}: the negative prompt`, slot.negativePrompt);
 
       const startedAt = Date.now();
       const image = await client.generate({

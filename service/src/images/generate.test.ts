@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
+  OutgoingPathError,
   RETRY_MAX_ATTEMPTS,
   withTransientRetry,
   COSTS_PATH,
@@ -69,6 +70,42 @@ beforeEach(() => {
 });
 
 describe('generateImages', () => {
+  /*
+   * A client's own photograph never reaches an image model. The source scan in
+   * `clients/pictures.test.ts` keeps this module from naming the picture
+   * helpers; this keeps a path from leaving whatever put it there, which is the
+   * half a name-based scan cannot see.
+   */
+  it('refuses to send a prompt naming a file on this machine, before any request', async () => {
+    const client = new FakeClient();
+    const carrying: ImageSlot = {
+      ...slot('img-1', 1),
+      prompt: 'a warm portrait, like /Users/x/Pictures/clinic exterior.png',
+    };
+    await expect(
+      generateImages({
+        slots: [carrying], mode, config: parseImageConfig({ candidatesPerSlot: 2 }),
+        client, videoSha256: VIDEO, cacheRoot,
+      }),
+    ).rejects.toThrow(OutgoingPathError);
+    expect(client.requests).toEqual([]);
+  });
+
+  it('refuses the same in a negative prompt', async () => {
+    const client = new FakeClient();
+    const carrying: ImageSlot = {
+      ...slot('img-1', 1),
+      negativePrompt: 'no text, no watermark, not ~/Pictures/clinic.png',
+    };
+    await expect(
+      generateImages({
+        slots: [carrying], mode, config: parseImageConfig({ candidatesPerSlot: 2 }),
+        client, videoSha256: VIDEO, cacheRoot,
+      }),
+    ).rejects.toThrow(OutgoingPathError);
+    expect(client.requests).toEqual([]);
+  });
+
   it('asks the client once per slot per candidate', async () => {
     const client = new FakeClient();
     const config = parseImageConfig({ candidatesPerSlot: 3 });
