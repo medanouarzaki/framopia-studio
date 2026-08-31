@@ -635,6 +635,59 @@ its tests while the panel was broken in After Effects. Prefer stubbing what the
 and never stub a method the code does not call. Full statement in
 `docs/CLAUDE_CODE_GUIDELINES.md` §3.
 
+### A stored path is re-rooted onto the repository running now
+
+**The Edit Plans store absolute paths — 52 across the five plans — and every one
+was written on the drive this project grew up on.** That made the plans
+unusable on a second machine, which is the whole of why
+`docs/SECOND_MACHINE.md` used to say the repository had to sit at one exact
+path. The partner clones from GitHub onto his own disk and cannot.
+
+`resolveStoredPath` in `core/src/stored-path.ts` is the one resolver and it
+**does not guess**: a path already inside this repository is returned unchanged,
+a path carrying a repository anchor (`my files`, `.local`, `benchmarks`, …) is
+re-rooted onto this repository, an absolute path inside no repository is
+returned unchanged because it really does point somewhere else, and an empty or
+relative one **throws `StoredPathError` naming the field**. "Already here" is
+tested first, so a legitimate path that happens to contain an anchor word deeper
+down is never split at the wrong segment. `REPO_ANCHORS` is pinned against
+`readdirSync(REPO_ROOT)`, so a new top-level directory cannot silently become
+the one thing that will not resolve on the other machine.
+
+**Three read sites, not twenty call sites**: `readEditPlan`, `loadReels` and
+`countCandidatesOnDisk` — the last because it parses a plan directly.
+`service/src/editplan/stored-paths.test.ts` fails on any module under
+`service/src` or `tools` that parses a plan and reads a path field without going
+through one of them, comments stripped first; proven to fail by reverting
+`steps.ts`.
+
+**The same shape as `readTranscriptionCache`**, which has always recomputed
+`audioPath` from the entry's own directory rather than believing the manifest —
+which is why a cache entry was already portable. **The file keeps what it says;
+the reader gets a path that works here**, and a read-modify-write cycle persists
+the resolved form, which is self-healing rather than a migration.
+
+**Proven by running the whole corpus from a second copy** at a different
+absolute path (Block 10 session 11): four reels built from each checkout and
+censused in After Effects, and **every census field identical once the root is
+normalised** — only `measuredAt` and `aepSha256` differ, and After Effects
+embeds a timestamp so two builds of one comp never match byte for byte. The
+sandbox's dry run read `$0.0000` with every stage skipped and every candidate
+cached, and its ledger was byte-identical.
+
+**`.local/audio/` is not in the transfer set and a build does not want it.**
+Deleted from the second copy, the build still succeeded and the dry run still
+resolved the transcription entry as `compatible` at $0.00; the build's
+pre-flight lists `source.videoPath` and never `source.audioPath`. That a
+transcription run would recreate it is **read from `job.ts`, not run** — running
+one is billable.
+
+**`build-reel.jsx`'s unsaved-changes guard cannot recognise another checkout's
+output.** It tests `openFile.fsName.indexOf(o.buildDir) === 0`, so each checkout
+recognises only its own `.local/build` and two checkouts refuse each other's.
+Known, **not fixed** — what that rule should say when two checkouts exist is a
+question, not a bug to patch past.
+
 ### The repository root has one resolver, and it is verified
 
 `resolveRepoRoot` in `core/src/repo-root.ts` is the only implementation, used

@@ -11,7 +11,7 @@ nothing, `dev` blocks the checks rather than the product.
 
 | # | requirement | needed by | blocking | when absent today |
 |---|---|---|---|---|
-| 1 | the volume mounted at `/Volumes/T7 Shield/INSEA/Projects/framopia-studio` | `core/src/paths.ts` `REPO_ROOT`, and `core/src/repo-root.ts` which verifies a candidate against `package.json` and the `service/`, `modes/`, `core/` directories | run | `RepoRootError` naming every candidate tried |
+| 1 | the repository in **any** folder this account can read and write | `core/src/paths.ts` `REPO_ROOT`, which resolves from the module's own location, and `core/src/stored-path.ts`, which re-roots every stored path onto it | run | `RepoRootError` naming every candidate tried |
 | 2 | node at the version `.nvmrc` pins | `core/src/node-path.ts` `resolveNodePath`; the panel spawns this binary directly because After Effects inherits no shell `PATH` | run | the panel reports a state; nothing is spawned |
 | 3 | installed workspace dependencies | every workspace; `node_modules` is not in git | dev, run | module-not-found at first import |
 | 4 | the CV venv interpreter at `tools/cv/.venv/bin/python` | `service/src/images/sidecar.ts:16` `SIDECAR_PYTHON`, `service/src/build/content-box.ts:17`, `service/src/build/build-reel-cli.ts:179` `MASK_PY` | build | `buildRequirements` refuses with `cv-sidecar`; face masks unreadable |
@@ -56,6 +56,25 @@ manifest is provenance and is never read: an entry copied into a temporary
 directory still hits, with its audio resolved from where it now lives.
 
 **Every absolute path on every Edit Plan points inside the repository root** —
-52 of them across the five plans, none outside. So the plans are portable **if
-and only if the repository sits at the same absolute path on both machines**,
-which is requirement 1 above and what the doctor's `repo` check looks for.
+52 of them across the five plans, none outside. **Block 10 session 11 made that
+harmless**: `resolveStoredPath` re-roots each one onto whatever repository is
+running, at read time, in `readEditPlan` and `loadReels` — the same shape as
+`readTranscriptionCache` overwriting a manifest's stored `audioPath`. The file
+keeps what it says; the reader gets a path that works here.
+
+Proven by cloning the repository to a second absolute path and building the
+whole corpus from it: four reels built, and **every census field is identical to
+the original's** once the root is normalised.
+
+**`.local/audio/` is not in the transfer set, and a build does not want it.**
+Session 10 flagged it as the item most likely to be wrong, on the theory that
+the transcription stage restores it from the cache. Measured in session 11 by
+deleting it from the second copy: **the build succeeded** (`vitasilk`, 5.54 s)
+and the dry run still resolved the transcription entry as `compatible` at
+`$0.00`. Nothing downstream of transcription reads it — the build's pre-flight
+lists `source.videoPath` and never `source.audioPath`.
+
+**The restore itself is read, not run.** `service/src/transcription/job.ts`
+copies `cached.audioPath` to the canonical location on a cache hit, so a
+transcription run would recreate it; running one is billable and was not
+authorised, so that half stands on the code rather than on a run.

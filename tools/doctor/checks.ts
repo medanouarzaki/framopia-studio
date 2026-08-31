@@ -8,7 +8,17 @@
  * simulated, and `reports/block-10-session-9.md` records which one proved which.
  */
 import { execFileSync } from 'node:child_process';
-import { existsSync, openSync, closeSync, readSync, readFileSync, readdirSync, statSync } from 'node:fs';
+import {
+  accessSync,
+  constants as fsConstants,
+  existsSync,
+  openSync,
+  closeSync,
+  readSync,
+  readFileSync,
+  readdirSync,
+  statSync,
+} from 'node:fs';
 import { createHash } from 'node:crypto';
 import { homedir, hostname, arch, platform, release } from 'node:os';
 import path from 'node:path';
@@ -133,25 +143,47 @@ export function machineFacts(): {
   return { platform: platform(), release: release(), arch: arch(), hostname: hostname(), label };
 }
 
+/**
+ * The repository, wherever it is.
+ *
+ * It used to say *the repo has to be at this exact path*, and until Block 10
+ * session 11 that was true: the Edit Plans stored 52 absolute paths rooted at
+ * the drive this project grew up on. `resolveStoredPath` re-roots them at read
+ * time now, so what is required is a folder this account can read and write,
+ * not a particular one. Proven by running the whole corpus from a second copy
+ * at a different absolute path.
+ */
 function checkRepo(): CheckResult {
   const marker = path.join(REPO_ROOT, 'package.json');
   if (!existsSync(marker)) {
     return {
       id: 'repo',
-      what: 'the repository, at the path everything resolves from',
+      what: 'the repository, wherever it is',
       state: 'absent',
       detail: `nothing at ${REPO_ROOT}`,
       blocking: 'run',
-      remedy: 'plug in the external drive; the repo has to be at this exact path',
+      remedy: 'clone the repository, or plug in the drive holding it',
       remedyVerified: false,
     };
   }
+  let writable = true;
+  try {
+    accessSync(REPO_ROOT, fsConstants.W_OK);
+  } catch {
+    writable = false;
+  }
   return {
     id: 'repo',
-    what: 'the repository, at the path everything resolves from',
-    state: 'present',
-    detail: REPO_ROOT,
+    what: 'the repository, wherever it is',
+    state: writable ? 'present' : 'absent',
+    detail: writable ? REPO_ROOT : `${REPO_ROOT} is not writable by this account`,
     blocking: 'run',
+    caveat:
+      'no longer needs a particular path: stored paths are re-rooted onto whatever ' +
+      'repository is running, so what it needs is somewhere readable and writable',
+    ...(writable
+      ? {}
+      : { remedy: 'put the repository somewhere this account can write', remedyVerified: false }),
   };
 }
 

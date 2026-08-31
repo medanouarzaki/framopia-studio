@@ -29,39 +29,42 @@ worth more to us than a clean run.
 **Three of the checks have never been seen failing at all** — the ones for the
 repository, for Node, and for the installed dependencies. On the machine this
 was written on they cannot be made to fail without breaking that machine. **Your
-Mac is the first real test of those three.**
+Mac is the first real test of those three.** The repository check has since been
+run from two different folders and reported each correctly, which is not the
+same as having seen it fail.
 
-**Put the repository at exactly this path:**
+**Put the repository wherever you like.** Your home folder, an external drive,
+a projects folder — anywhere this account can read and write.
 
-```
-/Volumes/T7 Shield/INSEA/Projects/framopia-studio
-```
+It did have to be at one exact path, and that is worth knowing because you may
+see the old rule quoted somewhere: the tool stores full paths inside the files
+it writes, 52 of them across the five videos, and every one was written on
+another Mac. **They are re-rooted when they are read**, onto whatever copy of
+the repository is running, so a path written on the other machine resolves to
+the matching file on yours. Proven by running the whole set of videos from a
+second copy at a different path — every measured figure came out identical.
 
-Not a similar path. The same one. The tool stores full paths inside the files it
-writes — 52 of them across the five videos — and every single one begins with
-that. A different path means none of them resolve.
+Whatever path you choose, **use it everywhere below**. This document writes
+`<repo>` for it, and every command that starts with `cd` means *the folder you
+cloned into*.
 
 ---
 
-## 1. The drive and the repository
+## 1. The repository
 
-Plug in the T7 Shield drive. Then:
+Choose a folder and clone into it:
 
 ```
-cd "/Volumes/T7 Shield/INSEA/Projects/framopia-studio"
+git clone <the repository URL> framopia-studio
+cd framopia-studio
 pwd
 ```
 
-**You should see:** `/Volumes/T7 Shield/INSEA/Projects/framopia-studio`
+**You should see:** the full path of the folder you just made. Write it down —
+that is `<repo>` for the rest of this document.
 
-If the folder is not on the drive yet, get it with:
-
-```
-mkdir -p "/Volumes/T7 Shield/INSEA/Projects"
-cd "/Volumes/T7 Shield/INSEA/Projects"
-git clone <the repository URL> framopia-studio
-cd framopia-studio
-```
+If someone has already put the folder on a drive for you, plug the drive in and
+`cd` into it instead.
 
 The download is small — about 254 KB — because the videos and the caches are
 deliberately not in it. They come in §10 and §11.
@@ -108,7 +111,7 @@ curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
 Close Terminal, open it again, then:
 
 ```
-cd "/Volumes/T7 Shield/INSEA/Projects/framopia-studio"
+cd "<repo>"
 nvm install
 node --version
 ```
@@ -120,7 +123,7 @@ node --version
 ## 4. The project's dependencies
 
 ```
-cd "/Volumes/T7 Shield/INSEA/Projects/framopia-studio"
+cd "<repo>"
 npm install
 ```
 
@@ -153,7 +156,7 @@ These find you in the frame so a generated picture is never placed over your
 face, and they cut backgrounds out of pictures.
 
 ```
-cd "/Volumes/T7 Shield/INSEA/Projects/framopia-studio"
+cd "<repo>"
 tools/cv/setup.sh
 ```
 
@@ -217,7 +220,7 @@ setting is the cause.
 The panel is the window inside After Effects that you actually use.
 
 ```
-cd "/Volumes/T7 Shield/INSEA/Projects/framopia-studio"
+cd "<repo>"
 npm run panel:install
 npm run panel:build
 ```
@@ -243,7 +246,7 @@ anyone else's, and they are not in the repository or in any backup.**
 Make the settings file:
 
 ```
-cd "/Volumes/T7 Shield/INSEA/Projects/framopia-studio"
+cd "<repo>"
 mkdir -p .local
 cp config.example.json .local/config.json
 open -e .local/config.json
@@ -266,7 +269,7 @@ The five test reels are the agency's own footage. They are not in the repository
 Copy all five `.mov` files into:
 
 ```
-/Volumes/T7 Shield/INSEA/Projects/framopia-studio/my files/test videos/
+<repo>/my files/test videos/
 ```
 
 `benchmarks/footage.json` lists them, with the exact size and fingerprint of
@@ -279,8 +282,8 @@ different copy of a video looks identical and behaves completely differently.
 ## 12. The saved work, so nothing costs money twice
 
 Everything the tool has already paid for is saved so it never has to be bought
-again. **Copy these three folders across from the first machine**, keeping the
-same paths:
+again. **Copy these three folders across from the first machine**, into the same
+places *inside the repository* — the repository itself can be anywhere:
 
 | what | where | size |
 |---|---|---|
@@ -318,7 +321,7 @@ They are missing on a new machine and that is expected, not a fault.
 ## 14. Check everything
 
 ```
-cd "/Volumes/T7 Shield/INSEA/Projects/framopia-studio"
+cd "<repo>"
 npm run doctor
 ```
 
