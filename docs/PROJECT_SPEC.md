@@ -102,6 +102,30 @@ depends on the client fonts Block 9 collects.
    rejected on measurement**: it recovers the strip, and it also changes the
    card's whole body by up to 230 levels, so it does not preserve the look.
 
+   **He made the four card comps 1250 tall on 2026-08-30, and it is not enough**
+   (Block 10 session 22). The edit was verified to change only the height: fonts,
+   sizes, tracking, fills, layer names, anchor points, scale, x offsets, blur and
+   opacity keys are all identical. But the type re-centred with the comp — the
+   placeholder's Position keys moved 750/700 → 825/775, half the 150 px added,
+   and the shadow's Transform offset scaled 15.0 → 17.045 — so **+150 of comp
+   height bought +72.955 of room below the card**. `test-1` `k002` reaches
+   **1273.8 px in a 1250 comp, 23.8 px short**, and `test-2` `k002` fails the
+   same way; both builds refuse and `npm run golden` cannot run.
+
+   **The number he needs: ≥ 1298.8 if the type keeps re-centring** — 1300 leaves
+   0.6 px, 1400 leaves 49.2. **Or keep 1250 and put the first baseline back at
+   700**, worth +53.3 px on its own and sufficient. The second costs no height
+   and is the smaller edit; both are his to make, and this session made neither.
+
+   **The re-centring does not move type on screen** — verified, not assumed:
+   the builder places an instance as `target − (placeholder − anchor)` and that
+   difference is 150 either way, and `test-3` and `vitasilk` censused **0 of 3708
+   and 0 of 4769 fields differing** from the golden reference. **The shadow's
+   2.045 px does move something**: `SUBTITLE_BAND`'s bottom, 3012.578 → 3014.624,
+   which bounds every image placement. Two tests pin the old figures and fail on
+   purpose, because the +8/+15 shadow offset is a ruling and a resize is not the
+   place to change it.
+
 ## 4. Input / output (locked)
 
 **Input:** one vertical 9:16 MP4, 4K (2160×3840), **29.97 fps (30000/1001)**, 30–90 s, one speaker, one angle, no cuts, audio embedded, already edited and graded. The "30 fps" this section carried until Block 7 predates anyone reading a file header: every reel the project has handled is 30000/1001, and Block 5's frame sampling reads real presentation timestamps that diverge from a nominal 30 fps grid from the second frame onward.

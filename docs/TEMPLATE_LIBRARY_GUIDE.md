@@ -15,7 +15,7 @@ The system **never edits your animation**. It duplicates your template comp, rep
 
 - **Naming:** `type_style` — `sub_pop`, `sub_slide`, `kw_slam`, `kw_glitch`, `img_slide_left`, `img_float`. Lowercase, underscores, no spaces. The comp name is the template id.
 - **Settings:** **29.97 fps** (30000/1001 — matches footage, mandatory). Square-pixel. Duration: at least intro + 2 s hold + outro; longer is fine, the system trims. The "30 fps" this section carried until Block 6 predates anyone reading a file header: every reel the project has handled is 30000/1001, and Block 5's frame sampling reads real presentation timestamps that diverge from a nominal 30 fps grid from the second frame onward. `npm run validate:templates` requires 29.97 and rejects 30.
-- **Size:** subtitle/keyword comps: **2160×1100** — the comp is placed as a unit, so its size defines its footprint. The 2160×600 band this section suggested until Block 6 cannot hold a two-line keyword: Block 6 session 4 measured the worst case, two lines at the keyword size in the Arabic face, at **1017.4 px** from the top of the ascent to the bottom of the descender. Image comps: 1200×1200 default working size (the system scales the instance to the target zone; build big, scale down).
+- **Size:** subtitle/keyword comps: **2160×1250** as of Block 10 session 22, up from 2160×1100 — a two-line keyword overran the shorter comp and was clipped; see §11. — the comp is placed as a unit, so its size defines its footprint. The 2160×600 band this section suggested until Block 6 cannot hold a two-line keyword: Block 6 session 4 measured the worst case, two lines at the keyword size in the Arabic face, at **1017.4 px** from the top of the ascent to the bottom of the descender. Image comps: 1200×1200 default working size (the system scales the instance to the target zone; build big, scale down).
 - **Background:** transparent. Nothing in the comp that isn't part of the element (no reference footage, no guides left visible — use guide layers, they're ignored on render but turn them off anyway).
 
 ## 4. Placeholder layers
@@ -735,3 +735,54 @@ rule being per-image rather than per-slot.
 `CardColours.fallback` says so in words rather than settling quietly. No
 candidate in this corpus needs it.
 
+
+
+## 11. A card comp must be tall enough for two lines and the shadow
+
+Measured 2026-08-30/31, Block 10 sessions 21 and 22. **The comp is a container
+and After Effects clips whatever leaves it**: the instance is placed with
+`collapseTransformation` false, so ink past the comp's bottom edge is not drawn.
+Nothing in this project measured height until session 21, and the defect was
+found by the user looking at a screen.
+
+**What has to fit, from the baseline down:**
+
+```
+first baseline            SUBTITLE_ANCHOR_BASELINE_Y, expressed inside the comp
++ LINE_SPACING            323 px, the second line
++ descent of the face     Almarai-Bold at the keyword size is the worst case
++ the shadow's drop       TXT_MAIN_SHADOW's Transform offset, +15 px as authored
+```
+
+**`assertEveryCardFits` enforces it**, at `build-elements`, before anything is
+saved: `framopiaVerticalExtent` reads the placeholder's own ink and the shadow
+layer's Transform offset out of the running instance, and `cardOverrunPx` in
+`core/src/card-fit.ts` reports the overrun top and bottom. A card that overruns
+is a **`CardClippedError` naming the comp and the measured figure** — never a
+warning, and never a silent clip. A collapsed instance is exempt because
+collapsing removes the clip.
+
+**1250 is not sufficient and the corpus proves it.** `test-1` `k002`
+(`محفزات الكولاجين`, Almarai-Bold 455, broken to two lines) reaches **1273.8 px**
+in a 1250 comp — **23.8 px short**. `test-2` `k002` fails the same way.
+
+**Growing the comp does not buy its full height, and this is the trap.** When
+the four comps went 1100 → 1250, the type re-centred with them: the placeholder's
+Position keys moved 750/700 → 825/775, exactly **half** the 150 px added, and the
+shadow's Transform offset scaled **15.0 → 17.045** with it. So +150 of comp height
+bought **+72.955** of room below the card. The requirement if the type keeps
+re-centring is **≥ 1298.8**; at 1300 the margin is 0.6 px and at 1400 it is 49.2.
+The alternative, which costs no height, is to put the first baseline back at 700
+inside the taller comp — worth **+53.3 px** on its own and enough at 1250.
+
+**The re-centring itself is invisible on screen and was verified, not assumed.**
+The builder positions an instance as `target − (placeholder − anchor)`, and
+`placeholder − anchor` is 150 both before and after, so the type lands in the same
+place in the master. `test-3` and `vitasilk` were built and censused against the
+recorded golden reference: **0 of 3708 and 0 of 4769 fields differ.**
+
+**The shadow's 2.045 px is not invisible.** `shadowDescentPx` reads that offset
+out of the audit and `SUBTITLE_BAND` is derived from it, so the band's bottom
+moved **3012.578 → 3014.624 px**. The band bounds where every image is placed.
+Two tests pin the old figures and **fail on purpose** — the +8/+15 offset is a
+user ruling and a resize is not the place to change it.
