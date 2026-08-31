@@ -1103,11 +1103,11 @@
               ],
               "position": [
                 1088,
-                642.045454545454
+                640
               ],
               "offset": [
                 8,
-                17.0454545454544
+                15
               ]
             }
           ]
@@ -1128,7 +1128,7 @@
           "position": {
             "value": [
               1080,
-              750,
+              700,
               0
             ],
             "valueAtSampleTime": [
@@ -1168,7 +1168,7 @@
             "unreadable": null
           },
           "opacity": {
-            "value": 0,
+            "value": 100,
             "valueAtSampleTime": 100,
             "keyframes": 2,
             "unreadable": null
@@ -1355,7 +1355,7 @@
           "position": {
             "value": [
               1080,
-              750,
+              700,
               0
             ],
             "valueAtSampleTime": [
@@ -1395,7 +1395,7 @@
             "unreadable": null
           },
           "opacity": {
-            "value": 0,
+            "value": 100,
             "valueAtSampleTime": 100,
             "keyframes": 2,
             "unreadable": null
@@ -1583,11 +1583,11 @@
               ],
               "position": [
                 1088,
-                642.045454545454
+                640
               ],
               "offset": [
                 8,
-                17.0454545454544
+                15
               ]
             }
           ]
@@ -2063,11 +2063,11 @@
               ],
               "position": [
                 1088,
-                642.045454545454
+                640
               ],
               "offset": [
                 8,
-                17.0454545454544
+                15
               ]
             }
           ]
@@ -2543,11 +2543,11 @@
               ],
               "position": [
                 1088,
-                642.045454545454
+                640
               ],
               "offset": [
                 8,
-                17.0454545454544
+                15
               ]
             }
           ]
@@ -2555,5 +2555,5 @@
       ]
     }
   ],
-  "aepSha256": "103cc1f1d02018df9f189e646cf96393de73c4286e35487586c5abdf7c0a13e1"
+  "aepSha256": "d2bbb6b727f819078b5e8dec08a59722b018dc6c0d1d77c123476f8241c84d9c"
 }
