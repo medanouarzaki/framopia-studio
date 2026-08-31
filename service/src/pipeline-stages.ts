@@ -41,6 +41,28 @@ export const PIPELINE_STAGES: readonly PipelineStageSpec[] = [
   { id: 'zones', label: 'Looking at the video', billable: false },
 ];
 
+/**
+ * The stages that produce **the words**: the transcript, the keywords and the
+ * ideas behind the pictures.
+ *
+ * They are worth naming as a set because the money is not evenly spread. On a
+ * 41-second reel the words are about $0.35 and the pictures about $3.98, so
+ * running everything is the only way to read a transcript — and reading it is
+ * the only way to judge whether it is any good. Block 3 session 6's orthography
+ * ruling and session 29's reversal of it were both settled by a person reading
+ * words, and there is no other judge: the four hand-written reference
+ * transcripts are in the old Latin style and cannot score a new-orthography run.
+ *
+ * The picture **ideas** are in here rather than with the pictures. They are
+ * text, they cost about a fiftieth of the images, and Block 3 session 6 proved
+ * their worth at that price: eighteen cents showed two faults that would
+ * otherwise have cost $2.35 to find.
+ *
+ * `zones` is deliberately out. It is free but it takes half a minute a reel,
+ * and nothing about the words needs it — it is where a picture can sit.
+ */
+export const WORDS_STAGE_IDS: readonly PipelineStageId[] = ['transcription', 'analysis'];
+
 export function stageSpec(id: PipelineStageId): PipelineStageSpec {
   const spec = PIPELINE_STAGES.find((s) => s.id === id);
   if (spec === undefined) throw new Error(`no pipeline stage "${id}"`);

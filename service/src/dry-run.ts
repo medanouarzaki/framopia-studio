@@ -4,7 +4,7 @@ import { listReels } from './catalogue.js';
 import { knownVideos } from './videos.js';
 import { resolveKeywordEntry, resolveSlotEntry } from './analysis/resolve-entry.js';
 import { imageSlotCountFor } from './analysis/count.js';
-import { PIPELINE_STAGES } from './pipeline-stages.js';
+import { PIPELINE_STAGES, WORDS_STAGE_IDS, type PipelineStageId } from './pipeline-stages.js';
 import { resolveTranscriptionEntry } from './transcription/resolve-entry.js';
 import { IMAGE_CACHE_STAGE } from './images/cache.js';
 import { imageFingerprintInputs, imageFingerprintOf } from './images/fingerprint.js';
@@ -93,6 +93,21 @@ export interface DryRunPlan {
   buildBlockedBecause: string | null;
   /** Sum of the stages that would actually bill. */
   estimateUsd: number;
+  /**
+   * The same figure split the way the money actually splits: what the words
+   * cost and what the pictures cost.
+   *
+   * It is here rather than in the panel because the panel is a view — which
+   * stages are "the words" is `WORDS_STAGE_IDS`, and a second copy of that in a
+   * React bundle is a second place for it to drift.
+   */
+  wordsUsd: number;
+  picturesUsd: number;
+  /**
+   * Which stages that figure covers, so the panel can ask for exactly them
+   * rather than holding its own copy of what "the words" means.
+   */
+  wordsStages: string[];
   /** True when any stage resolves `compatible`; the panel says so plainly. */
   reusesOlderGuide: boolean;
 }
@@ -114,6 +129,8 @@ interface PlanLikeWord {
 interface PlanLikeSlot {
   prompt: string;
   negativePrompt: string;
+  /** Empty on a slot that has been planned and never illustrated. */
+  candidates?: unknown[];
 }
 
 interface PlanLike {
@@ -240,6 +257,11 @@ export async function dryRun(reelLabel: string, modeId: string): Promise<DryRunP
     provenance: EntryProvenance | null,
     entryId: string | null,
     note: string,
+    /**
+     * Overrides "the plan says done, so a run skips it" for the one stage where
+     * that reading is false.
+     */
+    skippedOverride?: boolean,
   ): void => {
     const done = pipeline[id]?.status === 'done';
     /*
@@ -253,7 +275,7 @@ export async function dryRun(reelLabel: string, modeId: string): Promise<DryRunP
      * The cache state is still reported, because redoing the stage deliberately
      * *would* bill and the note is where that is said.
      */
-    const skipped = done;
+    const skipped = skippedOverride ?? done;
     const bills = provenance === 'none' && !skipped;
     const estimateUsd = !bills
       ? null
@@ -369,6 +391,24 @@ export async function dryRun(reelLabel: string, modeId: string): Promise<DryRunP
      */
     const missing = total - hit;
     imagesCeilingUsd = missing * perImageCeilingUsd();
+    /*
+     * **`pipeline.images` says `done` before a single picture exists.** The
+     * *slot* stage writes that record when it plans the slots, so a plan can
+     * hold six slots, zero candidates and a `done` image stage at the same
+     * time — which is exactly what a words-only run leaves behind, and what
+     * `ground-truth` has held since Block 10 session 6.
+     *
+     * Read the record alone and this stage reports `skip` and prices at
+     * nothing: `ground-truth` read **$0.00 total** while owing $2.17 of
+     * pictures, its own note saying "0 of 12 candidate images are cached… a
+     * run would generate 12" and "already on the plan, so a run skips it" in
+     * one sentence. So the pictures decide, not the record: a stage that has
+     * produced no candidate has not been done.
+     *
+     * The double-write itself is untouched — that is a change to what the slot
+     * stage records, and it is reported rather than made here.
+     */
+    const illustrated = slots.every((slot) => (slot.candidates ?? []).length > 0);
     add(
       'images',
       hit === total ? 'exact' : 'none',
@@ -377,6 +417,7 @@ export async function dryRun(reelLabel: string, modeId: string): Promise<DryRunP
         (hit === total
           ? '; a run would bill nothing'
           : `; a run would generate ${missing}, budgeted at most $${imagesCeilingUsd.toFixed(2)}`),
+      illustrated ? undefined : false,
     );
   }
 
@@ -408,6 +449,13 @@ export async function dryRun(reelLabel: string, modeId: string): Promise<DryRunP
           'colours from. Choose the client for this video before building.'
         : null,
     estimateUsd: stages.reduce((sum, s) => sum + (s.estimateUsd ?? 0), 0),
+    wordsUsd: stages
+      .filter((s) => WORDS_STAGE_IDS.includes(s.id as PipelineStageId))
+      .reduce((sum, s) => sum + (s.estimateUsd ?? 0), 0),
+    picturesUsd: stages
+      .filter((s) => s.id === 'images')
+      .reduce((sum, s) => sum + (s.estimateUsd ?? 0), 0),
+    wordsStages: [...WORDS_STAGE_IDS],
     reusesOlderGuide: stages.some((s) => s.provenance === 'compatible'),
   };
 }

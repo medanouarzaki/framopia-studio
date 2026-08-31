@@ -104,6 +104,15 @@ export interface DryRunPlan {
    */
   buildBlockedBecause?: string | null;
   estimateUsd: number;
+  /**
+   * The total split the way the money splits. Absent from a service older than
+   * this panel, which is why every reader treats it as optional rather than
+   * assuming a zero — a missing figure is not a free stage.
+   */
+  wordsUsd?: number;
+  picturesUsd?: number;
+  /** Which stages `wordsUsd` covers. The panel asks for these, never its own list. */
+  wordsStages?: string[];
   /** True when a stage reuses a transcription made against an older guide. */
   reusesOlderGuide: boolean;
 }

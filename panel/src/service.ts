@@ -489,15 +489,21 @@ export async function fetchSteps(
  * service**: the panel can be closed, or the user can walk off to another step,
  * and the run carries on. Everything after this is polling.
  */
+/**
+ * `only` and `redo` are the runner's own controls, and they are what lets the
+ * words be run without the pictures. Absent, the run does everything, which is
+ * what Run pipeline has always done.
+ */
 export async function startPipeline(
   connection: Connection,
   reel: string,
   mode: string,
+  part?: { only?: string[]; redo?: string[] },
 ): Promise<string> {
   const res = await fetch(`http://127.0.0.1:${connection.port}/jobs`, {
     method: 'POST',
     headers: { 'x-service-token': connection.token, 'content-type': 'application/json' },
-    body: JSON.stringify({ type: 'pipeline', params: { reel, mode } }),
+    body: JSON.stringify({ type: 'pipeline', params: { reel, mode, ...part } }),
   });
   if (!res.ok) {
     const body = (await res.json().catch(() => ({}))) as Partial<ServiceError>;

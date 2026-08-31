@@ -636,6 +636,26 @@ section.client .say, section.video .say { margin: 8px 0 0; color: var(--muted); 
 .colours .colour .what { flex: 1; font-size: 0.78em; color: var(--muted); }
 .colours .colour code { font-size: 0.72em; color: var(--faint); }
 
+/*
+ * The transcript as prose. The line carries its own direction, so a wholly
+ * Arabic line reads right to left; the timecode is pinned left either way,
+ * because it is a label on the line rather than part of the sentence.
+ */
+.readtoggle { display: flex; gap: 6px; margin-top: 10px; }
+.readview { display: grid; gap: 10px; }
+.readline {
+  margin: 0; font-size: 1.05em; line-height: 1.6; color: var(--text);
+  overflow-wrap: anywhere;
+}
+.readline .at {
+  display: inline-block; float: left; width: 3.4em;
+  color: var(--faint); font-size: 0.66em; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+/* The second half of the run: the words alone, or the pictures alone. */
+.partrun { display: grid; gap: 6px; margin-top: 10px; }
+.partrun .faint { margin: 0; font-size: 0.78em; }
+
 /* The client's own photographs, on both client screens. */
 .ownphotos { display: grid; gap: 8px; margin-top: 12px; }
 .ownphotos ul.photos {

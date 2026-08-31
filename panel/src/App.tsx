@@ -354,11 +354,11 @@ function Panel({
 
   const running = job !== null && (job.status === 'running' || job.status === 'pending');
   const gate = runGate({ service, reel, mode, running });
-  const onRun = (): void => {
+  const onRun = (part?: { only?: string[]; redo?: string[] }): void => {
     if (connection === null || reel === null || mode === null) return;
     setStartError(null);
     setJob(null);
-    void startPipeline(connection, reel.label, mode.id).then(
+    void startPipeline(connection, reel.label, mode.id, part).then(
       (id) => {
         setJobId(id);
       },
@@ -570,9 +570,10 @@ function Panel({
         </section>
 
         <section className="do">
-          <button className="run" type="button" disabled={!gate.enabled} onClick={onRun}>
+          <button className="run" type="button" disabled={!gate.enabled} onClick={() => onRun()}>
             {running ? 'Running…' : 'Run pipeline'}
           </button>
+          <PartRun dry={dry} enabled={gate.enabled} onRun={onRun} />
           {gate.reason === null ? null : (
             <p className="say" role="status">
               {gate.reason}
@@ -911,6 +912,83 @@ function stageTone(stage: DryRunStage): string {
  * the service, which resolves each stage against the cache on disk — the panel
  * computes none of them.
  */
+/**
+ * The half of the run he can afford to be wrong about.
+ *
+ * On a 41-second reel the words are about $0.35 and the pictures about $3.98,
+ * so running everything is the only way to read a transcript — and reading it
+ * is the only way to know whether the words are any good. Session 29 reversed
+ * the orthography rules and **no transcript has ever been produced under the
+ * new ones**; the four hand-written references are in the old style and cannot
+ * score one. There is no judge but his eye, and until now seeing the words cost
+ * the price of the pictures.
+ *
+ * One control at a time, and only when it would do something: the words while
+ * they are unpaid, the pictures once they are the only thing left. A service
+ * older than this panel sends neither figure, and then there is no second
+ * control rather than a guessed one.
+ */
+function PartRun({
+  dry,
+  enabled,
+  onRun,
+}: {
+  dry: DryRunPlan | null;
+  enabled: boolean;
+  onRun: (part?: { only?: string[]; redo?: string[] }) => void;
+}): JSX.Element | null {
+  if (dry === null) return null;
+  const words = dry.wordsUsd;
+  const pictures = dry.picturesUsd;
+  const wordStages = dry.wordsStages;
+  if (words === undefined || pictures === undefined || wordStages === undefined) return null;
+
+  if (words > 0) {
+    return (
+      <div className="partrun">
+        <button
+          className="ghost"
+          type="button"
+          disabled={!enabled}
+          onClick={() => onRun({ only: wordStages })}
+        >
+          Just the words — about ${words.toFixed(2)}
+        </button>
+        <p className="faint">
+          The subtitles, the words to emphasise and the ideas for the pictures. Read them, then
+          make the pictures — about ${pictures.toFixed(2)} — without paying for the words again.
+        </p>
+      </div>
+    );
+  }
+
+  if (pictures > 0) {
+    return (
+      <div className="partrun">
+        {/*
+          `redo` is not optional here. The **slot** stage writes
+          `pipeline.images.status = 'done'` when it plans the slots, so a plan
+          that has never held a picture still records the image stage as done
+          and `only: ['images']` alone would skip it — Block 10 session 8 found
+          that and it is still open. Every candidate already on disk comes back
+          from the cache, so redoing the stage re-bills nothing that exists.
+        */}
+        <button
+          className="ghost"
+          type="button"
+          disabled={!enabled}
+          onClick={() => onRun({ only: ['images'], redo: ['images'] })}
+        >
+          Make the pictures — about ${pictures.toFixed(2)}
+        </button>
+        <p className="faint">The words are done and are not charged for again.</p>
+      </div>
+    );
+  }
+
+  return null;
+}
+
 function DryRun({ plan }: { plan: DryRunPlan }): JSX.Element {
   return (
     <div className="card" style={{ marginBottom: 12 }}>

@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { PIPELINE_STAGES, PIPELINE_STAGE_IDS, stageSpec } from './pipeline-stages.js';
+import { PIPELINE_STAGES, PIPELINE_STAGE_IDS, WORDS_STAGE_IDS, stageSpec } from './pipeline-stages.js';
 import { dryRun } from './dry-run.js';
 import { runPipeline, type PipelineStageImpl } from './pipeline.js';
 
@@ -146,5 +146,54 @@ describe('what a run will do with each stage', () => {
       const expected = predicted.action === 'skip' ? 'skip' : 'ran';
       expect(ranOrSkipped, `${predicted.id}: dry run said "${predicted.action}"`).toBe(expected);
     }
+  });
+});
+
+/*
+ * The words are the half of a run he can afford to be wrong about, and until
+ * session 31 the only way to read a transcript was to pay for the pictures too.
+ */
+describe('the words and the pictures, priced apart', () => {
+  it('names the stages that make the words, and leaves the free one out', () => {
+    expect([...WORDS_STAGE_IDS]).toEqual(['transcription', 'analysis']);
+    for (const id of WORDS_STAGE_IDS) {
+      expect(stageSpec(id).billable, `${id} bills`).toBe(true);
+    }
+    expect(WORDS_STAGE_IDS).not.toContain('images');
+    // `zones` is free but takes half a minute a reel, and nothing about the
+    // words needs it — it is where a picture can sit.
+    expect(WORDS_STAGE_IDS).not.toContain('zones');
+  });
+
+  it('splits a real reel into two figures that add up', async () => {
+    const plan = await dryRun('test-3', 'k2-syndicalia');
+    expect(plan.wordsUsd + plan.picturesUsd).toBeCloseTo(plan.estimateUsd, 6);
+    expect(plan.wordsStages).toEqual([...WORDS_STAGE_IDS]);
+    expect(plan.picturesUsd).toBeGreaterThan(plan.wordsUsd);
+  });
+
+  /*
+   * **The slot stage writes `pipeline.images.status = 'done'` when it plans the
+   * slots**, so a plan can hold slots, no candidates and a done image stage at
+   * once — which is what a words-only run leaves behind. Reading the record
+   * alone, `ground-truth` reported $0.00 while owing $2.17 of pictures, its own
+   * note saying "0 of 12 candidate images are cached" and "already on the plan,
+   * so a run skips it" in one sentence. The pictures decide, not the record.
+   *
+   * The double-write itself is untouched and still open — Block 10 session 8.
+   */
+  it('does not call a stage done when it has produced no picture', async () => {
+    const plan = await dryRun('ground-truth', 'k2-syndicalia');
+    const images = plan.stages.find((s) => s.id === 'images');
+    expect(images?.action).toBe('run');
+    expect(images?.estimateUsd ?? 0).toBeGreaterThan(0);
+    expect(plan.picturesUsd).toBeGreaterThan(0);
+  });
+
+  it('still says nothing is owed on a reel whose pictures are all made', async () => {
+    const plan = await dryRun('vitasilk', 'k2-syndicalia');
+    expect(plan.stages.find((s) => s.id === 'images')?.action).toBe('skip');
+    expect(plan.picturesUsd).toBe(0);
+    expect(plan.estimateUsd).toBe(0);
   });
 });
