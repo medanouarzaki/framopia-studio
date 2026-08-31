@@ -177,6 +177,7 @@ Rules:
 - Word timings are the single timing authority; groups/keywords derive from wordIds and are re-derived after transcript edits.
 - SFX events are **generated**, never hand-authored: recomputed from element templateIds + template manifest bindings on every build. They live in the plan only for preview/inspection.
 - Any human edit sets `edited`/`manual` flags; automated re-runs must never overwrite flagged items without explicit confirmation.
+- `build` is written by the build itself, in `build-reel-cli.ts`, once the `.aep` is known to be saved **and** every post-build check has passed — never by the job that spawns it, on the same reasoning as `appendCost`: a wrapper cannot know whether the thing it wraps really happened. A build that reports no save path, or names a file that is not on disk, records nothing rather than claiming a build. A failed build leaves an earlier record alone, because its `.aep` still exists and the record is still true. `aepPath` is re-rooted on read by `resolvePlanPaths`, like every other stored path. **Nothing reads `build` yet**: `mergeIntoExistingPlan` marks a built plan `stale` when the transcript changes, and no code acts on `stale`.
 - The **build plan** is a derived, throwaway JSON (absolute everything, no nulls, validated against templates manifest) produced by the service at Build time. Its shape is defined in Block 7 and documented next to the ExtendScript.
 
 ## 4. Data flow (happy path)
