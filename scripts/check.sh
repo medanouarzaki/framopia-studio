@@ -24,6 +24,11 @@ npm run validate:modes --workspace @framopia/core
 # is how `short` and `long` as object keys reached the user's hands.
 node scripts/check-extendscript.mjs
 
+# CLAUDE.md is read at the start of every session and grew to 530,588
+# characters before anyone measured it. Orientation only; everything else has a
+# document of its own. See CLAUDE_CODE_GUIDELINES.md §5.
+node scripts/check-claude-md.mjs
+
 # TEMPLATE_LIBRARY_GUIDE §9: the manifest against what is really in the .aep.
 # Validates the committed audit, and refuses it if the .aep has changed since.
 npx tsx tools/validate-templates/cli.ts

@@ -230,9 +230,61 @@ File: `reports/block-N-session-M.md`, committed. Sections, in order:
 
 Never claim success for anything not actually run. If a command wasn't executed, say so.
 
-## 5. CLAUDE.md maintenance
+## 5. CLAUDE.md is orientation, and has a size limit
 
-`CLAUDE.md` at repo root is Claude Code's only persistent memory. Keep it current in the same session as the change: project one-liner, repo map, bootstrap + everyday commands, active conventions (including §1 of this file in condensed form), current pipeline status (which blocks done), and pointers to `docs/`. It must never describe a state the repo isn't in.
+`CLAUDE.md` is read at the start of **every** session, before any work, so its
+size is a cost paid every time. It is not the project's memory — the documents
+in `docs/` and the reports in `reports/` are. It is the map that gets a session
+to them.
+
+**It grew to 530,588 characters over 142 commits** — 10,009 lines added and 579
+removed — because the instruction above this one used to read *"keep it current
+in the same session as the change"* and named *active conventions* and *current
+pipeline status* as its contents, with no boundary. Twenty-seven sessions each
+added what they had learned and none removed anything. At three and a half times
+the size at which the tool reads it whole it was being silently truncated, and
+nobody could say which part survived. Block 10 session 28 moved all of it out,
+verbatim; `reports/operating-memory-archive.md` and `git show 1c8c850:CLAUDE.md`
+are what it held.
+
+**`npm run check` runs `scripts/check-claude-md.mjs` and fails past
+`CLAUDE_MD_MAX_CHARS` = 20,000**, naming the size and the limit. That figure is
+**CHOSEN, NOT MEASURED**: roughly twice what the file needs, and far enough under
+the tool's own 150,000-character warning that the warning can never fire again.
+The 150,000 is recorded as the outer bound and not used as the limit, because it
+comes from the warning text and could not be confirmed from the installed CLI.
+
+**What belongs in it**, and nothing else:
+
+- what the project is, in a paragraph;
+- the repo map — one line per directory;
+- the handful of commands an ordinary session runs, pointing at
+  `docs/COMMANDS.md` for the rest;
+- the standing rules that must never be violated, in their shortest form, with
+  the full statement in this file;
+- where the project stands, in a few lines, pointing at `reports/latest.md`;
+- an index of `docs/` saying what each file holds.
+
+**What does not, and where it goes instead:**
+
+| what you learned | where it goes |
+|---|---|
+| what happened this session | `reports/block-N-session-M.md` — nowhere else |
+| how the system works, and why | `docs/ARCHITECTURE.md` |
+| something the user ruled | `docs/PROJECT_SPEC.md`, with the date |
+| a rule about how to work here | this file |
+| a command | `docs/COMMANDS.md` |
+| a fact about the templates | `docs/TEMPLATE_LIBRARY_GUIDE.md` |
+| something the machine must have | `docs/MACHINE_REQUIREMENTS.md` |
+| a measurement | the results file or report that took it |
+
+**A session updates `CLAUDE.md` only when the map changed** — a new directory, a
+new document, a block finishing, a standing rule added or retired. Everything
+else it learned goes in the document that owns it, and the session report
+records that it went there. If nothing on that list moved, `CLAUDE.md` is left
+alone, and that is the normal case.
+
+It must never describe a state the repo isn't in.
 
 ## 6. Safety rails
 
