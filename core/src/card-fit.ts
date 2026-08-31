@@ -99,6 +99,48 @@ export interface ShrinkRow {
   attempts: number;
   measurements: ShrinkAttempt[];
   fits: boolean;
+  /**
+   * How far the card's ink reaches inside its own card comp, and how much room
+   * that comp has.
+   *
+   * **A card is bounded in two directions and only one of them was ever
+   * checked.** Block 10 session 20 found `test-1`'s `محفزات الكولاجين` drawing
+   * from 374.2 to 1131.7 in a comp 1100 tall — cut by 31.7 px — while every
+   * width check passed and 17,170 golden fields matched. `assertEveryCardFits`
+   * asked `widthAfterPx <= safeWidthPx` and nothing asked anything about height.
+   *
+   * Optional with a default so a build older than this reports no height and is
+   * not failed for it; a row that carries one is checked.
+   */
+  vertical?: CardVerticalExtent;
+}
+
+export interface CardVerticalExtent {
+  /** The card comp's own height, read from the comp. */
+  compHeightPx: number;
+  /**
+   * The lowest the ink reaches, in comp space, at the point in the entrance
+   * where the card sits lowest.
+   *
+   * The templates animate Position from y=750 down to y=700, so a card sits 50px
+   * lower while the entrance plays than it does at rest. Measuring only at rest
+   * would report the best case of a card that is visibly clipped on its way in.
+   */
+  inkBottomPx: number;
+  /** The highest the ink reaches, for the same reason in the other direction. */
+  inkTopPx: number;
+  /**
+   * The shadow copy's extra reach, from the Transform effect that offsets it.
+   *
+   * **Composed rather than measured whole, and this is deliberate.**
+   * `sourceRectAtTime` does not include an effect — measured in session 21,
+   * `extents=true` and `extents=false` return identical rects on a layer
+   * carrying one — so there is no single call that answers where the shadow's
+   * ink lands. Both terms are measured: the rect from the layer, and the offset
+   * read off the Transform effect's own Position and Anchor Point. Their sum is
+   * arithmetic over two measurements, not an assumption.
+   */
+  shadowDropPx: number;
 }
 
 /**
@@ -128,10 +170,55 @@ export function cardTooWideMessage(row: ShrinkRow): string {
  * widest line After Effects measured last and refuses on the first card still
  * over, which is the assertion the ruling asks for.
  */
+export class CardClippedError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'CardClippedError';
+  }
+}
+
+/** How far a card's ink falls outside its comp. Zero or less means it fits. */
+export function cardOverrunPx(v: CardVerticalExtent): { top: number; bottom: number } {
+  return { top: -v.inkTopPx, bottom: v.inkBottomPx + v.shadowDropPx - v.compHeightPx };
+}
+
+export function cardClippedMessage(row: ShrinkRow, v: CardVerticalExtent): string {
+  const over = cardOverrunPx(v);
+  const which =
+    over.bottom > 0 && over.top > 0
+      ? `${over.bottom.toFixed(1)}px below and ${over.top.toFixed(1)}px above`
+      : over.bottom > 0
+        ? `${over.bottom.toFixed(1)}px below`
+        : `${over.top.toFixed(1)}px above`;
+  return (
+    `${row.reel} ${row.id} (${row.kind}) is cut off by its own card comp: "${row.text}" in ` +
+    `${row.font ?? 'the template’s own face'} at ${row.finalFontSize}, ` +
+    `${row.broken ? 'broken onto two lines' : 'on one line'}, reaches ` +
+    `${v.inkTopPx.toFixed(1)}px to ${(v.inkBottomPx + v.shadowDropPx).toFixed(1)}px ` +
+    `(the word to ${v.inkBottomPx.toFixed(1)}px, its shadow ${v.shadowDropPx.toFixed(1)}px lower) ` +
+    `in a comp ${v.compHeightPx}px tall — ${which} outside it. ` +
+    `Anything outside is not drawn, so the build stops here.`
+  );
+}
+
+/**
+ * A card fits its comp in both directions, or the build refuses.
+ *
+ * The width half has been checked since Block 10 session 3. The height half did
+ * not exist until session 21, which is why a clipped card reached the user
+ * rather than a test.
+ */
 export function assertEveryCardFits(rows: ShrinkRow[]): void {
   for (const row of rows) {
-    if (row.fits && row.widthAfterPx <= row.safeWidthPx) continue;
-    throw new CardTooWideError(cardTooWideMessage(row));
+    if (!row.fits || row.widthAfterPx > row.safeWidthPx) {
+      throw new CardTooWideError(cardTooWideMessage(row));
+    }
+    const v = row.vertical;
+    if (v === undefined) continue;
+    const over = cardOverrunPx(v);
+    if (over.top > 0.5 || over.bottom > 0.5) {
+      throw new CardClippedError(cardClippedMessage(row, v));
+    }
   }
 }
 

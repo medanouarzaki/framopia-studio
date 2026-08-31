@@ -389,7 +389,10 @@ export {
   CardTooWideError,
   SHRINK_MAX_ATTEMPTS,
   SHRINK_SIZE_DECIMALS,
+  CardClippedError,
   assertEveryCardFits,
+  cardClippedMessage,
+  cardOverrunPx,
   cardTooWideMessage,
   needsShrink,
   nextFontSize,
@@ -397,6 +400,7 @@ export {
   type ShrinkAttempt,
   type ShrinkRow,
   type ShrinkSummary,
+  type CardVerticalExtent,
 } from './card-fit.js';
 
 export {

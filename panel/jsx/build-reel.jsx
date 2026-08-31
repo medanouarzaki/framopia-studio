@@ -252,6 +252,19 @@ function framopiaBuildReel(optionsPath, outPath) {
                  */
                 e.textStyleApplied = framopiaReadTextStyle(ph);
                 e.placedText = String(ph.property('Source Text').value.text);
+                /*
+                 * Where the card actually reaches inside its comp. Measured
+                 * here, beside the width the fit already measured, because a
+                 * card is bounded in two directions and only one was checked.
+                 */
+                e.vertical = framopiaVerticalExtent(
+                    instance,
+                    ph,
+                    e.shadowLayers && e.shadowLayers.length > 0
+                        ? findLayer(instance, e.shadowLayers[0])
+                        : null,
+                    instance.duration / 2
+                );
                 if (e.shadowApplied &&
                     e.shadowApplied.fontSize !== e.textStyleApplied.fontSize) {
                     throw new Error('comp "' + instance.name + '": the word is set at ' +
@@ -530,7 +543,8 @@ function framopiaBuildReel(optionsPath, outPath) {
                     kind: o.elements[i].kind,
                     templateId: o.elements[i].templateId,
                     font: o.elements[i].textStyleApplied ? o.elements[i].textStyleApplied.font : null,
-                    shrink: o.elements[i].shrink
+                    shrink: o.elements[i].shrink,
+                    vertical: o.elements[i].vertical
                 });
             }
         }

@@ -689,6 +689,12 @@ if (result.ok) {
       measurements: { fontSize: number; broken: boolean; widthPx: number }[];
       fits: boolean;
     };
+    vertical?: {
+      compHeightPx: number;
+      inkTopPx: number;
+      inkBottomPx: number;
+      shadowDropPx: number;
+    };
   }[];
   const rows: ShrinkRow[] = textFits.map((f) => ({
     reel,
@@ -709,6 +715,9 @@ if (result.ok) {
     attempts: f.shrink.attempts,
     measurements: f.shrink.measurements,
     fits: f.shrink.fits,
+    // Absent when After Effects did not report one, which a build older than
+    // session 21 does not. A row without it is not failed for it.
+    ...(f.vertical === undefined ? {} : { vertical: f.vertical }),
   }));
   assertEveryCardFits(rows);
 

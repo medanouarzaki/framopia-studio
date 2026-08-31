@@ -85,6 +85,59 @@ function framopiaReadTextStyle(layer) {
     return out;
 }
 
+/**
+ * Where a card's ink reaches inside its own comp, and how far its shadow drops.
+ *
+ * **A card is bounded in two directions and only width was ever measured.**
+ * Session 20 found a two-line keyword drawing 31.7px below a comp that clips it.
+ *
+ * The lowest point is not the resting one: these templates animate Position from
+ * y=750 to y=700, so a card sits 50px lower while its entrance plays. Both are
+ * read, and the larger is what the check is given — measuring only at rest would
+ * report the best case of a card that is visibly cut on its way in.
+ *
+ * The shadow's Transform effect is read off the layer rather than assumed.
+ * `sourceRectAtTime` does not include an effect at either `extents` setting, so
+ * there is no one call that answers where the shadow's ink lands.
+ */
+function framopiaVerticalExtent(comp, layer, shadow, sampleTimeS) {
+    var rect = layer.sourceRectAtTime(sampleTimeS, false);
+    var anchor = layer.property('Transform').property('Anchor Point').valueAtTime(sampleTimeS, false);
+    var posProp = layer.property('Transform').property('Position');
+
+    var lowest = posProp.valueAtTime(sampleTimeS, false)[1];
+    var highest = lowest;
+    var n = 0;
+    try { n = posProp.numKeys; } catch (eN) { n = 0; }
+    for (var k = 1; k <= n; k++) {
+        var y = posProp.keyValue(k)[1];
+        if (y > lowest) lowest = y;
+        if (y < highest) highest = y;
+    }
+
+    var drop = 0;
+    if (shadow) {
+        try {
+            var fx = shadow.property('ADBE Effect Parade');
+            for (var i = 1; i <= fx.numProperties; i++) {
+                var e = fx.property(i);
+                if (String(e.matchName) !== 'ADBE Geometry2') continue;
+                var p = e.property('Position').valueAtTime(sampleTimeS, false);
+                var a = e.property('Anchor Point').valueAtTime(sampleTimeS, false);
+                var dy = p[1] - a[1];
+                if (dy > drop) drop = dy;
+            }
+        } catch (eFx) {}
+    }
+
+    return {
+        compHeightPx: comp.height,
+        inkTopPx: highest + (rect.top - anchor[1]),
+        inkBottomPx: lowest + (rect.top - anchor[1]) + rect.height,
+        shadowDropPx: drop
+    };
+}
+
 function framopiaMeasureAt(layer, timeS) {
     var r = layer.sourceRectAtTime(timeS, false);
     return { top: r.top, left: r.left, width: r.width, height: r.height };
