@@ -108,19 +108,31 @@ Every word carries a lang, one of exactly these five values:
   A sentence that switches between languages is not mixed; tag each of its
   words with the language that word belongs to.`;
 
-  // Version 4 only. Both rules are in the guide above; they are repeated here
-  // because a rule stated once inside a long reference document is followed
-  // by chance, and these two are the ones the corpus actually gets wrong.
+  /*
+   * Version 4 only. Both rules are in the guide above; they are repeated here
+   * because a rule stated once inside a long reference document is followed by
+   * chance, and these two are the ones a draft actually gets wrong.
+   *
+   * Rewritten at guide v2.0.0. Until then they said the opposite — that the
+   * conjunction be written `w7essa` in Latin letters, and that `dial` be
+   * written Latin beside a French noun. The prompt version did not move with
+   * them: it names the prompt's *shape*, and the shape is unchanged, while
+   * what these two rules say is the guide's business and the guide's version
+   * is what the cache keys on.
+   */
   const spellingRules = `Two spelling rules from the guide above, repeated because they are the ones
 most often missed:
 
-1. The conjunction w attaches to the word that follows it, with no space:
-   write "w7essa", "wli", "Wki3tewna", and in Arabic script "ونضارة". Never
-   write a standalone "w".
-2. A French noun spoken with its French article keeps that article and its
-   French spelling: "dial la vidéo", not "dial lvidéo". A French root that
-   has taken Darija morphology is a Darija noun and takes the attached
-   article instead: "dial lvitaminat". Write whichever one is spoken.`;
+1. Arabic proclitics attach, in Arabic letters: the conjunction و, the
+   definite article, and ل/ب/ف/ك. Write "ونضارة", "للبشرة", "فالدار". Never
+   write a standalone و before an Arabic word, and never write the
+   conjunction as a Latin "w". Before a Latin-script word the proclitic
+   cannot attach — a token may not mix scripts — so it stands alone in Arabic
+   letters: "و l'effet", "ديال les cernes".
+2. A borrowed word takes the script of the language it is being spoken as.
+   With a French article and French grammar it stays French: "ديال la vidéo",
+   not "ديال لافيديو". With Arabic grammar it is Arabic: "الفيتامينات". Write
+   whichever one is spoken.`;
 
   const head = `${guide}
 

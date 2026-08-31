@@ -203,18 +203,37 @@ describe('correction prompt version 4', () => {
     expect(ACTIVE_PROMPT_VERSION).toBe(4);
   });
 
-  it('states the conjunction rule with an example the corpus actually uses', async () => {
+  /*
+   * Rewritten at guide v2.0.0. These two asserted the Arabizi forms — a Latin
+   * `w7essa` and a Latin `dial` — which the ruling of 2026-08-31 retired. The
+   * behaviour they guard is the same: the prompt restates the two rules a draft
+   * most often gets wrong, and it restates the current ones.
+   */
+  it('states the proclitic rule in Arabic letters, both attached and standing alone', async () => {
     const v4 = await build(4);
-    expect(v4).toContain('The conjunction w attaches to the word that follows it');
-    expect(v4).toContain('Never');
-    expect(v4).toContain('write a standalone "w"');
+    expect(v4).toContain('Arabic proclitics attach, in Arabic letters');
     expect(v4).toContain('ونضارة');
+    expect(v4).toContain('never write the');
+    expect(v4).toContain("و l'effet");
   });
 
-  it('states the french article rule with both legal forms', async () => {
+  it('states the borrowed-word rule with both legal forms', async () => {
     const v4 = await build(4);
-    expect(v4).toContain('"dial la vidéo", not "dial lvidéo"');
-    expect(v4).toContain('"dial lvitaminat"');
+    expect(v4).toContain('ديال la vidéo');
+    expect(v4).toContain('الفيتامينات');
+  });
+
+  /*
+   * The prompt is the one place outside the guide that states an orthography
+   * rule, and nothing in the transcription fingerprint covers its text. A
+   * Latin-Arabizi instruction reaching it again would be invisible to the
+   * cache, so it is pinned here instead.
+   */
+  it('instructs no Arabizi anywhere', async () => {
+    const v4 = await build(4);
+    for (const retired of ['w7essa', 'Wki3tewna', 'dial lvidéo', 'dial lvitaminat']) {
+      expect(`${retired}: ${String(v4.includes(retired))}`).toBe(`${retired}: false`);
+    }
   });
 
   it('keeps version 3 response shape and asks for a lang per word', async () => {
