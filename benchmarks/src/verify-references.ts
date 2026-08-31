@@ -6,6 +6,29 @@ import { scoreOrthography, type FlaggedExample } from './orthography.js';
 
 export const REFERENCE_REELS = ['ground-truth', 'test-1', 'test-2', 'test-3'];
 
+/**
+ * The orthography these four transcripts were written in, and are checked
+ * against.
+ *
+ * **It is pinned, not read from the guide.** Until the guide reached v2.0.0
+ * these were the same thing, and the check compared each header against
+ * whatever version the guide currently carried. v2.0.0 reversed the guide's
+ * founding rule — Arabic is written in Arabic letters — and these four files
+ * are Arabizi, because a person transcribed four reels by ear under v1.0.x and
+ * nothing can regenerate them. Comparing them against v2.0.0 asks whether a
+ * record of what was said in 2026-08 obeys a rule made in 2026-08-31, which is
+ * not a question about the files.
+ *
+ * So the check keeps asking the question it can answer: do these four still
+ * conform to the rules they were written under? The scorer in `orthography.ts`
+ * scores those same v1.0.x rules and is unchanged for the same reason.
+ *
+ * This moves only when the references themselves are rewritten in a newer
+ * orthography — which is a deliberate, expensive act, because they are the WER
+ * baseline for the whole project.
+ */
+export const REFERENCE_ORTHOGRAPHY_VERSION = '1.0.8';
+
 export const GUIDE_PATH = path.join(DOCS_DIR, 'ORTHOGRAPHY_GUIDE.md');
 export const REFERENCE_DIR = path.join(LOCAL_DIR, 'ground-truth');
 
@@ -78,7 +101,10 @@ export function verifyReference(reel: string, source: string, expectedVersion: s
   if (headerVersion === null) {
     issues.push(`no "# reference-version:" header; expected ${expectedHeader}`);
   } else if (headerVersion !== expectedHeader) {
-    issues.push(`header says ${headerVersion} but the guide is at ${expectedHeader}`);
+    issues.push(
+      `header says ${headerVersion} but these references are pinned at ${expectedHeader} ` +
+        '(REFERENCE_ORTHOGRAPHY_VERSION)',
+    );
   }
 
   return { reel, headerVersion, expectedVersion, violations, issues };
@@ -87,9 +113,8 @@ export function verifyReference(reel: string, source: string, expectedVersion: s
 export function verifyAllReferences(
   reels = REFERENCE_REELS,
   dir = REFERENCE_DIR,
-  guidePath = GUIDE_PATH,
+  expected = REFERENCE_ORTHOGRAPHY_VERSION,
 ): ReferenceVerdict[] {
-  const expected = readGuideVersion(guidePath);
   return reels.map((reel) =>
     verifyReference(reel, readFileSync(referencePathFor(reel, dir), 'utf8'), expected),
   );
@@ -101,8 +126,11 @@ export function verifyAllReferences(
  * `ground-truth` asserted v1.0.7 conformance for an entire block while
  * violating v1.0.7 and nothing detected it.
  */
-export function stampReference(reel: string, dir = REFERENCE_DIR, guidePath = GUIDE_PATH): ReferenceVerdict {
-  const expected = readGuideVersion(guidePath);
+export function stampReference(
+  reel: string,
+  dir = REFERENCE_DIR,
+  expected = REFERENCE_ORTHOGRAPHY_VERSION,
+): ReferenceVerdict {
   const filePath = referencePathFor(reel, dir);
   const source = readFileSync(filePath, 'utf8');
   const verdict = verifyReference(reel, source, expected);
