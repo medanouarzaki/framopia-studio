@@ -9070,8 +9070,9 @@ warns, and the re-centring trap with both remedies — and in
 
 ## Block 10 session 23 — the cards fit, and one property did not come back
 
-**Spent $0.00.** Ledger 118 lines / `3f657131…` at both ends; all five plans, the
-six references and the cache byte-identical; `app.fonts.allFonts` 1198 → 1198.
+**Spent $0.00.** Ledger 118 lines / `3f657131…` at both ends; all five plans and
+the six references byte-identical; the cache unchanged at 46 entries (its file
+count moved only by a `.DS_Store` Finder wrote); `app.fonts.allFonts` 1198 → 1198.
 **`templates/library.aep` was not edited by this session** — the user's file,
 `103cc1f1d02018df9f189e646cf96393de73c4286e35487586c5abdf7c0a13e1`, 552,745 bytes.
 

@@ -6,8 +6,8 @@ headroom**, against 1273.8 and a 23.8 px overrun last session. **All four
 buildable reels build**, 262 cards, none overrunning top or bottom.
 
 **Spent $0.00; no API was called.** Ledger **118 lines, sha `3f657131…`,
-byte-identical at both ends**. All five Edit Plans, the six hand-made references
-and the cache byte-identical. After Effects pid 79146, 0 `aerender`,
+byte-identical at both ends**. All five Edit Plans and the six hand-made
+references byte-identical; the cache unchanged at 46 entries (see Repo state). After Effects pid 79146, 0 `aerender`,
 `app.fonts.allFonts` 1198 → 1198.
 
 ## Done
@@ -157,7 +157,7 @@ false-premise tests session 20 found.
 |---|---|
 | Edit Plans | all five byte-identical |
 | references | all six byte-identical |
-| cache | 46 entries, 79 files, 54,244 KiB — byte-identical |
+| cache | **46 entries unchanged**, none created, none evicted. The file count reads 79 → 80 and the size 54,244 → 54,256 KiB: the difference is a `.DS_Store` Finder wrote into `.local/cache/` at 16:57 while someone browsed the folder. No entry's bytes moved. Left in place. |
 | After Effects | pid 79146, 0 `aerender`, nothing opened, nothing saved |
 | fonts | 1198 → 1198 |
 | free space | 161 GB |
