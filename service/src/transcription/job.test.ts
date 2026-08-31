@@ -9,7 +9,7 @@ import { transcribeHybridCached } from './cached.js';
 import { mapScribeResponse, type ScribeRawResponse } from './scribe.js';
 import { parseCorrectionResponseText } from './correction.js';
 import { alignCorrectedOntoDraft } from './align.js';
-import { validateEditPlan } from '../editplan/index.js';
+import { editPlanPathFor, validateEditPlan } from '../editplan/index.js';
 import type { HybridTranscript } from './hybrid.js';
 
 const FIXTURES_DIR = path.resolve(
@@ -96,9 +96,15 @@ describe('transcribeVideo — composition', () => {
     rmSync(dir, { recursive: true, force: true });
   });
 
-  it('writes a validated edit plan beside the video', async () => {
+  /*
+   * The temporary directory is outside the repository, which since session 30
+   * is exactly the case that does **not** get a plan beside the video: a
+   * client's footage is his, and this tool leaves nothing in it.
+   */
+  it('writes a validated edit plan, and not beside a video outside the repository', async () => {
     const result = await transcribeVideo(options());
-    expect(result.planPath).toBe(path.join(dir, 'vitasilk.editplan.json'));
+    expect(result.planPath).toBe(editPlanPathFor(path.join(dir, 'vitasilk.mov')));
+    expect(path.dirname(result.planPath)).not.toBe(dir);
     expect(validateEditPlan(result.plan)).toEqual([]);
     const onDisk = JSON.parse(readFileSync(result.planPath, 'utf8')) as unknown;
     expect(validateEditPlan(onDisk)).toEqual([]);

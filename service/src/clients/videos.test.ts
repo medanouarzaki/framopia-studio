@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -54,8 +54,22 @@ describe('a client’s videos', () => {
 /*
  * `benchmarks/footage.json` still works. A client written before folders
  * existed — which is every client — lists exactly the five reels it always did.
+ *
+ * The registry of browsed videos is pointed at nothing for this, because the
+ * question is about the corpus fallback and not about which videos this machine
+ * happens to have opened. Without that the test started failing the first time
+ * a real client reel was browsed, which is a test depending on the tester.
  */
 describe('the videos a client without a folder gets', () => {
+  const saved = process.env['FRAMOPIA_VIDEO_REGISTRY'];
+  beforeAll(() => {
+    process.env['FRAMOPIA_VIDEO_REGISTRY'] = path.join(tmpdir(), 'framopia-no-such-registry.json');
+  });
+  afterAll(() => {
+    if (saved === undefined) delete process.env['FRAMOPIA_VIDEO_REGISTRY'];
+    else process.env['FRAMOPIA_VIDEO_REGISTRY'] = saved;
+  });
+
   it('falls back to the hand-kept list, unchanged', () => {
     const listing = listVideosFor('k2-syndicalia');
     expect(listing.folder).toBeNull();

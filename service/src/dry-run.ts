@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { estimateImageRunCost, loadMode, type EntryProvenance } from '@framopia/core';
 import { listReels } from './catalogue.js';
+import { knownVideos } from './videos.js';
 import { resolveKeywordEntry, resolveSlotEntry } from './analysis/resolve-entry.js';
 import { imageSlotCountFor } from './analysis/count.js';
 import { PIPELINE_STAGES } from './pipeline-stages.js';
@@ -206,6 +207,23 @@ export async function dryRun(reelLabel: string, modeId: string): Promise<DryRunP
       hasClientSnapshot = typeof plan.clientSnapshot?.id === 'string';
     } catch (error) {
       throw new DryRunError(`${reel.planPath} did not parse: ${(error as Error).message}`);
+    }
+  }
+  /*
+   * A video opened through Browse has no plan until its first run, and the
+   * question "what will pressing Run cost" is exactly the one being asked
+   * *before* that run. The hash and the duration were read from the file when
+   * it was opened, so both are on hand and the whole run can be priced.
+   *
+   * The old behaviour threw, which put an error where the cost belonged and
+   * left the panel with nothing to say — and the user reading it had already
+   * been told his video did not exist.
+   */
+  if (sha === '') {
+    const known = knownVideos().find((v) => v.path === reel.videoPath);
+    if (known !== undefined) {
+      sha = known.sha256;
+      durationS = known.durationS;
     }
   }
   if (sha === '') {

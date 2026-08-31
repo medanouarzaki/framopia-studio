@@ -1,5 +1,5 @@
-import { resolveStoredPath } from '@framopia/core';
-import { readFile, writeFile } from 'node:fs/promises';
+import { classifyStoredPath, resolveStoredPath } from '@framopia/core';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import crypto from 'node:crypto';
 import path from 'node:path';
 import {
@@ -11,10 +11,33 @@ import {
   type PlanSource,
 } from './types.js';
 import { assertValidEditPlan, EditPlanVersionError } from './validate.js';
+import { BROWSED_PLANS_DIR } from '../videos.js';
 
+/**
+ * Where a video's Edit Plan lives.
+ *
+ * **A video inside this repository keeps its plan beside it** — that is the
+ * five corpus reels in `my files/test videos/`, and every path recorded in
+ * every report depends on it.
+ *
+ * **A video outside it does not.** A client's footage sits in his own folders,
+ * and writing a JSON file into `…/Dr Loubna Kfafi/September Content/Exports/
+ * Work in Progress/` is this tool leaving something behind in work that is not
+ * its own. The plan goes to `.local/plans/` instead, named for the video with a
+ * short hash of its full path, so two files called `sora.mov` in two client
+ * folders cannot collide.
+ *
+ * This is the one declaration, so the pipeline, the transcribe CLI and the
+ * catalogue cannot disagree about where a plan is.
+ */
 export function editPlanPathFor(videoPath: string): string {
   const ext = path.extname(videoPath);
-  return path.join(path.dirname(videoPath), `${path.basename(videoPath, ext)}.editplan.json`);
+  const stem = path.basename(videoPath, ext);
+  if (classifyStoredPath(videoPath) === 'outside-the-repo') {
+    const tag = crypto.createHash('sha256').update(videoPath).digest('hex').slice(0, 8);
+    return path.join(BROWSED_PLANS_DIR, `${stem}-${tag}.editplan.json`);
+  }
+  return path.join(path.dirname(videoPath), `${stem}.editplan.json`);
 }
 
 function emptyStage(): PipelineStage {
@@ -104,5 +127,7 @@ export async function readEditPlan(planPath: string): Promise<EditPlan> {
 
 export async function writeEditPlan(planPath: string, plan: EditPlan): Promise<void> {
   assertValidEditPlan(plan);
+  // A browsed video's plan goes to `.local/plans/`, which need not exist yet.
+  await mkdir(path.dirname(planPath), { recursive: true });
   await writeFile(planPath, `${JSON.stringify(plan, null, 2)}\n`, 'utf8');
 }

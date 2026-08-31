@@ -159,7 +159,7 @@ export function createApp(token: string): http.Server {
           return;
         }
         try {
-          sendJson(res, 200, { reel: describeVideo(file) });
+          sendJson(res, 200, { reel: await describeVideo(file) });
         } catch (error) {
           sendJson(res, 400, { error: (error as Error).message });
         }

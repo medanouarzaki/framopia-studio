@@ -2,6 +2,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { REPO_ROOT } from '@framopia/core';
 import {
   createEditPlan,
   editPlanPathFor,
@@ -61,13 +62,39 @@ describe('createEditPlan', () => {
   });
 });
 
+/*
+ * Rewritten in session 30. These asserted that a plan always sits beside its
+ * video, which stopped being the rule when a client's own footage could be
+ * opened: writing a JSON file into someone's "Work in Progress" folder is this
+ * tool leaving something behind in work that is not its own.
+ */
 describe('editPlanPathFor', () => {
-  it('sits beside the video, named after it', () => {
-    expect(editPlanPathFor('/videos/vitasilk.mov')).toBe('/videos/vitasilk.editplan.json');
+  it('sits beside a video inside the repository, named after it', () => {
+    const corpus = path.join(REPO_ROOT, 'my files', 'test videos', 'vitasilk.mov');
+    expect(editPlanPathFor(corpus)).toBe(
+      path.join(REPO_ROOT, 'my files', 'test videos', 'vitasilk.editplan.json'),
+    );
   });
 
   it('handles a name containing dots', () => {
-    expect(editPlanPathFor('/v/reel.v2.final.mp4')).toBe('/v/reel.v2.final.editplan.json');
+    const corpus = path.join(REPO_ROOT, 'my files', 'test videos', 'reel.v2.final.mp4');
+    expect(editPlanPathFor(corpus)).toBe(
+      path.join(REPO_ROOT, 'my files', 'test videos', 'reel.v2.final.editplan.json'),
+    );
+  });
+
+  it('writes nothing beside a video outside the repository', () => {
+    const his = '/Volumes/T7 Shield/Framopia/Clients/Dr X/Exports/sora.mov';
+    const plan = editPlanPathFor(his);
+    expect(plan.startsWith(path.join(REPO_ROOT, '.local', 'plans'))).toBe(true);
+    expect(path.dirname(plan)).not.toBe(path.dirname(his));
+    expect(path.basename(plan)).toMatch(/^sora-[0-9a-f]{8}\.editplan\.json$/);
+  });
+
+  it('gives two videos of the same name two different plans', () => {
+    const a = editPlanPathFor('/Volumes/x/Client A/Exports/sora.mov');
+    const b = editPlanPathFor('/Volumes/x/Client B/Exports/sora.mov');
+    expect(a).not.toBe(b);
   });
 });
 

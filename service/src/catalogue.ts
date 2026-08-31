@@ -11,7 +11,9 @@ import {
   type ClientMode,
 } from '@framopia/core';
 import { loadReels as loadFootageReels } from './frames/footage.js';
-import { VIDEO_EXTENSIONS, listClientVideos, type FolderListing } from './clients/videos.js';
+import { knownVideos, rememberVideo } from './videos.js';
+import { editPlanPathFor } from './editplan/io.js';
+import { listClientVideos, type FolderListing } from './clients/videos.js';
 
 /**
  * What the panel offers the user to pick from.
@@ -102,8 +104,9 @@ function standardsOf(mode: ClientMode): CatalogueMode['standards'] {
   };
 }
 
+/** One declaration, in `editplan/io.ts`, so nothing here can disagree with it. */
 function planPathFor(videoPath: string): string {
-  return videoPath.replace(/\.[^.]+$/, '.editplan.json');
+  return editPlanPathFor(videoPath);
 }
 
 /**
@@ -156,21 +159,36 @@ function describe(label: string, videoPath: string, durationS: number | null): C
  * this is the only entry point that does not come from a list — and the only
  * one that has to say why a file will not do rather than leaving it out.
  */
-export function describeVideo(videoPath: string): CatalogueReel {
-  if (!path.isAbsolute(videoPath)) {
-    throw new Error('give the full path to the file');
-  }
-  if (!existsSync(videoPath)) {
-    throw new Error(`there is nothing at ${videoPath}. If it is on an external disk, plug it in.`);
-  }
-  const extension = path.extname(videoPath).toLowerCase();
-  if (!VIDEO_EXTENSIONS.includes(extension)) {
-    throw new Error(`this tool does not open ${extension || 'files without an extension'}.`);
-  }
-  return describe(path.basename(videoPath).replace(/\.[^.]+$/, ''), videoPath, null);
+export async function describeVideo(videoPath: string): Promise<CatalogueReel> {
+  /*
+   * Opening a video **writes it down**, and that is the whole of the fix for a
+   * client's reel being refused. Every later call — the steps, the dry run, the
+   * run itself — sends only a label, and until now nothing on this side
+   * remembered what a browsed label meant, so the lookup fell through to the
+   * five test reels and refused by name. `rememberVideo` also reads the
+   * duration, the shape and the hash the catalogue would otherwise have
+   * supplied, and refuses with a sentence when the file cannot be used.
+   */
+  const known = await rememberVideo(videoPath);
+  return describe(known.label, known.path, known.durationS);
 }
 
+/**
+ * Every reel this machine can be asked about: the five test reels, and every
+ * video someone has opened through Browse.
+ *
+ * The corpus catalogue keeps its own job — the fetch note, the sha256 and the
+ * byte count `npm run doctor` verifies are still only about those five — and
+ * stops being the list that decides what the product may open.
+ */
 export function listReels(): CatalogueReel[] {
+  const browsed = knownVideos().map((v) => describe(v.label, v.path, v.durationS));
+  const corpus = corpusReels();
+  const seen = new Set(corpus.map((r) => r.videoPath));
+  return [...corpus, ...browsed.filter((r) => !seen.has(r.videoPath))];
+}
+
+function corpusReels(): CatalogueReel[] {
   return loadFootageReels().map((reel) => {
     const planPath = planPathFor(reel.path);
     const hasPlan = existsSync(planPath);
