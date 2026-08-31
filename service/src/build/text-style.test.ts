@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { loadMode, snapshotOfMode, type ClientSnapshot } from '@framopia/core';
+import {
+  loadMode,
+  parseHexColour,
+  snapshotOfMode,
+  toAeColour,
+  type ClientSnapshot,
+} from '@framopia/core';
 import { isArabicTemplate, textStyleFor } from './text-style.js';
 
 const K2 = snapshotOfMode(loadMode('k2-syndicalia'), 'now');
@@ -167,5 +173,56 @@ describe('isArabicTemplate', () => {
     expect(isArabicTemplate('kw_slam_ar')).toBe(true);
     expect(isArabicTemplate('sub_pop')).toBe(false);
     expect(isArabicTemplate('kw_slam')).toBe(false);
+  });
+});
+
+describe('the shadow copy’s colour', () => {
+  const snapshot = K2;
+
+  it('is the client’s deeper colour on every kind of card', () => {
+    for (const [kind, templateId] of [
+      ['subtitle', 'sub_pop'],
+      ['subtitle', 'sub_pop_ar'],
+      ['keyword', 'kw_slam'],
+      ['keyword', 'kw_slam_ar'],
+    ] as const) {
+      const style = textStyleFor({ kind, templateId, templateFontSize: 343, snapshot });
+      expect(style?.shadowFillColor).toEqual(toAeColour(parseHexColour('#820000')));
+    }
+  });
+
+  /**
+   * The check the ruling turns on: K2's `primary` is exactly what the templates
+   * already carry, so nothing about an existing reel may move.
+   */
+  it('matches what the templates already carry, for K2', () => {
+    const style = textStyleFor({
+      kind: 'subtitle',
+      templateId: 'sub_pop',
+      templateFontSize: 343,
+      snapshot,
+    });
+    expect(style?.shadowFillColor).toEqual(toAeColour(parseHexColour('#820000')));
+  });
+
+  it('follows a client whose deeper colour is not red', () => {
+    const theirs = {
+      ...snapshot,
+      palette: { ...snapshot.palette, primary: '#00A0FF' },
+    };
+    const style = textStyleFor({
+      kind: 'subtitle',
+      templateId: 'sub_pop',
+      templateFontSize: 343,
+      snapshot: theirs,
+    });
+    expect(style?.shadowFillColor).toEqual(toAeColour(parseHexColour('#00A0FF')));
+  });
+
+  it('is absent with the rest of the style when a client has no measured faces', () => {
+    const noFaces = { ...snapshot, fonts: { status: 'tbd' as const } };
+    expect(
+      textStyleFor({ kind: 'subtitle', templateId: 'sub_pop', templateFontSize: 343, snapshot: noFaces }),
+    ).toBeNull();
   });
 });

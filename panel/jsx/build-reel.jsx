@@ -204,10 +204,12 @@ function framopiaBuildReel(optionsPath, outPath) {
                  * still holding the template's own placeholder text, one build
                  * away from putting `kan9olo` on every card of every reel.
                  *
-                 * Same text, same font, same size — and **never the colour**:
-                 * the shadow's #820000 is the design, and the build overwriting
-                 * it would erase the effect it exists for. `framopiaSetText`
-                 * leaves the colour alone when the style carries none.
+                 * Same text, same font, same size — and, since 2026-08-31, the
+                 * client's deeper colour. The templates carry #820000, which is
+                 * K2's red, so every other client was getting K2's shadow with
+                 * nothing saying so. `framopiaSetText` still leaves the colour
+                 * alone when the style carries none, which is what a client with
+                 * no measured faces gets.
                  */
                 if (e.shadowLayers) {
                     for (var si = 0; si < e.shadowLayers.length; si++) {
@@ -227,7 +229,12 @@ function framopiaBuildReel(optionsPath, outPath) {
                          * assumed equal.
                          */
                         var shadowStyle = { fontSize: e.shrink.finalFontSize };
-                        if (e.textStyle) shadowStyle.font = e.textStyle.font;
+                        if (e.textStyle) {
+                            shadowStyle.font = e.textStyle.font;
+                            if (e.textStyle.shadowFillColor) {
+                                shadowStyle.fillColor = e.textStyle.shadowFillColor;
+                            }
+                        }
                         framopiaSetText(shadow, e.shrink.text, shadowStyle);
                         e.shadowApplied = framopiaReadTextStyle(shadow);
                         e.shadowText = String(shadow.property('Source Text').value.text);
@@ -251,6 +258,28 @@ function framopiaBuildReel(optionsPath, outPath) {
                         e.textStyleApplied.fontSize + ' and its shadow at ' +
                         e.shadowApplied.fontSize + '. Both layers carry the same word ' +
                         'and must carry the same size.');
+                }
+                /*
+                 * The colour is read back for the same reason the size and the
+                 * text are: this is the pair of layers Block 9 session 8 found
+                 * one build away from carrying the template's placeholder word,
+                 * and a fill that reached the word and not its shadow would draw
+                 * K2's red behind another client's type with nothing saying so.
+                 */
+                if (e.textStyle && e.textStyle.shadowFillColor && e.shadowApplied) {
+                    var want = e.textStyle.shadowFillColor;
+                    var got = e.shadowApplied.fillColor;
+                    var same = got !== null &&
+                        Math.abs(got[0] - want[0]) < 0.002 &&
+                        Math.abs(got[1] - want[1]) < 0.002 &&
+                        Math.abs(got[2] - want[2]) < 0.002;
+                    if (!same || e.shadowApplied.applyFill !== true) {
+                        throw new Error('comp "' + instance.name + '": the shadow was set to ' +
+                            framopiaColourText(want) + ' and reads ' +
+                            (got === null ? 'no colour at all' : framopiaColourText(got)) +
+                            (e.shadowApplied.applyFill === true ? '' : ', with its fill not applied') +
+                            '. The shadow carries the client\'s deeper colour.');
+                    }
                 }
                 /*
                  * A break that reached one layer and not the other is the same

@@ -41,8 +41,9 @@ export interface ReelElement {
   /**
    * Text layers carrying a copy of this card's word, drawn behind it.
    *
-   * Declared by the template, filled with the same word, font and size, and
-   * **never given a colour** — the shadow's own is the design.
+   * Declared by the template, filled with the same word, font and size — and,
+   * since 2026-08-31, **the client's deeper colour**. It was the template's own
+   * red until then, which gave every client K2's.
    */
   shadowLayers?: string[];
   /**

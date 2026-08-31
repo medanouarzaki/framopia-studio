@@ -32,13 +32,13 @@ export type PaletteRole = (typeof PALETTE_ROLES)[number];
  * - **`background`** — the ground baked behind a cut-out, read off
  *   `img002-c1.cutout.on-fill.png` as `#1A0000` at all four corners, and the
  *   frame on a picture bright enough for the dark one to win.
- * - **`primary`** — **nothing in the built comp comes from it.** The 262 shadow
- *   layers all read `#820000`, but that is the four template comps' own colour,
- *   baked in and never set by the build (`reel-plan.ts`: the shadow is "never
- *   given a colour — the shadow's own is the design"). It equals K2's `primary`
- *   by coincidence of the brand, and a different client's `primary` would not
- *   move it. What `primary` really does is reach the image model, which is a job
- *   the user can see the result of.
+ * - **`primary`** — **the shadow copy drawn behind every word**, 262 layers
+ *   across the corpus. Until 2026-08-31 that colour was baked into the four
+ *   template comps and the build never set it, so it matched K2 only by
+ *   coincidence of the brand and a different client got K2's red with nothing
+ *   saying so. The user ruled that the shadow takes the client's deeper colour;
+ *   `textStyleFor` resolves it and the build sets it on the duplicated
+ *   instance's shadow layer. It also reaches the image model.
  *
  * All four are named in `imageStyle.stylePrompt`, so all four shape the pictures
  * that get generated. Where a colour does more than one job the line says so
@@ -51,21 +51,25 @@ export const PALETTE_MEANING: Record<PaletteRole, string> = {
   light: 'your ordinary subtitle words, and usually the frame round a picture',
   accent: 'the words you emphasise',
   background: 'behind a cut-out picture, and the ground the generated pictures are lit against',
-  primary: 'depth in the generated pictures — the shadow behind your words comes from the template, not from here',
+  primary: 'the shadow behind every word, and depth in the generated pictures',
 };
 
 /**
  * The order the four are shown in.
  *
- * Not the file's order: the two subtitle colours are what he sees on every card
- * of every video, so they come first, and the two that only touch pictures
- * follow.
+ * Not the file's order: the colours he sees on every card of every video come
+ * first — the word, the emphasised word, and the shadow behind both — and the
+ * one that only touches pictures follows.
+ *
+ * `primary` moved up on 2026-08-31, when the shadow started taking the client's
+ * deeper colour instead of the template's. It was last while it did nothing a
+ * viewer could see.
  */
 export const PALETTE_DISPLAY_ORDER: readonly PaletteRole[] = [
   'light',
   'accent',
-  'background',
   'primary',
+  'background',
 ];
 
 export function paletteRolesInDisplayOrder(): PaletteRole[] {

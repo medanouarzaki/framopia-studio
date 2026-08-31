@@ -213,3 +213,46 @@ describe('the build’s unsaved-changes guard', () => {
     }
   });
 });
+
+/**
+ * The shadow copy takes the client's deeper colour, and the build proves it took
+ * rather than assuming the write landed.
+ *
+ * This is the pair of layers Block 9 session 8 found one build away from
+ * carrying the template's placeholder word on every card of every reel, so a
+ * property that reaches one and not the other is a defect this project has
+ * already paid a session for.
+ */
+describe('the shadow’s colour', () => {
+  const buildReel = readFileSync(path.join(REPO_ROOT, 'panel', 'jsx', 'build-reel.jsx'), 'utf8');
+  const textFit = readFileSync(path.join(REPO_ROOT, 'panel', 'jsx', 'text-fit.jsx'), 'utf8');
+
+  it('is set on the duplicated instance, from the style the service resolved', () => {
+    expect(buildReel).toContain('shadowStyle.fillColor = e.textStyle.shadowFillColor');
+  });
+
+  it('is read back and compared, not assumed', () => {
+    expect(buildReel).toContain('e.shadowApplied.fillColor');
+    expect(buildReel).toContain('the shadow was set to');
+    // A carried fill that is not applied draws nothing; both are checked.
+    expect(buildReel).toContain('applyFill !== true');
+  });
+
+  it('is readable at all, which is what makes the comparison possible', () => {
+    expect(textFit).toContain('out.fillColor');
+    expect(textFit).toContain('doc.applyFill');
+  });
+
+  /**
+   * Retired 2026-08-31: the build used to leave the shadow's colour alone
+   * deliberately, and both the comment and the code said so.
+   */
+  it('no longer claims the shadow is never given a colour', () => {
+    expect(buildReel).not.toContain('never the colour');
+    const reelPlan = readFileSync(
+      path.join(REPO_ROOT, 'service', 'src', 'build', 'reel-plan.ts'),
+      'utf8',
+    );
+    expect(reelPlan).not.toContain('never given a colour');
+  });
+});

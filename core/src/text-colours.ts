@@ -21,9 +21,14 @@ import type { ClientMode, PaletteRole } from './mode.js';
  * baked into the template comps and the build never sets it, so a client that
  * names no `shadow` role leaves the template's own — which is the design.
  */
-export const DEFAULT_TEXT_COLOUR_ROLES: { ordinary: PaletteRole; emphasis: PaletteRole } = {
+export const DEFAULT_TEXT_COLOUR_ROLES: {
+  ordinary: PaletteRole;
+  emphasis: PaletteRole;
+  shadow: PaletteRole;
+} = {
   ordinary: 'light',
   emphasis: 'accent',
+  shadow: 'primary',
 };
 
 export interface ResolvedTextColour {
@@ -37,27 +42,29 @@ export interface ResolvedTextColours {
   ordinary: ResolvedTextColour;
   emphasis: ResolvedTextColour;
   /**
-   * Null when the client names none, which means the template's own shadow
-   * colour stands. There is deliberately no default: see `ModeTextColours`.
+   * **The client's deeper colour, `primary` by default** — user ruling,
+   * 2026-08-31, by the person who authored the templates. He chose it over a
+   * fifth swatch on the client screen and over leaving the templates' fixed red.
+   *
+   * It used to be null unless a client named a role, meaning the template's own
+   * colour stood. That gave every client K2's red behind their words with
+   * nothing saying so: `#820000` is baked into all four text comps and matched
+   * K2 only because the template's red happens to be K2's red.
    */
-  shadow: ResolvedTextColour | null;
+  shadow: ResolvedTextColour;
 }
 
 export function resolveTextColours(
   mode: Pick<ClientMode, 'palette' | 'textColours'>,
 ): ResolvedTextColours {
-  const of = (key: 'ordinary' | 'emphasis'): ResolvedTextColour => {
+  const of = (key: 'ordinary' | 'emphasis' | 'shadow'): ResolvedTextColour => {
     const named = mode.textColours?.[key];
     const role = named ?? DEFAULT_TEXT_COLOUR_ROLES[key];
     return { role, hex: mode.palette[role], source: named === undefined ? 'standard' : 'client' };
   };
-  const shadowRole = mode.textColours?.shadow;
   return {
     ordinary: of('ordinary'),
     emphasis: of('emphasis'),
-    shadow:
-      shadowRole === undefined
-        ? null
-        : { role: shadowRole, hex: mode.palette[shadowRole], source: 'client' },
+    shadow: of('shadow'),
   };
 }

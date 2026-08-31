@@ -61,9 +61,28 @@ function framopiaFittedText(fit, candidate) {
 }
 
 /** What After Effects has on the layer now, for a caller that checks. */
+/** A colour in the words an error message wants: 0..255 per channel. */
+function framopiaColourText(c) {
+    if (!c) return 'nothing';
+    var out = [];
+    for (var i = 0; i < 3; i++) { out.push(Math.round(c[i] * 255)); }
+    return 'rgb(' + out.join(', ') + ')';
+}
+
 function framopiaReadTextStyle(layer) {
     var doc = layer.property('Source Text').value;
-    return { font: String(doc.font), fontSize: doc.fontSize };
+    var out = { font: String(doc.font), fontSize: doc.fontSize, fillColor: null };
+    /*
+     * `fillColor` throws on a document that carries none, and a document whose
+     * fill is not applied reports one that is not drawn — so both are read, and
+     * a caller comparing colours must check `applyFill` too.
+     */
+    try { out.applyFill = doc.applyFill === true; } catch (eApply) { out.applyFill = null; }
+    try {
+        var c = doc.fillColor;
+        out.fillColor = [c[0], c[1], c[2]];
+    } catch (eFill) { out.fillColor = null; }
+    return out;
 }
 
 function framopiaMeasureAt(layer, timeS) {

@@ -151,14 +151,15 @@ export interface ModeTextColours {
    * The colour of the shadow copy drawn behind a word, where a template has
    * one.
    *
-   * **Absent means the build leaves the template's own colour alone**, which is
-   * what it does today and what every client without this field gets. There is
-   * no palette default: a shadow colour is a decision about a client's look,
-   * and picking one for a client who has not made it would give them somebody
-   * else's.
+   * **Absent means the client's `primary`** — user ruling, 2026-08-31, by the
+   * person who authored the templates. He chose the deeper of a client's own
+   * colours over a fifth swatch on the client screen, and over leaving the
+   * templates' fixed red.
    *
-   * Recorded and **not yet wired through to the build** — the build sets the
-   * visible layer's colour and never the shadow's.
+   * It used to mean "leave the template's own colour alone", which gave every
+   * client K2's `#820000` behind their words with nothing saying so: that value
+   * is baked into all four text comps and matched K2 only by coincidence of the
+   * brand. Naming a role here still overrides the default.
    */
   shadow?: PaletteRole;
 }

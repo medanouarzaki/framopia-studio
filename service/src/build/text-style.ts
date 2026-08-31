@@ -16,7 +16,10 @@ import {
  * client, which is six chances to make them differ.
  *
  * The user's ruling, from K2's own brand chart: **ordinary words in the
- * ordinary Latin face in crème, emphasized words in the emphasis face in gold.**
+ * ordinary Latin face in crème, emphasized words in the emphasis face in gold**,
+ * and — from 2026-08-31 — **the shadow copy behind either in the client's deeper
+ * colour**, `primary`. That last was the templates' own baked red until then,
+ * which matched K2 only by coincidence of the brand.
  * Arabic keeps its own face at `ARABIC_SIZE_RATIO`, in the same colours — the
  * emphasis face is a Latin serif and has no Arabic, so an Arabic keyword is
  * gold Almarai rather than gold Cormorant.
@@ -35,6 +38,13 @@ export interface TextStyle {
   fontSize?: number;
   /** Three floats in 0..1, as After Effects wants them. */
   fillColor: [number, number, number];
+  /**
+   * The shadow copy's fill, which is the client's deeper colour.
+   *
+   * Carried beside the word's own rather than derived in the ExtendScript: one
+   * resolution, in the module that already owns which colour a card is set in.
+   */
+  shadowFillColor: [number, number, number];
 }
 
 /** `_ar` is how `assignTemplates` marks the Arabic variant of a template. */
@@ -71,12 +81,13 @@ export function textStyleFor(inputs: TextStyleInputs): TextStyle | null {
   const colours = resolveTextColours(snapshot);
   const role = inputs.kind === 'keyword' ? colours.emphasis : colours.ordinary;
   const fillColor = toAeColour(parseHexColour(role.hex));
+  const shadowFillColor = toAeColour(parseHexColour(colours.shadow.hex));
 
   if (isArabicTemplate(inputs.templateId)) {
     if (names.arabic === undefined) return null;
     // The `_ar` comps are already authored at ARABIC_SIZE_RATIO of the Latin
     // size, so the size is right and only the face and the colour move.
-    return { font: names.arabic, fillColor };
+    return { font: names.arabic, fillColor, shadowFillColor };
   }
 
   if (inputs.kind === 'keyword' && names.emphasis !== undefined) {
@@ -85,11 +96,12 @@ export function textStyleFor(inputs: TextStyleInputs): TextStyle | null {
       font: names.emphasis,
       fontSize: Math.round(inputs.templateFontSize * ratio * 1000) / 1000,
       fillColor,
+      shadowFillColor,
     };
   }
 
   if (names.latin === undefined) return null;
-  return { font: names.latin, fillColor };
+  return { font: names.latin, fillColor, shadowFillColor };
 }
 
 /** What the Arabic ratio is, for a report that wants to state it. */

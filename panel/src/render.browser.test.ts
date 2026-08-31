@@ -2996,18 +2996,21 @@ describe.skipIf(!built)('setting up a client', () => {
         'your ordinary subtitle words',
         'the words you emphasise',
         'behind a cut-out picture',
-        'depth in the generated pictures',
+        // Retired 2026-08-31: this used to read "the shadow behind your words
+        // comes from the template, not from here", which stopped being true the
+        // moment the shadow started taking the client's deeper colour.
+        'the shadow behind every word',
       ]) {
         expect(text).toContain(what);
       }
       expect(text).not.toContain('the deeper of the two frame colours');
       expect(text).not.toContain('the frame around a picture');
-      // The two subtitle colours come first: they are on every card of every
-      // video, and the other two only touch pictures.
+      // The colours that touch words come first — the word, the emphasised word
+      // and the shadow behind both — and the picture-only one follows.
       const values = await loaded.page.$$eval('.colours input[type="color"]', (els) =>
         els.map((e) => (e as HTMLInputElement).value.toUpperCase()),
       );
-      expect(values).toEqual(['#F8F6F2', '#C9A96E', '#1A0000', '#820000']);
+      expect(values).toEqual(['#F8F6F2', '#C9A96E', '#820000', '#1A0000']);
       // The sentence that made this a two-visit screen is gone.
       const all = (await loaded.page.textContent('main.editor')) ?? '';
       expect(all).not.toContain('Colours and their own pictures are added afterwards');

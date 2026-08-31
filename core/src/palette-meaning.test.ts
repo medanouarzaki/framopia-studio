@@ -37,13 +37,14 @@ describe('what each colour does', () => {
   });
 
   /**
-   * The 262 shadow layers all read `#820000`, but that colour is baked into the
-   * four template comps and the build never sets it — it equals K2's `primary`
-   * by coincidence of the brand. A different client's `primary` would not move
-   * it, so the caption must not promise that it would.
+   * Retired on 2026-08-31. The shadow used to be the templates' own baked red
+   * and the caption had to say so; the user then ruled that it takes the
+   * client's deeper colour, so the caption says what it now does. A caption
+   * still pointing at the template would be the retired one.
    */
-  it('does not claim the shadow comes from the palette', () => {
-    expect(PALETTE_MEANING.primary).toContain('template');
+  it('names the shadow, which is what primary now draws', () => {
+    expect(PALETTE_MEANING.primary).toContain('shadow behind every word');
+    expect(PALETTE_MEANING.primary).not.toContain('template');
   });
 
   it('a colour with more than one job says so rather than picking one', () => {
@@ -51,9 +52,13 @@ describe('what each colour does', () => {
     expect(PALETTE_MEANING.background).toContain(' and ');
   });
 
-  it('shows the two subtitle colours first', () => {
-    expect(paletteRolesInDisplayOrder()).toEqual(['light', 'accent', 'background', 'primary']);
-    expect(PALETTE_DISPLAY_ORDER.slice(0, 2)).toEqual(['light', 'accent']);
+  /**
+   * `primary` moved up when the shadow started taking it: it draws behind every
+   * word on screen, and it was last while it did nothing a viewer could see.
+   */
+  it('shows the colours that touch words first', () => {
+    expect(paletteRolesInDisplayOrder()).toEqual(['light', 'accent', 'primary', 'background']);
+    expect(PALETTE_DISPLAY_ORDER.slice(0, 3)).toEqual(['light', 'accent', 'primary']);
   });
 
   it('survives a role being added without dropping it off the screen', () => {
