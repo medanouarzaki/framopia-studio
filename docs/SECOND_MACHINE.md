@@ -24,7 +24,9 @@ the steps, so nothing below surprises you.
 **What works today.** Four of the five test videos — `test-1`, `test-2`,
 `test-3` and `vitasilk` — build all the way to a saved After Effects project,
 in two to six seconds each, and **cost nothing**, because every paid answer they
-need is already saved and travels with the project. That is what a good run
+need is already saved and travels with the project. **Those four are the set
+`npm run golden` checks** (§15): your Mac builds them, and about 17,000 details
+of the result are compared against what the first Mac produced. That is what a good run
 looks like: four videos built, `$0.00` spent. The repository can live in any
 folder on your Mac; it used to have to sit at one exact path and no longer does.
 
@@ -66,10 +68,14 @@ and neither should ever be put there.
 ### Do this first, and send this back
 
 **First:** work through §1 to §11, then run `npm run doctor` until it stops
-printing blockers. That one command is the whole test of your setup.
+printing blockers. That one command is the whole test of your setup. Then run
+`npm run golden` (§15), which is the whole test of whether your Mac builds what
+ours builds — four videos, about 17,000 details compared, and it should end in
+`golden: PASS`.
 
 **Send back:** the table in §12, filled in — especially any line where what you
-saw differs from what this document says. That is the only file we need.
+saw differs from what this document says — and, if `npm run golden` did not end
+in `PASS`, everything it printed. Those are the only things we need.
 
 ---
 
@@ -427,6 +433,59 @@ npm run check
 ```
 
 **You should see:** a lot of test output ending in `check: PASS`.
+
+---
+
+## 15. The last step: does your Mac build the same thing ours does
+
+Once `npm run doctor` has stopped printing blockers, this is the step that
+answers the question the whole exercise is for.
+
+```
+cd "<repo>"
+npm run golden
+```
+
+**It costs nothing.** It builds four of the videos — `test-1`, `test-2`,
+`test-3` and `vitasilk` — exactly as the tool normally would, then measures
+about **17,000 details** of what came out: every word on every card, the
+typeface and size each was set in, which words had to be made smaller to fit,
+where every picture sits and how big it is, which picture file each one used,
+how loud every sound is, and how many layers each composition ended up with.
+Then it compares all of that against a recording made on the first Mac.
+
+It takes about half a minute. **After Effects has to be open.**
+
+**You should see:** four lines reading `ok`, then
+
+```
+golden: 4 of 4 reels matched, field for field
+golden: PASS
+```
+
+### If it does not say PASS
+
+**Send us the output and stop there.** Do not change anything, do not rebuild,
+do not reinstall. A difference is exactly the thing this was built to find, and
+it is a finding rather than a fault — it is far more useful to us than a clean
+run.
+
+The output names every detail that differed, what we recorded and what your Mac
+produced, so it tells us what happened without any guesswork. The three likeliest
+explanations, none of which is anything you did wrong:
+
+- **A different version of After Effects.** Ours is 26.0x67, and the run prints
+  both versions side by side. A newer one may lay text out very slightly
+  differently.
+- **A typeface that resolved differently.** See §7 — After Effects makes up its
+  own name for some fonts, and yours may make up a slightly different one.
+- **Saved work that did not copy across completely.** If a picture file from §12
+  is missing, the tool will place a different one, and this will say which.
+
+**`ground-truth`, the fifth video, is deliberately not in this check.** Its
+pictures were never bought, so it cannot be built at all — see *What you are
+receiving* at the top. Four videos is a stronger test than one, and adding the
+fifth would only add a failure we already know about.
 
 ---
 

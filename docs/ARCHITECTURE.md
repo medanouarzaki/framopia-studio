@@ -232,7 +232,17 @@ Sample frames at ~2 fps → person masks → per-frame free rectangles top/left/
 - **ExtendScript debugging:** VS Code + ExtendScript Debugger extension, launch config committed in the repo.
 - **Node:** LTS via nvm; version pinned in `.nvmrc`. **Python:** 3.11+ venv at `tools/cv/.venv`, `requirements.txt` pinned.
 - **Keys/config:** `.local/config.json` per machine (gitignored): API keys, port file location, machine label. A `config.example.json` is committed.
-- Exact bootstrap commands live in CLAUDE.md and the Block 1 report; second-machine install doc is a Block 10 deliverable.
+- Exact bootstrap commands live in CLAUDE.md and the Block 1 report; the second-machine install doc is `docs/SECOND_MACHINE.md`.
+
+### 7.1 The check surface
+
+Three commands, answering three different questions, and none substitutes for another.
+
+- **`npm run check`** — is the code correct here. Typecheck, lint and tests across every workspace, plus the gates that read real artifacts: the client modes, the template manifest against the audited `library.aep`, the CEP manifest, every `.jsx` against ES3 and ExtendScript's reserved words, and the hand-made references (present, readable, parseable, then each transcript's declared orthography version). It builds nothing and needs no After Effects.
+- **`npm run doctor`** — is *this machine* able to run the pipeline at all. 24 checks, each reporting `present`, `absent` or **`unknown`** — never folding "cannot tell" into "fine" — with the measured value beside each verdict, and exiting non-zero only for an absent `run` or `build` requirement. Read-only; it reports and never repairs.
+- **`npm run golden`** — does *this machine* build the same thing. It builds the four reels of the golden set, censuses each in After Effects, and compares roughly 17,000 fields per run against `benchmarks/references/golden/census.json`: every card's text, face, size and shrink factor, every placement and scale, every audio level, every layer count, and the file behind every picture. A difference fails the run naming the field and both values. Free by construction — it builds and never runs a billable stage — and it reports the ledger at both ends. Recording a reference is `--record`, a separate and explicit action.
+
+`ground-truth` is outside the golden set until its images exist. Only two fields are excluded from the comparison, `measuredAt` and `aepSha256`, each measured to vary across 24 builds; absolute paths are made repo-relative rather than excluded, so the repository can live anywhere and a path differing in any other way still fails.
 
 ## 8. Error philosophy
 

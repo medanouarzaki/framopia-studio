@@ -334,6 +334,10 @@ AI-generated contextual images, SFX, and a watermark. Full spec in
   measures cap height, an x-height proxy and advance width at 343 and 425 with
   `sourceRectAtTime`. Adds one temporary comp to the open project and removes
   it; **never saves**. Writes `.local/build/font-measurements.json`.
+- `npm run golden [-- --record] [-- --reference <path>]` — free, local. Builds the
+  four-reel golden set, censuses each in After Effects and compares ~17,000 fields
+  per run against `benchmarks/references/golden/census.json`. Needs After Effects
+  open. See *`npm run golden` is what the second machine is measured against*.
 - `npm run validate:panel` — free, local. Parses `panel/CSXS/manifest.xml` and
   fails on any parse error. Part of `npm run check`.
 - `npm run panel:build` / `npm run panel:dev` — build the CEP panel to
@@ -634,6 +638,53 @@ its tests while the panel was broken in After Effects. Prefer stubbing what the
 **platform** guarantees (`window.location`) over what the **host** might inject,
 and never stub a method the code does not call. Full statement in
 `docs/CLAUDE_CODE_GUIDELINES.md` §3.
+
+### `npm run golden` is what the second machine is measured against
+
+`-- [--record] [--reference <path>]` — free, local. Builds each reel of the
+**golden set** — `test-1`, `test-2`, `test-3`, `vitasilk` — censuses each in
+After Effects immediately after its own build, and compares roughly **17,000
+fields per run** against `benchmarks/references/golden/census.json`. A
+difference fails the run **naming the reel, the field path, the expected value
+and the actual one**; a count is not a finding.
+
+**`ground-truth` is deliberately out of the set**: its six image slots were
+planned and never generated, so it refuses at pre-flight with
+`UnplaceableElementsError` and there is no comp to census. It joins when the
+pictures exist, which is a spending decision.
+
+**Exactly two fields are excluded, and only because they were measured to
+vary.** Twenty-four builds — three of each reel, twice, the second pass after
+the census learned to record image sources — moved `measuredAt` and
+`aepSha256` and nothing else, on every reel: 51,558 field readings, 8 varying.
+Everything else is compared, including every card's text, face, size and shrink
+factor, every position and scale, every audio level and every layer count.
+**Nothing is excluded because another machine might differ** — that is the
+difference this exists to find. Each exclusion carries its evidence in
+`GOLDEN_EXCLUDED_FIELDS`, and a test pins the list at those two.
+
+**Absolute paths are made repo-relative, not excluded**, so a repository in
+another folder compares equal while a path differing in any other way still
+fails.
+
+**It is free by construction, not by sampling.** It builds and censuses;
+neither reaches a paid API, and `golden.test.ts` pins that by reading the CLI's
+own source for `appendCost`, `generateImages`, `runPipeline`, `transcribeHybrid`
+and the Gemini SDK. The ledger is reported at both ends and a move fails the run.
+The pipeline's own dry-run cost is printed beside each reel as information —
+`test-3` would cost $2.3508 if anyone ran its analysis — and is deliberately not
+a refusal, because `test-3` builds perfectly well from what is already on disk.
+
+**Recording is `--record`, a separate and explicit action.** A command that
+quietly rewrites what it checks against is a check that cannot fail. A missing,
+unparseable or reel-short reference is a stated failure naming the file.
+
+**The census records which picture each slot places, since this session.** A
+master's image layers are *comp* layers and carry no `sourceFile`, so a census
+recorded nothing about the pictures at all and a build that placed the wrong one
+matched a reference perfectly. Found by trying to perturb an image path and
+discovering there was none. `imageComps` is a **schema addition, optional with a
+default**, and it is where a partly-copied cache would show up.
 
 ### The gate counts the hand-made references, and says what it counted
 
