@@ -544,13 +544,18 @@ service itself.
 ### The whole of making a video needs no terminal
 
 Open After Effects, open the panel, and everything below is a control on screen:
-choosing a client, setting a new client up (their colours, fonts, logo and
-subtitle height), choosing a video, running the pipeline, editing the words,
+choosing a client, setting a new client up (their colours, fonts, logo, subtitle
+height and their own photographs), adding or forgetting a photograph on a client
+who already exists, choosing a video, running the pipeline, editing the words,
 changing which words are emphasised, choosing between the generated pictures,
 turning the watermark on or off and picking its size, and building the
 composition. **The background service starts itself when the panel opens**, and if
 it is ever out of step with the panel it prepares and restarts itself, saying so
 afterwards.
+
+**Their own photographs are on the client screen since 2026-08-31**, which was the
+last gap in ordinary use. Choose the photo, say what it is, and it is offered for
+every picture in every video of theirs. Forgetting one leaves the file where it is.
 
 Two measurements that used to be terminal commands — the watermark's timing and
 the loudness of the speech — are taken by the pipeline as it runs, so they are not
@@ -563,11 +568,6 @@ part of installing it, and `docs/MACHINE_REQUIREMENTS.md` lists all of it. In
 short: install Node, ffmpeg, the three fonts and After Effects; run `npm install`;
 run `tools/cv/setup.sh` for the picture tools; run `npm run panel:install` once so
 After Effects can see the panel. After that, opening the panel is enough.
-
-**Adding a client's own photographs.** The service has taken them since Block 9 and
-the picture editor already offers them beside the generated ones — the only missing
-piece is a control on the client screen that adds one. This is the next session's
-work and it is the last gap in ordinary use.
 
 **Checking a machine is set up right** — `npm run doctor`. It reports what is
 missing and never repairs anything.

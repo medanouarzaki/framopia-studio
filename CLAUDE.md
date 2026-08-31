@@ -751,16 +751,74 @@ prove on its own: `test-2` built against a scratch client whose `primary` is
 and gold. The scratch plan lived outside the repository and no real plan or mode
 file was touched.
 
-### A client's own pictures are not waiting on anything
+### A client's own photographs are on the client screen
 
-The setup screen said *"Their own pictures are added later, once there are
-videos to use them in."* **Both halves were wrong.** The service has taken them
-since Block 9 — `POST /clients/pictures` and its DELETE — the panel's own
-`addClientPicture` calls that route, and the picture editor already offers a
-client's pictures beside the generated ones per slot. **The only missing piece
-is a control that calls it**: `addClientPicture` is declared and no component
-invokes it. There is no precondition; the screen has not been built. The
-sentence now says that.
+**User ruling, 2026-08-31**: they are added where a client is set up, not in the
+picture editor half-way through a video. Everything else had existed since Block
+9 — `POST /clients/pictures` and its DELETE, the schema, and the picture editor
+offering them per slot beside the generated candidates — and **the only missing
+piece was a control that called it**. That was the last thing in ordinary use the
+panel could not do.
+
+`panel/src/ClientPictures.tsx` is the one component, on **both** client screens,
+because two would drift:
+
+- **The setup form**, where the client does not exist yet, so there is no
+  `/clients/pictures` to call: the list is held on the form and travels with the
+  client. `buildClient` numbers them with the same `nextPictureId` `addPicture`
+  uses, and both go through one `checkPicture` — absolute path, file really
+  there, a description. A setup screen accepting what the client card refuses
+  would write a client file the panel could not have made twice.
+- **The client card**, for a client already saved, where each change goes to the
+  service and the client list is **re-read from it** afterwards.
+  `CatalogueMode.pictures` carries them; **absent means a service older than the
+  panel**, which is not a client with none, so the editor is not rendered at all
+  rather than offering a route that is not there.
+
+**The photograph is chosen, never typed** — `pickImageFile`, the same
+`showOpenDialogEx` the video and logo pickers use — and judged against
+`panel/src/still-formats.ts`, the one declaration of what a still may be, shared
+with the logo. A `.psd` is accepted and reported as unpreviewable; a `.mov` is
+refused by name before he can add it.
+
+**Forgetting is forgetting, and the screen says so**: *"Forgetting a photo leaves
+the file itself exactly where it is."* Nothing copies the file and nothing
+deletes it.
+
+**Driven end to end against the real service, 2026-08-31**: the built panel added
+a photograph to **K2 Syndicalia**, the thumbnail drew from the file itself
+(962x1077 decoded), the picture then appeared on **all five** of `vitasilk`'s
+slots in the picture editor with a Use control, and Forget removed it —
+`modes/k2-syndicalia.json` **byte-identical at both ends**, `sha c600905c…`, and
+no plan touched. Observed in Playwright's Chromium launched with the host's own
+file and cross-origin allowances, **not inside CEP**.
+
+### Nothing that names a file on this machine is sent to a model
+
+`core/src/outgoing-text.ts`, called from `generateImages` immediately before
+`client.generate` on both the prompt and the negative prompt.
+
+**The rule it guards is `client-pictures.ts`'s first one** — a client's own
+photograph never leaves this machine — and until now that rule was held only by a
+source scan over `service/src/images/` for the words `clientPictures`,
+`chosenClientPictureId` and `client-pictures`. **That catches the obvious mistake
+and nothing else**: a file reading `mode.pictures` directly, or a path reaching a
+prompt from anywhere upstream, passes it in silence. Now that there is a control
+that adds photographs, that gap matters more than it did when nothing could.
+
+It looks for **a path, not for a photograph**, deliberately: a guard that had to
+know which paths were photographs would have to read the client's pictures, which
+is exactly what the source scan forbids the image graph from doing. **All 30
+prompt and negative-prompt strings stored across the five plans pass it**, and
+`generate.test.ts` proves it refuses before any request reaches the client —
+demonstrated failing by deleting the two calls.
+
+**A client's photographs are not in the backup set, and that is a finding rather
+than a fix.** Measured against `surveyGroups` this session: 126 files across nine
+groups, none of them a photograph, and **no still under the footage directory is
+swept** — `plans` filters `.editplan.json`, `images` walks `cutouts/`, `footage`
+takes video extensions only. The client file names the path and is in git; the
+photograph itself is wherever he put it, and `npm run backup` will not save it.
 
 ### A card fits its comp in both directions, and only width was ever checked
 
@@ -891,7 +949,8 @@ field also takes the other still-image formats After Effects imports.
 is mirrored from `service/src/clients/videos.ts` and pinned by a test, and
 nothing equivalent had been written down for stills — so it is recorded as a
 decision in `docs/PROJECT_SPEC.md` §5 and declared once in
-`panel/src/logo-formats.ts`, which the dialog filters on.
+`panel/src/still-formats.ts`, which the dialog filters on — the same set governs
+a client's own photographs.
 
 **The panel can draw only png, jpg, jpeg, gif and bmp.** A `.psd` is a
 legitimate choice and still cannot be shown, so the screen says which of the two
