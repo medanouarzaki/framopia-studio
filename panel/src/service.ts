@@ -288,9 +288,22 @@ export async function openVideo(connection: Connection, filePath: string): Promi
  * sentence saying why — an empty chooser would read as "this machine has no
  * fonts", which is never true.
  */
-export async function loadFonts(
-  connection: Connection,
-): Promise<{ available: boolean; names: string[]; families: number | null; trouble: string | null }> {
+export interface ResolvedFace {
+  file: string | null;
+  axes: Record<string, number>;
+  why: string | null;
+}
+
+export interface FontList {
+  available: boolean;
+  names: string[];
+  families: number | null;
+  trouble: string | null;
+  /** Optional with a default: a service older than session 17 resolves nothing. */
+  faces?: Record<string, ResolvedFace>;
+}
+
+export async function loadFonts(connection: Connection): Promise<FontList> {
   try {
     const res = await fetch(`http://127.0.0.1:${connection.port}/fonts`, {
       headers: { 'x-service-token': connection.token },
@@ -303,12 +316,7 @@ export async function loadFonts(
         trouble: 'this service is too old to list the fonts',
       };
     }
-    return (await res.json()) as {
-      available: boolean;
-      names: string[];
-      families: number | null;
-      trouble: string | null;
-    };
+    return (await res.json()) as FontList;
   } catch (error) {
     return {
       available: false,

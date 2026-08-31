@@ -1,3 +1,4 @@
+import { LOGO_EXTENSIONS_WITHOUT_DOT } from './logo-formats.js';
 import { VIDEO_EXTENSIONS_WITHOUT_DOT } from './video-extensions.js';
 
 /**
@@ -132,9 +133,10 @@ export function pickFolder(title: string, startIn: string): string | null {
   return pick(title, startIn, true);
 }
 
-/** Image types a logo could reasonably be, in the form CEP wants: no dot. */
-export const IMAGE_EXTENSIONS_WITHOUT_DOT = ['png', 'jpg', 'jpeg', 'tif', 'tiff', 'svg'] as const;
-
+/**
+ * A logo, filtered to what the field accepts, so an unusable file cannot be
+ * chosen in the first place. The list is declared once in `logo-formats.ts`.
+ */
 export function pickImageFile(title: string, startIn: string): string | null {
-  return pick(title, startIn, false, IMAGE_EXTENSIONS_WITHOUT_DOT);
+  return pick(title, startIn, false, LOGO_EXTENSIONS_WITHOUT_DOT);
 }

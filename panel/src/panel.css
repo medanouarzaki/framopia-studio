@@ -636,3 +636,7 @@ section.client .say, section.video .say { margin: 8px 0 0; color: var(--muted); 
 .colours .colour .what { flex: 1; font-size: 0.78em; color: var(--muted); }
 .colours .colour code { font-size: 0.72em; color: var(--faint); }
 
+/* The font list is searchable and the sample is drawn in the real face. */
+.fontfield .fontsearch { width: 100%; }
+.fontsample.cannot { color: var(--faint); font-size: 0.78em; font-style: italic; }
+

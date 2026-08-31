@@ -4,10 +4,16 @@ import {
   loadFonts,
   loadSubtitlePreview,
   type Connection,
+  type FontList,
   type SubtitlePreview,
 } from './service.js';
 import { fileDialogSupport, pickFolder, pickImageFile } from './file-dialog.js';
 import { fileUrl } from './picture.js';
+import {
+  LOGO_EXTENSIONS_WITHOUT_DOT,
+  judgeLogo,
+  logoVerdictSentence,
+} from './logo-formats.js';
 import type { ClientMode } from './types.js';
 
 /**
@@ -69,9 +75,12 @@ export function NewClient({
   const [baseline, setBaseline] = useState('');
   const [watermark, setWatermark] = useState(true);
   const [palette, setPalette] = useState<Record<string, string>>(DEFAULT_PALETTE);
-  const [fonts, setFonts] = useState<{ available: boolean; names: string[]; trouble: string | null }>(
-    { available: false, names: [], trouble: null },
-  );
+  const [fonts, setFonts] = useState<FontList>({
+    available: false,
+    names: [],
+    families: null,
+    trouble: null,
+  });
   const [preview, setPreview] = useState<SubtitlePreview | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -81,9 +90,7 @@ export function NewClient({
 
   useEffect(() => {
     if (connection === null) return;
-    void loadFonts(connection).then((f) =>
-      setFonts({ available: f.available, names: f.names, trouble: f.trouble }),
-    );
+    void loadFonts(connection).then(setFonts);
     void loadSubtitlePreview(connection).then(setPreview);
   }, [connection]);
 
@@ -189,12 +196,13 @@ export function NewClient({
           <>
             <PathField
               label="Logo"
-              hint="Their logo. Optional."
+              hint={`A PNG with a transparent background is what this expects. ${LOGO_EXTENSIONS_WITHOUT_DOT.join(', ')} are accepted. Optional.`}
               value={logoPath}
               onChange={setLogo}
               choose={() => pickImageFile('Choose their logo', logoPath)}
               chooseLabel="Choose file…"
               dialog={dialog.available}
+              say={logoVerdictSentence(judgeLogo(logoPath))}
             />
             <label className="field">
               <span>Video shape</span>
@@ -324,6 +332,7 @@ function PathField({
   choose,
   chooseLabel,
   dialog,
+  say,
 }: {
   label: string;
   hint: string;
@@ -332,6 +341,8 @@ function PathField({
   choose: () => string | null;
   chooseLabel: string;
   dialog: boolean;
+  /** Said the moment he picks, not at build time three steps later. */
+  say?: string | null;
 }): JSX.Element {
   return (
     <div className="field stacked pathfield">
@@ -362,6 +373,11 @@ function PathField({
           onChange={(e) => onChange(e.target.value)}
         />
       )}
+      {say == null ? null : (
+        <p className="say" role="status">
+          {say}
+        </p>
+      )}
       <em className="hint">
         {hint}
         {dialog ? '' : ' This copy of After Effects offers no file chooser, so type the full path.'}
@@ -371,22 +387,101 @@ function PathField({
 }
 
 /**
- * A face chosen from what After Effects actually has.
+ * The sample, drawn in the face he chose or not drawn at all.
+ *
+ * **A wrong sample is worse than no sample.** Session 16 set `font-family` to
+ * After Effects' name and let the browser fall back — so choosing the *italic*
+ * `AdobeClean-It` drew upright text in a plain sans, showing a font nobody
+ * picked. That is the same silent substitution `docs/PROJECT_SPEC.md` guards
+ * against in the build, where After Effects accepts a name it cannot resolve and
+ * quietly sets something else.
+ *
+ * So the face is loaded from its own file. The service resolves the name through
+ * CoreText — the only thing that knows After Effects' naming for a variable
+ * font's instance — and hands back the file and its axes. A face with no file is
+ * said to be unpreviewable rather than approximated.
+ *
+ * `font-variation-settings` is not decoration: the file behind `Inter-SemiBold`
+ * is `Inter-VariableFont`, whose default instance is Regular. Loading it without
+ * `wght: 600` would draw the wrong weight and call it the sample.
+ */
+function fontFaceRule(name: string, face: { file: string | null }): string | null {
+  if (face.file === null) return null;
+  return `@font-face { font-family: "${cssFamilyFor(name)}"; src: url("${fileUrl(face.file)}"); }`;
+}
+
+/** A family name of our own, so nothing collides with an installed one. */
+function cssFamilyFor(name: string): string {
+  return `framopia-sample-${name.replace(/[^A-Za-z0-9-]/g, '_')}`;
+}
+
+function variationSettings(axes: Record<string, number>): string | undefined {
+  const entries = Object.entries(axes);
+  if (entries.length === 0) return undefined;
+  return entries.map(([tag, value]) => `"${tag}" ${value}`).join(', ');
+}
+
+function FontSample({
+  name,
+  face,
+  rtl,
+}: {
+  name: string;
+  face: { file: string | null; axes: Record<string, number>; why: string | null } | undefined;
+  rtl: boolean;
+}): JSX.Element {
+  /*
+   * Arabic sample: a real word rather than a pangram, because Arabic has no
+   * conventional one and a made-up string would show nothing about the face.
+   * "شنو كتعرفي" — "what do you know" — is from the corpus's own speech, is short
+   * enough to fit the field, and exercises initial, medial and final forms.
+   */
+  const text = rtl ? 'شنو كتعرفي' : 'The quick brown fox';
+  if (face === undefined || face.file === null) {
+    return (
+      <p className="fontsample cannot">
+        This font cannot be shown here{face?.why == null ? '' : ` — ${face.why}`}. It will still
+        be used in the composition.
+      </p>
+    );
+  }
+  const family = cssFamilyFor(name);
+  const settings = variationSettings(face.axes);
+  return (
+    <>
+      <style>{fontFaceRule(name, face)}</style>
+      <p
+        className="fontsample"
+        dir={rtl ? 'rtl' : 'ltr'}
+        style={{
+          fontFamily: `"${family}"`,
+          ...(settings === undefined ? {} : { fontVariationSettings: settings }),
+        }}
+      >
+        {text}
+      </p>
+    </>
+  );
+}
+
+/**
+ * A face chosen from what After Effects actually has, and searchable.
  *
  * **The names are After Effects' own**, read from `app.fonts.allFonts` through
- * the service. Block 10 session 12 measured that macOS publishes different ones
- * for a variable font's instance — `Inter-Regular_SemiBold` where After Effects
- * says `Inter-SemiBold` — so a list built from the system would offer names no
- * build can use.
+ * the service. Session 12 measured that macOS publishes different ones for a
+ * variable font's instance — `Inter-Regular_SemiBold` where After Effects says
+ * `Inter-SemiBold` — so a list built from the system would offer names no build
+ * can use.
+ *
+ * **1,188 names is not a list you can scroll.** Finding `Inter-SemiBold` meant
+ * passing every Adobe UI face on the machine, so the field filters as he types.
+ * **Nothing is ever removed from it**: a hidden font is a font he cannot choose,
+ * and this is his tool for his clients' brands. What typing does is narrow, and
+ * clearing the box gives the whole list back.
  *
  * **A list that could not be built is said out loud and the field falls back to
  * text.** An empty chooser and a chooser that could not be filled look the same
  * on screen and mean opposite things.
- *
- * The sample beneath is set in the chosen face, the same way the client card
- * shows a client's type. It is drawn by the panel's Chromium, which resolves
- * font names its own way, so a name it cannot match falls back to the standard
- * face — the choice is still correct, only the preview is approximate.
  */
 function FontField({
   label,
@@ -400,22 +495,47 @@ function FontField({
   hint: string;
   value: string;
   onChange: (value: string) => void;
-  fonts: { available: boolean; names: string[]; trouble: string | null };
+  fonts: FontList;
   rtl?: boolean;
 }): JSX.Element {
-  const sample = rtl ? 'شنو كتعرفي' : 'The quick brown fox';
+  const [search, setSearch] = useState('');
+  const needle = search.trim().toLowerCase();
+  const shown =
+    needle === '' ? fonts.names : fonts.names.filter((n) => n.toLowerCase().includes(needle));
+  const faces = fonts.faces ?? {};
   return (
     <div className="field stacked fontfield">
       <span>{label}</span>
       {fonts.available ? (
-        <select aria-label={label} value={value} onChange={(e) => onChange(e.target.value)}>
-          <option value="">The standard one</option>
-          {fonts.names.map((name) => (
-            <option key={name} value={name}>
-              {name}
-            </option>
-          ))}
-        </select>
+        <>
+          <input
+            type="search"
+            className="fontsearch"
+            aria-label={`Search ${label.toLowerCase()}s`}
+            placeholder="Type to narrow the list"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          <select
+            aria-label={label}
+            size={search === '' ? undefined : 8}
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+          >
+            <option value="">The standard one</option>
+            {shown.map((name) => (
+              <option key={name} value={name}>
+                {name}
+              </option>
+            ))}
+          </select>
+          {needle === '' ? null : (
+            <em className="hint">
+              {shown.length} of {fonts.names.length} faces. Nothing is hidden — clear the box for
+              all of them.
+            </em>
+          )}
+        </>
       ) : (
         <input
           type="text"
@@ -424,15 +544,7 @@ function FontField({
           onChange={(e) => onChange(e.target.value)}
         />
       )}
-      {value === '' ? null : (
-        <p
-          className="fontsample"
-          dir={rtl ? 'rtl' : 'ltr'}
-          style={{ fontFamily: `"${value}", sans-serif` }}
-        >
-          {sample}
-        </p>
-      )}
+      {value === '' ? null : <FontSample name={value} face={faces[value]} rtl={rtl} />}
       <em className="hint">
         {hint}
         {fonts.available || fonts.trouble === null
