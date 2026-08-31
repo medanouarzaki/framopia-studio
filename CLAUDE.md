@@ -130,7 +130,7 @@ A session looking for something opens the document, not this file.
 | `docs/TEMPLATE_LIBRARY_GUIDE.md` | The template contract, the manifest schema, SFX binding, and what has been measured inside the comps. |
 | `docs/TEMPLATE_BUILD_SPEC.md` | What the six comps were built against. |
 | `docs/TEMPLATE_STYLE_PASS.md` | The style pass the user works from. |
-| `docs/ORTHOGRAPHY_GUIDE.md` | How Darija is written. Versioned; the transcription cache keys on its version. |
+| `docs/ORTHOGRAPHY_GUIDE.md` | How speech is written down — **v2.0.0: Arabic in Arabic letters, French and English as they are.** Versioned; the transcription cache keys on its version, and an older entry is reused rather than re-billed. |
 | `docs/MACHINE_REQUIREMENTS.md` | Everything a machine must have, with the file and line that needs it. |
 | `docs/SECOND_MACHINE.md` | Setting up the partner's machine, and what still needs a terminal. |
 | `docs/BLOCKS.md` | The block plan and its dependency sketch. |

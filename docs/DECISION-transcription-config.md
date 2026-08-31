@@ -321,3 +321,62 @@ version, the mode content the call reads, the transcript or the candidate count
 the corpus at the current guide, what it costs at that point, and whether a
 reference collected against v1.0.7 pairings can be carried forward or has to be
 re-made. Nothing here forecloses it.
+
+## Amendment — Arabic is written in Arabic letters (2026-08-31)
+
+**User ruling, 2026-08-31.** `docs/ORTHOGRAPHY_GUIDE.md` is at **v2.0.0**:
+
+> **Arabic is written in Arabic letters. French and English are written as they
+> are.**
+
+One rule, and no judgement about whether a French word is technical enough.
+`3ndk` becomes `عندك`; `les cernes pigmentés` stays Latin; `alors` and
+`la vidéo` stay Latin because they are French; `sana`, `yom` and `l7essass`
+become Arabic because they are Arabic.
+
+**Why it reverses the founding assumption.** Every version from v1.0.0 to
+v1.0.8 wrote Moroccan Darija in **Arabizi** and reserved Arabic script for a
+named medical domain and for formal MSA. That was a Moroccan-agency habit, and
+the tool is now being built for Arabic content creators whose speech is mostly
+Arabic with some English. Measured against the corpus, the old rule put only
+**13.1% of words — 45 of 343 — in Arabic script.**
+
+**What did not change.** `ACTIVE_PROMPT_VERSION = 4` is unmoved. The prompt's
+shape is unmoved: same head, same `SCRIPT_RULES` block, same two restated
+spelling rules, same response shape, same keyterms position. What changed is
+**what those rules say**, and the guide they carry, both of which are the
+guide's business rather than the prompt's.
+
+**Nothing already transcribed re-bills, and this was measured rather than
+reasoned about.** `guideVersion` is one of the five transcription fingerprint
+inputs, so a bump does move the fingerprint — but `resolveTranscriptionEntry`
+resolves **`compatible`** for an entry at the same prompt version and an older
+guide, and reuses it. Run against the real cache after the bump, all five reels
+resolve `compatible` on `transcription-758a3924d090d1b5` (prompt v4, guide
+v1.0.7), and every reel's dry run reports transcription as **skip**. The corpus
+therefore stays Arabizi until somebody deliberately re-transcribes it.
+
+**Two orthography instructions live in code, not in the guide, and both were
+rewritten in the same commit** — `SCRIPT_RULES` in `core/src/script-rules.ts`
+and the version-4 `spellingRules` block in
+`service/src/transcription/correction.ts`. Both restated the Arabizi rules
+verbatim; leaving them would have sent the model a guide saying one thing and a
+prompt saying the opposite. **Neither is covered by any fingerprint input** —
+the cache keys on the guide's *version*, not on the prompt's text — so they must
+be changed with the guide or not at all, and a test now fails if an Arabizi
+instruction reaches the prompt again.
+
+**The four hand-written ground-truth transcripts are pinned at v1.0.8 and are
+not rewritten.** `REFERENCE_ORTHOGRAPHY_VERSION` in
+`benchmarks/src/verify-references.ts` is the pin; before it, `npm run check`
+compared each reference's header against whatever version the guide currently
+carried, which under v2.0.0 asks whether a record of what was said obeys a rule
+made afterwards. The conformance scorer is unchanged for the same reason: it
+scores the v1.0.x rules, which are the rules those four files were written
+under.
+
+**What this leaves open.** No reel has ever been transcribed under v2.0.0, so
+nothing here is evidence that the new rules produce a better transcript — only
+that the configuration is consistent and costs nothing to adopt. Judging a
+v2.0.0 run needs a reference in the new orthography, and the four that exist are
+Arabizi.
