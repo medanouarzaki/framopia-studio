@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { buildFonts } from '@framopia/core/build-fonts';
 import {
   connect,
+  MAX_REPAIR_ATTEMPTS,
+  repairService,
   fetchDryRun,
   fetchJob,
   fetchModes,
@@ -95,6 +97,10 @@ function Panel({
 }): JSX.Element {
   const { host, logoSrc } = env;
   const [service, setService] = useState<ServiceState>({ kind: 'starting' });
+  // Bounded self-repair of a panel/service build mismatch: see the effect below.
+  const [repairs, setRepairs] = useState(0);
+  const [repairing, setRepairing] = useState(false);
+  const [repaired, setRepaired] = useState<string | null>(null);
   const [reels, setReels] = useState<Reel[]>([]);
   const [modes, setModes] = useState<ClientMode[]>([]);
   const [reelLabel, setReelLabel] = useState<string>('');
@@ -145,6 +151,37 @@ function Panel({
   useEffect(() => {
     void check();
   }, [check]);
+
+  /*
+   * A service built from other code than this panel repairs itself.
+   *
+   * The detection is unchanged and is right every time; what changed is that it
+   * no longer ends in a command for someone to type. Bounded to
+   * MAX_REPAIR_ATTEMPTS per panel session: a panel that restarts a service in a
+   * loop is worse than a banner, so after the bound the mismatch is simply
+   * reported and left alone.
+   */
+  useEffect(() => {
+    if (service.kind !== 'healthy') return;
+    const mismatched =
+      stalenessOf(panelBuildStamp(), service.health.buildStamp).verdict === 'different';
+    if (!mismatched) return;
+    if (repairs >= MAX_REPAIR_ATTEMPTS) return;
+
+    let cancelled = false;
+    setRepairs((n) => n + 1);
+    setRepairing(true);
+    void (async () => {
+      const outcome = await repairService(host, service.health.process?.pid ?? null, panelBuildStamp());
+      if (cancelled) return;
+      setRepairing(false);
+      setRepaired(outcome.said);
+      await check();
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [service, repairs, host, check]);
 
   /*
    * A service that dies while the panel is open would otherwise leave `Ready`
@@ -360,6 +397,15 @@ function Panel({
     panelBuildStamp(),
     service.kind === 'healthy' ? service.health.buildStamp : undefined,
   );
+  /*
+   * What the user reads about the mismatch. While the repair runs it says so;
+   * afterwards it says what happened, in the past tense, because by then there
+   * is nothing for them to do. Only an unrepaired mismatch shows the detection's
+   * own words.
+   */
+  const staleLine = repairing
+    ? 'The background service was out of date. Bringing it up to date now — this takes a few seconds.'
+    : (repaired ?? stale.detail);
 
   if (newClient !== null) {
     return (
@@ -401,7 +447,7 @@ function Panel({
           attemptedAt={attemptedAt}
           onRetry={onRedetect}
           resolvedNode={host.resolveNode()}
-          stale={stale.detail}
+          stale={staleLine}
           fileDialog={dialog.detail}
         />
 
@@ -559,7 +605,7 @@ function Panel({
             connection={connection}
             preview={plan?.build}
             ready={reel !== null && mode !== null}
-            stale={stale.detail}
+            stale={staleLine}
             disabled={buildStep?.available !== true}
             disabledReason={buildStep?.reason ?? null}
             issues={buildStep?.issues ?? []}

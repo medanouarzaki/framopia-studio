@@ -383,8 +383,12 @@ describe.skipIf(!built)('the spawn path in a real browser', () => {
       await page.waitForSelector('.dot.unreachable', { timeout: 15_000 });
       const card = (await page.locator('section.readiness').textContent()) ?? '';
 
-      expect(card).toContain('not built');
+      expect(card).toContain('has not been prepared yet');
       expect(card).toContain(`${REPO}/service/dist/service.js`);
+      // It tries to prepare it rather than naming a command, and says so when
+      // it cannot. Nothing here is a thing for a person to type.
+      expect(card).toContain('could not be prepared');
+      expect(card).not.toContain('npm run');
       /*
        * The regression: a path starting at the root of the disk, which is what
        * an empty repository root composes into. The correct path contains the
@@ -2661,15 +2665,21 @@ describe.skipIf(!built)('the build-stamp check', () => {
     }
   }, 30_000);
 
-  it('names a service built from other code, and gives a command that works', async () => {
+  it('names a service built from other code and says it is being put right', async () => {
     const loaded = await loadWithStamp('0000000000+ffffffffffffffff');
     if (loaded === null) return;
     try {
+      /*
+       * The panel repairs this itself, so what is on screen is the repair and
+       * not an instruction. It says it is bringing the service up to date while
+       * it works, then says what happened; against a stub host the repair
+       * cannot succeed, so the settled sentence is the failure — and neither
+       * sentence contains a command.
+       */
       const text = (await loaded.page.textContent('main')) ?? '';
-      expect(text).toContain('built from different code than this panel');
-      // The remedy has to be the one that works: plain `npm run service`
-      // exits 1 while a service is running, which is always the case here.
-      expect(text).toContain('npm run service -- --force');
+      expect(text).toContain('The background service was out of date');
+      expect(text).not.toContain('npm run');
+      expect(text).not.toContain('terminal');
       expect(loaded.uncaught).toEqual([]);
     } finally {
       await loaded.page.close();

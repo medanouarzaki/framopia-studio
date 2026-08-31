@@ -18,11 +18,17 @@ describe('stalenessOf', () => {
     expect(stalenessOf(stamp, stamp)).toEqual({ verdict: 'match', detail: null });
   });
 
-  it('says so, with a remedy, when the service is a different build', () => {
+  it('says so, and that it is being put right, when the build differs', () => {
     const stale = stalenessOf(stamp, 'abc1234567+ffff');
 
     expect(stale.verdict).toBe('different');
-    expect(stale.detail).toContain('npm run service -- --force');
+    expect(stale.detail).toContain('Restarting it now');
+  });
+
+  it('gives no command to type — the panel repairs this itself', () => {
+    const stale = stalenessOf(stamp, 'abc1234567+ffff');
+    expect(stale.detail).not.toContain('npm run');
+    expect(stale.detail).not.toContain('terminal');
   });
 
   it('is quiet, and not an accusation, when either side cannot say', () => {
