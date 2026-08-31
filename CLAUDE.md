@@ -9208,3 +9208,80 @@ It failed 5 under the full check, failed 4 with the panel workspace run **alone*
 then passed 190/192 alone and 190/192 under a second full check. Sessions 14–23
 recorded it as flaking under parallel load; that does not fit. Genuinely
 intermittent, cause unknown.
+
+
+## Block 10 session 25 — a build writes itself onto the plan
+
+**Spent $0.00.** Ledger 118 lines / `3f657131…` at both ends; `templates/library.aep`
+untouched at `d2bbb6b7…`; the six references and the cache byte-identical; fonts
+1198 → 1198. Four plans gained a build record; `ground truth` is byte-identical.
+
+### Nothing wrote `plan.build`, for the whole of the product's life
+
+`build` has been in the schema since the Edit Plan's first version and **two lines
+in the repository touched it**: `createEditPlan` wrote `{status:'none'}` and
+`mergeIntoExistingPlan` marked a `built` plan `stale`. Nothing ever set `built`, so
+every plan read `none` however many times it had been built and a built reel was
+indistinguishable from one that never was. Session 1 of this block found it; it
+stood for twenty-four sessions.
+
+**`service/src/build/build-record.ts` is the writer**, called from
+`build-reel-cli.ts` — **never from `job.ts`**, which spawns the CLI and parses its
+stdout. Same rule as `appendCost` and for the same reason: a wrapper cannot know
+whether the thing it wraps really happened, so it fabricates. Four tests read the
+sources with comments stripped and pin where the write lives; adding a line
+mentioning `buildRecordFor` to `job.ts` fails one of them.
+
+**It is written last, after every check that can still refuse.**
+`assertEveryCardFits` and the audio-start comparison both run *after* After Effects
+has saved the file and both exit non-zero, so recording at the save point would put
+`built` on a plan the same run then rejects.
+
+**The file is checked, not trusted.** No save path, nothing at the path, or an empty
+file each refuse and leave the plan saying nothing — a plan claiming a build that
+produced no file is worse than one claiming nothing, because the claim is what a
+later session acts on.
+
+**A failed build leaves an earlier record alone.** It did not un-build the last one;
+that `.aep` still exists and the record is still true. `stale` is deliberately not
+set here — that word belongs to `mergeIntoExistingPlan`, where it means the plan has
+moved on from the comp.
+
+**`aepPath` is re-rooted by `resolvePlanPaths` inside `readEditPlan`**, beside
+`source.videoPath` and the image candidates, so a plan built here resolves on the
+partner's machine. No schema change was needed: `build` was already required and
+present on every plan.
+
+### The stale branch runs for the first time, and nothing acts on it
+
+Demonstrated on a scratch copy of `vitasilk` so no real reel lost its keywords or
+its ten images: `built` → **`stale`** on a one-word transcript edit, with `aepPath`
+and `builtAt` kept. `merge.test.ts` had covered the branch since it was written —
+with a literal a test chose — so the branch was tested while the chain was
+impossible; three new tests build the record with `buildRecordFor` and close the
+loop.
+
+**Nothing reads `plan.build`.** The panel does not mention it, the build does not
+refuse a stale plan, the dry run does not report it. (`plan?.build` in `App.tsx` is
+`steps.ts`'s build *preview*, a different field with the same name.) So a reachable
+branch is not yet a working feature, and whether a stale reel should say so on
+screen is a ruling for the user.
+
+### What a build now changes on disk
+
+Exactly three fields per plan, all under `build`, and **`meta.updatedAt`
+deliberately does not move** — a build does not change the plan's content, only the
+record of what was made from it. `ground truth` stays `none`, correctly, because it
+cannot build.
+
+**`npm run golden` is unaffected at 17,174 fields** — the census reads built comps
+and never the plan — checked by running it rather than assumed, and nothing was
+re-recorded. One consequence: golden builds all four reels, so every golden run now
+updates four `builtAt` timestamps.
+
+### The panel flake failed running alone again
+
+Failed 4 in the first full check, **failed 5 with the panel workspace run alone**,
+passed 190/192 in the second full check. Third session running where alone did not
+help, so session 24's correction stands: the old "parallel load" explanation is
+wrong and the cause is unknown.
