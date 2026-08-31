@@ -34,11 +34,17 @@ npx tsx tools/validate-templates/cli.ts
 # comment.
 npx tsx tools/validate-panel/cli.ts
 
-# Every reference file's declared version against a clean scorer pass. The
-# `ground-truth` reference asserted v1.0.7 conformance for an entire block
-# while violating v1.0.7, and `test-3` carried two standalone conjunctions
-# that three hand-written token lists all missed, because nothing ever
-# checked. See CLAUDE_CODE_GUIDELINES.md §3.
+# The hand-made references: present, readable and parseable, then each
+# transcript's declared version against a clean scorer pass. The two are
+# different questions — absent is a lost file that nothing can regenerate,
+# non-conformant is a text to correct — and the gate says which.
+#
+# The version half exists because the `ground-truth` reference asserted v1.0.7
+# conformance for an entire block while violating v1.0.7, and `test-3` carried
+# two standalone conjunctions that three hand-written token lists all missed.
+# The presence half exists because Block 10 session 12 found that a deleted
+# transcript failed only as an uncaught ENOENT and a deleted alignment
+# reference failed nothing at all. See CLAUDE_CODE_GUIDELINES.md §3.
 npm run verify-refs --workspace framopia-benchmarks
 
 # The CV sidecar's metric tests. Skipped with a notice when the venv is not

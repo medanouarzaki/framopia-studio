@@ -66,6 +66,18 @@ export {
   fitByLongEdge,
 } from './client-pictures.js';
 export { DOCS_DIR, LOCAL_DIR, REPO_ROOT, ROOT_PACKAGE_JSON } from './paths.js';
+
+export {
+  ALIGNMENT_REFERENCES,
+  REFERENCE_DOCUMENTATION,
+  REFERENCE_FILES,
+  REFERENCE_SET_DEFINITION,
+  TRANSCRIPT_REELS,
+  referenceFilesRootedAt,
+  referenceSetSummary,
+  type ReferenceFile,
+  type ReferenceKind,
+} from './references.js';
 export { SCRIPT_RULES } from './script-rules.js';
 export {
   assertRenderable,
