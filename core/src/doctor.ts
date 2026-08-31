@@ -181,6 +181,42 @@ export interface AeProbeResult {
   preference: boolean | null;
 }
 
+/**
+ * The two lists a font mismatch has to arrive as.
+ *
+ * **After Effects and macOS do not name the same file the same way.** Measured
+ * on 26.0x67 in Block 10 session 12: the system calls the installed files
+ * `Inter-Regular_SemiBold` and `CormorantGaramond-SemiBoldItalic`, while After
+ * Effects reports — and this repo pins — `Inter-SemiBold` and
+ * `CormorantGaramondItalic-SemiBoldItalic`. Both are variable fonts, and After
+ * Effects derives its own family name for an instance rather than taking the
+ * one in the file. `Almarai-Bold`, a static font, agrees.
+ *
+ * So a name that is missing on another machine is not evidence the wrong file
+ * was installed: a different After Effects build could construct a different
+ * name from the correct file. A verdict alone would send someone hunting for a
+ * font they already have, which is why the check reports what it wanted beside
+ * what the host offered under the same family.
+ */
+export function fontFamilyOf(postScriptName: string): string {
+  const cut = postScriptName.indexOf('-');
+  return cut === -1 ? postScriptName : postScriptName.slice(0, cut);
+}
+
+export function compareFontNames(
+  wanted: readonly string[],
+  reported: readonly string[],
+): { missing: string[]; nearby: Record<string, string[]> } {
+  const have = new Set(reported);
+  const missing = wanted.filter((name) => !have.has(name));
+  const nearby: Record<string, string[]> = {};
+  for (const name of missing) {
+    const family = fontFamilyOf(name).toLowerCase();
+    nearby[name] = reported.filter((r) => fontFamilyOf(r).toLowerCase().startsWith(family)).sort();
+  }
+  return { missing, nearby };
+}
+
 export const SCRIPTING_PREFERENCE_PATH =
   'Preferences > Scripting & Expressions > Allow Scripts to Write Files and Access Network';
 

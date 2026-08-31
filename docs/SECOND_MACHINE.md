@@ -16,6 +16,63 @@ until these are fixed"*, you are done.
 
 ---
 
+## What you are receiving
+
+Written from measurement on the first Mac, not from optimism. Read it before
+the steps, so nothing below surprises you.
+
+**What works today.** Four of the five test videos — `test-1`, `test-2`,
+`test-3` and `vitasilk` — build all the way to a saved After Effects project,
+in two to six seconds each, and **cost nothing**, because every paid answer they
+need is already saved and travels with the project. That is what a good run
+looks like: four videos built, `$0.00` spent. The repository can live in any
+folder on your Mac; it used to have to sit at one exact path and no longer does.
+
+**What does not, and is not your fault.** The fifth video, `ground-truth`,
+**will refuse to build**, and that is expected. Its six pictures were never
+bought: the image service has been answering with a capacity error
+(`503 … currently experiencing high demand`) for three sessions running, so the
+pictures do not exist and there is nothing to place. What you will see is:
+
+```
+build refused at pre-flight: 6 element(s) have no placement; refusing to build a comp with gaps:
+  image img001: …
+  image img002: …
+```
+
+**That is the tool being careful, not your setup being wrong.** It would rather
+refuse than hand you a composition with holes in it. Do not try to fix it, and
+do not spend anything trying: buying those six pictures costs about $2.17 and is
+a decision for us, not a setup step.
+
+**What is unverified, and what your run is for.** Every fix-it instruction in
+this document is a first attempt written from the code — see *Read this first*
+below — and three of the doctor's checks have never been seen failing on any
+machine. **Your Mac is the first real test of all of it.** A step that behaves
+differently from what is written here is the most useful thing you can send
+back.
+
+**What you have to measure yourself, and cannot copy over.** Two things are
+measurements *of your machine's own copies of the files*, so copying ours would
+be recording the wrong thing: the **watermark measurement** and the **loudness
+records**. Both are taken automatically the first time a video runs through the
+pipeline; there is nothing for you to do beyond letting it happen once.
+
+**What must never travel, in either direction.** The **API key** — yours is
+yours, and §10 sets it up — and the **cost ledger**, the running record of money
+spent, which each machine keeps from zero. Neither is in the copy you were sent,
+and neither should ever be put there.
+
+### Do this first, and send this back
+
+**First:** work through §1 to §11, then run `npm run doctor` until it stops
+printing blockers. That one command is the whole test of your setup.
+
+**Send back:** the table in §12, filled in — especially any line where what you
+saw differs from what this document says. That is the only file we need.
+
+---
+
 ## Read this first
 
 **None of the fix-it steps below has ever been run on a fresh machine.** They
@@ -186,11 +243,31 @@ Install all three the normal way, by double-clicking the font files and pressing
 *Install Font*. Then **quit After Effects and open it again** — it only reads
 the font list when it starts.
 
+These are ordinary font files. None of them comes from Creative Cloud or Adobe
+Fonts, so there is nothing to subscribe to and nothing to sync — double-clicking
+is genuinely all it takes. That was measured on the first Mac rather than
+assumed.
+
 **Why this matters more than it looks:** if a typeface is missing, After Effects
 does not complain. It quietly substitutes a different one, and the finished
 composition looks built and is set in the wrong type. `npm run doctor` checks
 the three by name, and that check is the only thing standing between a missing
 font and a comp nobody notices is wrong.
+
+**Expect the name in Font Book to look wrong. It is not.** After Effects and
+macOS disagree about what two of these three faces are called — the system says
+`Inter-Regular_SemiBold` and `CormorantGaramond-SemiBoldItalic`, and After
+Effects says `Inter-SemiBold` and `CormorantGaramondItalic-SemiBoldItalic`. Both
+are describing the same file. The names the tool uses are After Effects' names,
+and they were measured inside After Effects on the first Mac; the names your
+system shows are not the same thing and do not need to match.
+
+**So if a build ever refuses because of a font name, do not try to fix it by
+renaming or reinstalling anything.** It is possible that your After Effects
+builds those names slightly differently from the first Mac's, and if so that is
+something for us to change in the tool, not for you to work around. `npm run
+doctor` prints both lists when it disagrees — the name it wanted and the names
+your After Effects offered for the same family. **Send that, and stop there.**
 
 ---
 

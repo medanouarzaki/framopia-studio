@@ -23,6 +23,7 @@ import { createHash } from 'node:crypto';
 import { homedir, hostname, arch, platform, release } from 'node:os';
 import path from 'node:path';
 import {
+  compareFontNames,
   REPO_ROOT,
   loadMode,
   redact,
@@ -901,8 +902,18 @@ function checkFonts(ae: AeState, modeId: string): CheckResult {
       remedyVerified: false,
     };
   }
-  const installed = new Set(ae.fontNames);
-  const missing = wanted.filter((n) => !installed.has(n));
+  const { missing, nearby } = compareFontNames(wanted, ae.fontNames);
+  // A mismatch arrives as two lists, never as a verdict: After Effects names a
+  // variable font's instance differently from the file and from macOS, so a
+  // missing name is not evidence the wrong file was installed.
+  const comparison = missing
+    .map((name) => {
+      const offered = nearby[name] ?? [];
+      return offered.length === 0
+        ? `wanted ${name}; After Effects lists nothing under that family`
+        : `wanted ${name}; After Effects lists ${offered.join(', ')}`;
+    })
+    .join(' | ');
   return {
     id: 'fonts',
     what: 'the client’s faces, by PostScript name',
@@ -910,12 +921,14 @@ function checkFonts(ae: AeState, modeId: string): CheckResult {
     detail:
       missing.length === 0
         ? `${wanted.join(', ')} all listed, among ${ae.fontNameCount ?? '?'} names`
-        : `missing: ${missing.join(', ')} (of ${wanted.join(', ')})`,
+        : comparison,
     blocking: 'build',
     caveat:
       'reported, not certified: a name written but not installed is recorded to stay in ' +
       'app.fonts.allFonts for the rest of the application session, and Block 10 session 1 ' +
-      'could not reproduce that. Restart After Effects for a reading nothing could have polluted.',
+      'could not reproduce that. Restart After Effects for a reading nothing could have polluted. ' +
+      'After Effects names a variable font differently from macOS, so a name missing here is not ' +
+      'evidence the wrong file is installed — report both lists rather than renaming anything.',
     ...(missing.length === 0
       ? {}
       : { remedy: `install ${missing.join(', ')} and restart After Effects`, remedyVerified: false }),

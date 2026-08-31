@@ -78,3 +78,30 @@ lists `source.videoPath` and never `source.audioPath`.
 copies `cached.audioPath` to the canonical location on a cache hit, so a
 transcription run would recreate it; running one is billable and was not
 authorised, so that half stands on the code rather than on a run.
+
+## The font names are After Effects', not the system's
+
+**Measured in Block 10 session 12.** All three K2 faces are plain `.ttf` files
+in `~/Library/Fonts` — `Inter-VariableFont_opsz,wght.ttf`,
+`CormorantGaramond-Italic-VariableFont_wght.ttf` and `Almarai-Bold.ttf`. **None
+comes through Creative Cloud**, so installing them is a matter of copying files;
+no subscription and no font sync is involved. Adobe Fonts *is* running on the
+machine of record and supplies 28 other faces, none of them these.
+
+**But macOS and After Effects name two of the three differently:**
+
+| requirement 20 pins | macOS reports for the same file |
+|---|---|
+| `Inter-SemiBold` | `Inter-Regular_SemiBold` |
+| `CormorantGaramondItalic-SemiBoldItalic` | `CormorantGaramond-SemiBoldItalic` |
+| `Almarai-Bold` | `Almarai-Bold` |
+
+Both divergent faces are variable fonts, and After Effects derives its own name
+for an instance. So **the requirement can only be checked from inside After
+Effects** — Font Book showing a different name is not a failure, and the doctor
+cannot verify these names against the system's font list. A different After
+Effects build could construct a different name again from the correct file; on
+another machine that arrives as a build refusing on a font name that looks
+right here. The doctor's `fonts` check therefore prints the names it wanted
+beside the names the host offered under the same family, so the answer is two
+lists rather than a verdict.

@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  compareFontNames,
+  fontFamilyOf,
   FATAL_BLOCKING,
   SCRIPTING_PREFERENCE_PATH,
   scriptingVerdict,
@@ -186,5 +188,46 @@ describe('scriptingVerdict', () => {
   it('names the exact Preferences path, so the remedy is one click', () => {
     expect(SCRIPTING_PREFERENCE_PATH).toContain('Scripting & Expressions');
     expect(SCRIPTING_PREFERENCE_PATH).toContain('Allow Scripts to Write Files');
+  });
+});
+
+describe('comparing font names', () => {
+  /**
+   * The real divergence, measured on 26.0x67 in Block 10 session 12: the same
+   * two files, named one way by After Effects and another by macOS.
+   */
+  const aeReports = [
+    'Inter-Thin',
+    'Inter-SemiBold',
+    'Inter-Bold',
+    'CormorantGaramondItalic-SemiBoldItalic',
+    'Almarai-Bold',
+  ];
+
+  it('says nothing is missing when every name is listed', () => {
+    const { missing, nearby } = compareFontNames(
+      ['Inter-SemiBold', 'Almarai-Bold', 'CormorantGaramondItalic-SemiBoldItalic'],
+      aeReports,
+    );
+    expect(missing).toEqual([]);
+    expect(nearby).toEqual({});
+  });
+
+  it('offers what the host has under the same family, not a bare verdict', () => {
+    // What macOS calls the same installed file.
+    const systemNames = ['Inter-Regular_SemiBold', 'CormorantGaramond-SemiBoldItalic', 'Almarai-Bold'];
+    const { missing, nearby } = compareFontNames(['Inter-SemiBold'], systemNames);
+    expect(missing).toEqual(['Inter-SemiBold']);
+    expect(nearby['Inter-SemiBold']).toEqual(['Inter-Regular_SemiBold']);
+  });
+
+  it('says so plainly when the host has nothing under that family', () => {
+    const { nearby } = compareFontNames(['Almarai-Bold'], aeReports.filter((n) => !n.startsWith('Almarai')));
+    expect(nearby['Almarai-Bold']).toEqual([]);
+  });
+
+  it('takes the family as the text before the first hyphen', () => {
+    expect(fontFamilyOf('CormorantGaramondItalic-SemiBoldItalic')).toBe('CormorantGaramondItalic');
+    expect(fontFamilyOf('AndaleMono')).toBe('AndaleMono');
   });
 });

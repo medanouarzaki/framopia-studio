@@ -967,6 +967,34 @@ the family-and-style strings stay because they are what the user gave.
 | emphasis | Cormorant Garamond SemiBold Italic | `CormorantGaramondItalic-SemiBoldItalic` |
 | Arabic | Almarai Bold | `Almarai-Bold` |
 
+**After Effects does not name a font the way macOS names it, and the two
+diverge on two of these three faces.** Measured in Block 10 session 12 against
+`system_profiler`, on the same installed files:
+
+| the repo pins, and After Effects reports | what macOS reports for the same file |
+|---|---|
+| `Inter-SemiBold` | `Inter-Regular_SemiBold` (family `Inter`) |
+| `CormorantGaramondItalic-SemiBoldItalic` | `CormorantGaramond-SemiBoldItalic` (family `Cormorant Garamond`) |
+| `Almarai-Bold` | `Almarai-Bold` — agrees |
+
+Both divergent faces are **variable fonts**: After Effects constructs its own
+name for an instance rather than taking the one in the file, and that is the
+mechanism behind the `CormorantGaramondItalic` oddity below rather than a
+separate curiosity. `Almarai-Bold` is static and agrees.
+
+**All three are plain `.ttf` files in `~/Library/Fonts`; none arrives through
+Creative Cloud**, which is why `docs/SECOND_MACHINE.md` can tell the partner to
+install them by double-clicking. Adobe Fonts is active on this machine and
+supplies 28 other faces; it supplies none of these.
+
+**The consequence for a second machine**: a name missing there is not evidence
+the wrong file was installed, because a different After Effects build could
+construct a different name from the correct file. Nothing outside After Effects
+can check these names — the doctor cannot read them from macOS's font list — so
+the font check reports **the names it wanted beside the names the host offered
+under the same family**, and a mismatch is something to report rather than to
+fix by renaming. The three pinned names are ruled and do not move.
+
 **The emphasis family is `CormorantGaramondItalic`, not `CormorantGaramond`** —
 a separate family on this machine, and `CormorantGaramond-SemiBoldItalic` does
 not exist. The obvious construction is the wrong one.

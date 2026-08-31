@@ -377,6 +377,8 @@ export {
   exitCodeFor,
   formatCheck,
   SCRIPTING_PREFERENCE_PATH,
+  compareFontNames,
+  fontFamilyOf,
   formatReport,
   redact,
   scriptingVerdict,
