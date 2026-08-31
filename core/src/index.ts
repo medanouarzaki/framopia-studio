@@ -377,6 +377,16 @@ export {
   type DoctorSummary,
   type ScriptingVerdict,
 } from './doctor.js';
+
+export {
+  REPO_ANCHORS,
+  StoredPathError,
+  classifyStoredPath,
+  repoRelativeTail,
+  resolveStoredPath,
+  type ResolveStoredPathOptions,
+  type StoredPathOutcome,
+} from './stored-path.js';
 export {
   CLIENT_SNAPSHOT_VERSION,
   snapshotIsBehind,
