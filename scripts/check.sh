@@ -47,6 +47,14 @@ npx tsx tools/validate-panel/cli.ts
 # reference failed nothing at all. See CLAUDE_CODE_GUIDELINES.md §3.
 npm run verify-refs --workspace framopia-benchmarks
 
+# No AI attribution in any tracked file or any commit message. Enforcement was a
+# person remembering until Block 10 session 15: session 14 found a stray one in
+# docs/ARCHITECTURE.md's repo layout that had survived because nobody had opened
+# that file. A marker inside quotes is this repository stating the rule and is
+# allowed; fourteen commits from 2026-07 carry a trailer and are listed by sha,
+# because pushed history is not rewritten.
+npx tsx tools/attribution/cli.ts
+
 # The CV sidecar's metric tests. Skipped with a notice when the venv is not
 # built: the sidecar needs python3.11 and a ~1GB model download, and a
 # contributor without it should still be able to run the gate for the

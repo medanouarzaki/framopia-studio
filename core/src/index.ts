@@ -87,6 +87,16 @@ export {
 } from './saved-output.js';
 
 export {
+  ATTRIBUTION_PATTERNS,
+  findAttribution,
+  formatAttributionHit,
+  type AttributionHit,
+  type AttributionPattern,
+} from './attribution.js';
+
+export { ATTRIBUTION_HISTORICAL_COMMITS } from './attribution-history.js';
+
+export {
   GOLDEN_EXCLUDED_FIELDS,
   GOLDEN_PATH_FIELDS,
   GOLDEN_REELS,
