@@ -667,6 +667,65 @@ case for the second machine.
 `panel/src/path-fields.test.ts` pins the rule by reading every `.tsx`: a text
 input whose label names a path fails unless it is `PathField`'s own fallback.
 
+### What each palette colour actually does
+
+**The captions on the client screens described the picture frame and nothing
+else, and two of the four were wrong.** They read *behind a cut-out picture* /
+*the deeper of the two frame colours* / *the frame around a picture* / *the
+lighter of the two frame colours* — while in every comp this system has built,
+`light` is the colour of **ordinary subtitle words** and `accent` the colour of
+**emphasised keywords**. Those are the two most visible uses of any colour in
+the product and neither appeared in a caption.
+
+Measured in Block 10 session 18, from the code and then from four real builds:
+
+| role | hex | what it actually does |
+|---|---|---|
+| `light` | `#F8F6F2` | **254 ordinary subtitle words** across the corpus; the frame drawn round **all five** of `vitasilk`'s pictures |
+| `accent` | `#C9A96E` | **8 emphasised keyword words**; **can never be a picture frame** |
+| `background` | `#1A0000` | the ground **baked behind a cut-out** — `#1A0000` at all four corners of `img002-c1.cutout.on-fill.png`; the frame on a picture bright enough for the dark one to win |
+| `primary` | `#820000` | **nothing in the built comp comes from it** |
+
+**The picture frame is not fixed to a role.** `cardFrameColour` takes whichever
+role separates best from the picture's own edge, so the frame is chosen per
+picture. Swept over every edge luminance against K2's palette, **only `light`
+and `background` can ever win** — a mid-tone loses to both extremes, so `accent`
+and `primary` can never be a frame at all.
+
+**The 262 shadow layers reading `#820000` are the templates', not the
+palette's.** The colour is baked into the four text comps and the build never
+sets it — `reel-plan.ts` says the shadow is "never given a colour — the shadow's
+own is the design", and the audit shows `TXT_MAIN_SHADOW` at `#820000` in all
+four. It equals K2's `primary` by coincidence of the brand, and **a different
+client's `primary` would not move it.** What `primary` really does is reach the
+image model: all four roles are named in `imageStyle.stylePrompt`.
+
+**One stale comment found doing this**: `core/src/text-colours.ts` says "Nothing
+reads this at build time yet". It is read — `textStyleFor` calls
+`resolveTextColours` and sets `fillColor` on every placeholder, which is where
+the 254 and the 8 come from. Corrected.
+
+`core/src/palette-meaning.ts` is the one declaration of the captions and their
+order, read by the client card and the setup screen, which were two copies. It
+imports nothing, and `PALETTE_ROLES` moved into it with `mode.ts` re-exporting —
+the panel reads it, and `mode.ts` reaches `node:crypto` and `node:fs`, which
+esbuild cannot resolve for a browser target. Same reason `build-stamp` is its
+own subpath.
+
+**The two subtitle colours come first** on screen: they are on every card of
+every video, and the other two only touch pictures.
+
+### A client's own pictures are not waiting on anything
+
+The setup screen said *"Their own pictures are added later, once there are
+videos to use them in."* **Both halves were wrong.** The service has taken them
+since Block 9 — `POST /clients/pictures` and its DELETE — the panel's own
+`addClientPicture` calls that route, and the picture editor already offers a
+client's pictures beside the generated ones per slot. **The only missing piece
+is a control that calls it**: `addClientPicture` is declared and no component
+invokes it. There is no precondition; the screen has not been built. The
+sentence now says that.
+
 ### The font sample draws the real face, or says it cannot
 
 **Session 16's sample was a silent substitution.** It set `font-family` to After

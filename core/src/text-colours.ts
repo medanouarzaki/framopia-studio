@@ -10,10 +10,16 @@ import type { ClientMode, PaletteRole } from './mode.js';
  * Or Signature for the key figure of a sentence — so recording the roles is
  * making an existing rule sayable rather than changing anything.
  *
- * **Nothing reads this at build time yet.** A subtitle's colour lives in the
- * template comp's own text layer, and `framopiaSetText` deliberately sets only
- * the string. Making the build mode-driven is a change the user rules on by
- * looking at a build, not one to slip in beside a data addition.
+ * **The build reads this.** `textStyleFor` resolves these roles and sets
+ * `fillColor` on the placeholder of every card, which is where the corpus's 254
+ * ordinary words in `light` and 8 emphasised words in `accent` come from —
+ * measured from four real builds in Block 10 session 18. This comment said
+ * "nothing reads this at build time yet" until then; it had been stale since
+ * Block 9 session 6 wired it up.
+ *
+ * **The shadow is not among them by default.** `TXT_MAIN_SHADOW`'s colour is
+ * baked into the template comps and the build never sets it, so a client that
+ * names no `shadow` role leaves the template's own — which is the design.
  */
 export const DEFAULT_TEXT_COLOUR_ROLES: { ordinary: PaletteRole; emphasis: PaletteRole } = {
   ordinary: 'light',
