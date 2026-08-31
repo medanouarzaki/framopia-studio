@@ -280,6 +280,70 @@ export async function openVideo(connection: Connection, filePath: string): Promi
 }
 
 /** Make a client. Returns the refreshed list, so the picker cannot lag behind. */
+/**
+ * The faces this After Effects can set.
+ *
+ * A failure is a state the screen renders, never a throw: the setup form must
+ * still work when After Effects is not answering, with a text field and a
+ * sentence saying why — an empty chooser would read as "this machine has no
+ * fonts", which is never true.
+ */
+export async function loadFonts(
+  connection: Connection,
+): Promise<{ available: boolean; names: string[]; families: number | null; trouble: string | null }> {
+  try {
+    const res = await fetch(`http://127.0.0.1:${connection.port}/fonts`, {
+      headers: { 'x-service-token': connection.token },
+    });
+    if (!res.ok) {
+      return {
+        available: false,
+        names: [],
+        families: null,
+        trouble: 'this service is too old to list the fonts',
+      };
+    }
+    return (await res.json()) as {
+      available: boolean;
+      names: string[];
+      families: number | null;
+      trouble: string | null;
+    };
+  } catch (error) {
+    return {
+      available: false,
+      names: [],
+      families: null,
+      trouble: `the service did not answer: ${(error as Error).message}`,
+    };
+  }
+}
+
+export interface SubtitlePreview {
+  framePath: string | null;
+  fromReel: string | null;
+  frameWidth: number;
+  frameHeight: number;
+  sourceWidth: number;
+  sourceHeight: number;
+  defaultBaselineY: number;
+}
+
+/** A real frame to place the subtitle line against. Null on an older service. */
+export async function loadSubtitlePreview(
+  connection: Connection,
+): Promise<SubtitlePreview | null> {
+  try {
+    const res = await fetch(`http://127.0.0.1:${connection.port}/subtitle-preview`, {
+      headers: { 'x-service-token': connection.token },
+    });
+    if (!res.ok) return null;
+    return (await res.json()) as SubtitlePreview;
+  } catch {
+    return null;
+  }
+}
+
 export async function createClient(
   connection: Connection,
   client: Record<string, unknown>,

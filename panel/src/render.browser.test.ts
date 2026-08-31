@@ -499,6 +499,19 @@ function stubRoutes(steps: unknown, resumeAt: string): string {
       editCost: 'Editing a word changes the transcript hash.',
       words: [], cards: [], questions: [],
     },
+    fonts: {
+      available: true,
+      names: ['Almarai-Bold', 'CormorantGaramondItalic-SemiBoldItalic', 'Inter-SemiBold'],
+      families: 445,
+      trouble: null,
+    },
+    preview: {
+      framePath: '/repo/.local/cv/vitasilk/frames-2fps/frame-0020.png',
+      fromReel: 'vitasilk',
+      frameWidth: 2160, frameHeight: 3840,
+      sourceWidth: 2160, sourceHeight: 3840,
+      defaultBaselineY: 2480.4,
+    },
   };
   return `
   window.__payload = ${JSON.stringify(payload)};
@@ -514,6 +527,8 @@ function stubRoutes(steps: unknown, resumeAt: string): string {
       return Promise.resolve({ ok: true, json: () => Promise.resolve({ id: 'job-1' }) });
     }
     const body = u.indexOf('/health') !== -1 ? p.health
+      : u.indexOf('/subtitle-preview') !== -1 ? p.preview
+      : u.indexOf('/fonts') !== -1 ? p.fonts
       : u.indexOf('/reels') !== -1 ? p.reels
       : u.indexOf('/modes') !== -1 ? p.modes
       : u.indexOf('/keywords') !== -1 ? p.keywords
@@ -2666,3 +2681,195 @@ async function realStamp(): Promise<string> {
   );
   return (mod as { buildStamp: () => string }).buildStamp();
 }
+
+/*
+ * Setting up a client, which the user opened for the first time on 2026-08-31
+ * and which produced four rulings: nothing typed that can be chosen, fonts from
+ * a list, subtitle height by eye, and the colours here rather than afterwards.
+ */
+describe.skipIf(!built)('setting up a client', () => {
+  async function openSetup(amend?: string): Promise<Loaded | null> {
+    if (browser === undefined) return null;
+    const page = await browser.newPage({ viewport: { width: 420, height: 900 } });
+    const uncaught: string[] = [];
+    page.on('pageerror', (error: Error) => uncaught.push(error.message));
+    await page.addInitScript(stubHost(HANDSHAKE));
+    await page.addInitScript(stubRoutes(stepsThrough('build'), 'build'));
+    // CEP's own dialog, which the panel looks for rather than assumes. Without
+    // it the fields correctly fall back to text, which is a different case with
+    // its own test below.
+    await page.addInitScript(`
+      window.__picked = null;
+      window.cep = { fs: { showOpenDialogEx: () => ({ err: 0, data: window.__picked === null ? [] : [window.__picked] }) } };
+    `);
+    if (amend !== undefined) await page.addInitScript(amend);
+    await page.goto(`file://${INDEX}`);
+    await page.waitForSelector('section.video', { timeout: 10_000 });
+    await page.selectOption('select[aria-label="Client"]', '__new');
+    await page.waitForSelector('main.editor', { timeout: 5000 });
+    return { page, uncaught };
+  }
+
+  it('asks for no path to be typed', async () => {
+    const loaded = await openSetup();
+    if (loaded === null) return;
+    try {
+      const text = (await loaded.page.textContent('main.editor')) ?? '';
+      // The old fields asked him to reproduce a path character for character.
+      expect(text).not.toContain('The full path');
+      expect(await loaded.page.$$('main.editor input[aria-label="Video folder"]')).toHaveLength(0);
+      expect(await loaded.page.$$('main.editor input[aria-label="Logo"]')).toHaveLength(0);
+      expect(text).toContain('Choose folder…');
+      expect(text).toContain('Choose file…');
+      expect(loaded.uncaught).toEqual([]);
+    } finally {
+      await loaded.page.close();
+    }
+  });
+
+  it('shows what he picked, and a cancel leaves it alone', async () => {
+    const loaded = await openSetup();
+    if (loaded === null) return;
+    try {
+      await loaded.page.evaluate("window.__picked = '/Users/x/Movies/Dr Jenna';");
+      await loaded.page.click('main.editor button.choose');
+      await loaded.page.waitForSelector('.chosenpath', { timeout: 5000 });
+      expect(await loaded.page.textContent('.chosenpath')).toBe('/Users/x/Movies/Dr Jenna');
+      // A cancel answers nothing, and nothing must not clear what he had.
+      await loaded.page.evaluate('window.__picked = null;');
+      await loaded.page.click('main.editor button.choose');
+      expect(await loaded.page.textContent('.chosenpath')).toBe('/Users/x/Movies/Dr Jenna');
+      expect(loaded.uncaught).toEqual([]);
+    } finally {
+      await loaded.page.close();
+    }
+  });
+
+  it('falls back to a typed path only on a host with no chooser', async () => {
+    if (browser === undefined) return;
+    const page = await browser.newPage({ viewport: { width: 420, height: 900 } });
+    const uncaught: string[] = [];
+    page.on('pageerror', (error: Error) => uncaught.push(error.message));
+    await page.addInitScript(stubHost(HANDSHAKE));
+    await page.addInitScript(stubRoutes(stepsThrough('build'), 'build'));
+    await page.goto(`file://${INDEX}`);
+    await page.waitForSelector('section.video', { timeout: 10_000 });
+    await page.selectOption('select[aria-label="Client"]', '__new');
+    await page.waitForSelector('main.editor', { timeout: 5000 });
+    try {
+      expect(await page.$('input[aria-label="Video folder"]')).not.toBeNull();
+      expect((await page.textContent('main.editor')) ?? '').toContain('offers no file chooser');
+      expect(uncaught).toEqual([]);
+    } finally {
+      await page.close();
+    }
+  });
+
+  it('offers the faces After Effects has, by the names a build can use', async () => {
+    const loaded = await openSetup();
+    if (loaded === null) return;
+    try {
+      const options = await loaded.page.$$eval(
+        'select[aria-label="Latin font"] option',
+        (els) => els.map((e) => (e as HTMLOptionElement).value),
+      );
+      expect(options[0]).toBe('');
+      // After Effects' own name, not the system's `Inter-Regular_SemiBold`.
+      expect(options).toContain('Inter-SemiBold');
+      expect(options).toContain('Almarai-Bold');
+      expect(loaded.uncaught).toEqual([]);
+    } finally {
+      await loaded.page.close();
+    }
+  });
+
+  it('says why the list is missing rather than showing an empty one', async () => {
+    const loaded = await openSetup(
+      "window.__payload.fonts = { available: false, names: [], families: null, trouble: 'After Effects is not answering' };",
+    );
+    if (loaded === null) return;
+    try {
+      const text = (await loaded.page.textContent('main.editor')) ?? '';
+      expect(text).toContain('The list of faces could not be built');
+      expect(text).toContain('After Effects is not answering');
+      // It falls back to a field rather than an empty chooser.
+      expect(await loaded.page.$('input[aria-label="Latin font"]')).not.toBeNull();
+      expect(await loaded.page.$('select[aria-label="Latin font"]')).toBeNull();
+      expect(loaded.uncaught).toEqual([]);
+    } finally {
+      await loaded.page.close();
+    }
+  });
+
+  it('positions the subtitle line on a real frame, and says which frame', async () => {
+    const loaded = await openSetup();
+    if (loaded === null) return;
+    try {
+      await loaded.page.waitForSelector('.heightpreview .frame', { timeout: 5000 });
+      const text = (await loaded.page.textContent('.heightpreview')) ?? '';
+      expect(text).toContain('A real frame from vitasilk');
+      expect(text).toContain('Shown at about a tenth of 2160 × 3840');
+      // The line sits at the default until he moves it: 2480.4 of 3840.
+      const top = await loaded.page.$eval('.baseline', (e) => (e as HTMLElement).style.top);
+      expect(Number.parseFloat(top)).toBeCloseTo((2480.4 / 3840) * 100, 2);
+      expect(loaded.uncaught).toEqual([]);
+    } finally {
+      await loaded.page.close();
+    }
+  });
+
+  it('never shows a plain frame as though it were footage', async () => {
+    const loaded = await openSetup(
+      'window.__payload.preview = { framePath: null, fromReel: null, frameWidth: 2160, frameHeight: 3840, sourceWidth: 2160, sourceHeight: 3840, defaultBaselineY: 2480.4 };',
+    );
+    if (loaded === null) return;
+    try {
+      const text = (await loaded.page.textContent('.heightpreview')) ?? '';
+      expect(text).toContain('No footage to show yet');
+      expect(text).not.toContain('A real frame from');
+      expect(loaded.uncaught).toEqual([]);
+    } finally {
+      await loaded.page.close();
+    }
+  });
+
+  it('moves the number when the slider moves', async () => {
+    const loaded = await openSetup();
+    if (loaded === null) return;
+    try {
+      await loaded.page.fill('input[aria-label="Subtitle height in pixels"]', '3000');
+      const top = await loaded.page.$eval('.baseline', (e) => (e as HTMLElement).style.top);
+      expect(Number.parseFloat(top)).toBeCloseTo((3000 / 3840) * 100, 2);
+      expect(loaded.uncaught).toEqual([]);
+    } finally {
+      await loaded.page.close();
+    }
+  });
+
+  it('carries the four colours, with the roles in his own words', async () => {
+    const loaded = await openSetup();
+    if (loaded === null) return;
+    try {
+      const text = (await loaded.page.textContent('.colours')) ?? '';
+      for (const what of [
+        'behind a cut-out picture',
+        'the deeper of the two frame colours',
+        'the frame around a picture',
+        'the lighter of the two frame colours',
+      ]) {
+        expect(text).toContain(what);
+      }
+      const values = await loaded.page.$$eval('.colours input[type="color"]', (els) =>
+        els.map((e) => (e as HTMLInputElement).value.toUpperCase()),
+      );
+      expect(values).toEqual(['#1A0000', '#820000', '#C9A96E', '#F8F6F2']);
+      // The sentence that made this a two-visit screen is gone.
+      const all = (await loaded.page.textContent('main.editor')) ?? '';
+      expect(all).not.toContain('Colours and their own pictures are added afterwards');
+      expect(loaded.uncaught).toEqual([]);
+    } finally {
+      await loaded.page.close();
+    }
+  });
+});
+

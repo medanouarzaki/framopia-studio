@@ -14,6 +14,8 @@ const WATERMARK_ASSET = path.join(REPO_ROOT, 'assets', 'watermark', 'intro.mov')
 import { WATERMARK_SIZES, type WatermarkSize, type Zone } from './editplan/types.js';
 import { DEFAULT_WATERMARK_SIZE } from './placement/constants.js';
 import { describeVideo, listModes, listVideosFor } from './catalogue.js';
+import { fontListView } from './fonts.js';
+import { subtitlePreview } from './subtitle-preview.js';
 import { dryRun, DryRunError } from './dry-run.js';
 import { addPicture, createClient, removePicture, type NewClient } from './clients/create.js';
 import { stepsFor, StepsError } from './steps.js';
@@ -223,6 +225,24 @@ export function createApp(token: string): http.Server {
 
       if (req.method === 'GET' && url.pathname === '/modes') {
         sendJson(res, 200, { modes: listModes() });
+        return;
+      }
+
+      /*
+       * The faces this After Effects can set, for the client setup screen.
+       * Read-only and free; it drives the running instance and writes nothing.
+       */
+      if (req.method === 'GET' && url.pathname === '/fonts') {
+        sendJson(res, 200, fontListView());
+        return;
+      }
+
+      /*
+       * A real frame to place the subtitle line against, so the height is
+       * chosen by looking rather than by imagining what a pixel figure means.
+       */
+      if (req.method === 'GET' && url.pathname === '/subtitle-preview') {
+        sendJson(res, 200, subtitlePreview());
         return;
       }
 

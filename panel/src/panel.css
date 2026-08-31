@@ -604,3 +604,35 @@ section.client .say, section.video .say { margin: 8px 0 0; color: var(--muted); 
   overflow-wrap: anywhere;
   user-select: text;
 }
+
+/* A face is chosen from what After Effects has, and shown set in itself. */
+.fontfield > span, .heightfield > span, .colourhead {
+  color: var(--faint); font-size: 0.62em; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 600;
+}
+.fontsample { margin: 2px 0 0; font-size: 1.1em; color: var(--text); line-height: 1.3; }
+
+/* Subtitle height: positioned by eye against a real frame, at about a tenth. */
+.heightpreview { display: grid; gap: 4px; justify-items: start; }
+.heightpreview .frame {
+  position: relative; width: 216px; height: 384px;
+  border: 1px solid var(--line); overflow: hidden; background: #000;
+}
+.heightpreview .frame img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.heightpreview .plainframe { width: 100%; height: 100%; background: #1a1a1a; }
+.heightpreview .baseline {
+  position: absolute; left: 0; right: 0; height: 0;
+  border-top: 2px solid var(--accent);
+}
+.heightvalue { display: flex; align-items: center; gap: 8px; }
+.heightvalue input[type='number'] { width: 7em; }
+.heightfield input[type='range'] { width: 100%; }
+
+/* The four colours, each a swatch he picks and the code beside it. */
+.colours { display: grid; gap: 8px; }
+.colours .colour { display: flex; align-items: center; gap: 8px; }
+.colours .colour input[type='color'] {
+  width: 34px; height: 24px; padding: 0; border: 1px solid var(--line); background: none;
+}
+.colours .colour .what { flex: 1; font-size: 0.78em; color: var(--muted); }
+.colours .colour code { font-size: 0.72em; color: var(--faint); }
+

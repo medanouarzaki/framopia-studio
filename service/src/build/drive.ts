@@ -93,6 +93,17 @@ export function runMeasureSurvey(options: Record<string, unknown>): BuildResult 
   return runJsx('measure-survey.jsx', 'framopiaMeasureSurvey', options);
 }
 
+/**
+ * Every face this After Effects can set, for the client setup screen.
+ *
+ * Read-only: it opens nothing, saves nothing and writes no font name. The
+ * chooser needs After Effects' own names because macOS publishes different ones
+ * for a variable font's instance — see `panel/jsx/font-list.jsx`.
+ */
+export function runFontList(): BuildResult {
+  return runJsx('font-list.jsx', 'framopiaFontList', {});
+}
+
 function runJsx(
   file: string,
   entry: string,

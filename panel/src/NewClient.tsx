@@ -1,6 +1,13 @@
-import { useState } from 'react';
-import { createClient, type Connection } from './service.js';
+import { useEffect, useState } from 'react';
+import {
+  createClient,
+  loadFonts,
+  loadSubtitlePreview,
+  type Connection,
+  type SubtitlePreview,
+} from './service.js';
 import { fileDialogSupport, pickFolder, pickImageFile } from './file-dialog.js';
+import { fileUrl } from './picture.js';
 import type { ClientMode } from './types.js';
 
 /**
@@ -15,6 +22,31 @@ import type { ClientMode } from './types.js';
  * A one-off is the same form with most of it hidden: a video for someone he
  * will not work with again should not put a name in his client list for years.
  */
+/**
+ * The four colours, in the words the client card already uses for them.
+ *
+ * **Roles, not names.** `accent` is a word from the file; what he needs to know
+ * is where he will see it. These four strings are the ones
+ * `service/src/catalogue.ts` shows on the client card, kept identical so a
+ * colour means the same thing on the screen that sets it and the screen that
+ * shows it.
+ *
+ * The defaults are what a client saved with no colours gets today: the service
+ * inherits the template client's palette, and these are its four values. So a
+ * client saved without touching them comes out exactly as it did before this
+ * screen had them.
+ */
+const PALETTE_FIELDS: { role: string; what: string; hex: string }[] = [
+  { role: 'background', what: 'behind a cut-out picture', hex: '#1A0000' },
+  { role: 'primary', what: 'the deeper of the two frame colours', hex: '#820000' },
+  { role: 'accent', what: 'the frame around a picture', hex: '#C9A96E' },
+  { role: 'light', what: 'the lighter of the two frame colours', hex: '#F8F6F2' },
+];
+
+const DEFAULT_PALETTE: Record<string, string> = Object.fromEntries(
+  PALETTE_FIELDS.map((f) => [f.role, f.hex]),
+);
+
 export function NewClient({
   connection,
   kind,
@@ -36,11 +68,24 @@ export function NewClient({
   const [shape, setShape] = useState('');
   const [baseline, setBaseline] = useState('');
   const [watermark, setWatermark] = useState(true);
+  const [palette, setPalette] = useState<Record<string, string>>(DEFAULT_PALETTE);
+  const [fonts, setFonts] = useState<{ available: boolean; names: string[]; trouble: string | null }>(
+    { available: false, names: [], trouble: null },
+  );
+  const [preview, setPreview] = useState<SubtitlePreview | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const permanent = kind === 'permanent';
   const dialog = fileDialogSupport();
+
+  useEffect(() => {
+    if (connection === null) return;
+    void loadFonts(connection).then((f) =>
+      setFonts({ available: f.available, names: f.names, trouble: f.trouble }),
+    );
+    void loadSubtitlePreview(connection).then(setPreview);
+  }, [connection]);
 
   const save = async (): Promise<void> => {
     if (connection === null) return;
@@ -109,17 +154,20 @@ export function NewClient({
           />
         ) : null}
 
-        <Field
+        <FontField
           label="Latin font"
           hint="Blank uses Inter Semi-Bold, the standard one."
           value={latin}
           onChange={setLatin}
+          fonts={fonts}
         />
-        <Field
+        <FontField
           label="Arabic font"
           hint="Blank uses Almarai Bold, the standard one."
           value={arabic}
           onChange={setArabic}
+          fonts={fonts}
+          rtl
         />
 
         <label className="field">
@@ -161,12 +209,7 @@ export function NewClient({
                 <option value="landscape">Wide</option>
               </select>
             </label>
-            <Field
-              label="Subtitle height"
-              hint="Pixels from the top of the frame. Blank puts it where every video so far has it. Move it for a client with a logo along the bottom."
-              value={baseline}
-              onChange={setBaseline}
-            />
+            <SubtitleHeight value={baseline} onChange={setBaseline} preview={preview} />
           </>
         ) : null}
 
@@ -179,14 +222,33 @@ export function NewClient({
           <span>Put your watermark on their videos</span>
         </label>
 
-        {/*
-          Colours and their own pictures are not here on purpose: a colour is
-          chosen by looking at it, and a picture is chosen by pointing at a file.
-          Both are edits to a client that exists, not questions on the way in.
-        */}
-        <p className="note">
-          Colours and their own pictures are added afterwards, once the client exists.
-        </p>
+        {permanent ? (
+          <div className="colours">
+            <span className="colourhead">Their colours</span>
+            {PALETTE_FIELDS.map((f) => (
+              <label className="colour" key={f.role}>
+                <input
+                  type="color"
+                  aria-label={f.what}
+                  value={palette[f.role] ?? f.hex}
+                  onChange={(e) =>
+                    setPalette((p) => ({ ...p, [f.role]: e.target.value.toUpperCase() }))
+                  }
+                />
+                <span className="what">{f.what}</span>
+                <code>{palette[f.role] ?? f.hex}</code>
+              </label>
+            ))}
+            {/*
+              Their own pictures genuinely do come later: one is chosen per video,
+              against the moment it illustrates, and there is nothing to point at
+              until the client has footage.
+            */}
+            <p className="note">
+              Their own pictures are added later, once there are videos to use them in.
+            </p>
+          </div>
+        ) : null}
       </div>
 
       {error === null ? null : (
@@ -307,3 +369,158 @@ function PathField({
     </div>
   );
 }
+
+/**
+ * A face chosen from what After Effects actually has.
+ *
+ * **The names are After Effects' own**, read from `app.fonts.allFonts` through
+ * the service. Block 10 session 12 measured that macOS publishes different ones
+ * for a variable font's instance — `Inter-Regular_SemiBold` where After Effects
+ * says `Inter-SemiBold` — so a list built from the system would offer names no
+ * build can use.
+ *
+ * **A list that could not be built is said out loud and the field falls back to
+ * text.** An empty chooser and a chooser that could not be filled look the same
+ * on screen and mean opposite things.
+ *
+ * The sample beneath is set in the chosen face, the same way the client card
+ * shows a client's type. It is drawn by the panel's Chromium, which resolves
+ * font names its own way, so a name it cannot match falls back to the standard
+ * face — the choice is still correct, only the preview is approximate.
+ */
+function FontField({
+  label,
+  hint,
+  value,
+  onChange,
+  fonts,
+  rtl = false,
+}: {
+  label: string;
+  hint: string;
+  value: string;
+  onChange: (value: string) => void;
+  fonts: { available: boolean; names: string[]; trouble: string | null };
+  rtl?: boolean;
+}): JSX.Element {
+  const sample = rtl ? 'شنو كتعرفي' : 'The quick brown fox';
+  return (
+    <div className="field stacked fontfield">
+      <span>{label}</span>
+      {fonts.available ? (
+        <select aria-label={label} value={value} onChange={(e) => onChange(e.target.value)}>
+          <option value="">The standard one</option>
+          {fonts.names.map((name) => (
+            <option key={name} value={name}>
+              {name}
+            </option>
+          ))}
+        </select>
+      ) : (
+        <input
+          type="text"
+          aria-label={label}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+        />
+      )}
+      {value === '' ? null : (
+        <p
+          className="fontsample"
+          dir={rtl ? 'rtl' : 'ltr'}
+          style={{ fontFamily: `"${value}", sans-serif` }}
+        >
+          {sample}
+        </p>
+      )}
+      <em className="hint">
+        {hint}
+        {fonts.available || fonts.trouble === null
+          ? ''
+          : ` The list of faces could not be built — ${fonts.trouble}. Type the name After Effects uses.`}
+      </em>
+    </div>
+  );
+}
+
+/**
+ * Where the first subtitle line sits, positioned by eye against a real frame.
+ *
+ * **The user chose this over named presets and over a typed number**
+ * (2026-08-31): it is the only one of the three where he decides by looking
+ * rather than by imagining what a pixel figure means. The number follows the
+ * slider and stays visible and editable, so the stored value is never a mystery
+ * to someone who does know the figure they want.
+ *
+ * **The preview says what it is showing.** A frame from a real reel when the
+ * pipeline has extracted one, and a plain frame otherwise — never a plain frame
+ * presented as though it were footage. It also states the scale, because a
+ * 2160 × 3840 frame drawn a couple of hundred pixels wide would otherwise
+ * misrepresent a position silently.
+ */
+function SubtitleHeight({
+  value,
+  onChange,
+  preview,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  preview: SubtitlePreview | null;
+}): JSX.Element {
+  const sourceHeight = preview?.sourceHeight ?? 3840;
+  const fallbackDefault = preview?.defaultBaselineY ?? 2480.4;
+  const current = value.trim() === '' ? fallbackDefault : Number(value);
+  const usable = Number.isFinite(current) ? current : fallbackDefault;
+  const atFraction = Math.min(1, Math.max(0, usable / sourceHeight));
+
+  return (
+    <div className="field stacked heightfield">
+      <span>Subtitle height</span>
+      <div className="heightpreview">
+        <div className="frame">
+          {preview?.framePath == null ? (
+            <div className="plainframe" />
+          ) : (
+            <img src={fileUrl(preview.framePath)} alt="" />
+          )}
+          <div className="baseline" style={{ top: `${(atFraction * 100).toFixed(3)}%` }} />
+        </div>
+        <p className="faint">
+          {preview?.fromReel == null
+            ? `No footage to show yet, so this is a plain ${preview?.sourceWidth ?? 2160} × ${sourceHeight} frame.`
+            : `A real frame from ${preview.fromReel}.`}{' '}
+          Shown at about a tenth of {preview?.sourceWidth ?? 2160} × {sourceHeight}.
+        </p>
+      </div>
+      <input
+        type="range"
+        aria-label="Subtitle height"
+        min={0}
+        max={sourceHeight}
+        step={1}
+        value={Math.round(usable)}
+        onChange={(e) => onChange(e.target.value)}
+      />
+      <div className="heightvalue">
+        <input
+          type="number"
+          aria-label="Subtitle height in pixels"
+          value={value}
+          placeholder={String(fallbackDefault)}
+          onChange={(e) => onChange(e.target.value)}
+        />
+        <span className="faint">px from the top</span>
+        {value.trim() === '' ? null : (
+          <button className="ghost" type="button" onClick={() => onChange('')}>
+            Use the usual
+          </button>
+        )}
+      </div>
+      <em className="hint">
+        Blank puts it where every video so far has it, {fallbackDefault} px. Move it for a
+        client with a logo along the bottom.
+      </em>
+    </div>
+  );
+}
+
