@@ -72,6 +72,36 @@ depends on the client fonts Block 9 collects.
    decision is taken on a width After Effects measured, and a card that cannot
    be brought under the bound fails the build by name.
 
+   **A card must fit its card comp in both directions** (measured 2026-08-31,
+   Block 10 session 21). The width half has been ruled since Block 8; its twin
+   was never written down, and never checked — `assertEveryCardFits` asked
+   `widthAfterPx <= safeWidthPx` and nothing asked anything about height. That
+   is why a clipped card reached the user rather than a test, while 17,170
+   golden fields matched.
+
+   **The height rule, as measured.** A card comp is **2160 × 1100** and is
+   rasterised at its own bounds, so anything outside them is not drawn. The
+   first baseline rests at **y = 700** and the entrance animates Position from
+   **750** down to it, so a card sits 50 px lower on its way in; the shadow copy
+   is offset a further **+15** by its Transform effect, which `sourceRectAtTime`
+   does not include at either `extents` setting. A card is cut when
+   `750 + inkTop + inkHeight + 15` passes 1100.
+
+   **Two lines cost `LINE_SPACING` = 323 px, and almost nothing has that much
+   room.** Across the corpus's 262 cards: 260 are one line with **178.3 px of
+   headroom at worst**, and the two that break are both `kw_slam_ar` — Almarai
+   at 455 — reaching 1196.7 px and cut by **96.7 px**. Per template, the worst
+   card's headroom if it were broken: `sub_pop_ar` at 367 −144.7, `kw_slam` at
+   494.742 −127.0, `kw_slam_ar` at 455 −80.4, `sub_pop` at 343 −62.0. **One line
+   never overruns in this corpus**; the shortest Latin words at 343 have 335 px
+   and are the only cards with room for a second line at all.
+
+   **The fix is the user's**: the card comps get taller in
+   `templates/library.aep`, which only he edits. **Option D — letting the card
+   draw outside its comp via the master layer's collapse — was tried and
+   rejected on measurement**: it recovers the strip, and it also changes the
+   card's whole body by up to 230 levels, so it does not preserve the look.
+
 ## 4. Input / output (locked)
 
 **Input:** one vertical 9:16 MP4, 4K (2160×3840), **29.97 fps (30000/1001)**, 30–90 s, one speaker, one angle, no cuts, audio embedded, already edited and graded. The "30 fps" this section carried until Block 7 predates anyone reading a file header: every reel the project has handled is 30000/1001, and Block 5's frame sampling reads real presentation timestamps that diverge from a nominal 30 fps grid from the second frame onward.
