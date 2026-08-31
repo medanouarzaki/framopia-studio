@@ -57,6 +57,10 @@
     "./palette-meaning": {
       "types": "./dist/palette-meaning.d.ts",
       "default": "./dist/palette-meaning.js"
+    },
+    "./read-lines": {
+      "types": "./dist/read-lines.d.ts",
+      "default": "./dist/read-lines.js"
     }
   },
   "files": [

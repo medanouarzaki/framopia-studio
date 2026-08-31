@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { readLines, timecode, type ReadableWord } from '@framopia/core/read-lines';
 import { fetchTranscript, saveCard, saveWord, type Connection } from './service.js';
 import type { OpenQuestion, TranscriptView, TranscriptWordView } from './types.js';
 
@@ -22,6 +23,14 @@ export function Transcript({
   const [filter, setFilter] = useState<OpenQuestion['id'] | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
+  /*
+   * Reading comes first, deliberately. This screen was built to edit — one word
+   * a row with its id, its confidence and its controls — and a 41-second reel
+   * is roughly 340 of those rows. Nobody judges an orthography by scrolling 340
+   * rows, and judging it is the only thing there is: session 29 reversed the
+   * rules and the four hand-written references cannot score a run under them.
+   */
+  const [reading, setReading] = useState(true);
 
   useEffect(() => {
     if (connection === null || reel === null) {
@@ -147,6 +156,24 @@ export function Transcript({
           {view.words.length} words in {view.cards.length} cards. A word&apos;s own script sets its
           direction, so Arabic reads right to left inside the line.
         </p>
+        <div className="readtoggle">
+          <button
+            type="button"
+            className={reading ? 'chip on' : 'chip'}
+            aria-pressed={reading}
+            onClick={() => setReading(true)}
+          >
+            Read
+          </button>
+          <button
+            type="button"
+            className={reading ? 'chip' : 'chip on'}
+            aria-pressed={!reading}
+            onClick={() => setReading(false)}
+          >
+            Edit
+          </button>
+        </div>
         {/* Said before he types, not after he has paid for it. */}
         <p className="note">{view.editCost}</p>
         <p className="reason">
@@ -157,165 +184,222 @@ export function Transcript({
         </p>
       </div>
 
-      <div className="card" style={{ marginTop: 12 }}>
-        <p className="promise">
-          Three things to rule on. Pick one to see only those words. Counts are for this
-          reel, with the whole corpus beside them.
-        </p>
-        <ul className="questions">
-          {questions.map((q) => (
-            <li key={q.id}>
-              <button
-                type="button"
-                className={filter === q.id ? 'chip on' : 'chip'}
-                aria-pressed={filter === q.id}
-                onClick={() => setFilter(filter === q.id ? null : q.id)}
-              >
-                {/*
-                 * Both scopes, always. The screen showed 1, 5 and 0 for
-                 * vitasilk while the record said 7, 23 and 13; both were right
-                 * and nothing said which was which.
-                 */}
-                {q.label} · <strong>{q.count}</strong> this reel · {q.corpusCount} corpus
-                {q.proxy ? ' · proxy' : ''}
-              </button>
-              {filter === q.id ? (
-                <>
-                  <p className="detail">{q.question}</p>
-                  <p className="reason">{q.basis}</p>
-                  {q.count === 0 ? (
-                    <p className="reason">None on this reel.</p>
-                  ) : (
-                    <ul className="instances">
-                      {q.instances.map((instance) => (
-                        <li key={instance.wordIds.join('-')}>
-                          <span
-                            className="itext"
-                            dir={/[\u0600-\u06FF]/.test(instance.text) ? 'rtl' : 'ltr'}
-                          >
-                            {instance.text}
-                          </span>
-                          <span className="idetail">{instance.detail}</span>
-                          {instance.parts === undefined ? null : (
-                            <span className="iparts">
-                              {instance.parts.map((part) => (
-                                <em key={part.cardId}>
-                                  {part.cardId}
-                                  <span dir="rtl">{part.text}</span>
-                                </em>
-                              ))}
-                            </span>
-                          )}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </>
-              ) : null}
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      <ol className="words">
-        {shown.map((word) => {
-          const card = word.cardId === null ? null : cardById.get(word.cardId);
-          return (
-            <li key={word.id} className={word.removed ? 'word removed' : 'word'}>
-              <span className="wid">{word.id}</span>
-              {editing === word.id ? (
-                <input
-                  className="wtext"
-                  aria-label={`Text of ${word.id}`}
-                  value={draft}
-                  dir={word.script === 'arabic' ? 'rtl' : 'ltr'}
-                  autoFocus
-                  onChange={(e) => setDraft(e.target.value)}
-                  onBlur={() => commit(word)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') commit(word);
-                    if (e.key === 'Escape') setEditing(null);
-                  }}
-                />
-              ) : (
+      {reading ? (
+        <ReadView view={view} />
+      ) : (
+        <>
+        <div className="card" style={{ marginTop: 12 }}>
+          <p className="promise">
+            Three things to rule on. Pick one to see only those words. Counts are for this
+            reel, with the whole corpus beside them.
+          </p>
+          <ul className="questions">
+            {questions.map((q) => (
+              <li key={q.id}>
                 <button
                   type="button"
-                  className={`wtext ${confidenceClass(word.confidence)}`}
-                  /* Per token, never on the line: a container dir would flip
-                     the Latin words around it. */
-                  dir={word.script === 'arabic' ? 'rtl' : 'ltr'}
-                  title={word.script === 'arabic' ? 'Arabic script' : 'Latin script'}
-                  onClick={() => {
-                    setEditing(word.id);
-                    setDraft(word.text);
-                  }}
+                  className={filter === q.id ? 'chip on' : 'chip'}
+                  aria-pressed={filter === q.id}
+                  onClick={() => setFilter(filter === q.id ? null : q.id)}
                 >
-                  {word.text}
+                  {/*
+                   * Both scopes, always. The screen showed 1, 5 and 0 for
+                   * vitasilk while the record said 7, 23 and 13; both were right
+                   * and nothing said which was which.
+                   */}
+                  {q.label} · <strong>{q.count}</strong> this reel · {q.corpusCount} corpus
+                  {q.proxy ? ' · proxy' : ''}
                 </button>
-              )}
-              <span className="wmeta">
-                {word.start.toFixed(3)}–{word.end.toFixed(3)}s
-                {word.interpolated ? (
-                  <em className="tag">interpolated</em>
-                ) : (
-                  <em className="src" dir="rtl">
-                    {word.sourceText ?? ''}
-                  </em>
-                )}
-                {word.edited ? <em className="tag edited">edited</em> : null}
-                {/* "hold clipped" is our word for it; what he sees is a card that flashes past. */}
-                {card?.holdClipped === true ? (
-                  <em className="tag" title="Too short to hold: it appears and goes.">
-                    very short
-                  </em>
-                ) : null}
-                {word.removed ? <em className="tag">{word.removedReason ?? 'removed'}</em> : null}
-              </span>
-              <span className="wactions">
-                {word.removed ? (
-                  <button type="button" className="chip" onClick={() => restore(word)}>
-                    Restore
-                  </button>
-                ) : null}
-                <button
-                  type="button"
-                  className="chip"
-                  aria-label={`Script of ${word.id}`}
-                  title={
-                    word.script === 'arabic'
-                      ? 'Written in Arabic script: reads right to left, drawn in Almarai Bold at 1.07x. Click for Latin.'
-                      : 'Written in Latin script: reads left to right, drawn in Inter Semi-Bold. Click for Arabic.'
-                  }
-                  onClick={() => flipScript(word)}
-                >
-                  {word.script === 'arabic' ? 'ar' : 'la'}
-                </button>
-                {card === undefined || card === null ? null : (
+                {filter === q.id ? (
                   <>
-                    <button
-                      type="button"
-                      className="chip"
-                      aria-label={`Shorten ${card.id}`}
-                      onClick={() => nudge(card.id, -0.05)}
-                    >
-                      −
-                    </button>
-                    <button
-                      type="button"
-                      className="chip"
-                      aria-label={`Lengthen ${card.id}`}
-                      onClick={() => nudge(card.id, 0.05)}
-                    >
-                      +
-                    </button>
+                    <p className="detail">{q.question}</p>
+                    <p className="reason">{q.basis}</p>
+                    {q.count === 0 ? (
+                      <p className="reason">None on this reel.</p>
+                    ) : (
+                      <ul className="instances">
+                        {q.instances.map((instance) => (
+                          <li key={instance.wordIds.join('-')}>
+                            <span
+                              className="itext"
+                              dir={/[\u0600-\u06FF]/.test(instance.text) ? 'rtl' : 'ltr'}
+                            >
+                              {instance.text}
+                            </span>
+                            <span className="idetail">{instance.detail}</span>
+                            {instance.parts === undefined ? null : (
+                              <span className="iparts">
+                                {instance.parts.map((part) => (
+                                  <em key={part.cardId}>
+                                    {part.cardId}
+                                    <span dir="rtl">{part.text}</span>
+                                  </em>
+                                ))}
+                              </span>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <ol className="words">
+          {shown.map((word) => {
+            const card = word.cardId === null ? null : cardById.get(word.cardId);
+            return (
+              <li key={word.id} className={word.removed ? 'word removed' : 'word'}>
+                <span className="wid">{word.id}</span>
+                {editing === word.id ? (
+                  <input
+                    className="wtext"
+                    aria-label={`Text of ${word.id}`}
+                    value={draft}
+                    dir={word.script === 'arabic' ? 'rtl' : 'ltr'}
+                    autoFocus
+                    onChange={(e) => setDraft(e.target.value)}
+                    onBlur={() => commit(word)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') commit(word);
+                      if (e.key === 'Escape') setEditing(null);
+                    }}
+                  />
+                ) : (
+                  <button
+                    type="button"
+                    className={`wtext ${confidenceClass(word.confidence)}`}
+                    /* Per token, never on the line: a container dir would flip
+                       the Latin words around it. */
+                    dir={word.script === 'arabic' ? 'rtl' : 'ltr'}
+                    title={word.script === 'arabic' ? 'Arabic script' : 'Latin script'}
+                    onClick={() => {
+                      setEditing(word.id);
+                      setDraft(word.text);
+                    }}
+                  >
+                    {word.text}
+                  </button>
                 )}
-              </span>
-            </li>
-          );
-        })}
-      </ol>
+                <span className="wmeta">
+                  {word.start.toFixed(3)}–{word.end.toFixed(3)}s
+                  {word.interpolated ? (
+                    <em className="tag">interpolated</em>
+                  ) : (
+                    <em className="src" dir="rtl">
+                      {word.sourceText ?? ''}
+                    </em>
+                  )}
+                  {word.edited ? <em className="tag edited">edited</em> : null}
+                  {/* "hold clipped" is our word for it; what he sees is a card that flashes past. */}
+                  {card?.holdClipped === true ? (
+                    <em className="tag" title="Too short to hold: it appears and goes.">
+                      very short
+                    </em>
+                  ) : null}
+                  {word.removed ? <em className="tag">{word.removedReason ?? 'removed'}</em> : null}
+                </span>
+                <span className="wactions">
+                  {word.removed ? (
+                    <button type="button" className="chip" onClick={() => restore(word)}>
+                      Restore
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    className="chip"
+                    aria-label={`Script of ${word.id}`}
+                    title={
+                      word.script === 'arabic'
+                        ? 'Written in Arabic script: reads right to left, drawn in Almarai Bold at 1.07x. Click for Latin.'
+                        : 'Written in Latin script: reads left to right, drawn in Inter Semi-Bold. Click for Arabic.'
+                    }
+                    onClick={() => flipScript(word)}
+                  >
+                    {word.script === 'arabic' ? 'ar' : 'la'}
+                  </button>
+                  {card === undefined || card === null ? null : (
+                    <>
+                      <button
+                        type="button"
+                        className="chip"
+                        aria-label={`Shorten ${card.id}`}
+                        onClick={() => nudge(card.id, -0.05)}
+                      >
+                        −
+                      </button>
+                      <button
+                        type="button"
+                        className="chip"
+                        aria-label={`Lengthen ${card.id}`}
+                        onClick={() => nudge(card.id, 0.05)}
+                      >
+                        +
+                      </button>
+                    </>
+                  )}
+                </span>
+              </li>
+            );
+          })}
+        </ol>
+        </>
+      )}
     </>
+  );
+}
+
+/**
+ * The transcript as something to read.
+ *
+ * Not an editor: no ids, no confidence bands, no controls. Words in the order
+ * they were spoken, broken into lines where the speaker paused, with the time
+ * each line starts so he can find it in the video.
+ *
+ * **The line carries a direction and each word carries its own.** The editor's
+ * rule — direction per token, never on a container — is right for a row that is
+ * one word beside its id and its buttons, where a container direction would
+ * reorder the columns. A line of prose is a different thing: a wholly Arabic
+ * line rendered left to right puts the last word first, and no transcript in
+ * this project has ever been wholly Arabic before session 29 reversed the
+ * orthography rules.
+ */
+function ReadView({ view }: { view: TranscriptView }): JSX.Element {
+  const lines = readLines(
+    view.words.map(
+      (w): ReadableWord => ({
+        text: w.text,
+        start: w.start,
+        end: w.end,
+        script: w.script,
+        removed: w.removed,
+      }),
+    ),
+  );
+  if (lines.length === 0) {
+    return <p className="empty">There are no words on this video yet.</p>;
+  }
+  return (
+    <div className="card readview" style={{ marginTop: 12 }}>
+      {lines.map((line) => (
+        <p className="readline" key={`${line.startS}`} dir={line.dir}>
+          <span className="at" dir="ltr">
+            {timecode(line.startS)}
+          </span>
+          {line.words.map((w, i) => (
+            <span
+              key={`${line.startS}-${String(i)}`}
+              dir={w.script === 'arabic' ? 'rtl' : 'ltr'}
+            >
+              {w.text}{' '}
+            </span>
+          ))}
+        </p>
+      ))}
+    </div>
   );
 }
 

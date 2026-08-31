@@ -471,6 +471,7 @@ function stubRoutes(steps: unknown, resumeAt: string): string {
       reel: 'vitasilk', videoPath: '/v/vitasilk.mov', modeId: 'k2-syndicalia',
       modeName: 'K2 Syndicalia', modeVersion: 6, planPath: '/v/p.json', spentUsd: 1.550444,
       stages: [], estimateUsd: 0, reusesOlderGuide: false,
+      wordsUsd: 0, picturesUsd: 0, wordsStages: ['transcription', 'analysis'],
       watermark: true, watermarkSize: 'medium',
       watermarkWidthsPx: { small: 216, medium: 324, large: 432 },
     },
@@ -1114,9 +1115,69 @@ describe.skipIf(!built)('the transcript editor', () => {
     await page.selectOption('select[aria-label="Video"]', 'vitasilk');
     await page.selectOption('select[aria-label="Client"]', 'k2-syndicalia');
     await page.click('section.change .opener:nth-child(1)');
+    /*
+     * The screen opens on Read since session 31 — a word-a-row list is what
+     * editing needs and is not reading, and the words are what an orthography
+     * is judged on. These tests are about the editor, so they ask for it.
+     */
+    await page.waitForSelector('.readtoggle', { timeout: 5000 });
+    await page.click('.readtoggle button:nth-child(2)');
     await page.waitForSelector('ol.words li', { timeout: 5000 });
     return { page, uncaught };
   }
+
+  /*
+   * The words are the only judge of session 29's orthography reversal — the
+   * four hand-written references are in the old Latin style and cannot score a
+   * run under the new rules — so the screen has to be readable before it is
+   * editable.
+   */
+  it('opens on something a person can read, with the times', async () => {
+    if (browser === undefined) return;
+    const page = await browser.newPage({ viewport: { width: 460, height: 900 } });
+    const uncaught: string[] = [];
+    page.on('pageerror', (error: Error) => uncaught.push(error.message));
+    await page.addInitScript(stubHost(HANDSHAKE));
+    await page.addInitScript(stubRoutes(stepsThrough('build'), 'build'));
+    await page.addInitScript(`
+      window.__transcript = ${JSON.stringify(TRANSCRIPT)};
+      // Two Arabic words out of three, so the line itself runs right to left.
+      window.__transcript.words[2].text = 'عميق';
+      window.__transcript.words[2].script = 'arabic';
+      const realFetch = window.fetch;
+      window.fetch = (url, init) => {
+        if (String(url).indexOf('/transcript') !== -1) {
+          return Promise.resolve({ ok: true, json: () => Promise.resolve(window.__transcript) });
+        }
+        return realFetch(url, init);
+      };
+    `);
+    await page.goto(`file://${INDEX}`);
+    await page.waitForSelector('section.video', { timeout: 10_000 });
+    await page.selectOption('select[aria-label="Video"]', 'vitasilk');
+    await page.selectOption('select[aria-label="Client"]', 'k2-syndicalia');
+    await page.click('section.change .opener:nth-child(1)');
+    try {
+      await page.waitForSelector('.readview .readline', { timeout: 5000 });
+      // Reading first: the editor's word-a-row list is not on screen yet.
+      expect(await page.$('ol.words li')).toBeNull();
+      const text = (await page.textContent('.readview')) ?? '';
+      expect(text).toContain('filler');
+      expect(text).toContain('ترطيب');
+      expect(text).toContain('0:00');
+      // A filler the build will not draw is not part of what he is reading.
+      expect(text).not.toContain('euh');
+      expect(await page.$eval('.readline', (e) => e.getAttribute('dir'))).toBe('rtl');
+      // Each word still carries its own, so the Latin one reads correctly.
+      const dirs = await page.$$eval('.readline span:not(.at)', (els) =>
+        els.map((e) => e.getAttribute('dir')),
+      );
+      expect(dirs).toEqual(['ltr', 'rtl', 'rtl']);
+      expect(uncaught).toEqual([]);
+    } finally {
+      await page.close();
+    }
+  }, 30_000);
 
   it('shows every word with its interval', async () => {
     const loaded = await loadTranscript();
@@ -3276,3 +3337,103 @@ describe('a saved client’s own photographs', () => {
     }
   });
 });
+
+/*
+ * Reading a transcript used to cost the price of the pictures: on a 41-second
+ * reel the words are about $0.35 and the pictures about $3.98, and Run did
+ * both. Session 29 reversed the orthography rules and nothing has ever been
+ * transcribed under them, so the words are exactly what has to be read first.
+ */
+describe('running the words without the pictures', () => {
+  const priced = (words: number, pictures: number): string => `
+    window.__payload.dry.wordsUsd = ${String(words)};
+    window.__payload.dry.picturesUsd = ${String(pictures)};
+    window.__payload.dry.estimateUsd = ${String(words + pictures)};
+    window.__posted = [];
+    const inner = window.fetch;
+    window.fetch = (url, init) => {
+      if (String(url).indexOf('/jobs') !== -1 && init && init.method === 'POST') {
+        window.__posted.push(JSON.parse(init.body));
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ id: 'job-1' }) });
+      }
+      return inner(url, init);
+    };
+  `;
+
+  it('offers the words at their own price, and asks for only those stages', async () => {
+    const loaded = await loadFlow('build', 'build', 420, priced(0.35, 3.98));
+    if (loaded === null) return;
+    try {
+      const page = loaded.page;
+      await page.waitForSelector('.partrun button', { timeout: 5000 });
+      const label = (await page.textContent('.partrun button')) ?? '';
+      expect(label).toContain('Just the words');
+      expect(label).toContain('$0.35');
+      expect((await page.textContent('.partrun')) ?? '').toContain('$3.98');
+      await page.click('.partrun button');
+      const posted = (await page.evaluate('window.__posted')) as {
+        params: { only?: string[]; redo?: string[] };
+      }[];
+      expect(posted[0]?.params.only).toEqual(['transcription', 'analysis']);
+      expect(posted[0]?.params.redo).toBeUndefined();
+      expect(loaded.uncaught).toEqual([]);
+    } finally {
+      await loaded.page.close();
+    }
+  }, 30_000);
+
+  /*
+   * `redo` is not optional. The slot stage writes `pipeline.images.status =
+   * 'done'` when it plans the slots, so a plan that has never held a picture
+   * records the image stage as done and `only: ['images']` alone skips it —
+   * Block 10 session 8 found that and it is still open.
+   */
+  it('offers the pictures once the words are paid for, and redoes the stage', async () => {
+    const loaded = await loadFlow('build', 'build', 420, priced(0, 3.98));
+    if (loaded === null) return;
+    try {
+      const page = loaded.page;
+      await page.waitForSelector('.partrun button', { timeout: 5000 });
+      expect((await page.textContent('.partrun button')) ?? '').toContain('Make the pictures');
+      await page.click('.partrun button');
+      const posted = (await page.evaluate('window.__posted')) as {
+        params: { only?: string[]; redo?: string[] };
+      }[];
+      expect(posted[0]?.params.only).toEqual(['images']);
+      expect(posted[0]?.params.redo).toEqual(['images']);
+      expect(loaded.uncaught).toEqual([]);
+    } finally {
+      await loaded.page.close();
+    }
+  }, 30_000);
+
+  it('offers nothing when there is nothing left to pay for', async () => {
+    const loaded = await loadFlow('build', 'build', 420, priced(0, 0));
+    if (loaded === null) return;
+    try {
+      await loaded.page.waitForSelector('button.run', { timeout: 5000 });
+      expect(await loaded.page.$('.partrun')).toBeNull();
+      expect(loaded.uncaught).toEqual([]);
+    } finally {
+      await loaded.page.close();
+    }
+  }, 30_000);
+
+  /* A service older than this panel sends neither figure, and a guessed one
+     would be a claim about money. */
+  it('offers nothing against a service that does not split the cost', async () => {
+    const loaded = await loadFlow(
+      'build', 'build', 420,
+      'delete window.__payload.dry.wordsUsd; delete window.__payload.dry.picturesUsd;',
+    );
+    if (loaded === null) return;
+    try {
+      await loaded.page.waitForSelector('button.run', { timeout: 5000 });
+      expect(await loaded.page.$('.partrun')).toBeNull();
+      expect(loaded.uncaught).toEqual([]);
+    } finally {
+      await loaded.page.close();
+    }
+  }, 30_000);
+});
+
