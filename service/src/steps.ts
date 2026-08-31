@@ -1,6 +1,13 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { REPO_ROOT, buildFonts, loadMode, loadTemplateManifest, templatesById } from '@framopia/core';
+import {
+  REPO_ROOT,
+  buildFonts,
+  loadMode,
+  loadTemplateManifest,
+  resolveStoredPath,
+  templatesById,
+} from '@framopia/core';
 import { resolveClientIdentity, type ClientIdentitySource } from './build/client-identity.js';
 import { listReels } from './catalogue.js';
 import { checkBuildability } from './analysis/buildability.js';
@@ -146,7 +153,13 @@ function countCandidatesOnDisk(plan: EditPlan): { total: number; present: number
   for (const slot of plan.images.slots) {
     for (const candidate of slot.candidates) {
       total += 1;
-      if (candidate.path !== '' && existsSync(candidate.path)) present += 1;
+      // Parsed here rather than through readEditPlan, so the re-rooting that
+      // readEditPlan does has to be done explicitly.
+      const file =
+        candidate.path === ''
+          ? ''
+          : resolveStoredPath(candidate.path, { field: `${slot.id}/${candidate.id}.path` });
+      if (file !== '' && existsSync(file)) present += 1;
     }
   }
   return { total, present };

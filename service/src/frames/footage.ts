@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { REPO_ROOT } from '@framopia/core';
+import { REPO_ROOT, resolveStoredPath } from '@framopia/core';
 
 /**
  * The reel catalogue, which lives in benchmarks/ because that is where it was
@@ -16,10 +16,23 @@ export interface Reel {
   durationS: number;
 }
 
+/**
+ * The one place `benchmarks/footage.json` is read, so the one place its stored
+ * paths have to be re-rooted.
+ *
+ * They are absolute and were written on the drive this project grew up on.
+ * Resolving here rather than at each of the dozen `reel.path` readers is the
+ * same shape as `readTranscriptionCache` overwriting a manifest's stored
+ * `audioPath`: the file keeps what it says, and every caller gets a path that
+ * works on the machine it is running on.
+ */
 export function loadReels(): Reel[] {
   const parsed = JSON.parse(readFileSync(FOOTAGE_PATH, 'utf8')) as { reels?: Reel[] };
   if (!parsed.reels?.length) throw new Error(`${FOOTAGE_PATH} lists no reels`);
-  return parsed.reels;
+  return parsed.reels.map((reel) => ({
+    ...reel,
+    path: resolveStoredPath(reel.path, { field: `footage.json ${reel.label}.path` }),
+  }));
 }
 
 export function reelByLabel(label: string): Reel {

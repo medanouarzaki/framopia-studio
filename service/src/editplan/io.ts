@@ -1,3 +1,4 @@
+import { resolveStoredPath } from '@framopia/core';
 import { readFile, writeFile } from 'node:fs/promises';
 import crypto from 'node:crypto';
 import path from 'node:path';
@@ -52,6 +53,42 @@ export function createEditPlan(options: CreateEditPlanOptions): EditPlan {
   };
 }
 
+/**
+ * Every absolute path a plan stores, re-rooted onto the repository running now.
+ *
+ * A plan holds 52 of them across the corpus and every one was written on the
+ * drive this project grew up on, which made the whole thing portable only to a
+ * machine with a volume of that name. Resolving them **here**, in the one
+ * function that opens a plan, is the same shape as `readTranscriptionCache`
+ * overwriting a manifest's stored `audioPath` — the reason a relocated cache
+ * entry still hits.
+ *
+ * **The file keeps what it says.** This is a read-time change and no writer was
+ * touched, so nothing is migrated and the schema is untouched. A plan that is
+ * read, edited and written back does persist the resolved form; that is
+ * self-healing rather than a migration, and the resolver reads either form.
+ */
+function resolvePlanPaths(plan: EditPlan): EditPlan {
+  const at = (value: string, field: string): string => resolveStoredPath(value, { field });
+  plan.source.videoPath = at(plan.source.videoPath, 'source.videoPath');
+  plan.source.audioPath = at(plan.source.audioPath, 'source.audioPath');
+  if (plan.clientMode !== null) {
+    plan.clientMode.path = at(plan.clientMode.path, 'clientMode.path');
+  }
+  if (plan.watermark !== null) {
+    plan.watermark.assetPath = at(plan.watermark.assetPath, 'watermark.assetPath');
+  }
+  for (const slot of plan.images.slots) {
+    for (const candidate of slot.candidates) {
+      candidate.path = at(candidate.path, `${slot.id}/${candidate.id}.path`);
+      if (candidate.cutoutPath != null) {
+        candidate.cutoutPath = at(candidate.cutoutPath, `${slot.id}/${candidate.id}.cutoutPath`);
+      }
+    }
+  }
+  return plan;
+}
+
 export async function readEditPlan(planPath: string): Promise<EditPlan> {
   const raw = await readFile(planPath, 'utf8');
   const parsed: unknown = JSON.parse(raw);
@@ -59,7 +96,7 @@ export async function readEditPlan(planPath: string): Promise<EditPlan> {
   // Checked before structural validation so an unreadable version reports as
   // a version problem rather than a hundred missing-field issues.
   if (version !== EDIT_PLAN_SCHEMA_VERSION) throw new EditPlanVersionError(version);
-  return assertValidEditPlan(parsed);
+  return resolvePlanPaths(assertValidEditPlan(parsed));
 }
 
 export async function writeEditPlan(planPath: string, plan: EditPlan): Promise<void> {
