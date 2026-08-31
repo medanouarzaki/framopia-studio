@@ -334,6 +334,9 @@ AI-generated contextual images, SFX, and a watermark. Full spec in
   measures cap height, an x-height proxy and advance width at 343 and 425 with
   `sourceRectAtTime`. Adds one temporary comp to the open project and removes
   it; **never saves**. Writes `.local/build/font-measurements.json`.
+- `GET /fonts` — free, local, read-only. The faces the running After Effects can
+  set, by its own names. Drives the instance; writes nothing. `GET
+  /subtitle-preview` names a real frame to position the subtitle line against.
 - `npm run golden [-- --record] [-- --reference <path>]` — free, local. Builds the
   four-reel golden set, censuses each in After Effects and compares ~17,000 fields
   per run against `benchmarks/references/golden/census.json`. Needs After Effects
@@ -638,6 +641,68 @@ its tests while the panel was broken in After Effects. Prefer stubbing what the
 **platform** guarantees (`window.location`) over what the **host** might inject,
 and never stub a method the code does not call. Full statement in
 `docs/CLAUDE_CODE_GUIDELINES.md` §3.
+
+### Nothing typed that can be chosen
+
+**User ruling, 2026-08-31**, given while setting up a client for the first time
+and stated for the **whole product**, not that screen: no path is ever typed or
+pasted, every path is chosen through a macOS dialog. A path is something the
+machine already knows how to find, and asking a person to reproduce one
+character for character is asking him to do the machine's work and to get it
+wrong.
+
+**Two typed path fields existed** — the client setup screen's *Video folder* and
+*Logo* — and both are choosers now. **The video picker was already right**: its
+typed field went in Block 8 session 44, and its `showOpenDialogEx` is what both
+new choosers call. `chooseDirectory` is that call's second argument, so a folder
+chooser and a file chooser are one implementation; `pickFolder` and
+`pickImageFile` join `pickVideoFile` in `panel/src/file-dialog.ts`.
+
+**A cancel leaves the field alone.** All three return null both for a cancel and
+for a host with no dialog, and null means *he chose nothing*, never *clear it*.
+The path is still shown beneath the button, and the field falls back to text on
+a host with no chooser — with a sentence saying why, because that host is a real
+case for the second machine.
+
+`panel/src/path-fields.test.ts` pins the rule by reading every `.tsx`: a text
+input whose label names a path fails unless it is `PathField`'s own fallback.
+
+### The client setup screen finishes a client
+
+**Three more rulings from the same sitting**, all his, all built rather than
+described because he judges by looking.
+
+**Fonts are a list, and the names are After Effects' own.** `GET /fonts` drives
+the running instance through `runFontList` — `panel/jsx/font-list.jsx`, which
+reads `app.fonts.allFonts` and **never writes a font name**, because setting one
+that is not installed pollutes that list for the rest of the application
+session. **445 families, 1188 distinct names**, and a list built from macOS
+would be wrong: it publishes `Inter-Regular_SemiBold` where After Effects wants
+`Inter-SemiBold`. **A list that cannot be built is said out loud** and the field
+falls back to text — an empty chooser and an unfillable one look identical and
+mean opposite things.
+
+**Subtitle height is a slider over a real frame** (he chose this over named
+presets and over a typed number). `GET /subtitle-preview` finds a frame the
+pipeline already extracted, and the line is drawn at `baselineY / 3840` of the
+preview's height. **The preview says what it is showing** — the reel a real
+frame came from, or that it is a plain frame when a client has no footage — and
+states the scale, because a 2160 × 3840 frame drawn 216 px wide would otherwise
+misrepresent a position silently. The number follows the slider, stays visible
+and stays editable; blank still means `SUBTITLE_ANCHOR_BASELINE_Y`, read from
+the constant.
+
+**The four colours are on the screen.** *"Colours and their own pictures are
+added afterwards, once the client exists"* made setting up a client take two
+visits, which is a design mistake rather than a missing nicety. Each colour is a
+swatch he picks with its hex beside it, labelled with the role in the words the
+client card already uses. **The defaults are what a client with no colours gets
+today** — the service inherits the template client's palette — so a client saved
+without touching them is identical to one saved before, and this screen produces
+K2's four ruled values exactly. Verified against `buildClient` both ways.
+**Their own pictures genuinely do come later**: one is chosen per video, against
+the moment it illustrates, and there is nothing to point at until a client has
+footage.
 
 ### The panel has been driven by hand, and it works
 
