@@ -78,6 +78,9 @@ function resolvePlanPaths(plan: EditPlan): EditPlan {
   if (plan.watermark !== null) {
     plan.watermark.assetPath = at(plan.watermark.assetPath, 'watermark.assetPath');
   }
+  if (plan.build.aepPath !== null) {
+    plan.build.aepPath = at(plan.build.aepPath, 'build.aepPath');
+  }
   for (const slot of plan.images.slots) {
     for (const candidate of slot.candidates) {
       candidate.path = at(candidate.path, `${slot.id}/${candidate.id}.path`);

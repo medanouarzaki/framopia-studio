@@ -25,7 +25,8 @@ import {
   toAeColour,
 } from '@framopia/core';
 import { edgeLuminance, flattenCutout } from '../images/sidecar.js';
-import { readEditPlan } from '../editplan/io.js';
+import { readEditPlan, writeEditPlan } from '../editplan/io.js';
+import { buildRecordFor } from './build-record.js';
 import { runBuildReel } from './drive.js';
 import { emitBuildStage } from './stages.js';
 import { imageSize } from './image-size.js';
@@ -813,6 +814,30 @@ if (result.ok) {
     console.error('\nthe built comp does not match the plan');
     process.exit(1);
   }
+}
+
+/*
+ * The plan records that this reel was built.
+ *
+ * Last, deliberately: everything above can still refuse a build whose file is
+ * already on disk — a clipped card, a card over the safe width, an audio layer
+ * that did not start where it was asked to — and each of those exits non-zero.
+ * Writing the record earlier would put `built` on a plan the same run then
+ * rejects. So the record is written once the build is known to have succeeded
+ * *and* the file is known to be there, which is the only moment both are true.
+ *
+ * Re-read from disk rather than reusing the plan this file opened at the top,
+ * so the write carries exactly this one change and nothing the build may have
+ * touched along the way.
+ */
+if (result.ok) {
+  const fresh = await readEditPlan(planPath);
+  fresh.build = buildRecordFor({
+    aepPath: typeof result['savePath'] === 'string' ? String(result['savePath']) : null,
+    builtAt: new Date().toISOString(),
+  });
+  await writeEditPlan(planPath, fresh);
+  console.log(`\nrecorded on the plan: built, ${path.relative(REPO_ROOT, fresh.build.aepPath ?? '')}`);
 }
 
 console.log(`\nbuild wall clock ${wallS.toFixed(1)}s`);
