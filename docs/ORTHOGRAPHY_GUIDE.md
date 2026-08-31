@@ -1,142 +1,246 @@
-# Framopia Studio — Darija Orthography Guide (v1.0.8)
+# Framopia Studio — Orthography Guide (v2.0.0)
 
-Status: **v1.0.8 — frozen**. All §9 questions are resolved. v1.0.2 (2026-08-24) added the numeral rule in §3a and widened the §6 Arabic-script rule to the whole medical/aesthetic domain; v1.0.3 (2026-08-24) settled that the §6 switch is term-level; v1.0.4 (2026-08-24) added `bach` to the §4 freeze list, because the conformance scorer flagged it as a near-miss of `wach` while both were correctly spelled. v1.0.5 (2026-08-25) requires `dial` to be written separate from the following word: three identical correction calls produced both `dial l7loul` and `dl7loul`, and §4 froze the spelling without ever saying whether it attaches. v1.0.6 (2026-08-25) settles the **language** of an Arabic-script term in §6: it is `msa`. Three identical calls tagged the same six terms `darija` twice and `msa` once, because §6 said which script they take and never which language they are. v1.0.7 (2026-08-25) settles three things the user decided by ear: the conjunction `w` attaches (§2), a French noun spoken with its French article keeps it (§2/§5), and a §6 term is never broken in the subtitle track even when the emphasis layer selects a subset of it (§6c). v1.0.8 (2026-08-25) settles the conjunction before an Arabic-script term: it attaches in Arabic script as a proclitic (`ومادة`), which §2 now states and §6 and §8 cross-reference. A mechanical scan found `w مادة` sitting in the `test-3` reference under a header asserting v1.0.7 conformance, past three separate hand-written token lists; the scorer now flags it. This document is injected verbatim into every Gemini transcription/correction prompt, so it is written as rules, not prose. **Consistency across videos matters more than any single "correct" spelling.**
+Status: **v2.0.0 — in force from 2026-08-31.** This version reverses the rule every earlier version was built on. Versions v1.0.0 through v1.0.8 wrote Moroccan Darija in **Latin letters (Arabizi)** and reserved Arabic script for a named medical domain and for formal MSA; v2.0.0 writes **all Arabic in Arabic letters** and keeps Latin for the languages that use it. The user ruled it on 2026-08-31, for a product aimed at Arabic content creators whose speech is mostly Arabic with some English, where Arabizi was a Moroccan-agency habit rather than a property of the audience. Everything already transcribed under v1.0.x stays as it is — see §10. This document is injected verbatim into every Gemini transcription/correction prompt, so it is written as rules, not prose. **Consistency across videos matters more than any single "correct" spelling.**
 
-## 1. Scope
+## 1. The rule
 
-These rules govern how spoken content is written in subtitles:
-- Moroccan Darija → **Latin script (Arabizi)** by the conventions below.
-- French and English → standard spelling, as spoken, inline.
-- Genuinely classical/Modern Standard Arabic (Quranic/religious phrases, formal quotes, fixed formal terms) → **Arabic script**, fully vocalized only for religious quotations.
-- Never translate. Never paraphrase.
+**Arabic is written in Arabic letters. French and English are written as they are.**
 
-## 2. Arabizi character conventions (Darija)
+That is the whole of it. There is no judgement to make about whether a word is
+technical enough, formal enough, or medical enough — those were v1.0.x's
+questions and they are gone.
 
-| Arabic sound | Write | Example |
+- Arabic — Moroccan Darija, Modern Standard Arabic, Gulf, Egyptian, Levantine —
+  → **Arabic script**. `3ndk` → `عندك`. `sana` → `سنة`. `yom` → `يوم`.
+  `l7essass` → `الحصص`.
+- French → **French spelling, with its accents**. `les cernes pigmentés`,
+  `alors`, `la vidéo`, `déjà`, `mésothérapie`.
+- English → **English spelling**. `serum`, `booster`, `skincare`.
+- **Never translate. Never paraphrase. Never turn Darija into Modern Standard
+  Arabic** — see §3.
+- The script of a word is decided by **the word**, never by the words around it.
+
+## 2. Deciding the script, word by word
+
+Ask one question of each word: **what language is it?**
+
+| the word is | write it | example |
 |---|---|---|
-| ع (ʿayn) | `3` | `3lach` (why), `m3a` (with) |
-| ح (ḥ) | `7` | `7it` (because), `mre7ba` |
-| ق (qāf) | `9` | `kan9olo` (we say), `9elbi`, `so9` |
-| خ (kh) | `kh` | `khdma` (work) |
-| ش (sh) | `ch` | `chno` (what) — French-style `ch`, not `sh` |
-| غ (gh) | `gh` | `ghadi` (going to) |
-| ط، ص، ض، ظ | plain `t`, `s`, `d`, `d` | no capital-letter emphatics, no `9`-digraphs |
-| ء (hamza) | omit or `'` only where ambiguity demands | `sa'al` |
-| ه | `h` | `houa` |
-| و (consonant/vowel) | `w` / `ou` | `wach`, `nour` |
-| ي | `y` / `i` | `yallah`, `bghit` |
+| an Arabic word, in any register | Arabic script | `دابا`, `البشرة`, `إن شاء الله` |
+| a French word | French spelling | `la vidéo`, `polynucléotides` |
+| an English word | English spelling | `serum`, `filler` |
+| a foreign root that has taken Arabic grammar | Arabic script | `النورمال`, `الفيتامينات` |
+| a proper noun or brand | as its owner writes it (§6) | `Profhilo`, `Vita Silk` |
+| a number | digits (§5) | `15`, `26` |
 
-Notes:
-- ق is **always** `9`, never `q` — no exceptions, including words commonly typed with `q` elsewhere (`kan9olo`, `9elbi`, `so9`, `9rib`). `q` never appears in a Darija word.
-- The definite article is **always attached** to its noun, no space and no hyphen: `lkhdma`, `lmochkil`, `ddar`, `chchi`. This is the Arabic `l-`, and it governs **Darija** nouns. See the French-article rule below.
-- The conjunction **`w` attaches to the word that follows it**, no space and no hyphen — the same way the definite article does, and for the same reason: it is a proclitic, not a word. Written from the four reference reels: `Wki3tewna شد خفيف` (test-1), `Mabin 7essa w7essa 15 yom` (test-3). In Arabic script it is the same rule with the same letter: `إشراقة ونضارة`, never `إشراقة و نضارة`. A standalone `w` is a spelling error, and the conformance scorer treats it as one.
-- **The conjunction attaches regardless of the following word's script.** When the next word is written in Arabic script under §6, the conjunction attaches *in Arabic script*, as a proclitic: `ومادة`, never `w مادة` and never `و مادة`.
-  - This does not violate §8. §8 forbids mixing scripts **inside one word**, and the fused form is entirely one script — the whole token is Arabic.
-  - It does not violate §6's term-level rule either. After fusion there is no separate conjunction word whose script could depend on its neighbours; the letter is a proclitic **on the term**, which is how it is written in Arabic in any case. §6 rejects letting a neighbour decide a *word's* script, and a proclitic is not a word.
-- **A French noun spoken with its French article keeps the French article**, and both keep French spelling: `dial la vidéo`, `dial le cabinet`. §2's attached `l-` never reaches it. A French **root** carrying Darija morphology is a Darija noun and does take the attached article: `dial lvitaminat`, `dial lcocktail`. Both forms are legal and the difference is real — write what was spoken.
-- Digits are used **only** for 3/7/9. Never `5` for خ (use `kh`), never `2` for hamza, never `6`/`8`.
-- Doubled consonants (shadda) are written doubled when pronounced: `d7akkni`, `hbbal`.
+**A token never mixes scripts.** If two scripts meet, they are two tokens with a
+space between them. Splitting at the boundary is always the right answer.
 
-## 3. Vowels
+## 3. Writing Arabic
 
-- Short, barely-pronounced schwas are dropped the way Moroccans type: `khdma` not `khedema`, `mzyan` not `meziane` — unless dropping creates an unreadable cluster, then insert `e`.
-- Long vowels: `a`, `i`, `ou` (`ou` for /uː/, French habit): `so9`, `bousa`.
-- Word-final /a/ from ة: `a` (`khedma`? no — `khdma`; `mdina`).
+- **Write the word that was spoken.** Darija stays Darija in Arabic letters:
+  `كنقولو`, not `نقول`. `دابا`, not `الآن`. `بزاف`, not `كثيرا`. Rewriting Darija
+  into Modern Standard Arabic is a translation, and translation is forbidden.
+  This is the single most likely error in Arabic-script output and the one to
+  guard hardest.
+- **No vocalisation.** Harakat are not written — `الكولاجين`, never
+  `الكُولاجين` — except inside a religious quotation, where they may be written
+  if that is how the phrase is set.
+- **Standard Arabic letters and standard spelling**: `ة` for a final feminine
+  `t`, `ى` where standard, hamza written as standard Arabic writes it (`أ`, `إ`,
+  `ء`, `ئ`, `ؤ`).
+- **Proclitics attach**, as Arabic writes them: the definite article
+  (`البشرة`), the conjunction `و` (`ونضارة`), and the prepositions `ل`, `ب`,
+  `ف`, `ك` (`للبشرة`, `بزاف`, `فالدار`). A standalone `و` before an Arabic word
+  is a spelling error.
+- **Doubling** is not marked; shadda is a haraka and §3 does not write harakat.
+- **One spelling per word.** Where a Darija word can plausibly be spelled more
+  than one way, use §4's list. Consistency across a reel matters more than any
+  single defensible choice.
 
-## 3a. Numbers
+## 3a. Converting Arabizi input
 
-Numbers are written as **digits**, never spelled out: `4`, `15`, `18`, `20`. Write `mabin 7essa w 7essa 15 yom`, not `khmstachr yom`. This holds whatever the surrounding language is, and it holds for ordinals read as numbers.
+The first-pass transcription and any draft you are handed may contain Arabizi.
+**It is input to be converted, never output to be produced.** Inside a word:
 
-This does not conflict with §2. `3`, `7` and `9` are letters when they sit inside a word (`3ndi`, `7essa`, `so9`); a digit standing alone as its own token is a number (`3 dial l7essass` is three sessions). Nothing else in Arabizi produces a standalone digit token, so the two readings never collide.
+| Arabizi | Arabic letter | example |
+|---|---|---|
+| `3` | ع | `3ndk` → `عندك` |
+| `7` | ح | `7essa` → `حصة` |
+| `9` | ق | `9elbi` → `قلبي` |
+| `5` or `kh` | خ | `khdma` → `خدمة` |
+| `2` | ء / أ | `2ana` → `أنا` |
+| `ch` | ش | `chno` → `شنو` |
+| `gh` | غ | `ghadi` → `غادي` |
+| `ou` | و | `nour` → `نور` |
 
-## 4. High-frequency words — fixed spellings (freeze list)
+A digit standing alone as its own token is **a number**, not a letter (§5):
+`3 حصص` is three sessions.
 
-One spelling per word, always. Where the ground truth spelled a word more than one way, the majority spelling won.
+## 4. High-frequency Darija words — one spelling each
 
-`wach` (question marker) · `chno` (what) · `3lach` (why) · `kifach` (how) · `fin` (where) · `daba` (now) · `ghadi` / prefix `gha-` (future) · `bghit` / `bghiti` (I/you want) · `kayn` / `kayna` (there is) · `machi` (not) · `walou` (nothing) · `bzaf` (a lot) · `chwiya` (a little) · `mzyan` (good) · `hadchi` (this thing) · `f` (in) · `m3a` / `m3aya` (with/with me) · `7ta` (until/even) · `wakha` (okay) · `yallah` (let's go) · `nchaalah` (God willing) · `khassk` (you must) · `3ndi` / `3ndk` / `3ndhom` (I/you/they have) · `rah` / `raha` (indeed/it is)
+Darija has no single standard orthography, so these are fixed. Use them exactly.
 
-Added in v1.0.1, from the four ground-truth reels:
+`واش` (question marker) · `شنو` (what) · `علاش` (why) · `كيفاش` (how) ·
+`فين` (where) · `دابا` (now) · `غادي` (going to) · `بغيت` / `بغيتي` (I/you want) ·
+`كاين` / `كاينة` (there is) · `ماشي` (not) · `والو` (nothing) · `بزاف` (a lot) ·
+`شوية` (a little) · `مزيان` (good) · `هادشي` (this thing) · `مع` / `معايا` (with) ·
+`حتى` (until, even) · `واخا` (okay) · `يالله` (let's go) · `إن شاء الله` ·
+`خاصك` (you must) · `عندي` / `عندك` / `عندهم` (I/you/they have) · `راه` / `راها` ·
+`ديال` / `ديالي` / `ديالك` (of/mine/yours) · `لي` (which, who) · `هو` (he, it) ·
+`جوج` (two) · `واحد` (one) · `حصة` / `حصص` (session/sessions) · `مابين` (between) ·
+`تال` (up to) · `من` (from) · `على` (about, on) · `فا` (so, then) ·
+`اليوما` (today) · `يوم` (day) · `باش` (so that) · `يعني` (that is)
 
-`dial` / `diali` / `dialk` (of/mine/yours — the possessive takes its pronoun suffix attached, `dialha`, `dialo`, `dialna`) · `li` (which/who) · `houa` (he/it) · `joj` (two) · `wa7d` (one, also the indefinite article) · `7essa` / `7essass` (session / sessions) · `mabin` (between) · `tal` (up to, until) · `mn` (from) · `3la` (about, on) · `fa` (so, then) · `lyoma` (today) · `yom` (day) · `nhdr` (I talk) · `lik` / `likom` (to you sg/pl) · `lkher` (the end) · `tb3i` (follow — f. imperative) · `kat7taji` (you need — f.) · `kidom` (it lasts)
+**`ديال` is written separate** from the word it governs — `ديال الحلول`,
+`ديال الحصص` — and its pronoun suffixes stay attached: `ديالي`, `ديالك`,
+`ديالها`, `ديالو`, `ديالنا`.
 
-Added in v1.0.4:
+**Verb prefixes attach**, as Arabic writes them: `كنقولو`, `كتخدم`, `كيخدم`,
+`غانمشيو`.
 
-`bach` (so that, in order to — باش)
+## 5. Numbers, dates and measurements
 
-v1.0.1 replaced `dyal`/`dyali` with `dial`/`diali`: the ground truth wrote `dial` eleven times and `dyal` never, and §4's own rule is that the user's habit wins. Confirmed by the user on 2026-08-24; `dial` is settled.
+- **Digits, never spelled out**: `15 يوم`, not `خمستاشر يوم`. This holds
+  whatever the surrounding language is, and for ordinals read as numbers.
+- **Western digits `0-9`, never Arabic-Indic `٠-٩`.** *A decision, not a
+  convention*: every measurement, template and downstream check in this project
+  is built on ASCII digits, a reel mixing the two numeral systems reads as
+  careless, and `26` is legible to every audience this tool serves. Reversible
+  if the user prefers `٢٦`, and it would be one rule here plus a sweep of
+  everything that counts characters.
+- **Dates and times as spoken**, in digits: `15 تال 20 يوم`, `5 دقائق`.
+- **Units keep the language they were spoken in**: `20 ml`, `2 mm`, `50 غرام`.
 
-`dial` is always written **separate** from the word it governs: `dial l7loul`, `dial l7essass`, `dial lvitaminat` — never `dl7loul`, `dl`, or `dla`. Its pronoun suffixes stay attached, as above: `diali`, `dialk`, `dialha`, `dialo`, `dialna`. §2's attachment rule covers the definite article only and never reached this word, and `dl`/`dla` were already listed below as reduced variants that are not frozen; measured instability across identical calls (Block 2 session 4) showed the gap was real, so it is closed here.
+## 6. Words that belong to two languages
 
-Variants seen in the ground truth and deliberately **not** frozen, because the majority form above supersedes them: `dl`/`dla` (reduced `dial`), `main` (a typo for `mabin`, and it collides with French `les mains`), `ta` (reduced `tal`), `yawm` (→ `yom`), `7sessa` (→ `7essa`). Apostrophes are always straight (`l'ADN`, `l'effet`), never curly.
+**A borrowed word is written in the script of the language it is being spoken
+as.** The test is grammar, not origin.
 
-Verb prefixes attach without hyphen: `kan-` (present, 1sg/1pl per context), `kat-`, `kay-`, `gha-`: `kanakol`, `kaykhdem`, `ghanmchiw`.
+- **It carries Arabic grammar → Arabic script.** An Arabic article, an Arabic
+  plural, an Arabic verb prefix, an Arabic possessive: `النورمال`,
+  `الفيتامينات`, `كنبوسطي`, `تكونيكتا`. A French root inside an Arabic word is
+  still an Arabic word.
+- **It carries French or English grammar → Latin.** A French article, a French
+  plural, an English possessive: `le normal`, `la vidéo`, `les cernes`,
+  `the serum`.
+- **Neither is clear → write it Latin and lower the word's confidence**, so the
+  editor sees it. A borrowed word left in Latin is readable to both audiences;
+  an Arabic spelling invented for a word nobody writes in Arabic is not.
 
-## 5. Code-switch boundaries
+**A one-letter Arabic proclitic before a Latin-script word does not attach**,
+because a token may not mix scripts. It is written in Arabic letters as its own
+token, with a space: `و l'effet`, `ديال les cernes`, `ف la clinique`. Before an
+Arabic word it attaches as normal: `ونضارة`, `للبشرة`.
 
-- French/English words keep their standard spelling, **accents included** (`déjà`, `donc`, `par exemple`, `français`), even mid-Darija-sentence: `kanbossti had l'contenu` → write `kan-` verb + French noun as spoken: `kanposter had le contenu` (spelling of the French word wins).
-- Darija-ized French verbs (French root + Darija morphology) are written Arabizi with the French root recognizable: `kanposti`, `tconnecta`.
-- Proper nouns, brand names, product names: exactly as the client writes them (client-mode vocabulary list is authoritative and overrides everything).
-- The article that comes with a borrowed noun belongs to the language the noun is being spoken in. `la vidéo` is French and stays French; `lvitaminat` has taken Darija plural morphology and takes the Darija article. §2 carries the rule; this is the code-switch half of it.
+**Brand, product and proper names are written exactly as their owner writes
+them**, in whatever script that is, with their own casing: `Profhilo`,
+`RRS Eyes`, `Vita Silk`. The client's vocabulary list is authoritative and
+overrides every rule here. **A brand is never transliterated**, in either
+direction.
 
-## 6. Latin vs Arabic script — the decision rule
+## 7. Terms
 
-Write in **Arabic script** in two cases.
+A **term** is a phrase that names one thing and is spoken as one unit — a
+procedure, an anatomical region, a substance, an outcome phrase:
+`محفزات الكولاجين`, `المنطقة حول العينين`, `ترطيب عميق للبشرة`,
+`l'acide hyaluronique`, `les polynucléotides`.
 
-**(a) The medical and aesthetic domain**, even mid-Darija — this is how the register is actually written and read in the clinic, and it holds regardless of surrounding language. The rule covers the whole domain vocabulary, not just named procedures:
+- **A term may be Arabic, French, English, or a mixture**, and each of its words
+  follows §2. A term is not forced into one script: `مادة la caféine` is what
+  was said and is what is written. Where a substance has both an Arabic name and
+  a French technical one, write the one actually spoken.
+- **A term is never broken in the subtitle track.** It is written whole and
+  correctly spelled, however many tokens it runs to. Nothing in the pipeline may
+  split it, re-spell it, or drop part of it.
+- **The keyword emphasis layer is a separate matter.** Keyword templates hold
+  one or two short words (TEMPLATE_LIBRARY_GUIDE §4), so a term of three or more
+  tokens cannot be emphasized whole. The emphasis layer **selects a subset** —
+  `تحفيز طبيعي` out of `تحفيز طبيعي للكولاجين` — and that subset is what
+  animates. **This does not alter the term**: the subtitle track still renders it
+  whole. A narrowed keyword is a pointer into a term, not a spelling of one.
 
-- procedures and treatments: `شد طبيعي للوجه`, `محفزات الكولاجين`, `الإبرة الحريرية`, `ترطيب عميق للبشرة`
-- anatomical regions: `المنطقة حول العينين`, `البشرة`, `الوجه`
-- substance and material names: `مادة الكافيين`, `حمض الهيالورونيك`, `الكولاجين`
-- outcome phrases in the same register: `نتائج جد فعالة`
+**The language tag follows the word, not its neighbours.** `script` is read off
+the characters; `lang` is a property of the word. An Arabic word in a French
+sentence is `darija` or `msa` by what it is, and a French word in an Arabic
+sentence is `fr`. Tagging a word by the language around it is the same mistake
+as choosing its script that way.
 
-Branded product names and French technical terms are **not** covered and keep their Latin/French spelling: `le profhilo`, `le RRS eyes`, `les polynucléotides`, `l'acide hyaluronique`, `faiblement réticulé`, `la mésothérapie`. Where the same substance has both a domain Arabic name and a French technical one, write the one actually spoken.
+## 8. Cleaning rules (applied as flags, never deletion)
 
-**The switch is term-level, not clause-level.** Only the domain term itself renders in Arabic script; every connective, pronoun, copula, preposition and other function word around it stays Arabizi, even when the whole sentence is about the procedure. Write `محفزات الكولاجين hia 3ibara 3an إبر`, never `محفزات الكولاجين هي عبارة عن إبر`. A term that runs to several words (`المنطقة حول العينين`, `شد طبيعي للوجه`) switches as one unit, because those words are the term. The rejected alternative was clause-level switching — letting one domain term pull the whole surrounding clause into Arabic script — which was dropped because it makes the script of a word depend on its neighbours rather than on the word, and nothing downstream can predict it.
+Mark as removed — they will not display, but stay in the Edit Plan:
 
-**A conjunction immediately before such a term fuses into it in Arabic script** (`ومادة الكافيين`), per §2. The term-level rule is untouched by this: the proclitic is part of the token it attaches to, not a separate word whose script a neighbour decided.
-
-**The language of an Arabic-script term is `msa`.** A domain term or
-religious formula rendered in Arabic script under this section is tagged
-`lang: msa`, whatever the surrounding language. `script` is read off the
-characters; `lang` is a property of the word itself. Tagging `الكافيين`
-`darija` because the words around it are Darija is exactly the clause-level
-reasoning this section already rejects for script — it would make a word's
-language depend on its neighbours instead of on the word.
-
-**(b) Genuinely MSA/classical register as spoken:** religious formulas (`بسم الله`, `إن شاء الله` when uttered formally — but casual "nchaalah" in flowing Darija stays Latin: `nchaalah`), Quran/hadith quotes, formal citations, deliberate formal-register switches. Everything conversational stays Latin, even MSA-origin vocabulary used casually. When unsure, prefer Latin and lower the word's confidence so the editor reviews it. The per-word script decision is always editable in the review UI.
-
-### 6c. A term is never broken in the subtitle track
-
-An Arabic-script domain term is one unit and is written whole, however many tokens it runs to: `محفزات الكولاجين`, `تحفيز طبيعي للكولاجين`, `المنطقة حول العينين`. Nothing in the pipeline may split it, re-spell it, or drop part of it from the subtitles.
-
-The **keyword emphasis layer** is a separate matter. Keyword templates are built for one or two short words (TEMPLATE_LIBRARY_GUIDE §4, and §8's own manifest note reads "best on 1 word"), so a term of three or more tokens cannot be emphasized whole. The emphasis layer therefore **selects a subset of the term** — `تحفيز طبيعي` out of `تحفيز طبيعي للكولاجين` — and that subset is what animates on screen.
-
-This selection **does not alter the term**. The subtitle track still renders `تحفيز طبيعي للكولاجين` whole and correctly spelled; emphasis draws attention to part of it and nothing more. A reader who sees only the guide should not conclude that a narrowed keyword is a permitted spelling of the term: it is not a spelling at all, it is a pointer into one.
-
-Recorded here because Block 3 session 4 found the tension between this guide and the template contract and resolved it in the template's favour for emphasis only.
-
-## 7. Cleaning rules (applied as flags, never deletion)
-
-Mark as removed (they won't display, but remain in the Edit Plan):
-- Fillers: `euh`, `eh`, standalone repeated `ya3ni`/`za3ma` used as hesitation (kept when meaningful: "ya3ni…" introducing an actual explanation stays).
-- Immediate stutters/repetitions: `l- l- lmochkil` → `lmochkil`.
+- Fillers: `اه`, `euh`, `eh`, and standalone repeated `يعني` / `زعما` used as
+  hesitation. Kept when meaningful: `يعني…` introducing an actual explanation
+  stays.
+- Immediate stutters and repetitions: `ل- ل- المشكل` → `المشكل`.
 - Abandoned false starts replaced by a restart.
+
 Never remove content words. Never reorder. Never "improve" grammar.
 
-## 8. Punctuation & casing in subtitles
+## 9. Punctuation and casing in subtitles
 
-- Groups of 1–2 words carry no terminal punctuation. Question marks allowed on the final group of a clear question. No commas, no ellipses.
-- Lowercase by default; capitalize proper nouns and brand names as the client writes them. Arabic script has no casing — never mix scripts inside one word.
-- The "never mix scripts inside one word" rule bans a token containing both scripts. It does **not** ban the §2 conjunction fusing into an Arabic-script term: `ومادة` is one word in one script.
+- Groups of one or two words carry no terminal punctuation. A question mark is
+  allowed on the final group of a clear question — `؟` after Arabic, `?` after
+  Latin. No commas, no ellipses.
+- Latin text is lowercase by default; proper nouns and brands keep the casing
+  their owner uses. Arabic has no casing.
+- **Never mix scripts inside one word.** Where two scripts meet, split into two
+  tokens (§2, §6).
+- Apostrophes in Latin words are always straight (`l'ADN`, `l'effet`), never
+  curly.
 
-## 9. Resolved decisions and remaining work
+## 10. The corpus predates this guide
 
-1. **Resolved — `9` vs `q` for ق.** Always `9`, never `q` (§2).
-2. **Resolved — definite article.** Always attached, no space, no hyphen: `lkhdma`, `lmochkil` (§2).
-3. **Resolved — frozen spellings.** `nchaalah` (not `nchallah`/`inchallah`) and `bzaf` (not `bzzaf`/`bezzaf`) (§4).
-4. **Resolved — the §4 freeze list was extended** from the four hand-written ground-truth reels in v1.0.1: every Darija word occurring at least twice and not already frozen was added, one spelling per word. See the v1.0.1 block in §4, including the one entry it overrode.
-5. **Resolved — French-influenced spellings.** §5 stands as written: French and English words keep proper spelling with accents (`déjà`, `donc`, `par exemple`); only French roots carrying Darija morphology are written Arabizi (`kanposti`, `tconnecta`).
-6. **Resolved (v1.0.7) — the conjunction `w` attaches.** Settled by the user after a listening pass over sixteen flagged tokens in Block 3. Every one was really spoken, and the four references had already been writing the conjunction attached throughout; the transcripts were the side writing it standalone (§2).
-7. **Resolved (v1.0.7) — the article on a borrowed noun.** Decided by ear: the token is `dial la vidéo`. A French noun keeps its French article; a French root with Darija morphology takes the attached `l-` (`dial lvitaminat`). §2 and §5 both carry it.
-8. **Resolved (v1.0.8) — the conjunction before an Arabic-script term.** It attaches in Arabic script as a proclitic (`ومادة`). Ratified by the user after a mechanical scan found the unfused form in a reference that had been asserting v1.0.7 conformance for a block (§2, cross-referenced from §6 and §8).
-9. **Resolved (v1.0.7) — emphasis never breaks a §6 term.** The subtitle track renders the term whole; the keyword layer selects a subset of it because keyword templates hold one or two words (§6c).
+**Every reel already transcribed in this repository was written under v1.0.x and
+is Arabizi.** That is not a defect and must not be read as one:
+
+- the five Edit Plans in `my files/test videos/` — 343 words, 13.1% of them in
+  Arabic script;
+- the cached transcriptions behind them;
+- the four hand-written ground-truth transcripts in `.local/ground-truth/`,
+  which carry a `# reference-version:` header naming the v1.0.x rules they were
+  written under;
+- the two hand-made alignment references in `benchmarks/references/align/`;
+- the golden reference in `benchmarks/references/golden/`, and the four comps it
+  describes.
+
+**None of them is rewritten.** They are hand-made or expensively made records of
+what was measured, and the system never regenerates one. The orthography
+conformance scorer in `benchmarks/src/orthography.ts` scores the **v1.0.x**
+rules, because those are the rules those four transcripts were written under,
+and it is pinned to that version rather than to whatever the guide currently
+says.
+
+An existing reel does not re-transcribe because this guide changed: its cached
+entry is reused as *compatible* — same prompt version, older guide — and costs
+nothing. What that means in practice is that **nothing already made moves to the
+new orthography, and a reel transcribed under v1.0.x stays Arabizi until someone
+deliberately re-transcribes it.**
+
+## 11. Version history
+
+- **v2.0.0 (2026-08-31)** — Arabic is written in Arabic letters; French and
+  English are written as they are. Reverses §1 of every earlier version. The
+  Arabizi conventions become a conversion table (§3a) rather than an output
+  format; the domain-based script rule of the old §6 is gone, because there is
+  no longer a domain to decide; the old §4 freeze list is replaced by §4's
+  Arabic one; the numeral system is settled as Western digits (§5); the
+  proclitic-before-a-Latin-word case is decided (§6); terms keep their contract
+  and lose their script rule (§7).
+- v1.0.8 (2026-08-25) — the conjunction before an Arabic-script term attaches in
+  Arabic script as a proclitic. Superseded in form by v2.0.0 §3, which keeps the
+  same behaviour for all Arabic words.
+- v1.0.7 (2026-08-25) — the conjunction `w` attaches; a French noun keeps its
+  French article; a term is never broken in the subtitle track. The first two
+  are Arabizi rules and are retired; the third survives as v2.0.0 §7.
+- v1.0.6 (2026-08-25) — the language of an Arabic-script term is `msa`. Survives
+  as v2.0.0 §7's rule that the tag follows the word.
+- v1.0.5 (2026-08-25) — `dial` is written separate. Survives as `ديال` in §4.
+- v1.0.4 (2026-08-24) — `bach` added to the freeze list; now `باش` in §4.
+- v1.0.3 (2026-08-24) — the script switch is term-level. Retired: there is no
+  switch to make.
+- v1.0.2 (2026-08-24) — the numeral rule, and the medical domain in Arabic
+  script. The numeral rule survives as §5; the domain rule is retired.
+- v1.0.0 to v1.0.1 (2026-08-24) — the original Arabizi conventions and the
+  freeze list built from the four ground-truth reels.

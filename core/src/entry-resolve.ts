@@ -63,6 +63,12 @@ export const GUIDE_VERSION_HISTORY = [
   '1.0.6',
   '1.0.7',
   '1.0.8',
+  // v2.0.0 reverses the guide's founding rule: Arabic in Arabic letters. It is
+  // listed here for the same reason as every other version — an entry made
+  // against an older guide is only reusable if its version can be recovered,
+  // and a version the resolver has never heard of resolves `none` and sends a
+  // caller to the API.
+  '2.0.0',
 ] as const;
 
 export function compareGuideVersions(a: string, b: string): number {
