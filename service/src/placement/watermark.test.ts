@@ -279,3 +279,37 @@ describe('the three sizes', () => {
     expect(p.rect.h * FRAME_HEIGHT + 2 * m.y).toBeLessThan(FRAME_HEIGHT);
   });
 });
+
+describe('the mark is always at the top of the frame', () => {
+  const base = {
+    sourceWidth: 1924,
+    sourceHeight: 2154,
+    size: 'medium' as const,
+    occupied: [],
+    faceBox: null,
+    durationS: 1,
+  };
+
+  it('never chooses a bottom corner, whatever the seed', () => {
+    for (let i = 0; i < 400; i += 1) {
+      const p = placeWatermark({ ...base, seed: `seed-${i}` });
+      expect(p.corner.startsWith('top')).toBe(true);
+      expect(p.rect.y + p.rect.h).toBeLessThan(0.5);
+    }
+  });
+
+  it('stays at the top for every reel in the corpus', () => {
+    for (const seed of ['ground-truth', 'test-1', 'test-2', 'test-3', 'vitasilk']) {
+      expect(placeWatermark({ ...base, seed }).corner.startsWith('top')).toBe(true);
+    }
+  });
+
+  it('stays at the top when both top corners are ruled out', () => {
+    // The fallback pool must not reintroduce a bottom corner: everything free is
+    // rejected here, so `placeWatermark` falls back to the candidate list itself.
+    const wholeFrame = { x: 0, y: 0, w: 1, h: 1 };
+    const p = placeWatermark({ ...base, seed: 'blocked', occupied: [wholeFrame] });
+    expect(p.corner.startsWith('top')).toBe(true);
+    expect(p.rejected).toHaveLength(2);
+  });
+});

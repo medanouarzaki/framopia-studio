@@ -93,10 +93,16 @@ const overlaps = (a: Rect, b: Rect): boolean =>
   a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 
 /**
- * The four corners, at the margin. A corner is a candidate only if the whole
+ * The two top corners, at the margin. A corner is a candidate only if the whole
  * mark fits there without touching the face, anything already on screen, or the
  * subtitle band — a watermark under a subtitle card reads as a mistake even
  * though neither is wrong on its own.
+ *
+ * The mark is always at the top of the frame (user ruling, 2026-08-31). The two
+ * bottom corners used to be candidates and nothing ruled them out: the subtitle
+ * band spans y 0.516-0.785 and a bottom corner sits at y 0.877-0.972, so it was
+ * chosen whenever the seeded shuffle landed there — 93 of 200 seeds, and on
+ * `test-1` in the corpus, whose mark built at y 3550.6 of 3840.
  */
 export function placeWatermark(input: WatermarkInput): WatermarkPlacement {
   const w = watermarkWidthFraction(input.size);
@@ -108,8 +114,6 @@ export function placeWatermark(input: WatermarkInput): WatermarkPlacement {
   const candidates: { corner: string; rect: Rect }[] = [
     { corner: 'top-left', rect: { x: m, y: mY, w, h } },
     { corner: 'top-right', rect: { x: 1 - m - w, y: mY, w, h } },
-    { corner: 'bottom-left', rect: { x: m, y: 1 - mY - h, w, h } },
-    { corner: 'bottom-right', rect: { x: 1 - m - w, y: 1 - mY - h, w, h } },
   ];
 
   const band: Rect = { x: 0, y: SUBTITLE_BAND.y, w: 1, h: SUBTITLE_BAND.h };

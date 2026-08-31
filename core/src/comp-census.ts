@@ -238,6 +238,15 @@ export interface CompCensusSummary {
   /** Null when no plan was supplied to compare against. */
   textCompsComparedAgainstPlan: number | null;
   textMismatchesAgainstPlan: number | null;
+  /**
+   * Watermark layers whose centre sits in the lower half of their master.
+   *
+   * The mark is always at the top of the frame (user ruling, 2026-08-31), and
+   * this is the check on a comp that was actually built rather than on the
+   * placement that produced it. It read 1 on `test-1` before the ruling was
+   * enforced, whose mark built at y 3550.6 of 3840.
+   */
+  watermarksBelowMidFrame: number;
 }
 
 export interface CompCensus {
@@ -338,6 +347,7 @@ export function shapeCensus(inputs: ShapeCensusInputs): CompCensus {
   let textLayersChecked = 0;
   let placeholderWordsSurviving = 0;
   let emptyTextLayers = 0;
+  let watermarksBelowMidFrame = 0;
   const fontsSeen = new Set<string>();
 
   for (const c of comps) {
@@ -360,6 +370,11 @@ export function shapeCensus(inputs: ShapeCensusInputs): CompCensus {
       }));
       const roleCounts = emptyRoleCounts();
       for (const l of layers) roleCounts[l.role] += 1;
+      for (const l of layers) {
+        if (l.role !== 'watermark' || l.position === null) continue;
+        const y = l.position[1];
+        if (y !== undefined && y >= c.height / 2) watermarksBelowMidFrame += 1;
+      }
       masters.push({
         name: c.name,
         width: c.width,
@@ -505,6 +520,7 @@ export function shapeCensus(inputs: ShapeCensusInputs): CompCensus {
       inputs.expectedTexts === undefined
         ? null
         : textComps.filter((t) => t.textMatchesPlan === false).length,
+    watermarksBelowMidFrame,
   };
 
   return {

@@ -376,3 +376,34 @@ describe('the plan comparison', () => {
     expect(c.summary.textMismatchesAgainstPlan).toBe(0);
   });
 });
+
+describe('the watermark is at the top of the frame', () => {
+  function masterWith(y: number): RawComp {
+    return {
+      name: 'master_final',
+      width: 2160,
+      height: 3840,
+      duration: 25,
+      frameRate: 29.97,
+      numLayers: 1,
+      layers: [
+        {
+          name: 'intro.mov',
+          index: 1,
+          kind: 'footage',
+          sourceFile: '/repo/assets/watermark/intro.mov',
+          position: [270, y],
+        } as RawLayer,
+      ],
+    };
+  }
+
+  it('counts a mark built into the lower half', () => {
+    // test-1 built its mark at y 3550.6 of 3840 before the ruling was enforced.
+    expect(shape([masterWith(3550.63403320312)]).summary.watermarksBelowMidFrame).toBe(1);
+  });
+
+  it('counts nothing when the mark is at the top', () => {
+    expect(shape([masterWith(289.365905761719)]).summary.watermarksBelowMidFrame).toBe(0);
+  });
+});
