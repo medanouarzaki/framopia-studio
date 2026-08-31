@@ -694,6 +694,7 @@ if (result.ok) {
       inkTopPx: number;
       inkBottomPx: number;
       shadowDropPx: number;
+      collapsed?: boolean;
     };
   }[];
   const rows: ShrinkRow[] = textFits.map((f) => ({

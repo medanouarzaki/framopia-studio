@@ -141,6 +141,22 @@ export interface CardVerticalExtent {
    * arithmetic over two measurements, not an assumption.
    */
   shadowDropPx: number;
+  /**
+   * Whether the master's layer for this card collapses transformations.
+   *
+   * **The rule is that a card is never cut off, not that it fits its comp.** A
+   * card comp is rasterised at its own bounds and clips whatever leaves them —
+   * unless the master layer collapses, which renders the nested layers into the
+   * master's own space and stops the bounds being a boundary. So ink outside a
+   * comp is a defect only when the comp is enforcing its bounds.
+   *
+   * Read back off the placed layer rather than assumed: the check is allowed to
+   * pass a card whose ink leaves its comp only because this took.
+   *
+   * Absent on a build older than session 21, which is treated as not collapsing
+   * — the state every build was in when the defect was found.
+   */
+  collapsed?: boolean;
 }
 
 /**
@@ -196,8 +212,8 @@ export function cardClippedMessage(row: ShrinkRow, v: CardVerticalExtent): strin
     `${row.broken ? 'broken onto two lines' : 'on one line'}, reaches ` +
     `${v.inkTopPx.toFixed(1)}px to ${(v.inkBottomPx + v.shadowDropPx).toFixed(1)}px ` +
     `(the word to ${v.inkBottomPx.toFixed(1)}px, its shadow ${v.shadowDropPx.toFixed(1)}px lower) ` +
-    `in a comp ${v.compHeightPx}px tall — ${which} outside it. ` +
-    `Anything outside is not drawn, so the build stops here.`
+    `in a comp ${v.compHeightPx}px tall — ${which} outside it, and that comp ` +
+    `does not collapse, so nothing outside it is drawn. The build stops here.`
   );
 }
 
@@ -214,7 +230,7 @@ export function assertEveryCardFits(rows: ShrinkRow[]): void {
       throw new CardTooWideError(cardTooWideMessage(row));
     }
     const v = row.vertical;
-    if (v === undefined) continue;
+    if (v === undefined || v.collapsed === true) continue;
     const over = cardOverrunPx(v);
     if (over.top > 0.5 || over.bottom > 0.5) {
       throw new CardClippedError(cardClippedMessage(row, v));
