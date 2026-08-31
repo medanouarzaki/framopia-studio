@@ -32,15 +32,49 @@ export interface BuildStampComparison {
 }
 
 /**
- * The remedy, and it is the one that works.
+ * The command a person used to be told to type, kept only so the repair can run
+ * the same thing without them.
  *
  * `npm run service` **exits 1** when a service is already running — the lock is
- * live and `service.ts` refuses rather than taking it over — so telling someone
- * to run it while their service is up sends them into an error. `--force` takes
- * the port and the lock from the running one, which is the situation this
- * message is always printed in.
+ * live and `service.ts` refuses rather than taking it over — so this always
+ * needed `--force`. The panel no longer prints it: it stops the old service and
+ * starts a new one itself, which is what `--force` was standing in for.
  */
 export const REBUILD_COMMAND = 'npm run service -- --force';
+
+/**
+ * What it takes to make a disagreeing panel and service agree.
+ *
+ * The panel's stamp is baked into its bundle; the service's is read **once, at
+ * startup**, out of `service/dist/build-stamp.json`. So there are two different
+ * disagreements wearing the same banner, and only one of them a restart can fix:
+ *
+ * - `restart` — the compiled service on disk already matches this panel, and the
+ *   process running is simply older than it. Starting it again is enough.
+ * - `rebuild` — the compiled service on disk does not match either, so restarting
+ *   would read the same stale file and report the same mismatch. It has to be
+ *   compiled first. This is the ordinary case after `npm run check`, which
+ *   rebuilds the panel bundle and never touches `service/dist`.
+ * - `unknown` — one of the three stamps is missing, so nothing can be concluded.
+ *   Never repaired on a guess.
+ */
+export type ServiceRepair = 'restart' | 'rebuild' | 'unknown';
+
+export function repairFor(
+  panelStamp: string | null,
+  distStamp: string | null | undefined,
+): ServiceRepair {
+  if (
+    panelStamp === null ||
+    panelStamp.length === 0 ||
+    distStamp === null ||
+    distStamp === undefined ||
+    distStamp.length === 0
+  ) {
+    return 'unknown';
+  }
+  return sourceHalf(panelStamp) === sourceHalf(distStamp) ? 'restart' : 'rebuild';
+}
 
 /**
  * The half that decides: the content hash, not the commit.
@@ -77,8 +111,7 @@ export function compareBuildStamps(
     verdict: 'different',
     detail:
       'The background service was built from different code than this panel, so the two ' +
-      `may not agree about what a video contains. Run ${REBUILD_COMMAND} in a terminal, ` +
-      'then close this panel and open it again.',
+      'may not agree about what a video contains. Restarting it now.',
   };
 }
 

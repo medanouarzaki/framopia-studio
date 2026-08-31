@@ -357,6 +357,8 @@ export {
   compareBuildStamps,
   describeBuildStamps,
   REBUILD_COMMAND,
+  repairFor,
+  type ServiceRepair,
   type BuildStampComparison,
   type BuildStampVerdict,
 } from './build-stamp.js';

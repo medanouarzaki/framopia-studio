@@ -3,6 +3,7 @@ import {
   compareBuildStamps,
   describeBuildStamps,
   REBUILD_COMMAND,
+  repairFor,
 } from './build-stamp.js';
 
 /**
@@ -44,13 +45,21 @@ describe('compareBuildStamps', () => {
     expect(said).toContain('different commits');
   });
 
-  it('names a service genuinely one build behind, and what to do', () => {
+  it('names a service genuinely one build behind, and says it is being fixed', () => {
     const compared = compareBuildStamps('abc1234567+aaaa', 'abc1234567+bbbb');
 
     expect(compared.verdict).toBe('different');
     expect(compared.detail).toContain('built from different code');
-    expect(compared.detail).toContain(REBUILD_COMMAND);
-    expect(compared.detail).toContain('close this panel and open it again');
+    expect(compared.detail).toContain('Restarting it now');
+  });
+
+  it('never tells a motion designer to type a command', () => {
+    // The panel repairs this itself. A message naming a command was the whole
+    // defect: the detection was right every time and the remedy was a terminal.
+    const compared = compareBuildStamps('abc1234567+aaaa', 'abc1234567+bbbb');
+    expect(compared.detail).not.toContain(REBUILD_COMMAND);
+    expect(compared.detail).not.toContain('npm run');
+    expect(compared.detail).not.toContain('terminal');
   });
 
   /*
@@ -106,6 +115,32 @@ describe('describeBuildStamps', () => {
  */
 describe('the remedy', () => {
   it('takes over the running service rather than colliding with it', () => {
+    // Kept because the repair does the same thing the command did; it is no
+    // longer shown to anyone.
     expect(REBUILD_COMMAND).toBe('npm run service -- --force');
+  });
+});
+
+describe('what a mismatch actually needs', () => {
+  /*
+   * The panel's stamp is baked into its bundle; the service reads its own once
+   * at startup out of `service/dist/build-stamp.json`. So a restart helps only
+   * when that compiled file already agrees with the panel.
+   */
+  it('restarts when the compiled service already matches the panel', () => {
+    expect(repairFor('abc1234567+aaaa', 'zzz9999999+aaaa')).toBe('restart');
+  });
+
+  it('rebuilds when the compiled service is itself behind', () => {
+    // The ordinary case after `npm run check`, which rebuilds the panel bundle
+    // and never touches service/dist.
+    expect(repairFor('abc1234567+aaaa', 'abc1234567+bbbb')).toBe('rebuild');
+  });
+
+  it('concludes nothing when a stamp is missing', () => {
+    expect(repairFor(null, 'abc1234567+aaaa')).toBe('unknown');
+    expect(repairFor('abc1234567+aaaa', null)).toBe('unknown');
+    expect(repairFor('abc1234567+aaaa', undefined)).toBe('unknown');
+    expect(repairFor('', '')).toBe('unknown');
   });
 });

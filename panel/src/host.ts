@@ -166,6 +166,71 @@ export function createHost(repo: string): PanelHost {
       }
     },
     processAlive,
+    serviceDistStamp() {
+      try {
+        const file = path.join(repo, 'service', 'dist', 'build-stamp.json');
+        if (!fs.existsSync(file)) return null;
+        const raw: unknown = JSON.parse(fs.readFileSync(file, 'utf8'));
+        const stamp = (raw as { stamp?: unknown } | null)?.stamp;
+        return typeof stamp === 'string' && stamp.length > 0 ? stamp : null;
+      } catch {
+        return null;
+      }
+    },
+    stopService(pid: number) {
+      /*
+       * SIGTERM, not SIGKILL: the service clears its own handshake on the way
+       * out, and only if the file still names it. Killing it outright would
+       * leave a lock naming a dead process for the next start to reclaim, which
+       * works but is a slower and less honest path through the same code.
+       */
+      try {
+        (process as unknown as { kill: (p: number, sig: string) => void }).kill(pid, 'SIGTERM');
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    async rebuildService() {
+      const node = resolveNodePath({ fs, repo, execPath: undefined, home: homeDir() });
+      if (node === null) return { ok: false, cause: NODE_NOT_FOUND_HELP };
+      /*
+       * npm's own CLI is a JavaScript file that sits beside the Node binary, so
+       * a resolved Node can run it with no shell and no PATH. After Effects
+       * launches from the Finder and inherits neither, which is why `npm` by
+       * name has never worked here.
+       */
+      const npmCli = path.join(node.path, '..', '..', 'lib', 'node_modules', 'npm', 'bin', 'npm-cli.js');
+      if (!fs.existsSync(npmCli)) {
+        return { ok: false, cause: `npm could not be found next to ${node.path}` };
+      }
+      let child: SpawnedProcess;
+      try {
+        child = childProcess.spawn(node.path, [npmCli, 'run', 'service:build'], {
+          cwd: repo,
+          stdio: ['ignore', 'ignore', 'pipe'],
+        });
+      } catch (error) {
+        return { ok: false, cause: (error as Error).message };
+      }
+      return await new Promise<{ ok: boolean; cause: string | null }>((resolve) => {
+        let stderr = '';
+        child.stderr?.on('data', (chunk) => {
+          stderr += String(chunk);
+        });
+        child.on('error', (error) => resolve({ ok: false, cause: (error as Error).message }));
+        child.on('exit', (code) =>
+          resolve(
+            code === 0
+              ? { ok: true, cause: null }
+              : {
+                  ok: false,
+                  cause: `compiling the service failed${stderr.trim() === '' ? '' : `: ${stderr.trim().split('\n').slice(-3).join(' ')}`}`,
+                },
+          ),
+        );
+      });
+    },
     resolveNode() {
       return resolveNodePath({ fs, repo, execPath: undefined, home: homeDir() });
     },
@@ -175,11 +240,15 @@ export function createHost(repo: string): PanelHost {
 
       const entry = path.join(repo, 'service', 'dist', 'service.js');
       if (!fs.existsSync(entry)) {
+        /*
+         * `reason` rather than a sentence to act on: the panel compiles it
+         * itself now, so this is a state for `connect` to handle and not a
+         * message for anyone to read. It used to name a command to type.
+         */
         return {
           ok: false as const,
-          cause:
-            `the service is not built: ${entry} does not exist. Run ` +
-            '`npm run service:build` in the repository, then reopen the panel.',
+          cause: `the background service has not been prepared yet: ${entry} is not there`,
+          reason: 'not-built' as const,
           nodePath: node.path,
         };
       }

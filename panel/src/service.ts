@@ -1,3 +1,4 @@
+import { repairFor, type ServiceRepair } from '@framopia/core/build-stamp';
 import { NODE_NOT_FOUND_HELP } from '@framopia/core/node-path';
 import type {
   ImagesView, WatermarkSize, BuildJob, ClientMode, VideoListing, DryRunPlan, HealthPayload, Reel, ServiceError, PlanSteps , ServiceOrigin , PipelineJob , TranscriptView, TranscriptWordView, TranscriptCardView , KeywordsView } from './types.js';
@@ -15,7 +16,7 @@ import type {
  */
 export type SpawnResult =
   | { ok: true; nodePath: string; source: string }
-  | { ok: false; cause: string; nodePath?: string };
+  | { ok: false; cause: string; nodePath?: string; reason?: 'not-built' };
 
 export interface PanelHost {
   readHandshake(): { port: number; token: string; pid: number } | null;
@@ -27,6 +28,17 @@ export interface PanelHost {
   spawnService(): Promise<SpawnResult>;
   processAlive(pid: number): boolean;
   resolveNode(): { path: string; source: string } | null;
+  /**
+   * The stamp of the **compiled** service on disk, which is not the stamp the
+   * running one reports: the service reads its own once at startup, so a
+   * rebuilt `service/dist` and a still-running old process disagree. Null when
+   * it cannot be read, which is a state and never a guess.
+   */
+  serviceDistStamp?(): string | null;
+  /** Asks the running service to stop. Returns whether the signal was sent. */
+  stopService?(pid: number): boolean;
+  /** Compiles the service. Slow — measured at 2.8s on the machine of record. */
+  rebuildService?(): Promise<{ ok: boolean; cause: string | null }>;
 }
 
 export const HEALTH_TIMEOUT_MS = 4000;
@@ -126,6 +138,32 @@ export async function connect(host: PanelHost): Promise<
     spawned = await host.spawnService();
   } catch (error) {
     return { ok: false, error: serviceErrorOf('service-spawn', (error as Error).message, true) };
+  }
+
+  /*
+   * A checkout that has never been compiled — the second machine's first run.
+   * The panel prepares it rather than telling anyone to open a terminal, and
+   * tries once. A second failure is reported as itself.
+   */
+  if (!spawned.ok && spawned.reason === 'not-built' && host.rebuildService !== undefined) {
+    const notBuilt = spawned.cause;
+    const built = await host.rebuildService();
+    if (!built.ok) {
+      return {
+        ok: false,
+        error: serviceErrorOf(
+          'service-build',
+          // Both halves: what was missing, and why preparing it did not work.
+          `${notBuilt}, and it could not be prepared: ${built.cause ?? 'unknown'}`,
+          true,
+        ),
+      };
+    }
+    try {
+      spawned = await host.spawnService();
+    } catch (error) {
+      return { ok: false, error: serviceErrorOf('service-spawn', (error as Error).message, true) };
+    }
   }
 
   if (!spawned.ok) {
@@ -594,4 +632,85 @@ export async function setWatermark(
   edit: { planPath: string; enabled?: boolean; size?: WatermarkSize },
 ): Promise<void> {
   await postJson(connection, '/watermark', edit);
+}
+
+/** How many times a panel will repair a mismatch on its own before stopping. */
+export const MAX_REPAIR_ATTEMPTS = 1;
+
+export interface RepairOutcome {
+  ok: boolean;
+  /** What happened, in the words the panel shows after the fact. */
+  said: string;
+  action: ServiceRepair;
+}
+
+/**
+ * Makes a disagreeing service agree, without anyone opening a terminal.
+ *
+ * The banner this replaces was honest every time and told the user to run
+ * `npm run service -- --force`. The detection is unchanged; only the remedy is.
+ *
+ * Stop before start, deliberately: `--force` takes the lock without stopping the
+ * old process, so two services then run and stopping the loser deletes the
+ * winner's handshake. Stopping first means there is only ever one.
+ */
+export async function repairService(
+  host: PanelHost,
+  previousPid: number | null,
+  panelStamp: string | null,
+): Promise<RepairOutcome> {
+  const distStamp = host.serviceDistStamp?.() ?? null;
+  const action = repairFor(panelStamp, distStamp);
+
+  if (action === 'unknown') {
+    return {
+      ok: false,
+      action,
+      said: 'The background service and this panel cannot be compared, so nothing was changed.',
+    };
+  }
+
+  if (action === 'rebuild') {
+    if (host.rebuildService === undefined) {
+      return {
+        ok: false,
+        action,
+        said: 'The background service needs preparing again and this panel cannot do it.',
+      };
+    }
+    const built = await host.rebuildService();
+    if (!built.ok) {
+      return {
+        ok: false,
+        action,
+        said: `The background service could not be prepared again: ${built.cause ?? 'unknown'}.`,
+      };
+    }
+  }
+
+  if (previousPid !== null && host.stopService !== undefined) {
+    host.stopService(previousPid);
+    // Its own exit clears the handshake; waiting for that is what makes the
+    // next connect() spawn rather than try to reach a process that is going.
+    for (let i = 0; i < 40 && host.processAlive(previousPid); i += 1) {
+      await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
+    }
+  }
+
+  const again = await connect(host);
+  if (!again.ok) {
+    return {
+      ok: false,
+      action,
+      said: `The background service was restarted and did not come back: ${again.error.cause}`,
+    };
+  }
+  return {
+    ok: true,
+    action,
+    said:
+      action === 'rebuild'
+        ? 'The background service was out of date. It has been prepared again and restarted.'
+        : 'The background service was out of date. It has been restarted.',
+  };
 }
