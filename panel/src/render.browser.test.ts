@@ -2286,21 +2286,53 @@ describe.skipIf(!built)('the Build step', () => {
     }
   }, 30_000);
 
-  /* A service older than the preview must not have one invented for it. */
-  it('says the service did not answer, once a video and a client are picked', async () => {
+  /*
+   * A service older than the preview must not have one invented for it — and
+   * must not be blamed for a video that simply has not been run yet.
+   *
+   * Rewritten in session 30. It asserted *"did not say what this build would
+   * contain. Quit After Effects and open it again"*, which is what a client's
+   * own reel produced the first time one was opened: a browsed video has no
+   * plan, so there is nothing to preview, and the panel read the service's
+   * silence as a fault and told him to quit the application.
+   */
+  it('says what is actually missing when there is no build preview', async () => {
+    const loaded = await loadFlow(
+      'build',
+      'build',
+      420,
+      `delete window.__payload.steps.build;
+       window.__payload.steps.steps = window.__payload.steps.steps.map((s) =>
+         s.id === 'build'
+           ? { ...s, available: false, reason: 'This reel has no edit plan yet.' }
+           : s);`,
+    );
+    if (loaded === null) return;
+    try {
+      await loaded.page.waitForSelector('.buildpane', { timeout: 5000 });
+      const text = (await loaded.page.textContent('.buildpane')) ?? '';
+      expect(text).toContain('This reel has no edit plan yet');
+      expect(text).toContain('Press Run pipeline above');
+      expect(text).not.toContain('Quit After Effects');
+      expect(await loaded.page.$eval('button.build-now', (b) => (b as HTMLButtonElement).disabled)).toBe(true);
+      expect(loaded.uncaught).toEqual([]);
+    } finally {
+      await loaded.page.close();
+    }
+  }, 30_000);
+
+  it('blames nobody, and asks for no restart, when the service says nothing at all', async () => {
     const loaded = await loadFlow(
       'build', 'build', 420, 'delete window.__payload.steps.build;',
     );
     if (loaded === null) return;
     try {
-      // Build and the main screen are one screen now.
       await loaded.page.waitForSelector('.buildpane', { timeout: 5000 });
       const text = (await loaded.page.textContent('.buildpane')) ?? '';
-      // Rewritten in session 44: "older than the Build control" fired for a
-      // panel with nothing picked yet, and told him to restart a service he had
-      // just restarted. With both picked it is a real gap, and says so.
-      expect(text).toContain('did not say what this build would contain');
-      expect(await loaded.page.$eval('button.build-now', (b) => (b as HTMLButtonElement).disabled)).toBe(true);
+      expect(text).toContain('There is nothing to build for this video yet');
+      for (const retired of ['Quit After Effects', 'open it again', 'restart', 'npm run']) {
+        expect(`${retired}: ${String(text.includes(retired))}`).toBe(`${retired}: false`);
+      }
       expect(loaded.uncaught).toEqual([]);
     } finally {
       await loaded.page.close();

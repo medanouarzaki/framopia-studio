@@ -91,16 +91,23 @@ export function Build({
   return (
     <div className="buildpane">
       {/*
-        Three different reasons there is no preview, and they used to be one
-        sentence. The user restarted the service, reopened the panel, and was
-        told the service was old — because he had not picked a video yet.
+        Four different reasons there is no preview, and they used to be two.
+        The user restarted the service, reopened the panel, and was told the
+        service was old — because he had not picked a video yet.
+
+        The fourth is the one that reached a client's reel: a video that has
+        never been run has no plan, so there is nothing to preview and the
+        service says exactly that in the build step's own reason. The panel was
+        reading its silence as a fault and telling him to quit After Effects —
+        an instruction to leave the panel, for a state that is simply "not yet".
       */}
       {preview === undefined ? (
         <p className="note" role="status">
           {!ready
             ? 'Choose a client and a video above, and this will say what the composition will contain.'
-            : (stale ??
-              'The companion service did not say what this build would contain. Quit After Effects and open it again.')}
+            : disabledReason !== null
+              ? `${disabledReason} Press Run pipeline above, and this will say what the composition will contain.`
+              : (stale ?? 'There is nothing to build for this video yet.')}
         </p>
       ) : (
         <BuildPreviewCard

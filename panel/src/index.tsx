@@ -15,9 +15,15 @@ const root = document.getElementById('root');
 
 if (root === null) {
   const fallback = document.createElement('pre');
+  /*
+   * The one screen with no panel behind it: React never mounted, so none of
+   * the repair machinery exists here. It names what is wrong and stops — the
+   * command it used to give is one the user has no way to run, and session 30
+   * retired that whole class of sentence.
+   */
   fallback.textContent =
-    'Framopia Studio could not start: index.html has no #root element. The panel bundle is ' +
-    'probably out of date — run `npm run panel:build`.';
+    'Framopia Studio could not start: the panel bundle is incomplete — index.html has no ' +
+    '#root element.';
   fallback.style.cssText = 'padding:16px;color:#ed1c24;font:12px ui-monospace,monospace';
   document.body.appendChild(fallback);
 } else {

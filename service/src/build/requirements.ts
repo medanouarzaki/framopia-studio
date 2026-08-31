@@ -167,7 +167,10 @@ export function buildRequirements(
       needed: watermarkEnabled(plan.watermark),
       present: disk.watermarkFacts,
       what: 'the watermark measurement (this reel is set to carry the mark)',
-      command: 'npm run watermark:measure',
+      // Block 9 session 13 made the pipeline measure the watermark itself, and
+      // this sentence was never brought forward. Same shape as `face-masks`:
+      // the in-panel action first, the terminal command after it.
+      command: 'press Run pipeline for this video; from a terminal, npm run watermark:measure',
       consequence: 'no watermark is placed at all, and the comp looks like one that has none',
     },
     {
@@ -179,7 +182,11 @@ export function buildRequirements(
         plan.source.dialoguePeakDbfs !== undefined &&
         plan.source.dialoguePeakDbfs !== null,
       what: `this reel’s dialogue loudness (${sounds} sounds are mixed against it)`,
-      command: 'npm run loudness:measure, then npm run migrate:sfx-placement -- --apply',
+      // The pipeline measures loudness itself since Block 9 session 13, on the
+      // skip path too, so a run puts this on the plan without a terminal.
+      command:
+        'press Run pipeline for this video; from a terminal, npm run loudness:measure ' +
+        'then npm run migrate:sfx-placement -- --apply',
       consequence:
         'the voice is not brought down, and every sound sums past 0 dBFS and clips — ' +
         'the reels run at 0.0 to 0.2 dBFS true peak, so there is no headroom at all',

@@ -285,7 +285,7 @@ function Candidate({
             {picture.state === 'absent'
               ? 'this picture is no longer on the disk'
               : picture.state === 'unnamed'
-                ? 'the panel could not work out which picture this is — restart the service'
+                ? 'the panel could not work out which picture this is — the companion service is older than this panel'
                 : 'this picture is on the disk but the panel could not display it'}
           </span>
         )}

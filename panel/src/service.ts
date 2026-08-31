@@ -78,7 +78,10 @@ async function getHealth(port: number, signal: AbortSignal): Promise<HealthPaylo
 function serviceTrouble(status: number): string {
   if (status === 404) return 'there is nothing here for this reel yet';
   if (status === 401 || status === 403) {
-    return 'the panel and the companion service are out of step — close the panel and open it again';
+    return (
+      'the panel is using an old connection to the companion service — use Try again in the ' +
+      'line at the top'
+    );
   }
   return 'the companion service ran into trouble and did not say what';
 }

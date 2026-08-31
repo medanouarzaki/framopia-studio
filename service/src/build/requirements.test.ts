@@ -73,7 +73,10 @@ describe('what a build requires', () => {
     const plan = await readEditPlan(planPath('test 3'));
     const missing = missingRequirements(buildRequirements(plan, { ...PRESENT, watermarkFacts: false }));
     expect(missing.map((m) => m.id)).toEqual(['watermark-facts']);
-    expect(missing[0]?.command).toBe('npm run watermark:measure');
+    // The pipeline measures the watermark itself since Block 9 session 13, so
+    // the in-panel action comes first and the terminal command follows it.
+    expect(missing[0]?.command).toContain('press Run pipeline');
+    expect(missing[0]?.command).toContain('npm run watermark:measure');
   });
 
   it('does not ask for a watermark measurement when the reel refuses the mark', async () => {
