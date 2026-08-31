@@ -9,6 +9,7 @@ import { displayWindow } from '../analysis/display-timing.js';
 import { chooseBreak, type BreakCandidate } from './wrap.js';
 import type { TextStyle } from './text-style.js';
 import { shortCardTiming } from './short-card.js';
+import { isBuildableGroup } from './planned-cards.js';
 import { FRAME_WIDTH } from '../placement/constants.js';
 
 /**
@@ -218,7 +219,7 @@ export function buildReel(options: {
       skipped.push({ id: g.id, kind: 'subtitle', reason: 'no templateId' });
       continue;
     }
-    if (g.displayStart === undefined || g.displayEnd === undefined) {
+    if (!isBuildableGroup(g as SubtitleGroup)) {
       skipped.push({ id: g.id, kind: 'subtitle', reason: 'no display timing on the plan' });
       continue;
     }

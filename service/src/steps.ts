@@ -11,6 +11,7 @@ import {
 import { resolveClientIdentity, type ClientIdentitySource } from './build/client-identity.js';
 import { listReels } from './catalogue.js';
 import { checkBuildability } from './analysis/buildability.js';
+import { plannedCards } from './build/planned-cards.js';
 import {
   buildRequirements,
   missingRequirements,
@@ -97,7 +98,21 @@ export interface BuildPreview {
   modeSource: 'the plan' | 'the picker';
   /** Where the .aep is written. The build overwrites it. */
   outputPath: string;
+  /**
+   * Cards the build will place, not groups on the plan. A keyword replaces the
+   * group it covers, so the two differ by five on `vitasilk` — and the panel
+   * promised 73 against a comp carrying 68 until Block 10 session 15.
+   */
   subtitleCards: number;
+  /**
+   * Words in the transcript, which is what the Words editor lists.
+   *
+   * Optional with a default: a panel reading an older service falls back to the
+   * card count, which is what it read before this existed. The two are equal
+   * only while a card is one word and nothing is superseded, so the opener's
+   * number was right by coincidence rather than by rule.
+   */
+  words?: number;
   keywords: number;
   images: number;
   sfxEvents: number;
@@ -273,10 +288,11 @@ export function stepsFor(reelLabel: string, modeId: string): PlanSteps {
   const fonts = buildFonts(identity.snapshot ?? mode);
   try {
     const report = checkBuildability(plan, templatesById(loadTemplateManifest()));
-    buildAvailable = report.checked.subtitleGroups > 0;
+    const cards = plannedCards(plan);
+    buildAvailable = cards.subtitleCards > 0;
     buildReason = buildAvailable ? null : 'There are no subtitle cards to build.';
 
-    const willContain = [`${report.checked.subtitleGroups} subtitle cards`];
+    const willContain = [`${cards.subtitleCards} subtitle cards`];
     const willNot: string[] = [];
     const part = (n: number, singular: string, plural: string): void => {
       if (n > 0) willContain.push(`${n} ${n === 1 ? singular : plural}`);
@@ -334,7 +350,8 @@ export function stepsFor(reelLabel: string, modeId: string): PlanSteps {
         modeName: buildMode.name,
         modeSource: planMode === null ? 'the picker' : 'the plan',
         outputPath: buildOutputPath(planPath),
-        subtitleCards: report.checked.subtitleGroups,
+        subtitleCards: cards.subtitleCards,
+        words: plan.transcript.words.length,
         keywords: plan.keywords.items.length,
         images: candidates.present > 0 ? slots : 0,
         sfxEvents: plan.sfx.events.length,

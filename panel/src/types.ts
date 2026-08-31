@@ -315,6 +315,8 @@ export interface BuildPreview {
   modeSource: 'the plan' | 'the picker';
   outputPath: string;
   subtitleCards: number;
+  /** Optional with a default: an older service sends none. */
+  words?: number;
   keywords: number;
   images: number;
   sfxEvents: number;

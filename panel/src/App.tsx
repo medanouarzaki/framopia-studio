@@ -618,7 +618,9 @@ const EDITORS: { id: EditorId; label: string; step: StepId }[] = [
 export function countFor(id: EditorId, plan: PlanSteps | null): number | null {
   const preview = plan?.build;
   if (preview === undefined) return null;
-  if (id === 'words') return preview.subtitleCards;
+  // The Words editor lists every word; a card is a different quantity, and the
+  // two coincide only while a card is one word and no keyword supersedes one.
+  if (id === 'words') return preview.words ?? preview.subtitleCards;
   if (id === 'emphasis') return preview.keywords;
   return preview.images;
 }

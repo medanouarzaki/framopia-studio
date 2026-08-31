@@ -154,7 +154,9 @@ describe('Build availability', () => {
 
   it('lists what is in the comp when the reel has been through every stage', () => {
     const build = stepsFor('vitasilk', 'k2-syndicalia').steps.find((s) => s.id === 'build');
-    expect(build?.summary).toContain('73 subtitle cards');
+    // 68, not 73: three keywords supersede five groups, and the summary says
+    // what the build places rather than what the plan holds.
+    expect(build?.summary).toContain('68 subtitle cards');
     expect(build?.summary).toContain('3 emphasised keywords');
     expect(build?.summary).toContain('5 images');
     expect(build?.summary).not.toContain('no ');
@@ -231,7 +233,8 @@ describe('the build preview', () => {
     expect(preview?.outputPath).toBe(
       path.join(REPO_ROOT, '.local', 'build', 'vitasilk-full.aep'),
     );
-    expect(preview?.subtitleCards).toBe(73);
+    expect(preview?.subtitleCards).toBe(68);
+    expect(preview?.words).toBe(73);
     expect(preview?.keywords).toBe(3);
     expect(preview?.images).toBe(5);
     expect(preview?.sfxEvents).toBeGreaterThan(0);
