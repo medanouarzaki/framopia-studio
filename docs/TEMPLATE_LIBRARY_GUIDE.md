@@ -800,11 +800,9 @@ one field and no other kind**. Read back inside After Effects, the baseline land
 at **2480.39990234375**, exactly `SUBTITLE_ANCHOR_BASELINE_Y`, in all three
 states. **A moved comp-layer Position is bookkeeping; the baseline is the check.**
 
-**The shadow's 2.045 px is still outstanding.** `shadowDescentPx` reads that
-offset out of the audit and `SUBTITLE_BAND` is derived from it, so the band's
-bottom sits at **3014.6237** against a ruled **3012.5783**. Three tests pin the
-old figures and **fail on purpose** — the +8/+15 offset is a user ruling and a
-resize is not the place to change it. What the band reaches is narrow: image
-placement does not read it at all, and the only consumer in a built comp is the
-watermark's corner test, which rejects a corner overlapping y 1980–3014 — the
-mark sits 108 px from the top, so 2 px cannot flip it.
+**The shadow's 2.045 px is resolved.** Restoring the effect's Position to
+[1088, 640] against its Anchor Point of [1080, 625] put the offset back to the
+ruled **[8, 15]** on all four comps (2026-08-31), so `shadowDescentPx` reads 15
+and `SUBTITLE_BAND`'s bottom is **3012.57825** again. The three tests that had
+been failing on purpose pass on their own; none was edited. The recovered 2.045 px
+is also why the two-line cards' headroom went 51.2 → **53.3 px**.

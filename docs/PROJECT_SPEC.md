@@ -120,12 +120,13 @@ depends on the client fonts Block 9 collects.
    own Position, 2330.4 → 2405.4, because the comp's internal geometry changed —
    **all 524 differing golden fields are that one field and no other kind.**
 
-   **One thing is still outstanding and it is his.** Moving the text layer back
-   did not undo AE's scaling of the *separate* Transform effect on
-   `TXT_MAIN_SHADOW`: its offset is **[8, 17.045]** against the ruled **[8, 15]**,
-   so `SUBTITLE_BAND`'s bottom sits at 3014.6237 against 3012.5783 and three tests
-   fail on purpose. Restoring it means setting that effect's Position to
-   **[1088, 640]** against its Anchor Point of [1080, 625].
+   **The library is settled as of 2026-08-31.** Moving the text layer back had not
+   undone AE's scaling of the *separate* Transform effect on `TXT_MAIN_SHADOW`;
+   setting that effect's Position to **[1088, 640]** against its Anchor Point of
+   [1080, 625] restored the ruled **[8, 15]** on all four comps. `SUBTITLE_BAND`'s
+   bottom is 3012.57825 again, the three tests pass on their own with none edited,
+   and the two-line cards' headroom went 51.2 → **53.3 px**. `npm run check` and
+   `npm run golden` are both green.
 
 ## 4. Input / output (locked)
 
