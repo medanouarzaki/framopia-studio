@@ -1,4 +1,4 @@
-import { LOGO_EXTENSIONS_WITHOUT_DOT } from './logo-formats.js';
+import { STILL_EXTENSIONS_WITHOUT_DOT } from './still-formats.js';
 import { VIDEO_EXTENSIONS_WITHOUT_DOT } from './video-extensions.js';
 
 /**
@@ -134,9 +134,10 @@ export function pickFolder(title: string, startIn: string): string | null {
 }
 
 /**
- * A logo, filtered to what the field accepts, so an unusable file cannot be
- * chosen in the first place. The list is declared once in `logo-formats.ts`.
+ * A still image — a logo, or one of the client's own photographs — filtered to
+ * what the field accepts, so an unusable file cannot be chosen in the first
+ * place. The list is declared once in `still-formats.ts`.
  */
 export function pickImageFile(title: string, startIn: string): string | null {
-  return pick(title, startIn, false, LOGO_EXTENSIONS_WITHOUT_DOT);
+  return pick(title, startIn, false, STILL_EXTENSIONS_WITHOUT_DOT);
 }

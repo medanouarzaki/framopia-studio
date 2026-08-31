@@ -15,10 +15,10 @@ import {
   type PaletteRole,
 } from '@framopia/core/palette-meaning';
 import {
-  LOGO_EXTENSIONS_WITHOUT_DOT,
-  judgeLogo,
-  logoVerdictSentence,
-} from './logo-formats.js';
+  STILL_EXTENSIONS_WITHOUT_DOT,
+  judgeStill,
+  stillVerdictSentence,
+} from './still-formats.js';
 import type { ClientMode } from './types.js';
 
 /**
@@ -196,13 +196,13 @@ export function NewClient({
           <>
             <PathField
               label="Logo"
-              hint={`A PNG with a transparent background is what this expects. ${LOGO_EXTENSIONS_WITHOUT_DOT.join(', ')} are accepted. Optional.`}
+              hint={`A PNG with a transparent background is what this expects. ${STILL_EXTENSIONS_WITHOUT_DOT.join(', ')} are accepted. Optional.`}
               value={logoPath}
               onChange={setLogo}
               choose={() => pickImageFile('Choose their logo', logoPath)}
               chooseLabel="Choose file…"
               dialog={dialog.available}
-              say={logoVerdictSentence(judgeLogo(logoPath))}
+              say={stillVerdictSentence(judgeStill(logoPath))}
             />
             <label className="field">
               <span>Video shape</span>
