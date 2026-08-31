@@ -78,6 +78,24 @@ export {
   type ReferenceFile,
   type ReferenceKind,
 } from './references.js';
+
+export {
+  GOLDEN_EXCLUDED_FIELDS,
+  GOLDEN_PATH_FIELDS,
+  GOLDEN_REELS,
+  GOLDEN_REELS_EXCLUDED,
+  GOLDEN_SCHEMA_VERSION,
+  GoldenReferenceError,
+  compareCensus,
+  countFields,
+  excludedFieldsSummary,
+  normaliseCensus,
+  parseGoldenReference,
+  type ExcludedField,
+  type FieldDifference,
+  type GoldenReel,
+  type GoldenReference,
+} from './golden.js';
 export { SCRIPT_RULES } from './script-rules.js';
 export {
   assertRenderable,
@@ -340,6 +358,7 @@ export {
   type RawLayer,
   type ShapeCensusInputs,
   type SizeGroup,
+  type ImageCompCensus,
   type TextCompCensus,
 } from './comp-census.js';
 

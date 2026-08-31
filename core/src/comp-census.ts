@@ -148,6 +148,32 @@ export interface TextCompCensus {
  * *every* card was shrunk would report none, because there would be nothing
  * unshrunk left to measure against.
  */
+/**
+ * An image element comp, and which picture is actually inside it.
+ *
+ * The master's image layers are **comp** layers pointing at the duplicated
+ * element comp, so they carry no `sourceFile` — which meant a census recorded
+ * nothing at all about which picture a build placed, and a build that placed
+ * the wrong one matched a golden reference perfectly. Found in Block 10 session
+ * 14 while trying to perturb an image path and discovering there was none.
+ *
+ * A partly-copied cache is one of the likeliest ways a second machine differs,
+ * and it shows up here or nowhere.
+ */
+export interface ImageCompCensus {
+  compName: string;
+  elementId: string;
+  templateId: string;
+  layers: {
+    name: string;
+    sourceName: string | null;
+    /** Absolute at measurement; the golden run makes it repo-relative. */
+    sourceFile: string | null;
+    position: [number, number] | null;
+    scale: [number, number] | null;
+  }[];
+}
+
 export interface SizeGroup {
   templateId: string;
   font: string | null;
@@ -227,6 +253,8 @@ export interface CompCensus {
   fontNameCount: number | null;
   masters: MasterCensus[];
   textComps: TextCompCensus[];
+  /** Optional with a default: a census taken before Block 10 session 14 has none. */
+  imageComps?: ImageCompCensus[];
   sizeGroups: SizeGroup[];
   summary: CompCensusSummary;
 }
@@ -304,6 +332,7 @@ export function shapeCensus(inputs: ShapeCensusInputs): CompCensus {
 
   const masters: MasterCensus[] = [];
   const textComps: TextCompCensus[] = [];
+  const imageComps: ImageCompCensus[] = [];
   let elementCompCount = 0;
   let libraryCompCount = 0;
   let textLayersChecked = 0;
@@ -351,7 +380,23 @@ export function shapeCensus(inputs: ShapeCensusInputs): CompCensus {
     }
     elementCompCount += 1;
     const entry = templates.get(parsed.templateId);
-    if (entry === undefined || (entry.type !== 'subtitle' && entry.type !== 'keyword')) continue;
+    if (entry === undefined) continue;
+    if (entry.type === 'image') {
+      imageComps.push({
+        compName: c.name,
+        elementId: parsed.elementId,
+        templateId: parsed.templateId,
+        layers: c.layers.map((l) => ({
+          name: l.name,
+          sourceName: l.sourceName ?? null,
+          sourceFile: l.sourceFile ?? null,
+          position: l.position ?? null,
+          scale: l.scale ?? null,
+        })),
+      });
+      continue;
+    }
+    if (entry.type !== 'subtitle' && entry.type !== 'keyword') continue;
 
     const declaredPlaceholders = new Set(entry.placeholders);
     const declaredShadows = new Set(entry.shadowLayers ?? []);
@@ -475,6 +520,7 @@ export function shapeCensus(inputs: ShapeCensusInputs): CompCensus {
     fontNameCount: raw.fontNameCount ?? null,
     masters,
     textComps,
+    imageComps,
     sizeGroups,
     summary,
   };
