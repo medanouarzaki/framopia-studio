@@ -9008,3 +9008,60 @@ plans 308 KB, footage 11.9 GB. **Never travels:** the API key (`classifyFile`
 flags `.local/config.json` by its bytes and the backup names it when skipping),
 the ledger, `.local/build/watermark.json` and the loudness records (measurements
 of that machine, taken there), and any client's own picture.
+
+
+## Block 10 session 22 — the comps are taller and it is still 23.8 px short
+
+**Spent $0.00.** Ledger 118 lines / `3f657131…` at both ends; all five plans, the
+seven references and the cache byte-identical; `app.fonts.allFonts` 1198 → 1198.
+**`templates/library.aep` was not edited by this session** — the user's file, read
+only, `e9e26d49d62d2cf8dc6e643f4b0b00a40623c081423822873d9dafac7c14a10b`,
+549,809 bytes, identical at both ends. The audit is re-stamped against it.
+
+### Growing a comp does not buy its full height
+
+The four text comps are **2160×1250**, up from 1100; the image comps are
+untouched. The edit changed the height and **nothing else he chose** — fonts,
+sizes, tracking, fills, layer names, anchor points, scale, `sourceRect`, x
+offsets, blur and opacity keys all identical across all four.
+
+**But After Effects re-centres a comp's contents when the canvas grows.** The
+placeholder's Position keys moved 750/700 → **825/775**, exactly half the 150 px
+added, and `TXT_MAIN_SHADOW`'s Transform offset scaled **15.0 → 17.045**. So
+**+150 of comp height bought +72.955 of room below the card**, which is why 1250
+fell short of a minimum computed at 1197 on the assumption the type would stay
+put.
+
+**`test-1` and `test-2` `k002` reach 1273.8 px in a 1250 comp — 23.8 px short**,
+both refused at `build-elements` by `CardClippedError` before anything is saved.
+**`npm run golden` cannot run**, and the reference was **not re-recorded**: two
+of the four reels do not build and the two that do are byte-identical to what is
+already recorded.
+
+**The number the user needs: ≥ 1298.8** if the type keeps re-centring (1300
+leaves 0.6 px, 1400 leaves 49.2), **or keep 1250 and put the first baseline back
+at 700**, worth +53.3 px on its own, costing no further height and restoring the
+shadow offset and `SUBTITLE_BAND` to their ruled values. The second is the
+smaller edit. **This session made neither** — the comps are his file.
+
+### The baseline move is invisible; the shadow's 2 px is not
+
+**Verified, not assumed.** The builder places an instance as
+`target − (placeholder − anchor)`, and that difference is **150 both before and
+after** — the comp layer's anchor moved 550 → 625 with the placeholder. The two
+reels with no two-line card were built and censused against the golden
+reference: **`test-3` 0 of 3708 fields differing, `vitasilk` 0 of 4769.** Not one
+field.
+
+**`SUBTITLE_BAND` moved, because `shadowDescentPx` reads that offset out of the
+audit**: the band's bottom went **3012.5783 → 3014.6237 px**, and the band bounds
+where every image is placed. **Three tests pin the old figures and were left
+failing** — `core/src/shadow-extent.test.ts` and
+`service/src/placement/constants.test.ts` ×2. They are not asserting retired
+behaviour: the +8/+15 shadow offset is a user ruling, and updating them would
+ratify a change nobody decided to make. `npm run check` exits 1 for that reason.
+
+The constraint is written down in `docs/TEMPLATE_LIBRARY_GUIDE.md` §11 — what has
+to fit from the baseline down, that `assertEveryCardFits` refuses rather than
+warns, and the re-centring trap with both remedies — and in
+`docs/PROJECT_SPEC.md` §3 under the clipped-card ruling.
