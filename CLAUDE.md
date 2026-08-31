@@ -9015,7 +9015,8 @@ of that machine, taken there), and any client's own picture.
 **Spent $0.00.** Ledger 118 lines / `3f657131…` at both ends; all five plans, the
 seven references and the cache byte-identical; `app.fonts.allFonts` 1198 → 1198.
 **`templates/library.aep` was not edited by this session** — the user's file, read
-only, `e9e26d49d62d2cf8dc6e643f4b0b00a40623c081423822873d9dafac7c14a10b`,
+only, `e9e26d49d62d2cf8…` (superseded in session 23 by
+`103cc1f1d02018df9f189e646cf96393de73c4286e35487586c5abdf7c0a13e1`),
 549,809 bytes, identical at both ends. The audit is re-stamped against it.
 
 ### Growing a comp does not buy its full height
@@ -9065,3 +9066,72 @@ The constraint is written down in `docs/TEMPLATE_LIBRARY_GUIDE.md` §11 — what
 to fit from the baseline down, that `assertEveryCardFits` refuses rather than
 warns, and the re-centring trap with both remedies — and in
 `docs/PROJECT_SPEC.md` §3 under the clipped-card ruling.
+
+
+## Block 10 session 23 — the cards fit, and one property did not come back
+
+**Spent $0.00.** Ledger 118 lines / `3f657131…` at both ends; all five plans, the
+six references and the cache byte-identical; `app.fonts.allFonts` 1198 → 1198.
+**`templates/library.aep` was not edited by this session** — the user's file,
+`103cc1f1d02018df9f189e646cf96393de73c4286e35487586c5abdf7c0a13e1`, 552,745 bytes.
+
+### The two-line card fits, with 51.2 px to spare
+
+The comps stay **1250** and the type is back at a first baseline of **700**.
+`test-1` `k002` (`محفزات الكولاجين`) and `test-2` `k002` (`ترطيب عميق`) each reach
+**1198.8 px**, against 1273.8 and a 23.8 px overrun at 775. They are the corpus's
+only two-line cards; the next tightest card anywhere has 326.2 px. **All four
+buildable reels build** — 262 cards, none overrunning top or bottom — after
+`test-1` and `test-2` had refused at `build-elements` since session 21.
+
+**It took two edits because AE re-centres a comp's contents when the canvas
+grows.** Height alone moved the type down 75 px, half the 150 added; putting the
+baseline back recovered exactly that 75. Adding height and restoring the type are
+two separate edits and the second is the one that buys the room.
+
+### A moved comp-layer Position is bookkeeping; the baseline is the check
+
+`npm run golden`: 4 of 4 built, **524 of 17,170 fields differ**, and every one is
+the same field kind and the same change — `masters[].layers[].position[]`,
+**2330.4 → 2405.4**, +75. No font, size, text, colour, scale, count or audio field
+differs anywhere.
+
+The builder places an instance as `target − (placeholder − anchor)`. At 1100 that
+was 700 − 550 = 150; re-centred at 1250 it was 775 − 625 = 150, which is why
+session 22 censused **0** differing fields; restored it is 700 − 625 = **75**, so
+the comp layer's Position absorbs the difference. **Read back inside After Effects
+the baseline is 2480.39990234375 in all three states**, exactly
+`SUBTITLE_ANCHOR_BASELINE_Y` — measured on three layers of the built `vitasilk`,
+not argued from arithmetic.
+
+**Golden was deliberately not re-recorded.** The differences are legitimate, but
+the library is not finished (below), and recording against a file still being
+edited is how a reference gets recorded twice.
+
+### Moving the text layer back does not undo the effect's scaling
+
+**`TXT_MAIN_SHADOW`'s Transform offset is still `[8, 17.045]`, against the ruled
+`[8, 15]`** — absent from the audit diff, because it never moved. It is a
+**separate property** from the text layer's Position: the effect carries its own
+Anchor Point [1080, 625] and Position [1088, 642.045], and 17.045 is 15 × 1250/1100,
+which is AE scaling it when the canvas grew. **Restoring it means setting that
+effect's Position to `[1088, 640]`.**
+
+So `SUBTITLE_BAND`'s bottom is **3014.6237** against 3012.5783 and **three tests
+still fail on purpose** — `core/src/shadow-extent.test.ts` and
+`service/src/placement/constants.test.ts` ×2. Not edited: the +8/+15 offset is a
+user ruling and a resize is not the place to change it. `npm run check` exits 1
+for that reason alone; **the panel's image-picker tests did not flake this run.**
+
+**What the 2 px reaches is narrow**, checked rather than assumed: image placement
+does not read `SUBTITLE_BAND` at all, and the only consumer in a built comp is the
+watermark's corner test, which rejects a corner overlapping y 1980–3014 — the mark
+sits 108 px from the top, so 2 px cannot flip it. The figure is worth fixing
+because it is a ruling, not because a comp is currently wrong.
+
+### The CTI trap, again
+
+Nine of the audit's 39 differing fields are `position.value` reading 750, 700.031
+and 775.358 across comps while **`valueAtSampleTime` is 700 on every one** — the
+playhead's position, not a change. Block 7 session 3 lost 50 px of baseline to
+this exact field.
