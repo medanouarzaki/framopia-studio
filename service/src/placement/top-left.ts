@@ -37,7 +37,16 @@ export interface TopLeftInput {
   marginW?: number;
   clearanceW?: number;
   jitter?: number;
-  /** The client mode's `imageScale`, default 1.0. */
+  /**
+   * The client mode's `imageScale`, default 1.0.
+   *
+   * **Under the 2026-09-01 ruling it can only make a picture smaller.** Every
+   * slot is drawn at its own corner's maximum, and the size is clamped to that
+   * corner afterwards, so any value at or above 1 asks for something the corner
+   * refuses and changes nothing. Below 1 it still draws smaller than the corner,
+   * which is why the field is kept. `k2-syndicalia` carries 1.4 and it has never
+   * done anything on any reel.
+   */
   scale?: number;
   /**
    * The size to place at, in source pixels, overriding what this slot's own
@@ -191,56 +200,58 @@ export interface ReelSlotPlacement extends TopLeftDetail {
   id: string;
   /** The largest square this slot's own corner could hold, in pixels. */
   ownMaxPx: number;
-  /** What this slot gives up to match the rest of the reel, in pixels. */
+  /**
+   * Always zero since the 2026-09-01 ruling — every slot now takes its own
+   * maximum. Kept so the panel and the placement report, which read it, do not
+   * have to change in the same breath as the rule.
+   */
   givesUpPx: number;
 }
 
 export interface ReelPlacements {
   slots: ReelSlotPlacement[];
-  /** The one size every picture in this reel is drawn at, in pixels. */
-  commonSidePx: number;
-  /** Which slot set it — the tightest corner in the reel. */
-  setBy: string | null;
+  /** The smallest and largest a picture is drawn at in this reel, in pixels. */
+  smallestSidePx: number;
+  largestSidePx: number;
 }
 
 /**
- * Every picture in a reel is the same size, and that size is the smallest any
- * one of its slots can hold.
+ * Every picture is drawn as large as its own corner allows.
  *
- * **User ruling, 2026-08-29.** Session 36 removed size jitter and the sizes
- * still differed — `vitasilk` came out 937, 837, 905, 925 and 913 px, because
- * one slot is bounded by the space beside the speaker where the rest are
- * bounded by the space above him. That difference is real geometry rather than
- * a defect, and it does not matter: on screen it reads as inconsistency. **A
- * consistent set is worth more than a marginally larger one**, which is the
- * same judgement behind the corner ruling and behind positional jitter.
+ * **User ruling, 2026-09-01**, replacing the one-size-per-reel rule he gave on
+ * 2026-08-29 after looking at the same reel built at three sizes. The old rule
+ * drew every picture at the size the *tightest* slot could hold, and Block 10
+ * session 36 measured what that costs: a minimum only ever falls as slots are
+ * added, so a longer reel is a smaller-pictured reel by construction. `sora`'s
+ * eleven slots could hold 669 to 1085 px and every one was drawn at 669 —
+ * 31% of the frame where its own geometry allowed a mean of 45.9% — while
+ * `test-1`'s four slots spread over 20 px and never showed it.
  *
- * The risk is stated rather than hidden: **one tight slot shrinks the whole
- * reel.** `npm run place:images` prints each slot's own maximum beside the
- * common size and what each gives up, so a reel that has been pulled down by a
- * single slot is visible rather than merely small.
+ * **This rule depends on nothing but the reel's own geometry.** Not the slot
+ * count, not the duration, not what any other reel needed. What varies between
+ * pictures is what varies in the footage: where the speaker is when each one is
+ * on screen.
+ *
+ * The cost is stated rather than hidden: **the set is as varied as the speaker
+ * is.** On `sora` that is 669 to 1085 px, and the one small picture is small
+ * because that is genuinely all the corner holds while he leans forward. He
+ * looked at exactly that and preferred it to eleven small ones.
  */
 export function reelPlacements(
   slots: ReelSlotInput[],
   options: { scale?: number; jitter?: number } = {},
 ): ReelPlacements {
-  if (slots.length === 0) return { slots: [], commonSidePx: 0, setBy: null };
+  if (slots.length === 0) return { slots: [], smallestSidePx: 0, largestSidePx: 0 };
 
-  const maxima = slots.map((slot) => {
+  const placed = slots.map((slot) => {
     const own = topLeftPlacementDetail({ ...slot, ...options });
-    return { slot, ownMaxPx: own.rect.w * FRAME_WIDTH };
+    return { id: slot.id, ownMaxPx: own.rect.w * FRAME_WIDTH, givesUpPx: 0, ...own };
   });
-  const tightest = maxima.reduce((a, b) => (b.ownMaxPx < a.ownMaxPx ? b : a));
-  const commonSidePx = tightest.ownMaxPx;
+  const sides = placed.map((p) => p.ownMaxPx);
 
   return {
-    slots: maxima.map(({ slot, ownMaxPx }) => ({
-      id: slot.id,
-      ownMaxPx,
-      givesUpPx: ownMaxPx - commonSidePx,
-      ...topLeftPlacementDetail({ ...slot, ...options, sidePx: commonSidePx }),
-    })),
-    commonSidePx,
-    setBy: tightest.slot.id,
+    slots: placed,
+    smallestSidePx: Math.min(...sides),
+    largestSidePx: Math.max(...sides),
   };
 }

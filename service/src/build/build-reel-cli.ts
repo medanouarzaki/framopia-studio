@@ -300,8 +300,8 @@ function overriddenPlacements(
   const sizes = placed.map((p) => p.rect.w * FRAME_WIDTH);
   return {
     slots: placed,
-    commonSidePx: sizes.length === 0 ? 0 : Math.min(...sizes),
-    setBy: null,
+    smallestSidePx: sizes.length === 0 ? 0 : Math.min(...sizes),
+    largestSidePx: sizes.length === 0 ? 0 : Math.max(...sizes),
   };
 }
 
@@ -336,8 +336,9 @@ const reelPlaced =
 if (reelPlaced.slots.length > 0) {
   console.log(
     imageSizeFlag === undefined
-      ? `every picture in this reel is ${reelPlaced.commonSidePx.toFixed(0)}px, ` +
-          `the largest ${reelPlaced.setBy} can hold`
+      ? `every picture is as large as its own corner allows: ` +
+          `${reelPlaced.smallestSidePx.toFixed(0)} to ` +
+          `${reelPlaced.largestSidePx.toFixed(0)}px`
       : `--image-size ${imageSizeFlag}: sizes are overridden for looking at, ` +
           'not by the reel rule',
   );

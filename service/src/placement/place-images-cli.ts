@@ -85,8 +85,8 @@ for (const file of readdirSync(FOOTAGE_DIR).filter((f) => f.endsWith('.editplan.
   );
   if (reel_.slots.length > 0) {
     console.log(
-      `${reel.padEnd(14)} one size for the reel: ${reel_.commonSidePx.toFixed(0)}px, ` +
-        `set by ${reel_.setBy}`,
+      `${reel.padEnd(14)} each picture at its own corner's maximum: ` +
+        `${reel_.smallestSidePx.toFixed(0)} to ${reel_.largestSidePx.toFixed(0)}px`,
     );
   }
   for (const detail of reel_.slots) {

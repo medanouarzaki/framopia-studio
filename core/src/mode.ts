@@ -20,8 +20,12 @@ import { REPO_ROOT } from './paths.js';
  *                    then { status: "set", latin, arabic }
  * imageStyle         { stylePrompt: string[], negativePrompt: string[] }
  * imageVariation     { note, axes: { <axis>: string[] } }
- * imageScale         optional 0.5-2.0; how much larger than the largest
- *                    face-clearing square an image is drawn. Default 1.0.
+ * imageScale         optional 0.5-2.0; the fraction of the largest
+ *                    face-clearing square an image is drawn at. Default 1.0.
+ *                    **A value at or above 1 does nothing** since the
+ *                    2026-09-01 ruling: every picture is already drawn at its
+ *                    own corner's maximum and the size is clamped to it. Only
+ *                    a value below 1 has an effect.
  * imageSlotsPer30s   optional 1-20; how many images a 30-second reel gets.
  *                    Default 8.
  * imageCandidates    optional 2-4; §5.4's mode override for how many

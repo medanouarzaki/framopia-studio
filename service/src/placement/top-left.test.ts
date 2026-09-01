@@ -201,25 +201,20 @@ describe('reelPlacements', () => {
     { id: 'img003', faceBox: roomy, seed: 'p:img003' },
   ];
 
-  it('gives every slot one size, the smallest any of them can hold', () => {
+  it('gives every slot its own corner’s maximum', () => {
     const reel = reelPlacements(slots);
-    const sides = reel.slots.map((s) => s.rect.w * FRAME_WIDTH);
-    expect(new Set(sides.map((s) => s.toFixed(9))).size).toBe(1);
-    expect(reel.commonSidePx).toBeCloseTo(Math.min(...reel.slots.map((s) => s.ownMaxPx)), 9);
-    expect(reel.setBy).toBe('img002');
-  });
-
-  it('reports what each slot gives up, so a reel pulled down by one is visible', () => {
-    const reel = reelPlacements(slots);
-    const setter = reel.slots.find((s) => s.id === reel.setBy);
-    expect(setter?.givesUpPx).toBeCloseTo(0, 9);
     for (const s of reel.slots) {
-      expect(s.givesUpPx).toBeCloseTo(s.ownMaxPx - reel.commonSidePx, 9);
-      expect(s.givesUpPx).toBeGreaterThanOrEqual(-1e-9);
+      expect(s.rect.w * FRAME_WIDTH).toBeCloseTo(s.ownMaxPx, 9);
+      expect(s.givesUpPx).toBe(0);
     }
+    // The set is as varied as the footage is: a tight slot stays tight and
+    // takes nothing else down with it.
+    expect(reel.smallestSidePx).toBeCloseTo(Math.min(...reel.slots.map((s) => s.ownMaxPx)), 9);
+    expect(reel.largestSidePx).toBeCloseTo(Math.max(...reel.slots.map((s) => s.ownMaxPx)), 9);
+    expect(reel.largestSidePx).toBeGreaterThan(reel.smallestSidePx);
   });
 
-  it('clears the face and stays in the frame at the common size', () => {
+  it('clears the face and stays in the frame at its own maximum', () => {
     for (const s of reelPlacements(slots).slots) {
       const face = slots.find((x) => x.id === s.id)?.faceBox ?? null;
       const safe = placementIsSafe(s.rect, face);
@@ -234,7 +229,7 @@ describe('reelPlacements', () => {
    * a slot being placed smaller than its own corner, which is when there is the
    * most room to move and so the most that could go wrong.
    */
-  it('still nudges position, inward and inside its bound, at the common size', () => {
+  it('still nudges position, inward and inside its bound', () => {
     const reel = reelPlacements(slots);
     const positions = new Set(reel.slots.map((s) => `${s.rect.x},${s.rect.y}`));
     expect(positions.size).toBeGreaterThan(1);
@@ -250,16 +245,22 @@ describe('reelPlacements', () => {
 
   it('is deterministic, and a reel with no slots has no size', () => {
     expect(reelPlacements(slots)).toEqual(reelPlacements(slots));
-    expect(reelPlacements([])).toEqual({ slots: [], commonSidePx: 0, setBy: null });
+    expect(reelPlacements([])).toEqual({ slots: [], smallestSidePx: 0, largestSidePx: 0 });
   });
 
   /*
-   * The risk, asserted rather than only written down: adding one cramped slot
-   * to a roomy reel takes every other picture down with it.
+   * **The defect the 2026-09-01 ruling removed**, asserted so it cannot come
+   * back: a cramped slot added to a roomy reel used to take every other picture
+   * down with it, and now takes none.
    */
-  it('lets a single tight slot shrink the whole reel', () => {
+  it('lets no single tight slot shrink the rest of the reel', () => {
     const roomyOnly = reelPlacements(slots.filter((s) => s.faceBox === roomy));
     const withTight = reelPlacements(slots);
-    expect(withTight.commonSidePx).toBeLessThan(roomyOnly.commonSidePx);
+    for (const s of roomyOnly.slots) {
+      const same = withTight.slots.find((x) => x.id === s.id);
+      expect(`${s.id} ${(same as { ownMaxPx: number }).rect.w.toFixed(9)}`).toBe(
+        `${s.id} ${s.rect.w.toFixed(9)}`,
+      );
+    }
   });
 });

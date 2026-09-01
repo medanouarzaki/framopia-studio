@@ -46,39 +46,45 @@ function reelOf(sizes: { above: number; beside: number }[]) {
 }
 
 describe('what decides a picture’s size on a reel nobody has seen', () => {
-  it('gives every picture the size of the tightest slot, whatever the rest could hold', () => {
+  it('gives every picture its own corner’s maximum, whatever the tightest holds', () => {
     const generous = { above: 1050, beside: 800 };
     const reel = reelOf([generous, generous, generous, generous]);
-    expect(Math.round(reel.commonSidePx)).toBe(1050);
+    expect(reel.slots.map((s) => Math.round(s.rect.w * FRAME_WIDTH))).toEqual([
+      1050, 1050, 1050, 1050,
+    ]);
 
-    // One slot where the speaker sits higher in frame, and the whole reel
-    // follows it down. This is `sora`: ten slots at 881-1085, one at 669.
+    // One slot where the speaker sits higher in frame. Under the retired rule
+    // it took the other three down to 669 with it; now it is simply smaller.
     const withOneTight = reelOf([generous, generous, { above: 669, beside: 633 }, generous]);
-    expect(Math.round(withOneTight.commonSidePx)).toBe(669);
-    expect(withOneTight.setBy).toBe('img003');
-    expect(withOneTight.slots.filter((s) => s.givesUpPx > 1)).toHaveLength(3);
+    expect(withOneTight.slots.map((s) => Math.round(s.rect.w * FRAME_WIDTH))).toEqual([
+      1050, 1050, 669, 1050,
+    ]);
+    expect(withOneTight.slots.every((s) => s.givesUpPx === 0)).toBe(true);
   });
 
   /**
-   * **The defect, stated as arithmetic.** Adding slots can only lower the size,
-   * never raise it, so a longer reel is a smaller-pictured reel whenever the
-   * speaker moves at all. At eight image slots per 30 seconds, a 40-second reel
+   * **The defect the ruling removed, stated as arithmetic.** Under the old rule
+   * adding a slot could only lower the size, so a longer reel was a
+   * smaller-pictured reel: at eight image slots per 30 seconds a 40-second reel
    * draws eleven samples of the speaker's position where a 22-second reel draws
-   * four.
+   * four, and the minimum of eleven is lower than the minimum of four. Nothing
+   * a reel gains may now change what any other slot is drawn at.
    */
-  it('never grows when a reel gains a slot, and shrinks whenever the new one is tighter', () => {
+  it('changes no other slot when a reel gains one, tight or generous', () => {
     const base = [
       { above: 1050, beside: 800 },
       { above: 1000, beside: 780 },
       { above: 1080, beside: 810 },
     ];
-    const four = reelOf(base);
-    const five = reelOf([...base, { above: 900, beside: 700 }]);
-    const six = reelOf([...base, { above: 900, beside: 700 }, { above: 1200, beside: 900 }]);
+    const three = reelOf(base);
+    const four = reelOf([...base, { above: 900, beside: 700 }]);
+    const five = reelOf([...base, { above: 900, beside: 700 }, { above: 1200, beside: 900 }]);
 
-    expect(five.commonSidePx).toBeLessThan(four.commonSidePx);
-    // A generous sixth slot cannot give the reel anything back.
-    expect(six.commonSidePx).toBe(five.commonSidePx);
+    const sizesOf = (r: ReturnType<typeof reelOf>) =>
+      r.slots.map((s) => Math.round(s.rect.w * FRAME_WIDTH));
+    expect(sizesOf(four).slice(0, 3)).toEqual(sizesOf(three));
+    expect(sizesOf(five).slice(0, 4)).toEqual(sizesOf(four));
+    expect(sizesOf(five)[3]).toBe(900);
   });
 
   /**
@@ -167,62 +173,54 @@ describe('how long a picture stays against how long its words run', () => {
 });
 
 /**
- * **The three sizing rules, so whichever the user picks is already proven.**
+ * **The rule in force, and where it breaks.**
  *
- * Block 10 session 37 built `sora` at all three for him to look at. Only the
- * first is in force; the other two are here so that adopting one is a change to
- * the builder and not to what is known about it. Each case says where that rule
- * breaks, which is the part a reel cannot be asked.
+ * Block 10 session 37 built `sora` at three sizes and the user picked this one
+ * on 2026-09-01: every picture as large as its own corner allows. The other two
+ * options were covered here while the choice was open and are gone now, because
+ * a test asserting a rule the project does not have is worse than no test.
  */
-describe('the three sizing rules, and where each one breaks', () => {
+describe('every picture at its own corner’s maximum, and where that breaks', () => {
   const generous = { above: 1050, beside: 800 };
   const tight = { above: 669, beside: 633 };
 
-  it('A — one size, the reel minimum: correct, consistent, and falls as slots are added', () => {
-    const reel = reelOf([generous, generous, tight, generous]);
-    expect(Math.round(reel.commonSidePx)).toBe(669);
-    expect(new Set(reel.slots.map((s) => Math.round(s.rect.w * FRAME_WIDTH))).size).toBe(1);
-    // Where it breaks: one tight slot, and every other picture follows it down.
-    expect(Math.round(Math.max(...reel.slots.map((s) => s.givesUpPx)))).toBe(381);
-  });
-
-  it('B — one size at a floor, with a slot below it left at its own maximum', () => {
-    const floorPx = 799;
-    const slots = [generous, generous, tight, generous];
-    const placed = slots.map((s, i) =>
-      topLeftPlacementDetail({ faceBox: faceAt(s.above, s.beside), seed: `b${i}`, sidePx: floorPx }),
+  it('is the largest each picture can be, and safe at every one of them', () => {
+    const shape = [generous, generous, tight, generous];
+    const placed = shape.map((s, i) =>
+      topLeftPlacementDetail({ faceBox: faceAt(s.above, s.beside), seed: `own${i}` }),
     );
-    const sizes = placed.map((d) => Math.round(d.rect.w * FRAME_WIDTH));
-    expect(sizes).toEqual([799, 799, 669, 799]);
-    // Where it breaks: the reel is no longer one size, and the floor is a
-    // number no video can be asked for — it has to come from the user's eye.
-    expect(new Set(sizes).size).toBe(2);
-    for (let i = 0; i < slots.length; i++) {
-      const face = faceAt(slots[i].above, slots[i].beside);
-      expect(placementIsSafe(placed[i].rect, face)).toEqual({
+    expect(placed.map((d) => Math.round(d.rect.w * FRAME_WIDTH))).toEqual([
+      1050, 1050, 669, 1050,
+    ]);
+    for (let i = 0; i < shape.length; i++) {
+      expect(placementIsSafe(placed[i].rect, faceAt(shape[i].above, shape[i].beside))).toEqual({
         insideFrame: true,
         clearsFace: true,
       });
     }
   });
 
-  it('C — each slot at its own maximum: largest, safe, and as varied as the speaker', () => {
-    const slots = [generous, generous, tight, generous];
-    const placed = slots.map((s, i) =>
-      topLeftPlacementDetail({ faceBox: faceAt(s.above, s.beside), seed: `c${i}` }),
-    );
-    const sizes = placed.map((d) => Math.round(d.rect.w * FRAME_WIDTH));
-    expect(sizes).toEqual([1050, 1050, 669, 1050]);
-    // Where it breaks: the spread is whatever the speaker does. It is bounded
-    // by nothing the tool controls, so a reel where he moves a lot reads as
-    // inconsistent — which is the reason the one-size rule exists.
-    expect(Math.max(...sizes) - Math.min(...sizes)).toBe(381);
-    for (let i = 0; i < slots.length; i++) {
-      const face = faceAt(slots[i].above, slots[i].beside);
-      expect(placementIsSafe(placed[i].rect, face)).toEqual({
-        insideFrame: true,
-        clearsFace: true,
-      });
+  /**
+   * Where it breaks: **the spread is whatever the speaker does**, and nothing
+   * the tool controls bounds it. A reel where he barely moves reads as one size
+   * anyway; one where he moves a lot reads as varied, which is the cost he
+   * accepted when he looked at `sora` at 669 to 1085 and preferred it.
+   */
+  it('is as varied as the footage, and no more', () => {
+    const still = reelOf([generous, generous, generous]);
+    expect(Math.round(still.largestSidePx - still.smallestSidePx)).toBe(0);
+
+    const moving = reelOf([generous, tight, { above: 1200, beside: 900 }]);
+    expect(Math.round(moving.smallestSidePx)).toBe(669);
+    expect(Math.round(moving.largestSidePx)).toBe(1200);
+  });
+
+  it('never grows a picture past what its own corner holds', () => {
+    for (const above of [400, 669, 900, 1085, 1600]) {
+      const face = faceAt(above, above - 40);
+      const own = topLeftPlacementDetail({ faceBox: face, seed: `cap${above}` });
+      expect(Math.round(own.rect.w * FRAME_WIDTH)).toBe(above);
+      expect(placementIsSafe(own.rect, face)).toEqual({ insideFrame: true, clearsFace: true });
     }
   });
 });
