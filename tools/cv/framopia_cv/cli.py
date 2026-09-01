@@ -24,35 +24,6 @@ import sys
 import traceback
 
 
-def _quiet_onnxruntime_telemetry() -> None:
-    """Stop onnxruntime phoning home, because its teardown kills the process.
-
-    onnxruntime bundles Microsoft's 1DS telemetry, which runs an HTTP worker
-    thread. At process exit the main thread destroys the telemetry system's
-    statics while that worker is still handling a response; the worker locks a
-    mutex that is already gone, the resulting `std::system_error` is caught by
-    nobody, and the process aborts. The work is finished by then — the main
-    thread is inside `exit()` in every one of the 29 crash reports on this
-    machine, from 25 August to 1 September — so it destroys nothing but the
-    exit status.
-
-    Nothing about that is this project's bug and nothing here can fix it. What
-    it can do is not start the uploader: with no events sent there is no
-    in-flight response for the teardown to race. Guarded, because a sidecar
-    that cannot produce JSON is worse than one that risks an ugly exit, and
-    two of the tasks never load onnxruntime at all.
-    """
-    try:
-        import onnxruntime
-
-        onnxruntime.disable_telemetry_events()
-    except Exception:  # noqa: BLE001 - never worth failing a task over
-        pass
-
-
-_quiet_onnxruntime_telemetry()
-
-
 def _remove_bg(request: dict) -> dict:
     from .gate import evaluate
     from .metrics import compute_metrics
