@@ -198,16 +198,12 @@ handful used in an ordinary session and points here for the rest.
   `_A` and `_C`, differing only in subtitle out-points so the retiming question
   can be judged by flipping between them. One duplicated comp per element,
   shared by both masters, so nothing else can differ.
-  Two diagnostic flags exist for looking at a reel rather than for building one,
-  and absent, a build is byte for byte what it was:
-  `--image-size <px|max>` draws the pictures at a size other than the rule's,
-  and `--images-continuous <cut|dissolve>` makes each picture stay until the
-  next one appears instead of ending with its own words — `cut` hands over on
-  the frame, `dissolve` keeps the outgoing picture underneath until the incoming
-  one has finished fading up. Under either, each picture is sized from the face
-  mask over its **whole life** rather than over its words, which is what keeps
-  it clear of the speaker; Block 10 session 39 measured what happens without
-  that.
+  Every picture stays until the next one appears, and is sized from the face
+  mask over its **whole life** rather than over its words — which is what keeps
+  a held picture clear of the speaker. One diagnostic flag exists for looking at
+  a reel rather than for building one, and absent, a build is byte for byte what
+  it was: `--image-size <px|max>` draws the pictures at a size other than the
+  rule's.
 - `npm run migrate:alignment [-- --apply]` — free, local, **$0.00 and no API
   call**. Re-aligns every plan from its resolved transcription cache entry under
   the adopted transliteration cost and rewrites the word timings, then recomputes
