@@ -70,6 +70,7 @@
     "migrate:client-snapshot": "npm run build:core && npm run migrate:client-snapshot --workspace framopia-service --",
     "prompt-page": "npm run build:core && npm run prompt-page --workspace framopia-service --",
     "golden": "npm run build:core && npm run build --prefix service && tsx tools/golden/cli.ts",
-    "check:attribution": "npm run build:core && tsx tools/attribution/cli.ts"
+    "check:attribution": "npm run build:core && tsx tools/attribution/cli.ts",
+    "adopt:name-words": "npm run build:core && npm run adopt:name-words --workspace framopia-service --"
   }
 }

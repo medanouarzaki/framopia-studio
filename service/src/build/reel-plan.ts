@@ -4,7 +4,7 @@ import {
   SUBTITLE_ANCHOR_X,
   type AuditLayer,
 } from '@framopia/core';
-import { pictureLives } from './picture-life.js';
+import { pictureLives, pictureWindows } from './picture-life.js';
 import type { EditPlan, SubtitleGroup } from '../editplan/types.js';
 import { displayWindow } from '../analysis/display-timing.js';
 import { chooseBreak, type BreakCandidate } from './wrap.js';
@@ -107,6 +107,27 @@ function layerOf(c: AuditComp, name: string): AuditLayer {
   const l = c.layers.find((x) => x.name === name);
   if (l === undefined) throw new Error(`comp "${c.name}" has no layer "${name}"`);
   return l;
+}
+
+/**
+ * A template's authored entrance, in seconds: the length of the opacity ramp on
+ * its picture placeholder, read out of the audit rather than typed. A template
+ * re-authored to a slower fade moves every rule that rests on it.
+ *
+ * `introS` in the manifest says 0.13 s for the same comps and is not the same
+ * number — ARCHITECTURE records that only the ramp is measured.
+ */
+export function authoredEntranceS(audit: AuditComp[], templateId: string): number {
+  const layer = comp(audit, templateId).layers.find((l) => l.name === 'IMG_MAIN');
+  const opacity = layer?.animated?.find((a) => a.path === 'Transform/Opacity');
+  const last = opacity?.keys?.[opacity.keys.length - 1]?.time;
+  if (typeof last !== 'number' || last <= 0) {
+    throw new Error(
+      `templates/library.audit.json has no opacity ramp on ${templateId}/IMG_MAIN; ` +
+        'run npm run audit:templates',
+    );
+  }
+  return last;
 }
 
 function settled(l: AuditLayer, field: 'position' | 'anchorPoint' | 'scale'): number[] {
@@ -213,16 +234,23 @@ export function buildReel(options: {
 }): ReelBuild {
   const { plan, audit, introFor, minHoldFor, sfxFileFor, candidateFileFor, topLeftFor, cardTemplateId } = options;
   /*
-   * **A picture stays until the next one appears** (the user's ruling of
-   * 1 September). Computed here rather than taken as an argument so a caller
-   * cannot build a reel without it; the caller that *sizes* each picture reads
-   * the same `pictureLives`, which is what keeps a held picture off the
-   * speaker.
+   * **A picture arrives at the word it is about and stays until the next one
+   * appears** — both the user's rulings of 1 September. Computed here rather
+   * than taken as an argument so a caller cannot build a reel without them; the
+   * caller that *sizes* each picture reads the same `pictureLives`, which is
+   * what keeps a held picture off the speaker.
    */
-  const screenEndFor = new Map(
-    pictureLives(plan.images.slots.map((s) => ({ id: s.id, start: s.start, end: s.end }))).map(
-      (l) => [l.id, l.screenEndS],
-    ),
+  const wordStartOf = ((): ((id: string) => number | undefined) => {
+    const byId = new Map(plan.transcript.words.map((w) => [w.id, w.start]));
+    return (id) => byId.get(id);
+  })();
+  const lifeOf = new Map(
+    pictureLives(
+      pictureWindows(plan.images.slots, wordStartOf),
+      plan.images.slots.length === 0
+        ? 0
+        : authoredEntranceS(audit, cardTemplateId ?? (plan.images.slots[0]?.templateId as string)),
+    ).map((l) => [l.id, l]),
   );
   const styleFor = options.textStyleFor ?? ((): undefined => undefined);
   const shadowsFor = options.shadowLayersFor ?? ((): string[] => []);
@@ -397,11 +425,13 @@ export function buildReel(options: {
      * hold, so a template rebuilt to a different duration moves this with it
      * and nothing here carries a number of its own.
      */
-    const outPointS = Math.max(slot.end, screenEndFor.get(slot.id) ?? slot.end);
+    const life = lifeOf.get(slot.id);
+    const inPointS = life?.screenStartS ?? slot.start;
+    const outPointS = Math.max(slot.end, life?.screenEndS ?? slot.end);
     const placement: ReelPlacement = {
-      elementId: slot.id, kind: 'image', inPointS: slot.start, outPointS,
+      elementId: slot.id, kind: 'image', inPointS, outPointS,
       positionX, positionY, scalePercent,
-      ...(outPointS - slot.start > c.duration + 1e-9 ? { holdLastFrameFromS: c.duration } : {}),
+      ...(outPointS - inPointS > c.duration + 1e-9 ? { holdLastFrameFromS: c.duration } : {}),
     };
     // A and C differ only in how a subtitle card ends; a picture is the same in
     // both, as it was before the hand-over existed.

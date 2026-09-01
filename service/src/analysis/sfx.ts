@@ -6,6 +6,7 @@ import {
   type SfxIndex,
   type TemplateEntry,
 } from '@framopia/core';
+import { pictureStartOf } from '../build/picture-life.js';
 import type { EditPlan, SfxEvent } from '../editplan/types.js';
 
 /** 30000/1001, the rate every comp and every reel is at. */
@@ -87,6 +88,8 @@ export function deriveSfxDetail(
   dialogueLufs: number | undefined = undefined,
   /** The reel's true peak, when it has been measured. */
   dialoguePeakDbfs: number | undefined = undefined,
+  /** The image template's authored entrance, from the audit. */
+  entranceS = 0,
 ): SfxDerivation {
   const attenuationDb =
     dialogueLufs === undefined || dialoguePeakDbfs === undefined
@@ -100,10 +103,34 @@ export function deriveSfxDetail(
   const events: SfxEvent[] = [];
   const beforeComp: SfxDerivation['beforeComp'] = [];
 
+  /*
+   * **A picture's sound follows the picture, not its sentence.** Since slot
+   * prompt v3 a picture arrives at the word it is about rather than at the
+   * start of the span, and the whoosh leads it by about 17 frames — so taking
+   * the span's start here would leave the sound landing before anything
+   * appeared. `pictureStartOf` is the same declaration the builder places the
+   * layer from, so the two cannot disagree.
+   *
+   * `entranceS` is the template's authored fade, passed in by the caller that
+   * read it from the audit. Zero means the caller has no audit to hand, and
+   * then the only effect is that a naming word close to the end of its own span
+   * is not pulled back — which no reel in this project has.
+   */
+  const wordStartById = new Map(plan.transcript.words.map((w) => [w.id, w.start]));
   const elements: { id: string; start: number; templateId: string | null }[] = [
     ...plan.subtitles.groups.map((g) => ({ id: g.id, start: g.start, templateId: g.templateId })),
     ...plan.keywords.items.map((k) => ({ id: k.id, start: k.start, templateId: k.templateId })),
-    ...plan.images.slots.map((s) => ({ id: s.id, start: s.start, templateId: s.templateId })),
+    ...plan.images.slots.map((s) => {
+      const named = s.nameWordId === undefined ? undefined : wordStartById.get(s.nameWordId);
+      return {
+        id: s.id,
+        start: pictureStartOf(
+          { id: s.id, start: s.start, end: s.end, ...(named === undefined ? {} : { nameStartS: named }) },
+          entranceS,
+        ),
+        templateId: s.templateId,
+      };
+    }),
   ];
 
   const sounded = new Set<string>();
@@ -192,7 +219,15 @@ export function deriveSfxEvents(
   impacts: Map<string, number> = new Map(),
   dialogueLufs: number | undefined = undefined,
   dialoguePeakDbfs: number | undefined = undefined,
+  entranceS = 0,
 ): SfxEvent[] {
-  return deriveSfxDetail(plan, templates, sfxIndex, impacts, dialogueLufs, dialoguePeakDbfs)
-    .events;
+  return deriveSfxDetail(
+    plan,
+    templates,
+    sfxIndex,
+    impacts,
+    dialogueLufs,
+    dialoguePeakDbfs,
+    entranceS,
+  ).events;
 }

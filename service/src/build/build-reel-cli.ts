@@ -31,7 +31,7 @@ import { buildRecordFor } from './build-record.js';
 import { runBuildReel } from './drive.js';
 import { emitBuildStage } from './stages.js';
 import { imageSize } from './image-size.js';
-import { pictureLives } from './picture-life.js';
+import { pictureLives, pictureWindows } from './picture-life.js';
 import { contentBoxes } from './content-box.js';
 import { assertAllPlaced, assertPathsPresent, type PathRef } from './preflight.js';
 import { resolveClientIdentity } from './client-identity.js';
@@ -57,6 +57,7 @@ import {
 import { FRAME_WIDTH } from '../placement/constants.js';
 import type { Rect } from '../placement/geometry.js';
 import {
+  authoredEntranceS,
   buildReel,
   auditedSolid,
   resolveSfxDir,
@@ -313,15 +314,21 @@ function overriddenPlacements(
  * is read twice here: once for the face span that sizes each picture, and again
  * inside `buildReel` for the layer's out point.
  */
+const wordStartById = new Map(plan.transcript.words.map((w) => [w.id, w.start]));
 const lives = pictureLives(
-  plan.images.slots.map((s) => ({ id: s.id, start: s.start, end: s.end })),
+  pictureWindows(plan.images.slots, (id) => wordStartById.get(id)),
+  plan.images.slots.length === 0 ? 0 : authoredEntranceS(audit, CARD_TEMPLATE),
 );
-const screenEnd = new Map(lives.map((l) => [l.id, l.screenEndS]));
+const lifeById = new Map(lives.map((l) => [l.id, l]));
 if (lives.length > 0) {
-  const longest = lives.reduce((a, b) => (b.screenEndS - b.start > a.screenEndS - a.start ? b : a));
+  const longest = lives.reduce((a, b) =>
+    b.screenEndS - b.screenStartS > a.screenEndS - a.screenStartS ? b : a,
+  );
+  const moved = lives.filter((l) => l.screenStartS > l.start + 1e-9).length;
   console.log(
     `pictures hand over rather than ending with their words; the longest is on ` +
-      `screen ${(longest.screenEndS - longest.start).toFixed(2)}s (${longest.id})`,
+      `screen ${(longest.screenEndS - longest.screenStartS).toFixed(2)}s (${longest.id}); ` +
+      `${moved} of ${lives.length} arrive at the word they are about`,
   );
 }
 
@@ -334,7 +341,10 @@ const imagePlacements: Record<string, { x: number; y: number; w: number; h: numb
  * puts it 376px across him.
  */
 const slotFaces = new Map(
-  plan.images.slots.map((slot) => [slot.id, faceSpan(slot.start, screenEnd.get(slot.id) ?? slot.end)]),
+  plan.images.slots.map((slot) => {
+    const life = lifeById.get(slot.id);
+    return [slot.id, faceSpan(life?.screenStartS ?? slot.start, life?.screenEndS ?? slot.end)];
+  }),
 );
 /*
  * **A diagnostic override, and nothing that decides a build.** The reel rule is

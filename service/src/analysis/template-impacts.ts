@@ -39,3 +39,25 @@ export function templateImpacts(auditPath?: string): Map<string, number> {
   }
   return impacts;
 }
+
+/**
+ * The image template's authored entrance, for callers that place a picture's
+ * sound without a build's audit to hand. Zero when the audit cannot be read,
+ * which is what `templateImpacts` does for the same reason.
+ */
+export function imageEntranceS(templateId = 'img_float', auditPath?: string): number {
+  const file = auditPath ?? path.join(REPO_ROOT, 'templates', 'library.audit.json');
+  if (!existsSync(file)) return 0;
+  let audit: { comps?: AuditComp[] };
+  try {
+    audit = JSON.parse(readFileSync(file, 'utf8')) as { comps?: AuditComp[] };
+  } catch {
+    return 0;
+  }
+  const layer = (audit.comps ?? [])
+    .find((c) => c.name === templateId)
+    ?.layers.find((l) => l.name === 'IMG_MAIN');
+  const last = layer?.animated?.find((a) => a.path === 'Transform/Opacity')?.keys?.slice(-1)[0]
+    ?.time;
+  return typeof last === 'number' && last > 0 ? last : 0;
+}

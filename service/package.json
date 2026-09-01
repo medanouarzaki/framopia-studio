@@ -48,7 +48,8 @@
     "migrate:client-mode": "tsx src/editplan/migrate-client-mode-cli.ts",
     "place:images": "tsx src/placement/place-images-cli.ts",
     "migrate:client-snapshot": "tsx src/editplan/migrate-client-snapshot-cli.ts",
-    "prompt-page": "tsx src/images/prompt-compare-cli.ts"
+    "prompt-page": "tsx src/images/prompt-compare-cli.ts",
+    "adopt:name-words": "tsx src/analysis/adopt-name-words-cli.ts"
   },
   "dependencies": {
     "@framopia/core": "*",
