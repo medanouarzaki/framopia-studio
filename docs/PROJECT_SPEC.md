@@ -102,8 +102,8 @@ depends on the client fonts Block 9 collects.
    rejected on measurement**: it recovers the strip, and it also changes the
    card's whole body by up to 230 levels, so it does not preserve the look.
 
-   **The comps are 1250 tall and the type is back at a first baseline of 700, and
-   the cards fit** (2026-08-31). `test-1` `k002` and `test-2` `k002` each reach
+   **The comps were 1250 tall with the type at a first baseline of 700, and the
+   corpus's cards fit** (2026-08-31; superseded at 1300 below). `test-1` `k002` and `test-2` `k002` each reach
    **1198.8 px in a 1250 comp — 51.2 px of headroom**; they are the corpus's only
    two-line cards and the next tightest card anywhere has 326.2 px. All four
    buildable reels build, 262 cards, none overrunning.
@@ -127,6 +127,29 @@ depends on the client fonts Block 9 collects.
    bottom is 3012.57825 again, the three tests pass on their own with none edited,
    and the two-line cards' headroom went 51.2 → **53.3 px**. `npm run check` and
    `npm run golden` are both green.
+
+   **The comps are 1300 as of 2026-09-01, and 53 px was never a margin.** The
+   corpus is 13.1% Arabic script and its two two-line cards happened to end in
+   shallow glyphs; `sora.mov`, the first real client reel, is **94.6% Arabic
+   script**, all five of its keywords break onto two lines, and `الجمال الطبيعي`
+   reached **1282.3 px in the 1250 comp**. On an Arabic-first reel a two-line
+   Arabic keyword is the normal case, not the exception the comps were sized for.
+   The user grew the four text comps to **1300** and put the baseline back at 700
+   — the same two edits, for the same reason.
+
+   At 1300 every keyword clears: `الجمال / الطبيعي` by **17.1 px**, the next by
+   75.3, the rest by 102.7 or more. **Final yeh is the deepest glyph in the
+   Arabic alphabet at this size** and is what `sora` hit; the budget for a line's
+   ink is 211.4 px and Almarai's worst is 194.3, so the room runs out if the
+   Arabic keyword size passes about **495**, or if a client's Arabic face
+   descends more than 8.8% deeper than Almarai. `docs/TEMPLATE_LIBRARY_GUIDE.md`
+   §11 carries the full table.
+
+   **The shadow's Transform effect scaled again**, to **[8, 15.6]** — 15 ×
+   1300/1250 — exactly as the trap predicts. Restoring it means setting that
+   effect's Position to **[1088, 665]** against its Anchor Point of [1080, 650].
+   Until then `SUBTITLE_BAND`'s bottom reads 3013.17825 and the same three tests
+   fail on the same 0.6 px, none of them edited.
 
 ## 4. Input / output (locked)
 

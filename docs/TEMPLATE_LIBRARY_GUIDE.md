@@ -15,7 +15,7 @@ The system **never edits your animation**. It duplicates your template comp, rep
 
 - **Naming:** `type_style` — `sub_pop`, `sub_slide`, `kw_slam`, `kw_glitch`, `img_slide_left`, `img_float`. Lowercase, underscores, no spaces. The comp name is the template id.
 - **Settings:** **29.97 fps** (30000/1001 — matches footage, mandatory). Square-pixel. Duration: at least intro + 2 s hold + outro; longer is fine, the system trims. The "30 fps" this section carried until Block 6 predates anyone reading a file header: every reel the project has handled is 30000/1001, and Block 5's frame sampling reads real presentation timestamps that diverge from a nominal 30 fps grid from the second frame onward. `npm run validate:templates` requires 29.97 and rejects 30.
-- **Size:** subtitle/keyword comps: **2160×1250** as of Block 10 session 22, up from 2160×1100 — a two-line keyword overran the shorter comp and was clipped; see §11. — the comp is placed as a unit, so its size defines its footprint. The 2160×600 band this section suggested until Block 6 cannot hold a two-line keyword: Block 6 session 4 measured the worst case, two lines at the keyword size in the Arabic face, at **1017.4 px** from the top of the ascent to the bottom of the descender. Image comps: 1200×1200 default working size (the system scales the instance to the target zone; build big, scale down).
+- **Size:** subtitle/keyword comps: **2160×1300** as of Block 10 session 34, up from 2160×1250 (session 22, itself up from 2160×1100) — a two-line keyword overran the shorter comp and was clipped; see §11. — the comp is placed as a unit, so its size defines its footprint. The 2160×600 band this section suggested until Block 6 cannot hold a two-line keyword: Block 6 session 4 measured the worst case, two lines at the keyword size in the Arabic face, at **1017.4 px** from the top of the ascent to the bottom of the descender. Image comps: 1200×1200 default working size (the system scales the instance to the target zone; build big, scale down).
 - **Background:** transparent. Nothing in the comp that isn't part of the element (no reference footage, no guides left visible — use guide layers, they're ignored on render but turn them off anyway).
 
 ## 4. Placeholder layers
@@ -806,6 +806,87 @@ ruled **[8, 15]** on all four comps (2026-08-31), so `shadowDescentPx` reads 15
 and `SUBTITLE_BAND`'s bottom is **3012.57825** again. The three tests that had
 been failing on purpose pass on their own; none was edited. The recovered 2.045 px
 is also why the two-line cards' headroom went 51.2 → **53.3 px**.
+
+### 1250 was the corpus's luck, and the comps are 1300 (2026-09-01)
+
+**53 px of headroom was never a margin.** The corpus is 13.1% Arabic script and
+its only two two-line cards happened to end in shallow glyphs. `sora.mov`, the
+first real client reel, is **94.6% Arabic script**: all five of its keywords
+break onto two lines, and one of them — `الجمال الطبيعي` — reached **1282.3 px
+in the 1250 comp**, 32.3 px outside, and the build refused. **A two-line Arabic
+keyword is the normal case on an Arabic-first reel, not the exception the comps
+were sized for.**
+
+The user grew the four text comps **1250 → 1300** and put the type back, so
+`TXT_MAIN` and `TXT_MAIN_SHADOW` animate Position from 750 to 700 again. **Both
+edits, as §11 says they must be**: the re-centring moved the type down 25 px and
+the second edit is what recovers it.
+
+**Every keyword in the corpus and in `sora`, measured at 1300** from the build's
+own `sourceRectAtTime` at the frame of maximum extent:
+
+| card | face, size | lines | reaches | margin |
+|---|---|---:|---:|---:|
+| `sora` `الجمال` / `الطبيعي` | Almarai-Bold 455 | 2 | **1282.9** | **+17.1** |
+| `sora` `Lobna` / `Kfafi` | Cormorant 494.7 | 2 | 1224.7 | +75.3 |
+| `sora` `طب` / `التجميل` | Almarai-Bold 455 | 2 | 1197.3 | +102.7 |
+| `test-1` `محفزات` / `الكولاجين` | Almarai-Bold 455 | 2 | 1197.3 | +102.7 |
+| `test-2` `ترطيب` / `عميق` | Almarai-Bold 455 | 2 | 1197.3 | +102.7 |
+| `sora` `صحة` / `البشرة` | Almarai-Bold 455 | 2 | 1196.4 | +103.6 |
+| `sora` `وثقة` / `جديدة` | Almarai-Bold 455 | 2 | 1181.0 | +119.0 |
+| the tightest single-line card anywhere | | 1 | 922.3 | +377.7 |
+
+**Where the room runs out, measured rather than reasoned.** A line's ink bottom
+in Almarai-Bold at 455 depends only on its **deepest glyph**, and the whole
+alphabet falls into four depths. Measured inside After Effects on a throwaway
+comp, 2026-09-01:
+
+| deepest final glyph | ink bottom | a two-line card reaches | margin at 1300 |
+|---|---:|---:|---:|
+| **ي** | **194.3** | **1282.9** | **+17.1** |
+| ج ح خ ع غ | 172.0 | 1260.6 | +39.4 |
+| م | 169.7 | 1258.3 | +41.7 |
+| every other letter | ≤ 108.7 | ≤ 1197.3 | ≥ +102.7 |
+
+**Final yeh is the worst case in the alphabet, and `sora` hit it.** The model
+that produces those figures is `750` (the entrance's low point) `+ 323`
+(`LINE_SPACING`) `+ ink bottom + 15.6` (the shadow's drop), and it reproduces
+every real card's measured reach exactly.
+
+So the budget for a line's ink is **1300 − 750 − 323 − 15.6 = 211.4 px**, and
+Almarai's deepest is 194.3. **17.1 px in hand**, and it runs out when:
+
+- **the Arabic keyword size passes ≈495** — 194.3 × S/455 = 211.4 gives S = 495.1
+  against today's 455, so about 8.8% of room;
+- **a client's Arabic face descends more than 8.8% deeper** than Almarai at the
+  same size;
+- **the shadow's drop grows** — it eats the budget one-for-one, and the 15.6
+  below is 0.6 px of it;
+- **a third line** would need another 323 px and can never fit; the fit rule
+  breaks to at most two, and `MAX_SUBTITLE_LINES` is 2.
+
+**The shadow's offset scaled again, exactly as this section predicts.** At 1300
+it reads **[8, 15.6]** — 15 × 1300/1250 — against the ruled [8, 15], with the
+effect's Anchor Point now [1080, 650] and its Position [1088, 665.6]. **Restoring
+it means setting that Position to [1088, 665].** Until then `shadowDescentPx`
+reads 15.6, `SUBTITLE_BAND`'s bottom is **3013.17825** against the recorded
+3012.57825, and the same three tests fail on the same 0.6 px. None was edited.
+
+**Everything else held, and it was measured before anything was rebuilt.** The
+audit diff is **1342 fields compared, 29 differing**: the file's sha, the four
+comps' height on the comp and both layers, the shadow effect's three scaled
+numbers on each, and four fields that are only the playhead's position — read
+`valueAtSampleTime`, never `value`. Fonts, sizes, tracking, fills, layer names
+and counts, anchor points, scale, `sourceRect`, the shadow's x offset, and the
+blur and opacity keyframes are all unchanged, and the image comps are still
+1200×1200.
+
+`target − (placeholder − anchor)` is 700 − 650 = **50** at 1300, so every comp
+layer's Position moves +25 — 2405.4 → 2430.4 — on **524 golden fields, which are
+that one field and no other kind**: 132 / 134 / 116 / 142 per reel, exactly twice
+each reel's card count, so no image, sound, watermark or footage layer moved.
+Read back inside After Effects on four layers, the baseline is
+**2480.39990234375**, exactly `SUBTITLE_ANCHOR_BASELINE_Y`.
 
 
 ## 12. Template knowledge, moved here from CLAUDE.md
