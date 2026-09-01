@@ -216,6 +216,36 @@ Cutout gate: rembg/BiRefNet → metrics (alpha edge noise, hole ratio, foregroun
 ### 5.5 Zones and placement
 Sample frames at ~2 fps → person masks → per-frame free rectangles top/left/right → temporal intersection with hysteresis → stable zones + validity windows. Placement solver (service-side, deterministic): assign image slots to zones honoring validity windows, no overlap with subtitle band, keywords, or other concurrent images; deliberate slight jitter in offsets within safe bounds so placement doesn't look machine-uniform. Manual fallback: panel zone editor writes `manual:true` rects that the solver treats as ground truth.
 
+### How long a picture is on screen
+
+**A picture's window and its life are two different things**, and
+`service/src/build/picture-life.ts` is the one declaration of the second. It is
+read by two callers that must not disagree: `build-reel-cli` sizes each picture
+from the face mask over the span it returns, and `reel-plan` sets the layer's
+out point from it.
+
+Today's rule is `words` — a picture ends when the words it illustrates end,
+holding its last frame past the template's 2.002 s if it has to (the user's
+ruling of 1 September, Block 10 session 37). Two other handovers exist behind
+`--images-continuous`, for his second ruling of the same day — that a picture
+stays until the next one appears, with no void between them. `cut` ends a
+picture the frame the next one starts; `dissolve` keeps it underneath until the
+incoming one has finished fading up, which is the only one of the three that
+leaves the corner never empty, because the entrance fades from zero.
+
+**Whichever is in force, the face box is unioned over the whole life.** Sizing a
+picture over its words and then holding it past them is unsafe by construction:
+the speaker keeps moving, and Block 10 session 39 measured 13 of 26 slots across
+four reels landing over him that way, `sora`'s `img002` by 376 px. The cost of
+doing it correctly is that a picture is the size of the tightest moment it is on
+screen for — on `sora` that takes the mean from 992 px to 951 and `img002` from
+1045 to 669.
+
+**The last picture in a reel ends with its own words under every handover.** The
+ruling names the next picture as what a picture waits for; where there is none
+there is nothing to wait for, and holding it to the end of the reel would be a
+second ruling nobody has given.
+
 ## 6. Caching & costs
 
 - Cache root `.local/cache/<video-sha256>/`. Keys: stage + config-fingerprint. Any fingerprint change ⇒ miss; identical re-runs are free. **No key contains the mode version** — see below.
