@@ -4,6 +4,7 @@ import path from 'node:path';
 import { REPO_ROOT } from '@framopia/core';
 import type { EditPlan } from '../editplan/types.js';
 import type { Rect } from './geometry.js';
+import { reelMasksDir } from '../frames/segment.js';
 
 /**
  * Each image slot's face box: the union of the face mask over the frames the
@@ -27,10 +28,7 @@ interface MaskFrame {
 
 export function faceBoxesFor(plan: EditPlan): Map<string, Rect> {
   const boxes = new Map<string, Rect>();
-  // The CV directory is named after the reel as it appears on disk, spaces and
-  // all, which is the video's own basename.
-  const stem = path.basename(plan.source.videoPath).replace(/\.[^.]+$/, '');
-  const dir = path.join(REPO_ROOT, '.local', 'cv', stem, 'masks-2fps');
+  const dir = reelMasksDir(plan.source.videoPath);
   if (!existsSync(dir) || !existsSync(PY)) return boxes;
 
   let frames: MaskFrame[];

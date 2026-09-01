@@ -3,6 +3,7 @@ import { copyFileSync, mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { REPO_ROOT } from '@framopia/core';
+import { listReels } from './catalogue.js';
 import {
   editCard,
   editWord,
@@ -145,14 +146,39 @@ describe('per-reel and corpus counts', () => {
     });
   }
 
-  it('sums the per-reel figures to the corpus figures', async () => {
+  /*
+   * The property is that the two scopes agree, not that the wider one is
+   * exactly five reels.
+   *
+   * It was written as a sum over the five recorded figures, and it went red the
+   * first time the user opened one of his own client reels — a video the tool
+   * can list is a video the corpus count includes, and it should be. The
+   * per-reel figures above still pin what each of the five is; this pins that
+   * the corpus figure is their sum over whatever the tool actually knows.
+   */
+  it('sums every reel it knows to the corpus figures', async () => {
     const view = await transcriptView('vitasilk');
     const by = Object.fromEntries(view.questions.map((q) => [q.id, q.corpusCount]));
-    const sum = (k: 'overlong' | 'clipped' | 'splitTerm'): number =>
+
+    const counted = { overlong: 0, clipped: 0, splitTerm: 0 };
+    for (const reel of listReels()) {
+      if (reel.planPath === null) continue;
+      const each = await transcriptView(reel.label);
+      const own = Object.fromEntries(each.questions.map((q) => [q.id, q.count]));
+      counted.overlong += own['overlong'] ?? 0;
+      counted.clipped += own['clipped'] ?? 0;
+      counted.splitTerm += own['split-term'] ?? 0;
+    }
+
+    expect(by['overlong']).toBe(counted.overlong);
+    expect(by['clipped']).toBe(counted.clipped);
+    expect(by['split-term']).toBe(counted.splitTerm);
+    // The five recorded reels are in it, whatever else is.
+    const floor = (k: 'overlong' | 'clipped' | 'splitTerm'): number =>
       Object.values(RECORDED).reduce((n, r) => n + r[k], 0);
-    expect(by['overlong']).toBe(sum('overlong'));
-    expect(by['clipped']).toBe(sum('clipped'));
-    expect(by['split-term']).toBe(sum('splitTerm'));
+    expect(counted.overlong).toBeGreaterThanOrEqual(floor('overlong'));
+    expect(counted.clipped).toBeGreaterThanOrEqual(floor('clipped'));
+    expect(counted.splitTerm).toBeGreaterThanOrEqual(floor('splitTerm'));
   });
 
   it('reports both scopes, never one alone', async () => {

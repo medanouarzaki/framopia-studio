@@ -7,6 +7,7 @@ import type { EditPlan, ImageSlot } from '../editplan/types.js';
 import { FRAME_HEIGHT, FRAME_WIDTH, HEAD_CLEARANCE, TOP_LEFT_MARGIN } from './constants.js';
 import { type Rect } from './geometry.js';
 import { placementIsSafe, reelPlacements } from './top-left.js';
+import { reelMasksDir } from '../frames/segment.js';
 
 /**
  * Where each image slot goes, per reel, and what the change from the corner is
@@ -23,7 +24,7 @@ const SCRIPT = path.join(REPO_ROOT, 'tools', 'cv', 'head_boxes.py');
 interface MaskFrame { index: string; box: [number, number, number, number] | null }
 
 function maskBoxes(reel: string, kind: 'face' | 'head'): MaskFrame[] | null {
-  const dir = path.join(REPO_ROOT, '.local', 'cv', reel, 'masks-2fps');
+  const dir = reelMasksDir(reel);
   if (!existsSync(dir) || !existsSync(PY)) return null;
   const raw = execFileSync(PY, [SCRIPT, dir, kind], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
   return (JSON.parse(raw) as { frames: MaskFrame[] }).frames;

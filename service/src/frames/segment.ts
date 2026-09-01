@@ -52,7 +52,19 @@ export const SEGMENTATION_DEBUG_DIR = path.join(
   'latest-segmentation',
 );
 
-/** Beside the frames, and outside .local/cache/ for the same reason they are. */
+/**
+ * Beside the frames, and outside .local/cache/ for the same reason they are.
+ *
+ * **The one place this path is decided.** It takes the video's own path — or,
+ * from a corpus tool, the reel label, which is that video's basename — and
+ * `path.basename` gives the same answer either way. Until session 32 the build
+ * requirement and the builder each built the string themselves from the
+ * *plan's* filename, which agreed with this only while every plan sat beside
+ * its video; a browsed video's plan does not, and a reel with 82 face masks on
+ * disk was refused for having none. Pinned by a test in
+ * `build/requirements.test.ts` that fails on any other module spelling
+ * `masks-2fps` itself.
+ */
 export function reelMasksDir(sourcePath: string): string {
   const basename = path.basename(sourcePath, path.extname(sourcePath));
   return path.join(LOCAL_DIR, 'cv', basename, `masks-${SAMPLE_FPS}fps`);

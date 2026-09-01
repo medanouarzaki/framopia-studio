@@ -25,6 +25,7 @@ import {
   toAeColour,
 } from '@framopia/core';
 import { edgeLuminance, flattenCutout } from '../images/sidecar.js';
+import { reelMasksDir } from '../frames/segment.js';
 import { readEditPlan, writeEditPlan } from '../editplan/io.js';
 import { buildRecordFor } from './build-record.js';
 import { runBuildReel } from './drive.js';
@@ -182,9 +183,10 @@ const watermarkFacts: WatermarkFacts | null = existsSync(watermarkFactsPath)
 const MASK_PY = path.join(REPO_ROOT, 'tools', 'cv', '.venv', 'bin', 'python');
 const MASK_SCRIPT = path.join(REPO_ROOT, 'tools', 'cv', 'head_boxes.py');
 interface MaskFrame { index: string; box: [number, number, number, number] | null }
-// The CV directory is named after the reel as it appears on disk, spaces and
-// all; `reel` has had them replaced for comp naming.
-const maskDir = path.join(REPO_ROOT, '.local', 'cv', path.basename(planPath).replace('.editplan.json', ''), 'masks-2fps');
+// Asked of `reelMasksDir`, the one function that decides where masks live.
+// This used to build the path from the plan's filename, which agreed with the
+// masks only while every plan sat beside its video.
+const maskDir = reelMasksDir(plan.source.videoPath);
 const faceFrames: MaskFrame[] = existsSync(maskDir) && existsSync(MASK_PY)
   ? (JSON.parse(
       execFileSync(MASK_PY, [MASK_SCRIPT, maskDir, 'face'], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }),
@@ -239,7 +241,7 @@ const identity = resolveClientIdentity(plan, {
 });
 
 assertRequirementsMet(
-  buildRequirements(plan, readBuildDisk(planPath), {
+  buildRequirements(plan, readBuildDisk(plan), {
     ...(flag('mode') === undefined ? {} : { modeId: flag('mode') as string }),
     knownTemplateIds: new Set(entries.keys()),
     clientSource: identity.source,

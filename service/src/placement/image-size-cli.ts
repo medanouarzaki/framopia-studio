@@ -17,6 +17,7 @@ import {
 } from './constants.js';
 import { footprintOf, regionFor } from './solve.js';
 import { largestSquare } from './geometry.js';
+import { reelMasksDir } from '../frames/segment.js';
 
 /**
  * How large an image could be, under three successively looser rules.
@@ -36,7 +37,7 @@ const HEAD_BOXES = path.join(REPO_ROOT, 'tools', 'cv', 'head_boxes.py');
 interface HeadFrame { index: string; box: [number, number, number, number] | null }
 
 function headBoxes(reel: string): HeadFrame[] | null {
-  const dir = path.join(REPO_ROOT, '.local', 'cv', reel, 'masks-2fps');
+  const dir = reelMasksDir(reel);
   if (!existsSync(dir) || !existsSync(PY)) return null;
   const raw = execFileSync(PY, [HEAD_BOXES, dir], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
   return (JSON.parse(raw) as { frames: HeadFrame[] }).frames;

@@ -321,7 +321,7 @@ export function stepsFor(reelLabel: string, modeId: string): PlanSteps {
      * back at the user.
      */
     const missing = missingRequirements(
-      buildRequirements(plan, readBuildDisk(planPath ?? ''), {
+      buildRequirements(plan, readBuildDisk(plan), {
         knownTemplateIds: new Set(templatesById(loadTemplateManifest()).keys()),
         clientSource: identity.source,
       }),

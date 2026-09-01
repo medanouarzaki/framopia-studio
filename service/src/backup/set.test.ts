@@ -16,9 +16,15 @@ describe('the irreplaceable set', () => {
   it('finds every transcription cache entry, across every video', () => {
     const files = by('transcription-cache')?.paths ?? [];
     const manifests = files.filter((f) => f.endsWith('manifest.json'));
-    // Eleven entries on this corpus: vitasilk holds three prompt versions and
-    // the other four hold two each.
-    expect(manifests).toHaveLength(11);
+    /*
+     * **At least eleven**, not exactly: the five corpus reels hold eleven
+     * entries — vitasilk three prompt versions and the other four two each —
+     * and every video the user transcribes afterwards adds its own. This
+     * asserted the exact number and went red the first time he ran one of his
+     * own client reels, which is a test about the machine rather than about the
+     * backup set.
+     */
+    expect(manifests.length).toBeGreaterThanOrEqual(11);
     expect(files.every((f) => f.includes(path.join('.local', 'cache')))).toBe(true);
   });
 

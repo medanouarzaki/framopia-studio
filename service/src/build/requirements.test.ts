@@ -1,15 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { copyFileSync, mkdtempSync } from 'node:fs';
+import { mkdtempSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { REPO_ROOT, loadTemplateManifest, templatesById } from '@framopia/core';
 import { readEditPlan } from '../editplan/io.js';
 import { resolveClientIdentity } from './client-identity.js';
+import { reelMasksDir } from '../frames/segment.js';
 import {
   MissingBuildMeasurementsError,
   assertRequirementsMet,
   buildRequirements,
-  maskDirFor,
   missingRequirements,
   readBuildDisk,
   type BuildDisk,
@@ -37,21 +37,67 @@ describe('what a build requires', () => {
   });
 
   /*
-   * Real absence, not a stubbed boolean: a plan copied to a stem no reel has
-   * resolves to a mask directory that genuinely is not there.
+   * Real absence, not a stubbed boolean: a plan whose **video** nothing has
+   * sampled resolves to a mask directory that genuinely is not there.
+   *
+   * Rewritten in session 32. It used to copy the plan to a new *filename* and
+   * expect no masks, which passed only because the check derived the directory
+   * from the plan's name while everything that writes masks derives it from the
+   * video's. Those agreed until a browsed video's plan moved to `.local/plans/`,
+   * and then the build refused a reel whose 82 face masks were on disk.
    */
-  it('reads the real disk, and a reel it has never sampled has no masks', async () => {
+  it('reads the real disk, and a video it has never sampled has no masks', async () => {
     const dir = mkdtempSync(path.join(tmpdir(), 'framopia-req-'));
-    const copied = path.join(dir, 'a reel nobody has sampled.editplan.json');
-    copyFileSync(planPath('vitasilk'), copied);
-    expect(maskDirFor(copied)).toContain('a reel nobody has sampled');
-    expect(readBuildDisk(copied).faceMasks).toBe(false);
+    const copied = path.join(dir, 'copied.editplan.json');
+    const raw = JSON.parse(readFileSync(planPath('vitasilk'), 'utf8')) as {
+      source: { videoPath: string };
+    };
+    raw.source.videoPath = path.join(dir, 'a reel nobody has sampled.mov');
+    writeFileSync(copied, JSON.stringify(raw), 'utf8');
 
     const plan = await readEditPlan(copied);
+    expect(reelMasksDir(plan.source.videoPath)).toContain('a reel nobody has sampled');
+    expect(readBuildDisk(plan).faceMasks).toBe(false);
+
     const missing = missingRequirements(
-      buildRequirements(plan, readBuildDisk(copied), { knownTemplateIds: known() }),
+      buildRequirements(plan, readBuildDisk(plan), { knownTemplateIds: known() }),
     );
     expect(missing.map((m) => m.id)).toEqual(['face-masks']);
+  });
+
+  /*
+   * The masks a build looks for are the masks the mask stage writes, and there
+   * is one function that decides where those are. `CLAUDE_CODE_GUIDELINES.md`
+   * §3: a rule with more than one implementation is pinned by a test, because
+   * the second copy is the one nobody remembers — here it was arithmetic on a
+   * filename in two places.
+   */
+  it('asks one function where the masks are, and it is keyed on the video', async () => {
+    const plan = await readEditPlan(planPath('vitasilk'));
+    expect(readBuildDisk(plan).faceMasks).toBe(true);
+    expect(reelMasksDir(plan.source.videoPath)).toBe(
+      path.join(REPO_ROOT, '.local', 'cv', 'vitasilk', 'masks-2fps'),
+    );
+
+    const src = path.join(REPO_ROOT, 'service', 'src');
+    const offenders: string[] = [];
+    const walk = (dir: string): void => {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+          walk(full);
+          continue;
+        }
+        if (!entry.name.endsWith('.ts') || entry.name.includes('.test.')) continue;
+        if (full.endsWith(path.join('frames', 'segment.ts'))) continue;
+        const text = readFileSync(full, 'utf8')
+          .replace(/\/\*[\s\S]*?\*\//g, '')
+          .replace(/^\s*\/\/.*$/gm, '');
+        if (/'masks-\$\{|'masks-2fps'/.test(text)) offenders.push(path.relative(REPO_ROOT, full));
+      }
+    };
+    walk(src);
+    expect(offenders).toEqual([]);
   });
 
   /*
@@ -221,7 +267,7 @@ describe('the corpus as it stands', () => {
       const p = planPath(stem);
       const plan = await readEditPlan(p);
       const missing = missingRequirements(
-        buildRequirements(plan, readBuildDisk(p), {
+        buildRequirements(plan, readBuildDisk(plan), {
           knownTemplateIds: known(),
           clientSource: resolveClientIdentity(plan, {}).source,
         }),

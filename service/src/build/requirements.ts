@@ -4,6 +4,7 @@ import { REPO_ROOT } from '@framopia/core';
 import type { EditPlan } from '../editplan/types.js';
 import type { ClientIdentitySource } from './client-identity.js';
 import { watermarkEnabled } from '../placement/watermark.js';
+import { reelMasksDir } from '../frames/segment.js';
 
 /**
  * Measurements a build needs, and what it used to do without them.
@@ -65,13 +66,25 @@ export interface BuildDisk {
   watermarkFacts: boolean;
 }
 
-export function maskDirFor(planPath: string): string {
-  const stem = path.basename(planPath).replace('.editplan.json', '');
-  return path.join(REPO_ROOT, '.local', 'cv', stem, 'masks-2fps');
-}
-
-export function readBuildDisk(planPath: string): BuildDisk {
-  const masks = maskDirFor(planPath);
+/**
+ * Where this reel's masks are, asked of the one function that decides.
+ *
+ * It used to derive the directory from the **plan's filename** while
+ * `reelMasksDir` and `faceBoxesFor` derive it from the **video's**. Those agreed
+ * only while every plan sat beside its video, and Block 10 session 30 ended
+ * that: a video opened through Browse keeps its plan in
+ * `.local/plans/<name>-<hash of its path>.editplan.json`, so the check looked
+ * in `.local/cv/sora-995f2d27/` while the masks were written to
+ * `.local/cv/sora/`.
+ *
+ * The user's own reel is what found it. The mask stage ran, wrote 82 face masks
+ * and reported done — correctly — and the build then refused with *"the face
+ * masks for this reel"* over a directory that had never been the one anything
+ * writes to. Two rules for one path, which is what
+ * `CLAUDE_CODE_GUIDELINES.md` §3 says to pin with a test rather than a comment.
+ */
+export function readBuildDisk(plan: EditPlan): BuildDisk {
+  const masks = reelMasksDir(plan.source.videoPath);
   return {
     faceMasks: existsSync(masks) && readdirSync(masks).some((f) => f.endsWith('.png')),
     cvPython: existsSync(path.join(REPO_ROOT, 'tools', 'cv', '.venv', 'bin', 'python')),
