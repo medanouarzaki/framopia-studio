@@ -110,20 +110,24 @@ image-slot analysis, image generation, frame analysis and placement, and comes
 out as a built `.aep` with subtitles, keywords, pictures, SFX and the
 watermark. **The whole of making a video is driven from the panel** and needs no
 terminal. `npm run golden` is green — **17,174 fields** across four reels, with
-the four text card comps at **2160x1300**. `npm run check` is green except for
-the panel's image-picker browser tests, below.
+the four text card comps at **2160x1300**. `npm run check` passed whole at
+session 39, panel included, but see the image-picker tests below before reading
+that as settled.
 
 What is open, in one line each: `ground-truth` cannot build until its six image
 slots are generated; a client's photograph is not checked by the build's
 pre-flight and is not in the backup set; the image prompt's fidelity, darkness
 and literalness fixes are applied but two have never been seen in a generated
-picture; five of the panel's image-picker browser tests fail because the three
-cutout files their fixtures name were moved into per-reel subdirectories, so the
-`onError` race an earlier session closed by pointing at real files is open again;
-**a reel's opening still gets a picture whether or not it earns one** —
-`sora`'s first drew a stock doctor while the real one introduced herself on
-screen, and the only signal the planner has ranks it mid-pack, so no honest bar
-can be set on it yet. Since 2026-09-01 every picture is drawn **as large as its
+picture; the panel's image-picker browser tests are flaky rather than fixed —
+their cutout fixtures name files that moved into per-reel subdirectories, and the
+`onError` race that causes goes either way from run to run; **a reel's opening
+still gets a picture whether or not it earns one** — `sora`'s first drew a stock
+doctor while the real one introduced herself on screen, and the model was never
+shown the video, so nothing in the pipeline could have known; **pictures still
+end with their own words rather than handing over to the next one** — the user's
+continuous ruling is built behind `--images-continuous` and measured, but it puts
+one `test-1` picture on screen motionless for 7.2 s, which he has to see before
+it becomes the rule. Since 2026-09-01 every picture is drawn **as large as its
 own corner allows** and **holds its last frame until its words finish**, both the
 user's rulings. Every one of these is stated with its evidence in the report that
 found it.
