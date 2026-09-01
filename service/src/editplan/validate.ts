@@ -452,8 +452,22 @@ function checkImages(c: Checker, value: unknown, words: Map<string, Rec>): void 
     c.nullableString(`${p}.zoneId`, slot.zoneId);
     c.nullableString(`${p}.templateId`, slot.templateId);
     c.oneOf(`${p}.status`, slot.status, SLOT_STATUSES);
-    // Optional-with-default: absent on every plan written before Block 4
-    // session 3, and checked only when present.
+    /*
+     * Optional with a default: absent on every plan written before slot prompt
+     * v3, which is all six of them. A picture may start later inside its own
+     * span and nowhere else, so a word outside the span is a fault rather than
+     * something to absorb.
+     */
+    if (slot.nameWordId !== undefined) {
+      c.string(`${p}.nameWordId`, slot.nameWordId);
+      const ids = Array.isArray(slot.wordIds) ? (slot.wordIds as unknown[]) : [];
+      if (!ids.includes(slot.nameWordId)) {
+        c.fail(
+          `${p}.nameWordId`,
+          `is ${JSON.stringify(slot.nameWordId)}, which is not one of this slot's wordIds`,
+        );
+      }
+    }
     if (slot.promptModeVersion !== undefined) {
       c.number(`${p}.promptModeVersion`, slot.promptModeVersion);
     }

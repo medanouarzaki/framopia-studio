@@ -15,7 +15,7 @@ import { regroupForKeywords, type DroppedKeyword } from './regroup.js';
 import { assignTemplates, type AssignmentResult } from './assign.js';
 import { applyDisplayTiming, type DisplayTimingResult } from './display-timing.js';
 import { deriveSfxEvents } from './sfx.js';
-import { templateImpacts } from './template-impacts.js';
+import { imageEntranceS, templateImpacts } from './template-impacts.js';
 import { analyseKeywordsCached, planSlotsCached, type CachedKeywordResult, type CachedSlotResult } from './cached.js';
 import { ACTIVE_ANALYSIS_PROMPT_VERSION, parseKeywordResponse } from './keywords.js';
 import { selectTermSpans } from './terms.js';
@@ -222,6 +222,7 @@ export async function analyseKeywordsForPlan(
     templateImpacts(),
     plan.source.dialogueLufs,
     plan.source.dialoguePeakDbfs,
+    imageEntranceS(),
   ) };
 
   // The plan records which client it was built for, at the point the mode is
@@ -370,6 +371,7 @@ export async function planImageSlotsForPlan(
     end: slot.end,
     contextText: slot.contextText,
     idea: slot.idea,
+    ...(slot.nameWordId === undefined ? {} : { nameWordId: slot.nameWordId }),
     prompt: slot.prompt,
     negativePrompt: slot.negativePrompt,
     candidates: [],
@@ -419,6 +421,7 @@ export async function planImageSlotsForPlan(
     templateImpacts(),
     plan.source.dialogueLufs,
     plan.source.dialoguePeakDbfs,
+    imageEntranceS(),
   ) };
   plan.clientMode = { id: mode.id, version: mode.version, path: modePathFor(mode.id) };
   plan.clientSnapshot = snapshotOfMode(mode, timestamp);

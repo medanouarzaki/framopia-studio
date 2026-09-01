@@ -398,6 +398,16 @@ export interface ImageSlot {
    * It exists so a re-run can tell a recomposed slot from a freshly planned
    * one without diffing prompt strings.
    */
+  /**
+   * The one word in this slot's span that the picture is about.
+   *
+   * **Optional with a default**, per the standing schema rule: absent means the
+   * picture starts where its sentence starts, which is what every plan written
+   * before slot prompt v3 did, so the six existing plans stay valid and nothing
+   * needs migrating. Always one of `wordIds` — a picture may start later inside
+   * its own span and nowhere else.
+   */
+  nameWordId?: string;
   promptModeVersion?: number;
   /**
    * Quality-gate outcome, editor-overridable. **Null until the gate runs**,

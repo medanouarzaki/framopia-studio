@@ -16,6 +16,13 @@ import type { AnalysisWord } from './types.js';
 export interface SlotCandidate {
   wordIds: string[];
   idea: string;
+  /**
+   * The one word in the span the picture is about, from prompt v3.
+   *
+   * Optional: absent means the model had nothing to point at, or the plan
+   * predates v3, and the picture starts where its sentence starts.
+   */
+  nameWordId?: string;
 }
 
 export interface SlotFailure {
@@ -32,6 +39,8 @@ export interface PlannedSlot {
   variation: Record<string, string>;
   prompt: string;
   negativePrompt: string;
+  /** The word in the span the picture is about; absent means the span's start. */
+  nameWordId?: string;
 }
 
 export interface SlotSelectionResult {
@@ -185,7 +194,14 @@ export function planSlots(options: PlanSlotsOptions): SlotSelectionResult {
   const byId = new Map(words.map((w) => [w.id, w]));
   const failures: SlotFailure[] = [];
 
-  const resolved: { wordIds: string[]; start: number; end: number; contextText: string; idea: string }[] = [];
+  const resolved: {
+    wordIds: string[];
+    start: number;
+    end: number;
+    contextText: string;
+    idea: string;
+    nameWordId?: string;
+  }[] = [];
   for (const candidate of candidates) {
     if (!Array.isArray(candidate.wordIds) || candidate.wordIds.length === 0) {
       failures.push({ candidate, reason: 'empty-word-ids' });
@@ -199,12 +215,18 @@ export function planSlots(options: PlanSlotsOptions): SlotSelectionResult {
       continue;
     }
     const ordered = (hit as AnalysisWord[]).slice().sort((a, b) => a.start - b.start);
+    const ids = ordered.map((w) => w.id);
+    // Checked again here rather than trusted from the parser: `planSlots` is
+    // also reached by a migration and by the tests, and a picture may start
+    // later inside its own span and nowhere else.
+    const named = candidate.nameWordId;
     resolved.push({
-      wordIds: ordered.map((w) => w.id),
+      wordIds: ids,
       start: ordered[0]?.start ?? 0,
       end: ordered[ordered.length - 1]?.end ?? 0,
       contextText: ordered.map((w) => w.text).join(' '),
       idea: candidate.idea,
+      ...(named !== undefined && ids.includes(named) ? { nameWordId: named } : {}),
     });
   }
 

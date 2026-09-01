@@ -10,7 +10,7 @@ import {
 import { AnalysisError, type AnalysisWord } from './types.js';
 import type { SlotCandidate } from './slot-select.js';
 
-export type SlotPromptVersion = 1 | 2;
+export type SlotPromptVersion = 1 | 2 | 3;
 
 /**
  * Identity of the image-slot prompt, and part of the slot cache fingerprint
@@ -20,10 +20,28 @@ export type SlotPromptVersion = 1 | 2;
  * Block 9 session 12 on the evidence in `docs/DECISION-image-config.md`: five
  * of nine planned slots call for the concrete thing she named and four for the
  * mood, and nothing in version 1 asked for the first, so both mentions of a
- * brand became a generic category. Version 1 stays selectable because every
- * slot on disk was planned with it.
+ * brand became a generic category.
+ *
+ * **The version labels the cache entry; it does not select a prompt.**
+ * `buildSlotPrompt` takes a version and does not branch on it, so asking for
+ * version 1 returns today's text. What the constant does is invalidate a cache
+ * entry written against an older prompt, which is the job that matters — but
+ * the keyword prompt beside it does branch, and this one reads as though it
+ * does too. Recorded rather than changed: nothing calls it with a version, and
+ * building the branch would be a change to what v1 and v2 mean.
+ *
+ * **Version 3** is version 2 plus one question: which word is the picture
+ * about. Adopted 2026-09-01 on the user's ruling. A picture was placed across
+ * the whole span it was given, so it appeared where the sentence began rather
+ * than where the thing it depicts is named — `sora`'s stock doctor arrived on
+ * "hello", 1.4 s before she says "I am Dr Lobna Kfafi". Block 10 session 40
+ * measured 19 of 26 slots starting 0.10–1.58 s early and established that
+ * nothing on disk can identify the word: the transcript is Arabic, the idea is
+ * English, and matching one against the other fires on 1 of 26 slots. The model
+ * chose the span and wrote the idea in the same breath, so it is the only thing
+ * that knows, and it was simply never asked.
  */
-export const ACTIVE_SLOT_PROMPT_VERSION: SlotPromptVersion = 2;
+export const ACTIVE_SLOT_PROMPT_VERSION: SlotPromptVersion = 3;
 
 /** ARCHITECTURE §8: every billable call appends one line under this stage. */
 export const SLOT_LEDGER_STAGE = 'analysis-slots';
@@ -75,6 +93,12 @@ from the transcript, and a one-line idea in English describing what the image
 should show. The idea is a description of a picture, not a translation of the
 words and not a caption.
 
+Also give the one word_id in that span that the picture is about — the word
+naming the thing the image shows, so the picture can appear as it is said
+rather than at the start of the sentence. It must be one of the word_ids you
+gave for that slot. When the idea carries the mood or the outcome of the whole
+sentence and no single word names it, give null.
+
 When the words name something concrete and depictable — a brand, a product,
 a place, a country, an ingredient, a tool, a number of things — the picture
 should usually be that thing, and the idea should name it as she named it.
@@ -101,7 +125,7 @@ Return the ${candidateCount} strongest slots, best first. How many the video
 actually uses is imposed downstream and is not yours to decide.
 
 Respond with strict JSON only, no prose, no markdown fences, in this shape:
-{"slots":[{"wordIds":["w0000"],"idea":"..."}]}
+{"slots":[{"wordIds":["w0000"],"idea":"...","nameWordId":"w0000"}]}
 
 TRANSCRIPT:
 ${transcript}`;
@@ -134,10 +158,22 @@ export function parseSlotResponse(text: string): SlotCandidate[] {
     throw new AnalysisError('slots', 'response is missing a "slots" array', true);
   }
 
-  return record.slots.map((s) => ({
-    wordIds: Array.isArray(s?.wordIds) ? s.wordIds.filter((id) => typeof id === 'string') : [],
-    idea: typeof s?.idea === 'string' ? s.idea : '',
-  }));
+  return record.slots.map((s) => {
+    const wordIds = Array.isArray(s?.wordIds)
+      ? s.wordIds.filter((id) => typeof id === 'string')
+      : [];
+    /*
+     * Kept only when it is one of the ids the model gave for this slot. A
+     * picture may start later inside its own span and nowhere else, so a word
+     * outside it — or `null`, which is what the prompt asks for when the idea
+     * has nothing to point at — leaves the field absent and the picture starts
+     * where its sentence starts, which is what every plan did before v3.
+     */
+    const named = (s as { nameWordId?: unknown }).nameWordId;
+    const nameWordId =
+      typeof named === 'string' && wordIds.includes(named) ? { nameWordId: named } : {};
+    return { wordIds, idea: typeof s?.idea === 'string' ? s.idea : '', ...nameWordId };
+  });
 }
 
 
