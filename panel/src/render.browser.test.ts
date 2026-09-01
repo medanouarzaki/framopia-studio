@@ -602,7 +602,9 @@ async function loadFlow(
   return { page, uncaught };
 }
 
-function stubJob(state: 'running' | 'done' | 'failed' | 'all-skipped' | 'looking'): string {
+function stubJob(
+  state: 'running' | 'done' | 'failed' | 'all-skipped' | 'looking' | 'sidecar-died',
+): string {
   const stage = (
     id: string,
     label: string,
@@ -643,6 +645,21 @@ function stubJob(state: 'running' | 'done' | 'failed' | 'all-skipped' | 'looking
           stage('images', 'Generate images', 'waiting'),
           stage('zones', 'Looking at the video', 'waiting'),
         ]
+      : state === 'sidecar-died'
+        ? [
+            stage('transcription', 'Transcribe and correct', 'skipped', { reason: 'already on the plan' }),
+            stage('analysis', 'Keywords and image slots', 'skipped', { reason: 'already on the plan' }),
+            stage('images', 'Generate images', 'skipped', { reason: 'already on the plan' }),
+            stage('zones', 'Looking at the video', 'failed', {
+              error: {
+                stage: 'zones',
+                cause:
+                  'the picture tools stopped during segment_person — it was killed by SIGABRT, ' +
+                  'and wrote nothing',
+                retryable: false,
+              },
+            }),
+          ]
       : state === 'failed'
         ? [
             stage('transcription', 'Transcribe and correct', 'skipped', { reason: 'already on the plan' }),
@@ -668,10 +685,19 @@ function stubJob(state: 'running' | 'done' | 'failed' | 'all-skipped' | 'looking
     spentUsd: state === 'done' ? 0.1835 : 0,
     planSpentUsd: 1.550444,
     done: state !== 'running' && state !== 'looking',
-    error: state === 'failed' ? (stages[1]?.['error'] ?? null) : null,
+    error:
+      state === 'failed'
+        ? (stages[1]?.['error'] ?? null)
+        : state === 'sidecar-died'
+          ? (stages[3]?.['error'] ?? null)
+          : null,
   };
   const status =
-    state === 'running' || state === 'looking' ? 'running' : state === 'failed' ? 'error' : 'done';
+    state === 'running' || state === 'looking'
+      ? 'running'
+      : state === 'failed' || state === 'sidecar-died'
+        ? 'error'
+        : 'done';
   return `window.__job = () => (${JSON.stringify({
     id: 'job-1',
     status,
@@ -1737,7 +1763,9 @@ describe.skipIf(!built)('the cost block and the run', () => {
 });
 
 describe.skipIf(!built)('a pipeline run', () => {
-  async function loadRun(state: 'running' | 'done' | 'failed' | 'looking'): Promise<Loaded | null> {
+  async function loadRun(
+    state: 'running' | 'done' | 'failed' | 'looking' | 'sidecar-died',
+  ): Promise<Loaded | null> {
     if (browser === undefined) return null;
     const page = await browser.newPage({ viewport: { width: 420, height: 900 } });
     const uncaught: string[] = [];
@@ -1804,6 +1832,29 @@ describe.skipIf(!built)('a pipeline run', () => {
     const text = (await loaded.page.textContent('main')) ?? '';
     expect(text).toContain('the model returned 503 Service Unavailable');
     expect(text).toContain('worth trying again');
+    await loaded.page.close();
+  });
+
+  /*
+   * The picture tools crash — onnxruntime's bundled telemetry aborts during
+   * static destruction — and until session 32 the exit status was never read:
+   * `child.on('close', () => …)` took no arguments. A crash that killed the
+   * process before it answered said only "stdout was not JSON", which names the
+   * symptom and not the cause.
+   */
+  it('says how the picture tools died, in words, and sends him nowhere', async () => {
+    const loaded = await loadRun('sidecar-died');
+    if (loaded === null) return;
+    const text = (await loaded.page.textContent('main')) ?? '';
+    expect(text).toContain('the picture tools stopped during segment_person');
+    expect(text).toContain('killed by SIGABRT');
+    expect(text).toContain('wrote nothing');
+    expect(text).not.toContain('worth trying again');
+    // A field name is not a label, and no message sends him out of the panel.
+    for (const banned of ['sidecar', 'npm run', 'terminal', 'Quit After Effects', 'restart']) {
+      expect(`${banned}: ${String(text.includes(banned))}`).toBe(`${banned}: false`);
+    }
+    expect(loaded.uncaught).toEqual([]);
     await loaded.page.close();
   });
 
