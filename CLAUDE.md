@@ -111,8 +111,8 @@ out as a built `.aep` with subtitles, keywords, pictures, SFX and the
 watermark. **The whole of making a video is driven from the panel** and needs no
 terminal. `npm run golden` is green — **17,174 fields** across four reels, with
 the four text card comps at **2160x1300**. `npm run check` passed whole at
-session 39, panel included, but see the image-picker tests below before reading
-that as settled.
+sessions 39 and 40, panel included, but see the image-picker tests below before
+reading that as settled.
 
 What is open, in one line each: `ground-truth` cannot build until its six image
 slots are generated; a client's photograph is not checked by the build's
@@ -121,16 +121,18 @@ and literalness fixes are applied but two have never been seen in a generated
 picture; the panel's image-picker browser tests are flaky rather than fixed —
 their cutout fixtures name files that moved into per-reel subdirectories, and the
 `onError` race that causes goes either way from run to run; **a reel's opening
-still gets a picture whether or not it earns one** — `sora`'s first drew a stock
-doctor while the real one introduced herself on screen, and the model was never
-shown the video, so nothing in the pipeline could have known; **pictures still
-end with their own words rather than handing over to the next one** — the user's
-continuous ruling is built behind `--images-continuous` and measured, but it puts
-one `test-1` picture on screen motionless for 7.2 s, which he has to see before
-it becomes the rule. Since 2026-09-01 every picture is drawn **as large as its
-own corner allows** and **holds its last frame until its words finish**, both the
-user's rulings. Every one of these is stated with its evidence in the report that
-found it.
+still gets a picture whether or not it earns one**, and **every picture still
+starts at the first word of its span rather than at the word that names what it
+shows** — session 40 measured 19 of 26 slots starting 0.1–1.6 s early and found
+no honest way to derive the naming word, since the model is never shown the video
+and returns only word ids and an English idea; **a sparse reel holds one picture
+motionless for a long time** — `test-1` for 6.8 s, because the hold is exactly
+the gap the planner left; **a client's brand colours can only be set when the
+client is created**, and editing them never reaches a reel whose slots are
+already planned. Since 2026-09-01 every picture is drawn **as large as its own
+corner allows**, is sized from the face over its **whole life**, and **stays
+until the next picture appears**, all the user's rulings. Every one of these is
+stated with its evidence in the report that found it.
 
 ## Where the knowledge lives
 
