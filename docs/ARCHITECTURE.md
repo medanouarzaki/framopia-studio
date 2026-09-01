@@ -248,12 +248,35 @@ frames, so `analysis/sfx` places it from the same `pictureStartOf` the builder
 lays the layer from; taking the span's start there would land the sound before
 anything appeared.
 
-**The face box is unioned over the whole life, never over the words.** Sizing a
-picture over its words and then holding it past them is unsafe by construction:
-the speaker keeps moving, and Block 10 session 39 measured 13 of 26 slots across
-four reels landing over her that way, `sora`'s `img002` by 376 px. The cost is
-that a picture is the size of the tightest moment it is on screen for — on
-`sora` that takes the mean from 992 px to 951 and `img002` from 1045 to 669.
+**A picture is measured against the whole of its life, never against its words
+alone.** Sizing a picture over its words and then holding it past them is unsafe
+by construction: the speaker keeps moving, and Block 10 session 39 measured 13 of
+26 slots across four reels landing over her that way, `sora`'s `img002` by
+376 px.
+
+**And it is measured against each frame of that life, never against their
+union.** A union is a box the speaker is never inside — it pairs the leftmost she
+reaches in one frame with the highest she reaches in another. A square is clear
+at one frame if it stops before her left edge **or** above her head, either
+separation being enough on its own, so the largest square safe for a whole life
+is the smallest, over the frames, of each frame's own better bound. Taking the
+union first and the better bound second is a different and always smaller number.
+
+Block 10 session 42 measured what that cost. `sora`'s `img002` came out at
+669 px where every single frame of its life allowed at least 941, because its
+life spans a **cut** — from a standing shot in a corridor to a seated one on a
+sofa — and the union of the two framings is larger than either. Per frame the
+reel goes from 669–1073 px to **881–1073**, and 19 of the project's 26 slots do
+not move at all: the rule only gives back what the union invented.
+
+**The nudge is bounded by the union even though the size is not.** Jitter is only
+ever offered a move one bound already guarantees, and a move that must be safe at
+every frame has to clear the extreme of every frame. Two different questions,
+two different boxes.
+
+`placementIsSafe` is asserted **per frame** for the same reason: a picture that
+clears the union says nothing that was not already known, and what has to be true
+is that it is clear in every frame it is actually on screen.
 
 **The last picture in a reel ends with its own words.** The ruling names the next
 picture as what a picture waits for; where there is none there is nothing to wait
