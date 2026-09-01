@@ -638,7 +638,7 @@
       "name": "kw_slam",
       "frameRate": 29.9700012207031,
       "width": 2160,
-      "height": 1250,
+      "height": 1300,
       "duration": 2.002002002002,
       "layers": [
         {
@@ -694,7 +694,7 @@
             "unreadable": null
           },
           "width": 2160,
-          "height": 1250,
+          "height": 1300,
           "sampleTime": 1.001001001001,
           "sourceRect": {
             "top": -309.2041015625,
@@ -921,7 +921,7 @@
             "unreadable": null
           },
           "width": 2160,
-          "height": 1250,
+          "height": 1300,
           "sampleTime": 1.001001001001,
           "sourceRect": {
             "top": -309.2041015625,
@@ -1099,15 +1099,15 @@
               "matchName": "ADBE Geometry2",
               "anchorPoint": [
                 1080,
-                625
+                650
               ],
               "position": [
                 1088,
-                640
+                665.6
               ],
               "offset": [
                 8,
-                15
+                15.6
               ]
             }
           ]
@@ -1118,7 +1118,7 @@
       "name": "kw_slam_ar",
       "frameRate": 29.9700012207031,
       "width": 2160,
-      "height": 1250,
+      "height": 1300,
       "duration": 2.002002002002,
       "layers": [
         {
@@ -1174,7 +1174,7 @@
             "unreadable": null
           },
           "width": 2160,
-          "height": 1250,
+          "height": 1300,
           "sampleTime": 1.001001001001,
           "sourceRect": {
             "top": -364.000005424023,
@@ -1401,7 +1401,7 @@
             "unreadable": null
           },
           "width": 2160,
-          "height": 1250,
+          "height": 1300,
           "sampleTime": 1.001001001001,
           "sourceRect": {
             "top": -364.000005424023,
@@ -1579,15 +1579,15 @@
               "matchName": "ADBE Geometry2",
               "anchorPoint": [
                 1080,
-                625
+                650
               ],
               "position": [
                 1088,
-                640
+                665.6
               ],
               "offset": [
                 8,
-                15
+                15.6
               ]
             }
           ]
@@ -1598,7 +1598,7 @@
       "name": "sub_pop",
       "frameRate": 29.9700012207031,
       "width": 2160,
-      "height": 1250,
+      "height": 1300,
       "duration": 2.002002002002,
       "layers": [
         {
@@ -1654,7 +1654,7 @@
             "unreadable": null
           },
           "width": 2160,
-          "height": 1250,
+          "height": 1300,
           "sampleTime": 1.001001001001,
           "sourceRect": {
             "top": -253.285423278809,
@@ -1881,7 +1881,7 @@
             "unreadable": null
           },
           "width": 2160,
-          "height": 1250,
+          "height": 1300,
           "sampleTime": 1.001001001001,
           "sourceRect": {
             "top": -253.285423278809,
@@ -2059,15 +2059,15 @@
               "matchName": "ADBE Geometry2",
               "anchorPoint": [
                 1080,
-                625
+                650
               ],
               "position": [
                 1088,
-                640
+                665.6
               ],
               "offset": [
                 8,
-                15
+                15.6
               ]
             }
           ]
@@ -2078,7 +2078,7 @@
       "name": "sub_pop_ar",
       "frameRate": 29.9700012207031,
       "width": 2160,
-      "height": 1250,
+      "height": 1300,
       "duration": 2.002002002002,
       "layers": [
         {
@@ -2088,7 +2088,7 @@
           "position": {
             "value": [
               1080,
-              700.031056588141,
+              750,
               0
             ],
             "valueAtSampleTime": [
@@ -2128,13 +2128,13 @@
             "unreadable": null
           },
           "opacity": {
-            "value": 99.9279988265195,
+            "value": 0,
             "valueAtSampleTime": 100,
             "keyframes": 2,
             "unreadable": null
           },
           "width": 2160,
-          "height": 1250,
+          "height": 1300,
           "sampleTime": 1.001001001001,
           "sourceRect": {
             "top": -262.772007524967,
@@ -2315,7 +2315,7 @@
           "position": {
             "value": [
               1080,
-              700.031056588141,
+              750,
               0
             ],
             "valueAtSampleTime": [
@@ -2355,13 +2355,13 @@
             "unreadable": null
           },
           "opacity": {
-            "value": 99.9279988265195,
+            "value": 0,
             "valueAtSampleTime": 100,
             "keyframes": 2,
             "unreadable": null
           },
           "width": 2160,
-          "height": 1250,
+          "height": 1300,
           "sampleTime": 1.001001001001,
           "sourceRect": {
             "top": -262.772007524967,
@@ -2539,15 +2539,15 @@
               "matchName": "ADBE Geometry2",
               "anchorPoint": [
                 1080,
-                625
+                650
               ],
               "position": [
                 1088,
-                640
+                665.6
               ],
               "offset": [
                 8,
-                15
+                15.6
               ]
             }
           ]
@@ -2555,5 +2555,5 @@
       ]
     }
   ],
-  "aepSha256": "d2bbb6b727f819078b5e8dec08a59722b018dc6c0d1d77c123476f8241c84d9c"
+  "aepSha256": "03b49e23fc7f909f0e8eba78fd6849702dbf64b044b434c514b93e5d41c52734"
 }
