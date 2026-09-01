@@ -122,9 +122,10 @@ cutout files their fixtures name were moved into per-reel subdirectories, so the
 `onError` race an earlier session closed by pointing at real files is open again;
 **a reel's pictures are all drawn at the size its tightest slot can hold, so a
 long reel with a speaker who moves comes out small** — `sora`'s eleven at 669 px
-where ten of them could hold 881 to 1085 — and **a picture whose words run past
-2.002 s vanishes before they finish**, the worst by 24.5 frames. Every one of
-these is stated with its evidence in the report that found it.
+where ten of them could hold 881 to 1085, and the user has three builds at three
+sizes to rule on. A picture now **holds its last frame until its words finish**
+(his ruling, 2026-09-01), so none ends mid-sentence any more. Every one of these
+is stated with its evidence in the report that found it.
 
 ## Where the knowledge lives
 
