@@ -129,8 +129,9 @@ because the hold is exactly the gap the planner left; **a client's brand colours
 can only be set when the client is created**, and editing them never reaches a
 reel whose slots are already planned. Since 2026-09-01 every picture **arrives
 at the word the model says it is about** (slot prompt v3, `nameWordId`), is drawn
-**as large as its own corner allows**, is sized from the face over its **whole
-life**, and **stays until the next picture appears**, all the user's rulings.
+**as large as its own corner allows**, is sized against **every frame of its
+own life** rather than against their union, and **stays until the next picture
+appears**, all the user's rulings.
 Every one of these is stated with its evidence in the report that found it.
 
 ## Where the knowledge lives
