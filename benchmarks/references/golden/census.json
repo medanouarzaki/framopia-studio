@@ -1,12 +1,12 @@
 {
   "schemaVersion": 1,
   "recordedBy": "npm run golden -- --record",
-  "recordedAt": "2026-09-01T15:00:13.798Z",
+  "recordedAt": "2026-09-01T19:02:30.987Z",
   "recordedOn": {
     "machine": "192.168.1.5",
     "aeVersion": "26.0x67",
     "fontNames": 1198,
-    "commit": "3ea2bc0fb50ad3a91eae13d735516cdf3a37083c"
+    "commit": "ce4b09b199cc682624999f54fc22a664b1b08f8b"
   },
   "excluded": [
     {
@@ -19188,13 +19188,13 @@
               "name": "img005__img_float",
               "outPoint": 22.038997330664,
               "position": [
-                554.357116699219,
-                521.200012207031
+                527.200012207031,
+                527.200012207031
               ],
               "role": "image",
               "scale": [
-                76.0666656494141,
-                76.0666656494141
+                77.0666656494141,
+                77.0666656494141
               ],
               "sourceFile": null,
               "sourceName": "img005__img_float",
@@ -19263,13 +19263,13 @@
               "name": "img002__img_float",
               "outPoint": 11.618993993994,
               "position": [
-                463.200012207031,
-                493.852722167969
+                483.200012207031,
+                483.200012207031
               ],
               "role": "image",
               "scale": [
-                66.4000015258789,
-                66.4000015258789
+                69.7333297729492,
+                69.7333297729492
               ],
               "sourceFile": null,
               "sourceName": "img002__img_float",
@@ -19288,13 +19288,13 @@
               "name": "img001__img_float",
               "outPoint": 6.25900900900901,
               "position": [
-                525.876770019531,
-                507.200012207031
+                525.200012207031,
+                525.200012207031
               ],
               "role": "image",
               "scale": [
-                73.7333297729492,
-                73.7333297729492
+                76.7333297729492,
+                76.7333297729492
               ],
               "sourceFile": null,
               "sourceName": "img001__img_float",
