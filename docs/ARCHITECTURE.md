@@ -224,27 +224,52 @@ read by two callers that must not disagree: `build-reel-cli` sizes each picture
 from the face mask over the span it returns, and `reel-plan` sets the layer's
 out point from it.
 
-Today's rule is `words` — a picture ends when the words it illustrates end,
-holding its last frame past the template's 2.002 s if it has to (the user's
-ruling of 1 September, Block 10 session 37). Two other handovers exist behind
-`--images-continuous`, for his second ruling of the same day — that a picture
-stays until the next one appears, with no void between them. `cut` ends a
-picture the frame the next one starts; `dissolve` keeps it underneath until the
-incoming one has finished fading up, which is the only one of the three that
-leaves the corner never empty, because the entrance fades from zero.
+**A picture stays until the next one appears** — the user's ruling of
+1 September, given after looking at his own reel built two ways. A picture leaves
+on the frame the next one arrives; the alternative he was shown, where the
+outgoing picture stayed underneath for the length of the incoming one's 0.4004 s
+fade, was rejected. There is no option and nothing to select between.
 
-**Whichever is in force, the face box is unioned over the whole life.** Sizing a
+**The face box is unioned over the whole life, never over the words.** Sizing a
 picture over its words and then holding it past them is unsafe by construction:
 the speaker keeps moving, and Block 10 session 39 measured 13 of 26 slots across
-four reels landing over him that way, `sora`'s `img002` by 376 px. The cost of
-doing it correctly is that a picture is the size of the tightest moment it is on
-screen for — on `sora` that takes the mean from 992 px to 951 and `img002` from
-1045 to 669.
+four reels landing over her that way, `sora`'s `img002` by 376 px. The cost is
+that a picture is the size of the tightest moment it is on screen for — on
+`sora` that takes the mean from 992 px to 951 and `img002` from 1045 to 669.
 
-**The last picture in a reel ends with its own words under every handover.** The
-ruling names the next picture as what a picture waits for; where there is none
-there is nothing to wait for, and holding it to the end of the reel would be a
-second ruling nobody has given.
+**The last picture in a reel ends with its own words.** The ruling names the next
+picture as what a picture waits for; where there is none there is nothing to wait
+for, and holding it to the end of the reel would be a second ruling nobody has
+given.
+
+**Where it breaks: a reel with few pictures gets long ones.** The hold is the gap
+the planner left, and the planner leaves gaps in proportion to how few slots
+survived. `test-1` has four pictures over 22 s, so one of them sits motionless
+for 7.2 s and outlives its own sentence by the same. There is no maximum, and one
+taken from these reels would be a number fitted to them.
+
+### Where a picture's prompt comes from, and when
+
+The four brand colours reach the image model through **one sentence** in the
+client's own `imageStyle.stylePrompt`, with `{{palette.*}}` substituted by
+`renderStylePrompt` (`core/src/mode.ts:880`) — all four roles, each with a
+distinct job. `composePrompt` (`service/src/analysis/slot-select.ts:149`) joins
+the idea, those fragments and the drawn variation axes.
+
+**That happens once, when the slots are planned**, and the result is frozen onto
+the plan as `slot.prompt`. `planImageSlotsForPlan` reads the **live mode file**,
+so a new reel gets whatever the client's colours are at that moment. Image
+generation then sends `slot.prompt` **verbatim** (`service/src/images/generate.ts:247`)
+and never re-reads the palette — so editing a colour afterwards changes nothing
+about an existing reel's pictures. `npm run recompose` re-composes a plan's
+prompts from the stored ideas and the current mode with no model call, and it is
+a terminal command that no panel control calls. `slotsReplacementFlags` and
+`imagesReplacementFlags` then block a re-plan and a regeneration respectively
+once candidates exist, so the pictures themselves only move under `--force`,
+which is billable.
+
+**The panel can only set the colours when a client is created.** `POST /clients`
+is the one route that writes a palette; there is no route that edits one.
 
 ## 6. Caching & costs
 
