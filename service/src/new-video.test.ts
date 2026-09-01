@@ -416,16 +416,33 @@ describe.skipIf(!ready)('a video the tool has never seen', () => {
      * how it should sit against its words, are the user's eye and are not
      * asserted.
      */
+    /*
+     * **No picture over the speaker at any frame of its life**, checked frame by
+     * frame rather than against their union. The union is the wrong box for
+     * both jobs: it sizes a picture for a position the speaker is never in, and
+     * a picture that clears the union tells you nothing you did not already
+     * know. What has to be true is that the picture is clear in every frame it
+     * is actually on screen, and that is what is asserted.
+     */
+    let framesChecked = 0;
     for (const slot of plan.images.slots) {
-      const box = boxes.get(slot.id);
-      expect(box, `${slot.id} has no face box`).toBeDefined();
+      const frames = boxes.get(slot.id);
+      expect(frames, `${slot.id} has no face box`).toBeDefined();
+      expect((frames as Rect[]).length, `${slot.id} has no frames of its own life`)
+        .toBeGreaterThan(0);
       const rect = rects.get(slot.id);
       expect(rect, `${slot.id} was not placed`).toBeDefined();
-      const safe = placementIsSafe(rect as Rect, box as Rect);
+      const bad = (frames as Rect[])
+        .map((box, i) => ({ i, safe: placementIsSafe(rect as Rect, box) }))
+        .filter((r) => !r.safe.insideFrame || !r.safe.clearsFace);
+      framesChecked += (frames as Rect[]).length;
       expect(
-        `${slot.id} inFrame=${safe.insideFrame} clearsFace=${safe.clearsFace}`,
-      ).toBe(`${slot.id} inFrame=true clearsFace=true`);
+        `${slot.id} unsafe in ${bad.length} of ${(frames as Rect[]).length} frames`,
+      ).toBe(`${slot.id} unsafe in 0 of ${(frames as Rect[]).length} frames`);
     }
+    // A guarantee asserted over no frames is not a guarantee.
+    expect(framesChecked, 'no frame of any picture was actually checked')
+      .toBeGreaterThanOrEqual(plan.images.slots.length);
 
     /*
      * **Every picture as large as its own corner allows** — the user's ruling of

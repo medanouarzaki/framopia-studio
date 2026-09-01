@@ -312,68 +312,151 @@ describe('a picture that outlives its words stays clear of the speaker', () => {
 });
 
 /**
- * **A picture that arrives at the word it is about is on screen for less time,
- * so it is sized over less of the speaker's movement.**
+ * **A picture is sized against every frame of its life, never against their
+ * union.**
  *
- * The user's ruling of 1 September. The sizing rule did not change — the face
- * box is still unioned over the picture's whole life — but the life now begins
- * later, so a slot whose speaker moves during the words it no longer covers can
- * be drawn larger. What must not change is that it is still clear of him for
- * every frame it is actually up.
+ * The user looked at `sora` at 6.2 s and asked why one picture was so small
+ * when the corner was visibly empty. It was 669 px where every other picture on
+ * the reel was 881–1085. The answer was not that she leans in: that picture's
+ * life spans a **cut**, from a standing shot in a corridor to a seated one on a
+ * sofa. The union of two framings pairs the leftmost she reaches in the first
+ * with the highest she reaches in the second — a position she is in at no point
+ * in either — and sized the picture for it.
  *
- * Synthetic movement over invented boxes; nothing here reads a reel.
+ * A square is clear at one frame if it stops before her left edge **or** above
+ * her head; either separation is enough on its own. So the largest square safe
+ * for a whole life is the smallest, over the frames, of each frame's own better
+ * bound — and that is never smaller than the union's answer, and often much
+ * larger. Synthetic geometry; nothing here reads a reel.
  */
-describe('a picture that arrives at its naming word', () => {
-  function faceOver(positions: number[]): Rect {
-    const boxes = positions.map((above) => faceAt(above, above - 40));
-    return {
-      x: Math.min(...boxes.map((b) => b.x)),
-      y: Math.min(...boxes.map((b) => b.y)),
+describe('a picture whose life covers more than one position', () => {
+  /** Standing: low in frame, and towards the left. */
+  const standing = faceAt(1080, 640);
+  /** Seated after a cut: high in frame, but well to the right. */
+  const seated = faceAt(670, 960);
+
+  it('is sized by the frame that allows least, not by the union of all of them', () => {
+    const perFrame = topLeftPlacementDetail({ faceBox: [standing, seated], seed: 'cut' });
+    // Each frame on its own allows more than the union does.
+    const alone = [standing, seated].map((b) =>
+      Math.round(topLeftPlacementDetail({ faceBox: b, seed: 'cut' }).rect.w * FRAME_WIDTH),
+    );
+    expect(alone).toEqual([1080, 960]);
+    expect(Math.round(perFrame.rect.w * FRAME_WIDTH)).toBe(960);
+
+    // The union of the two boxes: leftmost of one, highest of the other.
+    const union = {
+      x: Math.min(standing.x, seated.x),
+      y: Math.min(standing.y, seated.y),
       w: 0.3,
       h: 0.3,
     };
-  }
+    const byUnion = topLeftPlacementDetail({ faceBox: union, seed: 'cut' });
+    expect(Math.round(byUnion.rect.w * FRAME_WIDTH)).toBe(670);
+  });
 
-  /** He leans forward early in the sentence and sits back for the rest of it. */
-  const wholeSpan = [700, 690, 1040, 1050, 1045];
-  const fromTheNamingWord = [1040, 1050, 1045];
+  it('clears the speaker at every frame of the life, which the size is chosen for', () => {
+    const detail = topLeftPlacementDetail({ faceBox: [standing, seated], seed: 'cut' });
+    for (const box of [standing, seated]) {
+      expect(placementIsSafe(detail.rect, box)).toEqual({ insideFrame: true, clearsFace: true });
+    }
+  });
 
-  it('is drawn larger when the movement it skips was the tightest', () => {
-    const overWholeSpan = topLeftPlacementDetail({ faceBox: faceOver(wholeSpan), seed: 'late' });
-    const overItsOwnLife = topLeftPlacementDetail({
-      faceBox: faceOver(fromTheNamingWord),
-      seed: 'late',
-    });
+  it('is never larger than the frame that allows least, however many frames there are', () => {
+    const positions = [1080, 900, 670, 1200, 850].map((above) => faceAt(above, above - 120));
+    const detail = topLeftPlacementDetail({ faceBox: positions, seed: 'many' });
+    const smallest = Math.min(
+      ...positions.map((b) => topLeftPlacementDetail({ faceBox: b, seed: 'many' }).rect.w),
+    );
+    expect(detail.rect.w).toBeCloseTo(smallest, 12);
+    for (const box of positions) {
+      expect(placementIsSafe(detail.rect, box).clearsFace).toBe(true);
+    }
+  });
+
+  it('gives one frame the same answer it always did', () => {
+    const one = faceAt(900, 700);
+    expect(topLeftPlacementDetail({ faceBox: [one], seed: 's' }).rect.w).toBe(
+      topLeftPlacementDetail({ faceBox: one, seed: 's' }).rect.w,
+    );
+  });
+
+  it('gives a speaker who never moves the size any one of those frames allows', () => {
+    const still = Array.from({ length: 12 }, () => faceAt(1050, 800));
+    const detail = topLeftPlacementDetail({ faceBox: still, seed: 'still' });
+    expect(Math.round(detail.rect.w * FRAME_WIDTH)).toBe(1050);
+  });
+
+  /**
+   * Where it does not help: a speaker high in frame for the *whole* life. There
+   * is no frame with room, so there is nothing to recover and the picture is
+   * genuinely small. The rule takes nothing away in that case either.
+   */
+  it('still draws small when every frame of the life is tight', () => {
+    const tight = [faceAt(500, 460), faceAt(520, 470), faceAt(505, 455)];
+    const detail = topLeftPlacementDetail({ faceBox: tight, seed: 'tight' });
+    expect(Math.round(detail.rect.w * FRAME_WIDTH)).toBe(500);
+    for (const box of tight) {
+      expect(placementIsSafe(detail.rect, box).clearsFace).toBe(true);
+    }
+  });
+
+  /**
+   * The nudge is bounded by the union even though the size is not. A move right
+   * is only offered when the square is above **every** frame's face, because
+   * that is the bound that makes the move safe at all of them.
+   */
+  it('never nudges a picture onto the speaker in a frame it was clear of', () => {
+    for (const seed of ['a', 'b', 'c', 'd', 'e']) {
+      const positions = [faceAt(1080, 640), faceAt(670, 960), faceAt(900, 720)];
+      const detail = topLeftPlacementDetail({ faceBox: positions, seed });
+      for (const box of positions) {
+        expect(placementIsSafe(detail.rect, box)).toEqual({ insideFrame: true, clearsFace: true });
+      }
+    }
+  });
+});
+
+/**
+ * **A picture that arrives at the word it is about covers fewer frames, so it
+ * can be drawn larger.**
+ *
+ * The user's ruling of 1 September put a picture's arrival at the word the
+ * model named. The sizing rule did not change for it — the picture is measured
+ * against every frame it is on screen — but there are fewer of them, and a
+ * frame it no longer covers cannot make it smaller. Rewritten at session 42 to
+ * pass the frames themselves; it used to hand in their union.
+ */
+describe('a picture that arrives at its naming word', () => {
+  /** She leans in early in the sentence, then sits back for the rest of it. */
+  const wholeSpan = [700, 690, 1040, 1050, 1045].map((a) => faceAt(a, a - 40));
+  const fromTheNamingWord = wholeSpan.slice(2);
+
+  it('is drawn larger when the frames it skips were the tightest', () => {
+    const overWholeSpan = topLeftPlacementDetail({ faceBox: wholeSpan, seed: 'late' });
+    const overItsOwnLife = topLeftPlacementDetail({ faceBox: fromTheNamingWord, seed: 'late' });
     expect(Math.round(overWholeSpan.rect.w * FRAME_WIDTH)).toBe(690);
     expect(Math.round(overItsOwnLife.rect.w * FRAME_WIDTH)).toBe(1040);
   });
 
-  it('is still clear of the speaker for every frame it is up', () => {
-    const detail = topLeftPlacementDetail({ faceBox: faceOver(fromTheNamingWord), seed: 'late' });
-    expect(placementIsSafe(detail.rect, faceOver(fromTheNamingWord))).toEqual({
-      insideFrame: true,
-      clearsFace: true,
-    });
+  it('is still clear of the speaker in every frame it is up', () => {
+    const detail = topLeftPlacementDetail({ faceBox: fromTheNamingWord, seed: 'late' });
+    for (const box of fromTheNamingWord) {
+      expect(placementIsSafe(detail.rect, box)).toEqual({ insideFrame: true, clearsFace: true });
+    }
   });
 
-  /**
-   * And the bound the ruling could have broken: a picture may not be sized from
-   * a life it does not have. Sizing from the naming word onward while the layer
-   * still arrives with the sentence would put it across him for the seconds in
-   * between — 1040 px where only 690 px is clear.
-   */
+  /** The bound the ruling could have broken: sized for a life it does not have. */
   it('would be over the speaker if it were sized from later than it arrives', () => {
-    const sizedFromTheNamingWord = topLeftPlacementDetail({
-      faceBox: faceOver(fromTheNamingWord),
-      seed: 'late',
-    });
-    expect(placementIsSafe(sizedFromTheNamingWord.rect, faceOver(wholeSpan)).clearsFace).toBe(false);
+    const detail = topLeftPlacementDetail({ faceBox: fromTheNamingWord, seed: 'late' });
+    const skipped = wholeSpan[0] as Rect;
+    expect(placementIsSafe(detail.rect, skipped).clearsFace).toBe(false);
   });
 
-  it('changes nothing when the speaker does not move before the naming word', () => {
-    const still = [1050, 1048, 1045, 1046];
-    const whole = topLeftPlacementDetail({ faceBox: faceOver(still), seed: 'steady' });
-    const later = topLeftPlacementDetail({ faceBox: faceOver(still.slice(2)), seed: 'steady' });
+  it('gives up nothing when the speaker does not move before the naming word', () => {
+    const steady = [1050, 1048, 1045, 1046].map((a) => faceAt(a, a - 40));
+    const whole = topLeftPlacementDetail({ faceBox: steady, seed: 'steady' });
+    const later = topLeftPlacementDetail({ faceBox: steady.slice(2), seed: 'steady' });
     expect(Math.round(later.rect.w * FRAME_WIDTH)).toBe(Math.round(whole.rect.w * FRAME_WIDTH));
   });
 });
