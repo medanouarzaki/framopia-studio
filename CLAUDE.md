@@ -109,16 +109,18 @@ What works end to end today: a reel goes through transcription, keyword and
 image-slot analysis, image generation, frame analysis and placement, and comes
 out as a built `.aep` with subtitles, keywords, pictures, SFX and the
 watermark. **The whole of making a video is driven from the panel** and needs no
-terminal. `npm run check` and `npm run golden` are both green — golden matches
-**17,174 fields** across four reels.
+terminal. `npm run golden` is green — **17,174 fields** across four reels, with
+the four text card comps at **2160x1300**. `npm run check` is green except for
+the panel's image-picker browser tests, below.
 
 What is open, in one line each: `ground-truth` cannot build until its six image
 slots are generated; a client's photograph is not checked by the build's
 pre-flight and is not in the backup set; the image prompt's fidelity, darkness
 and literalness fixes are applied but two have never been seen in a generated
-picture; the panel's image-picker browser tests flake for a reason nobody has
-found. Every one of these is stated with its evidence in the report that found
-it.
+picture; five of the panel's image-picker browser tests fail because the three
+cutout files their fixtures name were moved into per-reel subdirectories, so the
+`onError` race an earlier session closed by pointing at real files is open again.
+Every one of these is stated with its evidence in the report that found it.
 
 ## Where the knowledge lives
 

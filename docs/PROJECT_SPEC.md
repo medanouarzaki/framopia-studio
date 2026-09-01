@@ -137,19 +137,25 @@ depends on the client fonts Block 9 collects.
    The user grew the four text comps to **1300** and put the baseline back at 700
    — the same two edits, for the same reason.
 
-   At 1300 every keyword clears: `الجمال / الطبيعي` by **17.1 px**, the next by
-   75.3, the rest by 102.7 or more. **Final yeh is the deepest glyph in the
+   At 1300 every keyword clears: `الجمال / الطبيعي` by **17.7 px**, the next by
+   75.9, the rest by 103.3 or more. **Final yeh is the deepest glyph in the
    Arabic alphabet at this size** and is what `sora` hit; the budget for a line's
-   ink is 211.4 px and Almarai's worst is 194.3, so the room runs out if the
-   Arabic keyword size passes about **495**, or if a client's Arabic face
-   descends more than 8.8% deeper than Almarai. `docs/TEMPLATE_LIBRARY_GUIDE.md`
+   ink is 212 px and Almarai's worst is 194.3, so the room runs out if the
+   Arabic keyword size passes about **496**, or if a client's Arabic face
+   descends more than 9.1% deeper than Almarai. `docs/TEMPLATE_LIBRARY_GUIDE.md`
    §11 carries the full table.
 
-   **The shadow's Transform effect scaled again**, to **[8, 15.6]** — 15 ×
-   1300/1250 — exactly as the trap predicts. Restoring it means setting that
-   effect's Position to **[1088, 665]** against its Anchor Point of [1080, 650].
-   Until then `SUBTITLE_BAND`'s bottom reads 3013.17825 and the same three tests
-   fail on the same 0.6 px, none of them edited.
+   **The shadow's Transform effect scaled again, and has been put back**
+   (2026-09-01). Growing the canvas took it to **[8, 15.6]** — 15 × 1300/1250 —
+   exactly as the trap predicts; setting that effect's Position to **[1088, 665]**
+   against its Anchor Point of [1080, 650] restored the ruled **[8, 15]** on all
+   four comps. This is the third height change and the third time the same repair
+   was needed, so it is now part of the change rather than a discovery: **after
+   any change to a text comp's height, put the shadow's Transform Position back
+   to Anchor Point + [8, 15]**. `SUBTITLE_BAND`'s bottom is 3012.57825 again, the
+   three tests pass with none edited, and the tightest card gained the 0.6 px
+   back — `الجمال / الطبيعي` clears by **17.7 px**. Rebuilding all four corpus
+   reels moved **not one** of golden's 17,174 fields.
 
 ## 4. Input / output (locked)
 

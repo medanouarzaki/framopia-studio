@@ -843,37 +843,40 @@ comp, 2026-09-01:
 
 | deepest final glyph | ink bottom | a two-line card reaches | margin at 1300 |
 |---|---:|---:|---:|
-| **ي** | **194.3** | **1282.9** | **+17.1** |
-| ج ح خ ع غ | 172.0 | 1260.6 | +39.4 |
-| م | 169.7 | 1258.3 | +41.7 |
-| every other letter | ≤ 108.7 | ≤ 1197.3 | ≥ +102.7 |
+| **ي** | **194.3** | **1282.3** | **+17.7** |
+| ج ح خ ع غ | 172.0 | 1260.0 | +40.0 |
+| م | 169.7 | 1257.7 | +42.3 |
+| every other letter | ≤ 108.7 | ≤ 1196.7 | ≥ +103.3 |
 
 **Final yeh is the worst case in the alphabet, and `sora` hit it.** The model
 that produces those figures is `750` (the entrance's low point) `+ 323`
-(`LINE_SPACING`) `+ ink bottom + 15.6` (the shadow's drop), and it reproduces
+(`LINE_SPACING`) `+ ink bottom + 15` (the shadow's drop), and it reproduces
 every real card's measured reach exactly.
 
-So the budget for a line's ink is **1300 − 750 − 323 − 15.6 = 211.4 px**, and
-Almarai's deepest is 194.3. **17.1 px in hand**, and it runs out when:
+So the budget for a line's ink is **1300 − 750 − 323 − 15 = 212 px**, and
+Almarai's deepest is 194.3. **17.7 px in hand**, and it runs out when:
 
-- **the Arabic keyword size passes ≈495** — 194.3 × S/455 = 211.4 gives S = 495.1
-  against today's 455, so about 8.8% of room;
-- **a client's Arabic face descends more than 8.8% deeper** than Almarai at the
+- **the Arabic keyword size passes ≈496** — 194.3 × S/455 = 212 gives S = 496.5
+  against today's 455, so about 9.1% of room;
+- **a client's Arabic face descends more than 9.1% deeper** than Almarai at the
   same size;
-- **the shadow's drop grows** — it eats the budget one-for-one, and the 15.6
-  below is 0.6 px of it;
+- **the shadow's drop grows** — it eats the budget one-for-one;
 - **a third line** would need another 323 px and can never fit; the fit rule
   breaks to at most two, and `MAX_SUBTITLE_LINES` is 2.
 
-**The shadow's offset scaled again, exactly as this section predicts.** At 1300
-it reads **[8, 15.6]** — 15 × 1300/1250 — against the ruled [8, 15], with the
-effect's Anchor Point now [1080, 650] and its Position [1088, 665.6]. **Restoring
-it means setting that Position to [1088, 665].** Until then `shadowDescentPx`
-reads 15.6, `SUBTITLE_BAND`'s bottom is **3013.17825** against the recorded
-3012.57825, and the same three tests fail on the same 0.6 px. None was edited.
+**The shadow's offset scaled again, exactly as this section predicts — and has
+been put back.** Growing the canvas took it to **[8, 15.6]** (15 × 1300/1250),
+its Anchor Point to [1080, 650] and its Position to [1088, 665.6]. Setting that
+Position to **[1088, 665]** restored the ruled **[8, 15]** on all four comps,
+which is the third time this repair has been needed and the third time the same
+number has fixed it: **after any change to a text comp's height, re-read the
+shadow's Transform Position and put back Anchor Point + [8, 15].** With it back,
+`shadowDescentPx` reads 15, `SUBTITLE_BAND`'s bottom is **3012.57825**, the three
+tests pass, and the tightest card gained the 0.6 px back — 17.1 → **+17.7 px**.
+None of the three tests was ever edited.
 
 **Everything else held, and it was measured before anything was rebuilt.** The
-audit diff is **1342 fields compared, 29 differing**: the file's sha, the four
+audit diff at 1300 was **1342 fields compared, 29 differing**: the file's sha, the four
 comps' height on the comp and both layers, the shadow effect's three scaled
 numbers on each, and four fields that are only the playhead's position — read
 `valueAtSampleTime`, never `value`. Fonts, sizes, tracking, fills, layer names
