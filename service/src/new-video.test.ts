@@ -15,6 +15,7 @@ import { runPipeline } from './pipeline.js';
 import { editPlanPathFor, readEditPlan } from './editplan/io.js';
 import { reelMasksDir } from './frames/segment.js';
 import { reelFramesDir } from './frames/sample.js';
+import { pictureLives } from './build/picture-life.js';
 import { buildReel } from './build/reel-plan.js';
 import { buildChoiceFor } from './build/choose-candidate.js';
 import { buildRequirements, missingRequirements, readBuildDisk } from './build/requirements.js';
@@ -61,23 +62,111 @@ const FFMPEG = (() => {
 const SOURCE = path.join(REPO_ROOT, 'my files', 'test videos', 'vitasilk.mov');
 const ready = FFMPEG !== null && existsSync(SOURCE) && existsSync(SIDECAR_PYTHON);
 
+/**
+ * **Three videos of different shapes**, so the rules are proved over more than
+ * one arrangement of pictures. Block 10 session 39 added the second and third:
+ * the first has a single slot, and a rule about what happens *between* two
+ * pictures cannot be tested on a reel that has one.
+ *
+ * The word timings are what give each shape its shape — a reel whose pictures
+ * are seconds apart, and one whose pictures run into each other with the last
+ * ending on the last word.
+ */
+interface Shape {
+  label: string;
+  seconds: number;
+  draft: { text: string; start: number; end: number }[];
+  /** What the keyword model would have answered, replayed from here instead. */
+  keywordCandidates: { wordIds: string[]; score: number; reason: string; kind: string }[];
+  /** What the slot model would have answered. */
+  slotCandidates: { wordIds: string[]; idea: string; score: number }[];
+  /**
+   * How many pictures this shape must actually reach the builder with.
+   *
+   * Asserted rather than assumed: a rule about what happens between two
+   * pictures passes vacuously on a reel that ends up with one, and the density
+   * and spread rules decide how many of the candidates survive.
+   */
+  minPictures: number;
+}
+
+/** Two Arabic words and two Latin ones, with timings a 6s clip can hold. */
+const DRAFT = [
+  { text: 'السلام', start: 0.4, end: 0.9 },
+  { text: 'عليكم', start: 0.95, end: 1.4 },
+  { text: 'Vita', start: 2.0, end: 2.4 },
+  { text: 'Silk', start: 2.45, end: 2.9 },
+  { text: 'البشرة', start: 3.4, end: 3.9 },
+  { text: 'ونضارة', start: 3.95, end: 4.5 },
+];
+
+const SHAPES: Shape[] = [
+  {
+    label: 'a video this tool has never seen',
+    seconds: 6,
+    draft: DRAFT,
+    keywordCandidates: [{ wordIds: ['w0004', 'w0005'], score: 0.95, reason: 'the claim', kind: 'promise' }],
+    slotCandidates: [{ wordIds: ['w0002', 'w0003'], idea: 'a single silk ribbon', score: 0.9 }],
+    minPictures: 1,
+  },
+  {
+    label: 'another video with its pictures far apart',
+    seconds: 10,
+    draft: [
+      { text: 'السلام', start: 0.4, end: 0.9 },
+      { text: 'عليكم', start: 0.95, end: 1.4 },
+      { text: 'Vita', start: 4.2, end: 4.6 },
+      { text: 'Silk', start: 4.65, end: 5.1 },
+      { text: 'البشرة', start: 7.8, end: 8.3 },
+      { text: 'ونضارة', start: 8.35, end: 8.9 },
+    ],
+    keywordCandidates: [{ wordIds: ['w0000', 'w0001'], score: 0.9, reason: 'the greeting', kind: 'promise' }],
+    slotCandidates: [
+      { wordIds: ['w0000', 'w0001'], idea: 'a calm open horizon', score: 0.9 },
+      { wordIds: ['w0004', 'w0005'], idea: 'a drop of water on skin', score: 0.7 },
+    ],
+    minPictures: 2,
+  },
+  {
+    label: 'a third video whose pictures run into each other',
+    seconds: 10,
+    draft: [
+      { text: 'السلام', start: 0.4, end: 1.6 },
+      { text: 'عليكم', start: 2.2, end: 3.4 },
+      { text: 'Vita', start: 4.0, end: 5.2 },
+      { text: 'Silk', start: 5.8, end: 7.0 },
+      { text: 'البشرة', start: 7.4, end: 8.2 },
+      { text: 'ونضارة', start: 8.4, end: 9.2 },
+    ],
+    keywordCandidates: [{ wordIds: ['w0002', 'w0003'], score: 0.9, reason: 'the brand', kind: 'promise' }],
+    slotCandidates: [
+      { wordIds: ['w0000', 'w0001'], idea: 'a calm open horizon', score: 0.9 },
+      { wordIds: ['w0002', 'w0003'], idea: 'a single silk ribbon', score: 0.8 },
+    ],
+    minPictures: 2,
+  },
+];
+
 let dir: string;
-let videoPath: string;
+const videoPaths = new Map<string, string>();
 const saved = process.env['FRAMOPIA_VIDEO_REGISTRY'];
 
 beforeAll(() => {
   if (!ready) return;
   dir = mkdtempSync(path.join(tmpdir(), 'framopia-new-video-'));
-  videoPath = path.join(dir, 'a video this tool has never seen.mov');
-  // Six seconds of a corpus reel, re-encoded: a new file with a new hash that
-  // nothing in this repository has ever been run against. The source is read
-  // only.
-  execFileSync(
-    FFMPEG as string,
-    ['-y', '-ss', '2', '-t', '6', '-i', SOURCE, '-c:v', 'prores_ks', '-profile:v', '3',
-     '-c:a', 'pcm_s16le', videoPath],
-    { stdio: 'ignore' },
-  );
+  for (const shape of SHAPES) {
+    const videoPath = path.join(dir, `${shape.label}.mov`);
+    // A few seconds of a corpus reel, re-encoded: a new file with a new hash
+    // that nothing in this repository has ever been run against. The source is
+    // read only.
+    execFileSync(
+      FFMPEG as string,
+      ['-y', '-ss', '2', '-t', String(shape.seconds), '-i', SOURCE, '-c:v', 'prores_ks',
+       '-profile:v', '3', '-c:a', 'pcm_s16le', videoPath],
+      { stdio: 'ignore' },
+    );
+    videoPaths.set(shape.label, videoPath);
+  }
   process.env['FRAMOPIA_VIDEO_REGISTRY'] = path.join(dir, 'videos.json');
 });
 
@@ -90,7 +179,7 @@ afterAll(() => {
    * of those lives. A test cleans up what it wrote, wherever the rules sent it
    * — session 30's `job.test.ts` left 65 stray plans behind by not doing this.
    */
-  if (videoPath !== undefined) {
+  for (const videoPath of videoPaths.values()) {
     rmSync(cutoutDirFor(editPlanPathFor(videoPath)), { recursive: true, force: true });
     rmSync(editPlanPathFor(videoPath), { force: true });
     rmSync(reelMasksDir(videoPath), { recursive: true, force: true });
@@ -101,24 +190,14 @@ afterAll(() => {
   vi.restoreAllMocks();
 });
 
-/** What the model would have answered, replayed from here instead. */
-const KEYWORD_JSON = "{\"candidates\": [{\"wordIds\": [\"w0004\", \"w0005\"], \"score\": 0.95, \"reason\": \"the claim\", \"kind\": \"promise\"}]}";
-const SLOT_JSON = "{\"candidates\": [{\"wordIds\": [\"w0002\", \"w0003\"], \"idea\": \"a single silk ribbon\", \"score\": 0.9}]}";
-
-/** Two Arabic words and two Latin ones, with timings a 6s clip can hold. */
-const DRAFT = [
-  { text: 'السلام', start: 0.4, end: 0.9 },
-  { text: 'عليكم', start: 0.95, end: 1.4 },
-  { text: 'Vita', start: 2.0, end: 2.4 },
-  { text: 'Silk', start: 2.45, end: 2.9 },
-  { text: 'البشرة', start: 3.4, end: 3.9 },
-  { text: 'ونضارة', start: 3.95, end: 4.5 },
-];
-
 describe.skipIf(!ready)('a video the tool has never seen', () => {
-  it('reaches a plan the builder can place, every element of it', async () => {
+  it.each(SHAPES)('$label reaches a plan the builder can place, every element of it', async (shape) => {
+    const DRAFT = shape.draft;
+    const KEYWORD_JSON = JSON.stringify({ candidates: shape.keywordCandidates });
+    const SLOT_JSON = JSON.stringify({ candidates: shape.slotCandidates });
+    const videoPath = videoPaths.get(shape.label) as string;
     const known = await rememberVideo(videoPath);
-    expect(known.label).toBe('a video this tool has never seen');
+    expect(known.label).toBe(shape.label);
 
     const cacheRoot = path.join(dir, 'cache');
     const costsPath = path.join(dir, 'costs.jsonl');
@@ -184,9 +263,7 @@ describe.skipIf(!ready)('a video the tool has never seen', () => {
                 cacheRoot,
                 runAnalysis: () =>
                   Promise.resolve({
-                    candidates: [
-                      { wordIds: ['w0004', 'w0005'], score: 0.95, reason: 'the claim', kind: 'promise' },
-                    ],
+                    candidates: shape.keywordCandidates,
                     rawText: KEYWORD_JSON,
                     promptVersion: 4,
                     model: 'offline',
@@ -205,9 +282,7 @@ describe.skipIf(!ready)('a video the tool has never seen', () => {
                 cacheRoot,
                 runAnalysis: () =>
                   Promise.resolve({
-                    candidates: [
-                      { wordIds: ['w0002', 'w0003'], idea: 'a single silk ribbon', score: 0.9 },
-                    ],
+                    candidates: shape.slotCandidates,
                     rawText: SLOT_JSON,
                     promptVersion: 2,
                     model: 'offline',
@@ -394,7 +469,64 @@ describe.skipIf(!ready)('a video the tool has never seen', () => {
     }
     expect(cutShort, 'a picture shorter than its own entrance').toEqual([]);
     expect(endsEarly, 'a picture that vanishes before its words end').toEqual([]);
-  }, 300_000);
+
+    /*
+     * **No void between two pictures**, on a video the tool has never seen.
+     *
+     * The user's ruling of 1 September. The handover is not yet what a plain
+     * build does — Block 10 session 39 measured it first and reported two
+     * consequences he has to look at before it becomes the rule — so what is
+     * asserted here is the mechanism over this video's real slot times: every
+     * picture but the last leaves no earlier than the next one arrives, and the
+     * last still ends with its own words.
+     */
+    for (const handover of [{ kind: 'cut' as const }, { kind: 'dissolve' as const, crossFadeS: entranceS }]) {
+      const lives = pictureLives(
+        plan.images.slots.map((s) => ({ id: s.id, start: s.start, end: s.end })),
+        handover,
+      );
+      const screenEnd = new Map(lives.map((l) => [l.id, l.screenEndS]));
+      const continuous = buildReel({
+        plan,
+        audit: audit.comps,
+        cardTemplateId: 'img_float',
+        topLeftFor: (id) => rects.get(id),
+        introFor: (id) => entries.get(id)?.introS ?? 0,
+        minHoldFor: (id) => entries.get(id)?.minHoldS ?? 0,
+        sfxFileFor: (id) => path.join(REPO_ROOT, 'assets', 'sfx', `${id}.wav`),
+        candidateFileFor: (slotId) => {
+          const slot = plan.images.slots.find((s) => s.id === slotId);
+          if (slot === undefined) return null;
+          const choice = buildChoiceFor(slot);
+          const c = slot.candidates.find((x) => x.id === choice.candidateId);
+          return c === undefined ? null : { path: c.path, id: c.id };
+        },
+        pictureScreenEndFor: (id) => screenEnd.get(id),
+      });
+      const pictures = continuous.placementsC
+        .filter((p) => p.kind === 'image')
+        .sort((a, b) => a.inPointS - b.inPointS);
+      expect(pictures.length, 'too few pictures for this shape to prove anything')
+        .toBeGreaterThanOrEqual(shape.minPictures);
+      const voids = pictures
+        .slice(0, -1)
+        .map((p, i) => ({ id: p.elementId, gap: (pictures[i + 1] as { inPointS: number }).inPointS - p.outPointS }))
+        .filter((g) => g.gap > 1e-9)
+        .map((g) => `${g.id} leaves ${g.gap.toFixed(3)}s before the next arrives`);
+      expect(voids, `a void between two pictures under a ${handover.kind} handover`).toEqual([]);
+      const last = pictures[pictures.length - 1];
+      const lastSlot = plan.images.slots.find((s) => s.id === last?.elementId);
+      expect((last as { outPointS: number }).outPointS).toBeCloseTo(lastSlot?.end as number, 9);
+      // Held longer than the template means held, and the entrance is never stretched.
+      for (const p of pictures) {
+        const runsS = p.outPointS - p.inPointS;
+        expect(
+          `${p.elementId} ${(p as { holdLastFrameFromS?: number }).holdLastFrameFromS === undefined ? 'plain' : 'holds'}`,
+        ).toBe(`${p.elementId} ${runsS > templateDurationS + 1e-9 ? 'holds' : 'plain'}`);
+        expect((p as { stretchPercent?: number }).stretchPercent).toBeUndefined();
+      }
+    }
+  }, 900_000);
 });
 
 /** The smallest valid PNG the dimension check will accept as 2048x2048. */

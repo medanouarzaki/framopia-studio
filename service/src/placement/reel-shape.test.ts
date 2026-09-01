@@ -224,3 +224,89 @@ describe('every picture at its own corner’s maximum, and where that breaks', (
     }
   });
 });
+
+/**
+ * **A picture that stays until the next one appears is on screen while the
+ * speaker keeps moving, so the corner that held it may not hold it later.**
+ *
+ * The user's ruling of 1 September. Block 10 session 39 measured it before
+ * building it and found this: sizing a picture over the words it illustrates
+ * and then holding it to the next picture put 13 of 26 slots across four reels
+ * over the speaker — `sora`'s `img002` by 376 px, because he leans forward
+ * during the seconds the picture now outlives its sentence.
+ *
+ * The rule that makes it safe is not a number and not a margin: **the face box
+ * is unioned over the picture's whole life, not over its words.** These cases
+ * are synthetic movement over invented boxes; nothing here reads a reel.
+ */
+describe('a picture that outlives its words stays clear of the speaker', () => {
+  /** The tightest corner over a span, from a speaker who moves frame by frame. */
+  function faceOver(positions: number[]): Rect {
+    const boxes = positions.map((above) => faceAt(above, above - 40));
+    const x = Math.min(...boxes.map((b) => b.x));
+    const y = Math.min(...boxes.map((b) => b.y));
+    return { x, y, w: 0.3, h: 0.3 };
+  }
+
+  /** Where he is over each picture's words, and over the gap that follows it. */
+  const words = [1050, 1040];
+  const gapHeMovesInto = [1050, 1040, 700, 690];
+
+  it('is unsafe when it is sized over its words and held past them', () => {
+    const sizedOverWords = topLeftPlacementDetail({ faceBox: faceOver(words), seed: 'held' });
+    // The same picture, later, while he leans forward.
+    expect(placementIsSafe(sizedOverWords.rect, faceOver(gapHeMovesInto)).clearsFace).toBe(false);
+  });
+
+  it('is safe when it is sized over the whole life it is given', () => {
+    const sizedOverLife = topLeftPlacementDetail({
+      faceBox: faceOver(gapHeMovesInto),
+      seed: 'held',
+    });
+    expect(placementIsSafe(sizedOverLife.rect, faceOver(gapHeMovesInto))).toEqual({
+      insideFrame: true,
+      clearsFace: true,
+    });
+    // And it costs exactly what the movement costs, no more: the picture is the
+    // size of the tightest moment it is on screen for.
+    expect(Math.round(sizedOverLife.rect.w * FRAME_WIDTH)).toBe(690);
+  });
+
+  /**
+   * The cost is paid only where he moves. A picture whose gap is as roomy as
+   * its words gives up nothing at all, which is why the mean size barely moves
+   * on a reel where the speaker sits still.
+   */
+  it('gives up nothing when the speaker does not move during the hold', () => {
+    const overWords = topLeftPlacementDetail({ faceBox: faceOver([1050, 1040]), seed: 'still' });
+    const overLife = topLeftPlacementDetail({
+      faceBox: faceOver([1050, 1040, 1045, 1042]),
+      seed: 'still',
+    });
+    expect(Math.round(overLife.rect.w * FRAME_WIDTH)).toBe(
+      Math.round(overWords.rect.w * FRAME_WIDTH),
+    );
+  });
+
+  it('keeps every picture in a moving reel clear at its own size', () => {
+    const lives = [
+      [1050, 1040, 700, 690],
+      [900, 880, 880, 870],
+      [1200, 1190, 1180],
+    ];
+    const reel = reelPlacements(
+      lives.map((positions, i) => ({
+        id: `img${i + 1}`,
+        faceBox: faceOver(positions),
+        seed: `moving:${i}`,
+      })),
+    );
+    reel.slots.forEach((slot, i) => {
+      expect(placementIsSafe(slot.rect, faceOver(lives[i] as number[]))).toEqual({
+        insideFrame: true,
+        clearsFace: true,
+      });
+    });
+    expect(reel.slots.map((s) => Math.round(s.rect.w * FRAME_WIDTH))).toEqual([690, 870, 1180]);
+  });
+});
