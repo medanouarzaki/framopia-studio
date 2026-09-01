@@ -119,8 +119,12 @@ pre-flight and is not in the backup set; the image prompt's fidelity, darkness
 and literalness fixes are applied but two have never been seen in a generated
 picture; five of the panel's image-picker browser tests fail because the three
 cutout files their fixtures name were moved into per-reel subdirectories, so the
-`onError` race an earlier session closed by pointing at real files is open again.
-Every one of these is stated with its evidence in the report that found it.
+`onError` race an earlier session closed by pointing at real files is open again;
+**a reel's pictures are all drawn at the size its tightest slot can hold, so a
+long reel with a speaker who moves comes out small** — `sora`'s eleven at 669 px
+where ten of them could hold 881 to 1085 — and **a picture whose words run past
+2.002 s vanishes before they finish**, the worst by 24.5 frames. Every one of
+these is stated with its evidence in the report that found it.
 
 ## Where the knowledge lives
 
