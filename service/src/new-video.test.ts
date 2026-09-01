@@ -24,7 +24,7 @@ import { reelPlacements } from './placement/top-left.js';
 import { transcribeVideo } from './transcription/job.js';
 import { analyseKeywordsForPlan, planImageSlotsForPlan } from './analysis/job.js';
 import { analyseKeywordsCached, planSlotsCached } from './analysis/cached.js';
-import { generateImagesForPlan } from './images/job.js';
+import { cutoutDirFor, generateImagesForPlan } from './images/job.js';
 import { SIDECAR_PYTHON } from './images/sidecar.js';
 
 /**
@@ -90,6 +90,7 @@ afterAll(() => {
    * — session 30's `job.test.ts` left 65 stray plans behind by not doing this.
    */
   if (videoPath !== undefined) {
+    rmSync(cutoutDirFor(editPlanPathFor(videoPath)), { recursive: true, force: true });
     rmSync(editPlanPathFor(videoPath), { force: true });
     rmSync(reelMasksDir(videoPath), { recursive: true, force: true });
     rmSync(reelFramesDir(videoPath), { recursive: true, force: true });
