@@ -386,6 +386,41 @@ function framopiaBuildReel(optionsPath, outPath) {
                 }
                 layer.startTime = pl.inPointS;
                 layer.inPoint = pl.inPointS;
+                /*
+                 * A picture holds its last frame until its words finish (the
+                 * user's ruling of 1 September). Without this the out point is
+                 * clamped to the source's own length and the picture vanishes
+                 * mid-sentence; After Effects will not extend a comp layer past
+                 * its source unless time remapping is on.
+                 *
+                 * The two keyframes are placed one frame short of the source's
+                 * end and a frame apart in value as they are in time, so the
+                 * mapping stays one-to-one and the entrance plays at exactly
+                 * the speed it was authored at. Past the last key the value is
+                 * constant, which is the still frame. The template's own
+                 * keyframes are never touched — TEMPLATE_LIBRARY_GUIDE §5.
+                 */
+                if (pl.holdLastFrameFromS) {
+                    var frameS = 1 / master.frameRate;
+                    var lastFrameS = pl.holdLastFrameFromS - frameS;
+                    layer.timeRemapEnabled = true;
+                    var remap = layer.property('Time Remap');
+                    var firstKeyS = remap.keyTime(1);
+                    while (remap.numKeys > 1) {
+                        remap.removeKey(remap.numKeys);
+                    }
+                    remap.setValueAtTime(firstKeyS + lastFrameS, lastFrameS);
+                    remap.setInterpolationTypeAtKey(
+                        1,
+                        KeyframeInterpolationType.LINEAR,
+                        KeyframeInterpolationType.LINEAR
+                    );
+                    remap.setInterpolationTypeAtKey(
+                        2,
+                        KeyframeInterpolationType.LINEAR,
+                        KeyframeInterpolationType.LINEAR
+                    );
+                }
                 layer.outPoint = pl.outPointS;
                 layer.property('Position').setValue([pl.positionX, pl.positionY]);
                 if (pl.scalePercent) {

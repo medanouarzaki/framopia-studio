@@ -21,6 +21,12 @@ export interface AuditComp {
   name: string;
   width: number;
   height: number;
+  /**
+   * The comp's own length. Required rather than optional: it is what decides
+   * whether a picture needs to hold its last frame, and an absent duration
+   * would silently switch that off for every slot.
+   */
+  duration: number;
   layers: AuditLayer[];
 }
 
@@ -61,6 +67,21 @@ export interface ReelPlacement {
   elementId: string;
   /** Layer time stretch, so a short card still gets a readable entrance. */
   stretchPercent?: number;
+  /**
+   * Repeat the source's last frame for as long as the element is on screen.
+   *
+   * **The user's ruling of 1 September: a picture holds its last frame until
+   * its words finish.** The image templates are 2.002 s comps, and a slot whose
+   * words run longer than that used to simply run out of source — `sora`'s
+   * `img002` vanished 24.5 frames before its sentence ended, `vitasilk`'s
+   * `img002` 18 frames, and nobody had looked.
+   *
+   * This is the images' counterpart to `stretchPercent`, and deliberately not
+   * the same mechanism. A stretch would slow the entrance down in proportion to
+   * how long the words run, which is what he ruled against: the entrance plays
+   * at its authored speed and what extends is the still part after it.
+   */
+  holdLastFrameFromS?: number;
   kind: 'subtitle' | 'keyword' | 'image';
   inPointS: number;
   outPointS: number;
@@ -358,9 +379,17 @@ export function buildReel(options: {
         (c.width * (slot.scale as number)) / 2
       : (placed.y + placed.h / 2) * plan.source.height;
 
+    /*
+     * The template's own length is what decides whether a picture needs the
+     * hold, so a template rebuilt to a different duration moves this with it
+     * and nothing here carries a number of its own.
+     */
     const placement: ReelPlacement = {
       elementId: slot.id, kind: 'image', inPointS: slot.start, outPointS: slot.end,
       positionX, positionY, scalePercent,
+      ...(slot.end - slot.start > c.duration + 1e-9
+        ? { holdLastFrameFromS: c.duration }
+        : {}),
     };
     placementsA.push(placement);
     placementsC.push({ ...placement });

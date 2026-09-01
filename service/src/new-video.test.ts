@@ -347,27 +347,46 @@ describe.skipIf(!ready)('a video the tool has never seen', () => {
 
     /*
      * **A picture may not vanish while its own words are still being said.**
-     * The template comps are 2.002 s long and the builder gives an image no
-     * time stretch, so a slot longer than that simply runs out of source: on
-     * `sora` the second picture disappeared 24.5 frames before its sentence
-     * ended, and on `vitasilk` the second disappeared 18 frames early. Both
-     * went unseen because nothing compared the window to the template.
+     * The template comps are 2.002 s long, and until Block 10 session 37 a slot
+     * longer than that simply ran out of source: on `sora` the second picture
+     * disappeared 24.5 frames before its sentence ended, on `vitasilk` 18
+     * frames, on `test-1` 6.6. Nothing compared the window to the template.
      *
-     * The bound is the template's own duration and the entrance's own length,
-     * read from the manifest and the audit — not a number chosen against a reel.
+     * The user's ruling is that a picture holds its last frame until its words
+     * finish, so what is asserted is the whole window — every slot longer than
+     * its template must carry the hold, and none may be shorter than the
+     * entrance. Both bounds are the template's own figures, read from the audit
+     * and the manifest, never numbers chosen against a reel.
      */
     const imageComp = audit.comps.find((c) => c.name === 'img_float');
     expect(imageComp, 'img_float missing from the audit').toBeDefined();
-    const templateDurationS = (imageComp as AuditComp & { duration: number }).duration;
+    const templateDurationS = (imageComp as AuditComp).duration;
     const entranceS = entries.get('img_float')?.introS ?? 0;
     expect(entranceS).toBeGreaterThan(0);
+    const holds = new Map(
+      built.placementsA
+        .filter((p) => p.kind === 'image')
+        .map((p) => [p.elementId, p] as const),
+    );
     const cutShort: string[] = [];
     const endsEarly: string[] = [];
     for (const slot of plan.images.slots) {
       const windowS = slot.end - slot.start;
       if (windowS < entranceS - 1e-6) cutShort.push(`${slot.id} ${windowS.toFixed(3)}s`);
-      if (windowS > templateDurationS + 1e-6) {
-        endsEarly.push(`${slot.id} ${(windowS - templateDurationS).toFixed(3)}s early`);
+      const placement = holds.get(slot.id);
+      expect(placement, `${slot.id} was not placed`).toBeDefined();
+      // The out point is the words' own end, whatever the template's length.
+      expect(`${slot.id} ${(placement as { outPointS: number }).outPointS.toFixed(3)}`).toBe(
+        `${slot.id} ${slot.end.toFixed(3)}`,
+      );
+      const needsHold = windowS > templateDurationS + 1e-9;
+      const hasHold =
+        (placement as { holdLastFrameFromS?: number }).holdLastFrameFromS !== undefined;
+      if (needsHold !== hasHold) {
+        endsEarly.push(
+          `${slot.id} runs ${windowS.toFixed(3)}s against a ${templateDurationS.toFixed(3)}s ` +
+            `template and ${hasHold ? 'holds' : 'does not hold'}`,
+        );
       }
     }
     expect(cutShort, 'a picture shorter than its own entrance').toEqual([]);

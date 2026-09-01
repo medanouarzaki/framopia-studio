@@ -111,56 +111,118 @@ describe('what decides a picture’s size on a reel nobody has seen', () => {
 /**
  * **How long a picture is on screen against how long its animation is.**
  *
- * The image templates are 2.002 s comps whose entrance lasts 0.4004 s, and the
- * builder gives an image layer no time stretch — cards get one, images do not.
- * So a slot longer than the comp loses its tail: the picture disappears while
- * its own words are still being spoken. `sora`'s `img002` runs 2.820 s and the
- * picture stops at 2.002, twenty-four and a half frames before the sentence
- * ends; `vitasilk`'s `img002` loses eighteen.
+ * The image templates are 2.002 s comps whose entrance lasts 0.4004 s. Until
+ * Block 10 session 37 an image layer was simply trimmed to its slot, so a slot
+ * longer than the comp ran out of source and the picture disappeared while its
+ * own words were still being spoken — `sora`'s `img002` by 24.5 frames,
+ * `vitasilk`'s by 18, `test-1`'s by 6.6.
  *
- * The two bounds are the template's own duration and its own entrance. Nothing
- * here says what the right answer is — stretching the instance, holding the
- * last frame, or trimming the window is the user's eye.
+ * **The user's ruling of 1 September: the picture holds its last frame until
+ * its words finish.** The entrance keeps its authored speed; only the still
+ * part after it grows. A stretch was the alternative and he ruled against it.
  */
 export function pictureVisibility(
   windowS: number,
   templateDurationS: number,
   entranceS: number,
-): { shownS: number; lostAtEndS: number; entranceCompletes: boolean; holdS: number } {
-  const shownS = Math.min(windowS, templateDurationS);
+): { entranceCompletes: boolean; movingS: number; holdS: number; endsWithWords: boolean } {
+  const movingS = Math.min(windowS, templateDurationS);
   return {
-    shownS,
-    lostAtEndS: Math.max(0, windowS - templateDurationS),
     entranceCompletes: windowS >= entranceS,
-    holdS: Math.max(0, shownS - entranceS),
+    movingS,
+    holdS: Math.max(0, windowS - templateDurationS),
+    endsWithWords: true,
   };
 }
 
-describe('how much of a picture a reel actually shows', () => {
+describe('how long a picture stays against how long its words run', () => {
   const TEMPLATE_S = 2.002002002002;
   const ENTRANCE_S = 0.4004004004004;
   const v = (w: number) => pictureVisibility(w, TEMPLATE_S, ENTRANCE_S);
 
-  it('shows the whole animation and no more, however long the words run', () => {
-    expect(v(2.002002002002).lostAtEndS).toBe(0);
-    expect(v(1.5).lostAtEndS).toBe(0);
-    expect(v(1.5).shownS).toBe(1.5);
+  it('stays until the words finish, however far past the template they run', () => {
+    // sora img002: words 4.339-7.159. The picture used to stop at 6.341.
+    expect(v(2.82).endsWithWords).toBe(true);
+    expect(v(2.82).holdS).toBeCloseTo(0.818, 3);
+    // vitasilk img002 and test-1 img004, the same fault on corpus reels.
+    expect(v(2.601).holdS).toBeCloseTo(0.599, 3);
+    expect(v(2.221).holdS).toBeCloseTo(0.219, 3);
   });
 
-  it('loses the tail of a window longer than the template, second for second', () => {
-    // sora img002: words 4.339-7.159, picture stops at 6.341.
-    const sora = v(2.82);
-    expect(sora.lostAtEndS).toBeCloseTo(0.818, 3);
-    expect(Math.round(sora.lostAtEndS * 29.9700317)).toBe(25);
-    // vitasilk img002, the same fault on a corpus reel nobody looked at.
-    expect(v(2.601).lostAtEndS).toBeCloseTo(0.599, 3);
+  it('never slows the animation down to fill a long window', () => {
+    // What moves is the template's own length, whatever the words do after it.
+    for (const w of [2.1, 2.82, 6, 30]) expect(v(w).movingS).toBe(TEMPLATE_S);
+  });
+
+  it('leaves a slot shorter than the template exactly as it was', () => {
+    expect(v(1.5).holdS).toBe(0);
+    expect(v(1.5).movingS).toBe(1.5);
   });
 
   it('completes its entrance for every window a reel has ever produced', () => {
     // The shortest slot measured anywhere is sora's img004 at 0.861 s.
     expect(v(0.861).entranceCompletes).toBe(true);
-    expect(v(0.861).holdS).toBeCloseTo(0.461, 3);
-    // And it names where that would stop being true.
     expect(v(0.39).entranceCompletes).toBe(false);
+  });
+});
+
+/**
+ * **The three sizing rules, so whichever the user picks is already proven.**
+ *
+ * Block 10 session 37 built `sora` at all three for him to look at. Only the
+ * first is in force; the other two are here so that adopting one is a change to
+ * the builder and not to what is known about it. Each case says where that rule
+ * breaks, which is the part a reel cannot be asked.
+ */
+describe('the three sizing rules, and where each one breaks', () => {
+  const generous = { above: 1050, beside: 800 };
+  const tight = { above: 669, beside: 633 };
+
+  it('A — one size, the reel minimum: correct, consistent, and falls as slots are added', () => {
+    const reel = reelOf([generous, generous, tight, generous]);
+    expect(Math.round(reel.commonSidePx)).toBe(669);
+    expect(new Set(reel.slots.map((s) => Math.round(s.rect.w * FRAME_WIDTH))).size).toBe(1);
+    // Where it breaks: one tight slot, and every other picture follows it down.
+    expect(Math.round(Math.max(...reel.slots.map((s) => s.givesUpPx)))).toBe(381);
+  });
+
+  it('B — one size at a floor, with a slot below it left at its own maximum', () => {
+    const floorPx = 799;
+    const slots = [generous, generous, tight, generous];
+    const placed = slots.map((s, i) =>
+      topLeftPlacementDetail({ faceBox: faceAt(s.above, s.beside), seed: `b${i}`, sidePx: floorPx }),
+    );
+    const sizes = placed.map((d) => Math.round(d.rect.w * FRAME_WIDTH));
+    expect(sizes).toEqual([799, 799, 669, 799]);
+    // Where it breaks: the reel is no longer one size, and the floor is a
+    // number no video can be asked for — it has to come from the user's eye.
+    expect(new Set(sizes).size).toBe(2);
+    for (let i = 0; i < slots.length; i++) {
+      const face = faceAt(slots[i].above, slots[i].beside);
+      expect(placementIsSafe(placed[i].rect, face)).toEqual({
+        insideFrame: true,
+        clearsFace: true,
+      });
+    }
+  });
+
+  it('C — each slot at its own maximum: largest, safe, and as varied as the speaker', () => {
+    const slots = [generous, generous, tight, generous];
+    const placed = slots.map((s, i) =>
+      topLeftPlacementDetail({ faceBox: faceAt(s.above, s.beside), seed: `c${i}` }),
+    );
+    const sizes = placed.map((d) => Math.round(d.rect.w * FRAME_WIDTH));
+    expect(sizes).toEqual([1050, 1050, 669, 1050]);
+    // Where it breaks: the spread is whatever the speaker does. It is bounded
+    // by nothing the tool controls, so a reel where he moves a lot reads as
+    // inconsistent — which is the reason the one-size rule exists.
+    expect(Math.max(...sizes) - Math.min(...sizes)).toBe(381);
+    for (let i = 0; i < slots.length; i++) {
+      const face = faceAt(slots[i].above, slots[i].beside);
+      expect(placementIsSafe(placed[i].rect, face)).toEqual({
+        insideFrame: true,
+        clearsFace: true,
+      });
+    }
   });
 });
