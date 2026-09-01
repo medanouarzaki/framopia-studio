@@ -31,6 +31,7 @@ import { buildRecordFor } from './build-record.js';
 import { runBuildReel } from './drive.js';
 import { emitBuildStage } from './stages.js';
 import { imageSize } from './image-size.js';
+import { pictureLives, type Handover } from './picture-life.js';
 import { contentBoxes } from './content-box.js';
 import { assertAllPlaced, assertPathsPresent, type PathRef } from './preflight.js';
 import { resolveClientIdentity } from './client-identity.js';
@@ -305,9 +306,75 @@ function overriddenPlacements(
   };
 }
 
+/*
+ * **A diagnostic, and nothing that decides a build.** The user's ruling of
+ * 1 September is that a picture stays until the next one appears, with no void
+ * between them. Block 10 session 39 measured the ruling before building it and
+ * found two things it did not anticipate, both in `reports/block-10-session-39.md`:
+ * on `test-1` a picture would sit motionless for 7.2s, outliving the sentence it
+ * illustrates by the same, and a plain hand-over leaves the corner empty for the
+ * 0.4s the next picture takes to fade up — the void again, in a new place. So the
+ * mechanism exists and is proven, the reel rule is untouched, and he looks at the
+ * two files before it becomes what every reel does.
+ *
+ *   --images-continuous cut        a picture ends the frame the next one appears
+ *   --images-continuous dissolve   it stays under the next one until that one
+ *                                  has finished appearing, so the corner is
+ *                                  never empty between two pictures
+ */
+const continuousFlag = flag('images-continuous');
+if (continuousFlag !== undefined && continuousFlag !== 'cut' && continuousFlag !== 'dissolve') {
+  console.error(`--images-continuous wants "cut" or "dissolve", not "${continuousFlag}"`);
+  process.exit(2);
+}
+/**
+ * The image template's authored entrance, read out of the audit rather than
+ * typed: the length of the opacity ramp on `IMG_MAIN`. A template re-authored
+ * to a slower fade moves the dissolve with it.
+ */
+function authoredEntranceS(templateId: string): number {
+  const comp = audit.find((c) => c.name === templateId);
+  const layer = comp?.layers.find((l) => l.name === 'IMG_MAIN');
+  const opacity = layer?.animated?.find((a) => a.path === 'Transform/Opacity');
+  const last = opacity?.keys?.[opacity.keys.length - 1]?.time;
+  if (typeof last !== 'number' || last <= 0) {
+    throw new Error(
+      `templates/library.audit.json has no opacity ramp on ${templateId}/IMG_MAIN; ` +
+        'run npm run audit:templates',
+    );
+  }
+  return last;
+}
+const handover: Handover =
+  continuousFlag === undefined
+    ? { kind: 'words' }
+    : continuousFlag === 'cut'
+      ? { kind: 'cut' }
+      : { kind: 'dissolve', crossFadeS: authoredEntranceS(CARD_TEMPLATE) };
+const lives = pictureLives(
+  plan.images.slots.map((s) => ({ id: s.id, start: s.start, end: s.end })),
+  handover,
+);
+const screenEnd = new Map(lives.map((l) => [l.id, l.screenEndS]));
+if (continuousFlag !== undefined && lives.length > 0) {
+  const longest = lives.reduce((a, b) => (b.screenEndS - b.start > a.screenEndS - a.start ? b : a));
+  console.log(
+    `--images-continuous ${continuousFlag}: pictures hand over rather than ending with ` +
+      `their words; the longest is on screen ${(longest.screenEndS - longest.start).toFixed(2)}s ` +
+      `(${longest.id})`,
+  );
+}
+
 const imagePlacements: Record<string, { x: number; y: number; w: number; h: number }> = {};
+/*
+ * **Sized over the whole life, never over the words.** A picture that outlives
+ * its sentence is on screen while the speaker keeps moving, and the corner that
+ * held it when it appeared may not hold it later. Session 39 measured that:
+ * sizing `sora`'s `img002` over its words and holding it to the next picture
+ * puts it 376px across him.
+ */
 const slotFaces = new Map(
-  plan.images.slots.map((slot) => [slot.id, faceSpan(slot.start, slot.end)]),
+  plan.images.slots.map((slot) => [slot.id, faceSpan(slot.start, screenEnd.get(slot.id) ?? slot.end)]),
 );
 /*
  * **A diagnostic override, and nothing that decides a build.** The reel rule is
@@ -398,6 +465,7 @@ const built = buildReel({
   // Derived here from the reel's own face masks rather than read from a side
   // file the build would otherwise depend on being regenerated.
   topLeftFor: (slotId: string) => imagePlacements[slotId],
+  pictureScreenEndFor: (slotId: string) => screenEnd.get(slotId),
   cardTemplateId: CARD_TEMPLATE,
   introFor: (id) => entries.get(id)?.introS ?? 0,
   minHoldFor: (id) => entries.get(id)?.minHoldS ?? 0,

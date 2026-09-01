@@ -196,6 +196,15 @@ export function buildReel(options: {
   candidateFileFor: (slotId: string) => { path: string; id: string } | null;
   /** Where the top-left rule put this slot, in frame fractions. */
   topLeftFor?: (slotId: string) => { x: number; y: number; w: number; h: number } | undefined;
+  /**
+   * When each picture's layer leaves, from `pictureLives`.
+   *
+   * Absent means a picture ends with its own words, which is what every build
+   * did before Block 10 session 39. It is never computed here: the caller that
+   * sizes the picture has to size it over the same span, and one declaration of
+   * that span is the only way the two cannot disagree.
+   */
+  pictureScreenEndFor?: (slotId: string) => number | undefined;
   /** Forced template for every image slot; the user ruled every image framed. */
   cardTemplateId?: string;
   /** The face, size and colour for one card. Absent leaves the template's own. */
@@ -211,6 +220,7 @@ export function buildReel(options: {
   }[];
 }): ReelBuild {
   const { plan, audit, introFor, minHoldFor, sfxFileFor, candidateFileFor, topLeftFor, cardTemplateId } = options;
+  const screenEndFor = options.pictureScreenEndFor ?? ((): undefined => undefined);
   const styleFor = options.textStyleFor ?? ((): undefined => undefined);
   const shadowsFor = options.shadowLayersFor ?? ((): string[] => []);
   const shortened: { id: string; stretchPercent: number; introS: number; onFloor: boolean }[] = [];
@@ -384,15 +394,16 @@ export function buildReel(options: {
      * hold, so a template rebuilt to a different duration moves this with it
      * and nothing here carries a number of its own.
      */
-    const placement: ReelPlacement = {
-      elementId: slot.id, kind: 'image', inPointS: slot.start, outPointS: slot.end,
+    const wordsEnd = slot.end;
+    const held = (arg: number): ReelPlacement => ({
+      elementId: slot.id, kind: 'image', inPointS: slot.start, outPointS: arg,
       positionX, positionY, scalePercent,
-      ...(slot.end - slot.start > c.duration + 1e-9
-        ? { holdLastFrameFromS: c.duration }
-        : {}),
-    };
-    placementsA.push(placement);
-    placementsC.push({ ...placement });
+      ...(arg - slot.start > c.duration + 1e-9 ? { holdLastFrameFromS: c.duration } : {}),
+    });
+    placementsA.push(held(wordsEnd));
+    // C is the comp that is delivered, and the only one the handover applies
+    // to: A exists to be compared against, so it keeps the words' own span.
+    placementsC.push(held(Math.max(wordsEnd, screenEndFor(slot.id) ?? wordsEnd)));
   }
 
   const audio = plan.sfx.events.map((e) => ({
