@@ -15,7 +15,6 @@ import { runPipeline } from './pipeline.js';
 import { editPlanPathFor, readEditPlan } from './editplan/io.js';
 import { reelMasksDir } from './frames/segment.js';
 import { reelFramesDir } from './frames/sample.js';
-import { pictureLives } from './build/picture-life.js';
 import { buildReel } from './build/reel-plan.js';
 import { buildChoiceFor } from './build/choose-candidate.js';
 import { buildRequirements, missingRequirements, readBuildDisk } from './build/requirements.js';
@@ -430,19 +429,19 @@ describe.skipIf(!ready)('a video the tool has never seen', () => {
      * disappeared 24.5 frames before its sentence ended, on `vitasilk` 18
      * frames, on `test-1` 6.6. Nothing compared the window to the template.
      *
-     * The user's ruling is that a picture holds its last frame until its words
-     * finish, so what is asserted is the whole window — every slot longer than
-     * its template must carry the hold, and none may be shorter than the
-     * entrance. Both bounds are the template's own figures, read from the audit
-     * and the manifest, never numbers chosen against a reel.
+     * A picture now outlives its words by construction — it holds until the
+     * next one arrives — so what is asserted is that no picture is *shorter*
+     * than its own words, and that none is shorter than its entrance. Both
+     * bounds are the template's own figures, read from the audit and the
+     * manifest, never numbers chosen against a reel.
      */
     const imageComp = audit.comps.find((c) => c.name === 'img_float');
     expect(imageComp, 'img_float missing from the audit').toBeDefined();
     const templateDurationS = (imageComp as AuditComp).duration;
     const entranceS = entries.get('img_float')?.introS ?? 0;
     expect(entranceS).toBeGreaterThan(0);
-    const holds = new Map(
-      built.placementsA
+    const placedImages = new Map(
+      built.placementsC
         .filter((p) => p.kind === 'image')
         .map((p) => [p.elementId, p] as const),
     );
@@ -451,19 +450,12 @@ describe.skipIf(!ready)('a video the tool has never seen', () => {
     for (const slot of plan.images.slots) {
       const windowS = slot.end - slot.start;
       if (windowS < entranceS - 1e-6) cutShort.push(`${slot.id} ${windowS.toFixed(3)}s`);
-      const placement = holds.get(slot.id);
+      const placement = placedImages.get(slot.id);
       expect(placement, `${slot.id} was not placed`).toBeDefined();
-      // The out point is the words' own end, whatever the template's length.
-      expect(`${slot.id} ${(placement as { outPointS: number }).outPointS.toFixed(3)}`).toBe(
-        `${slot.id} ${slot.end.toFixed(3)}`,
-      );
-      const needsHold = windowS > templateDurationS + 1e-9;
-      const hasHold =
-        (placement as { holdLastFrameFromS?: number }).holdLastFrameFromS !== undefined;
-      if (needsHold !== hasHold) {
+      const outPointS = (placement as { outPointS: number }).outPointS;
+      if (outPointS < slot.end - 1e-6) {
         endsEarly.push(
-          `${slot.id} runs ${windowS.toFixed(3)}s against a ${templateDurationS.toFixed(3)}s ` +
-            `template and ${hasHold ? 'holds' : 'does not hold'}`,
+          `${slot.id} leaves at ${outPointS.toFixed(3)}s with words running to ${slot.end.toFixed(3)}s`,
         );
       }
     }
@@ -473,59 +465,44 @@ describe.skipIf(!ready)('a video the tool has never seen', () => {
     /*
      * **No void between two pictures**, on a video the tool has never seen.
      *
-     * The user's ruling of 1 September. The handover is not yet what a plain
-     * build does — Block 10 session 39 measured it first and reported two
-     * consequences he has to look at before it becomes the rule — so what is
-     * asserted here is the mechanism over this video's real slot times: every
-     * picture but the last leaves no earlier than the next one arrives, and the
+     * The user's ruling of 1 September, and the rule since he chose the cut
+     * over the dissolve. Asserted over this video's real slot times: every
+     * picture but the last leaves exactly when the next one arrives, and the
      * last still ends with its own words.
      */
-    for (const handover of [{ kind: 'cut' as const }, { kind: 'dissolve' as const, crossFadeS: entranceS }]) {
-      const lives = pictureLives(
-        plan.images.slots.map((s) => ({ id: s.id, start: s.start, end: s.end })),
-        handover,
+    const pictures = built.placementsC
+      .filter((p) => p.kind === 'image')
+      .sort((a, b) => a.inPointS - b.inPointS);
+    expect(pictures.length, 'too few pictures for this shape to prove anything')
+      .toBeGreaterThanOrEqual(shape.minPictures);
+    const voids = pictures
+      .slice(0, -1)
+      .map((p, i) => ({
+        id: p.elementId,
+        gap: (pictures[i + 1] as { inPointS: number }).inPointS - p.outPointS,
+      }))
+      .filter((g) => Math.abs(g.gap) > 1e-9)
+      .map((g) => `${g.id} leaves ${g.gap.toFixed(3)}s from the next arriving`);
+    expect(voids, 'a picture that does not hand straight over to the next').toEqual([]);
+    const last = pictures[pictures.length - 1] as { elementId: string; outPointS: number };
+    const lastSlot = plan.images.slots.find((s) => s.id === last.elementId);
+    expect(last.outPointS).toBeCloseTo(lastSlot?.end as number, 9);
+    // Held longer than the template means held, and the entrance is never stretched.
+    for (const p of pictures) {
+      const runsS = p.outPointS - p.inPointS;
+      const holds = (p as { holdLastFrameFromS?: number }).holdLastFrameFromS !== undefined;
+      expect(`${p.elementId} ${holds ? 'holds' : 'plain'}`).toBe(
+        `${p.elementId} ${runsS > templateDurationS + 1e-9 ? 'holds' : 'plain'}`,
       );
-      const screenEnd = new Map(lives.map((l) => [l.id, l.screenEndS]));
-      const continuous = buildReel({
-        plan,
-        audit: audit.comps,
-        cardTemplateId: 'img_float',
-        topLeftFor: (id) => rects.get(id),
-        introFor: (id) => entries.get(id)?.introS ?? 0,
-        minHoldFor: (id) => entries.get(id)?.minHoldS ?? 0,
-        sfxFileFor: (id) => path.join(REPO_ROOT, 'assets', 'sfx', `${id}.wav`),
-        candidateFileFor: (slotId) => {
-          const slot = plan.images.slots.find((s) => s.id === slotId);
-          if (slot === undefined) return null;
-          const choice = buildChoiceFor(slot);
-          const c = slot.candidates.find((x) => x.id === choice.candidateId);
-          return c === undefined ? null : { path: c.path, id: c.id };
-        },
-        pictureScreenEndFor: (id) => screenEnd.get(id),
-      });
-      const pictures = continuous.placementsC
-        .filter((p) => p.kind === 'image')
-        .sort((a, b) => a.inPointS - b.inPointS);
-      expect(pictures.length, 'too few pictures for this shape to prove anything')
-        .toBeGreaterThanOrEqual(shape.minPictures);
-      const voids = pictures
-        .slice(0, -1)
-        .map((p, i) => ({ id: p.elementId, gap: (pictures[i + 1] as { inPointS: number }).inPointS - p.outPointS }))
-        .filter((g) => g.gap > 1e-9)
-        .map((g) => `${g.id} leaves ${g.gap.toFixed(3)}s before the next arrives`);
-      expect(voids, `a void between two pictures under a ${handover.kind} handover`).toEqual([]);
-      const last = pictures[pictures.length - 1];
-      const lastSlot = plan.images.slots.find((s) => s.id === last?.elementId);
-      expect((last as { outPointS: number }).outPointS).toBeCloseTo(lastSlot?.end as number, 9);
-      // Held longer than the template means held, and the entrance is never stretched.
-      for (const p of pictures) {
-        const runsS = p.outPointS - p.inPointS;
-        expect(
-          `${p.elementId} ${(p as { holdLastFrameFromS?: number }).holdLastFrameFromS === undefined ? 'plain' : 'holds'}`,
-        ).toBe(`${p.elementId} ${runsS > templateDurationS + 1e-9 ? 'holds' : 'plain'}`);
-        expect((p as { stretchPercent?: number }).stretchPercent).toBeUndefined();
-      }
+      expect((p as { stretchPercent?: number }).stretchPercent).toBeUndefined();
     }
+    // A and C say the same thing about a picture; only cards differ between them.
+    const picturesA = built.placementsA
+      .filter((p) => p.kind === 'image')
+      .sort((a, b) => a.inPointS - b.inPointS);
+    expect(picturesA.map((p) => `${p.elementId} ${p.outPointS.toFixed(6)}`)).toEqual(
+      pictures.map((p) => `${p.elementId} ${p.outPointS.toFixed(6)}`),
+    );
   }, 900_000);
 });
 

@@ -23,43 +23,32 @@ export interface PictureLife extends PictureWindow {
   screenEndS: number;
 }
 
-export type Handover =
-  /** A picture ends with its own words. The corner is empty between pictures. */
-  | { kind: 'words' }
-  /** A picture ends the frame the next one appears. */
-  | { kind: 'cut' }
-  /**
-   * A picture stays under the next one until that one has finished appearing.
-   *
-   * `crossFadeS` is the template's own authored entrance, passed in by the
-   * caller that read it — nothing here carries a duration of its own, so a
-   * template re-authored to a different entrance moves this with it.
-   */
-  | { kind: 'dissolve'; crossFadeS: number };
-
 /**
  * Every picture's screen life, in the order the windows were given.
  *
- * The last picture ends with its own words under every handover: the ruling
- * names the next picture as what a picture waits for, and where there is none
- * there is nothing to wait for. Holding it to the end of the reel would be a
- * second ruling nobody has given.
+ * **The user's ruling of 1 September**, given after looking at his own reel
+ * built two ways: *"The images shouldn't cut off. After each image appears, it
+ * should stay until the next one appears. They should be consecutive. There is
+ * no void between them, layer after layer."* A picture leaves on the frame the
+ * next one arrives — he was shown that against a version where the outgoing
+ * picture stayed underneath for the length of the incoming one's fade, and
+ * chose this one.
+ *
+ * The last picture ends with its own words: the ruling names the next picture
+ * as what a picture waits for, and where there is none there is nothing to wait
+ * for. Holding it to the end of the reel would be a second ruling nobody has
+ * given.
  */
-export function pictureLives(windows: PictureWindow[], handover: Handover): PictureLife[] {
+export function pictureLives(windows: PictureWindow[]): PictureLife[] {
   const order = windows.map((w, i) => ({ w, i })).sort((a, b) => a.w.start - b.w.start || a.i - b.i);
   const endFor = new Map<string, number>();
 
   order.forEach(({ w }, position) => {
     const next = order[position + 1]?.w;
-    if (handover.kind === 'words' || next === undefined) {
-      endFor.set(w.id, w.end);
-      return;
-    }
-    const lead = handover.kind === 'dissolve' ? handover.crossFadeS : 0;
     // A slot whose words outlast the next slot's start would otherwise be cut
     // short by the handover; the words always win. `planSlots` forbids the
     // overlap that would cause it, but this module does not depend on that.
-    endFor.set(w.id, Math.max(w.end, next.start + lead));
+    endFor.set(w.id, next === undefined ? w.end : Math.max(w.end, next.start));
   });
 
   return windows.map((w) => ({ ...w, screenEndS: endFor.get(w.id) as number }));
