@@ -284,18 +284,22 @@ for (const detail of reelPlaced.slots) {
   if (faceBox === null) {
     // The requirements check above refuses a reel with no masks, so reaching
     // here means the masks exist and cover no frame of this slot's window.
+    // No command and no terminal: the pipeline's own "Looking at the video"
+    // stage is what re-samples and re-segments a reel.
+    const slot = plan.images.slots.find((x) => x.id === detail.id);
     console.error(
-      `${detail.id}: the face masks cover no frame between ${detail.id} start and end, so ` +
-        'there is nothing to place this picture clear of. Re-sample the reel with ' +
-        'npm run frames -- --reel <label> --force, then npm run segment.',
+      `${detail.id}: this reel was looked at, but no frame between ` +
+        `${(slot?.start ?? 0).toFixed(1)}s and ${(slot?.end ?? 0).toFixed(1)}s found the ` +
+        'speaker, so there is nothing to place this picture clear of. Run the pipeline for ' +
+        'this video again to look at it afresh.',
     );
     process.exit(1);
   }
   const safe = placementIsSafe(detail.rect, faceBox);
   if (!safe.insideFrame || !safe.clearsFace) {
     console.error(
-      `${detail.id}: placement ${safe.insideFrame ? '' : 'leaves the frame'}` +
-        `${safe.clearsFace ? '' : 'overlaps the speaker’s face'}`,
+      `${detail.id}: this picture would ${safe.insideFrame ? '' : 'fall outside the frame'}` +
+        `${safe.clearsFace ? '' : 'cover the speaker’s face'}, so nothing was built`,
     );
     process.exit(1);
   }

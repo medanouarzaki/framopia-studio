@@ -459,7 +459,22 @@ export async function runPipeline(options: RunPipelineOptions): Promise<Pipeline
     if (existing !== null && existing.images.slots.length === 0) {
       return { skipped: true, reason: 'no image slots on the plan' };
     }
-    if (existing?.pipeline.images.status === 'done' && !wants('images')) {
+    /*
+     * **`pipeline.images` says `done` before a single picture exists.** The
+     * *slot* stage writes that record when it plans the slots, so a plan can
+     * hold slots, zero candidates and a done image stage at once — and reading
+     * the record alone meant a first run on a new video planned eleven slots,
+     * skipped the pictures with "already on the plan", and reported every stage
+     * green. The user's reel only has its pictures because he pressed the
+     * panel's *Make the pictures*, which sends `redo`.
+     *
+     * The pictures decide, not the record: a stage that has produced no
+     * candidate has not been done. Block 10 session 32 made the dry run read it
+     * the same way. The double-write itself is untouched and still open.
+     */
+    const illustrated =
+      existing !== null && existing.images.slots.every((slot) => slot.candidates.length > 0);
+    if (existing?.pipeline.images.status === 'done' && illustrated && !wants('images')) {
       return { skipped: true, reason: 'already on the plan' };
     }
     if (planPath === null) return { skipped: true, reason: 'no plan to illustrate' };

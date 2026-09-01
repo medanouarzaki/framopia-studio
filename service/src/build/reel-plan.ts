@@ -294,8 +294,32 @@ export function buildReel(options: {
       skipped.push({ id: slot.id, kind: 'image', reason: 'no templateId' });
       continue;
     }
-    if (slot.position == null || slot.scale == null) {
-      skipped.push({ id: slot.id, kind: 'image', reason: 'no Block 5 placement' });
+    /*
+     * **Where this picture goes, from either of the two things that can say.**
+     *
+     * `topLeftFor` is the live answer, computed from this reel's own face masks
+     * by the top-left rule (Block 7 session 9), and it is what every build
+     * with masks actually uses. `slot.position`/`slot.scale` are the older
+     * zone-solved values, written onto a plan by `npm run place` — a terminal
+     * command that no pipeline stage runs — and they are only the fallback for
+     * a reel with no masks.
+     *
+     * This asked for the fallback and refused without it, so a video that had
+     * never been through that terminal command was told **"11 element(s) have
+     * no placement"** while the builder had already computed all eleven
+     * placements from its masks a hundred lines earlier. The five corpus reels
+     * were exempt only because a session had run the command for them months
+     * ago. A slot is unplaceable when neither source can say where it goes, and
+     * not before.
+     */
+    const derived = topLeftFor?.(slot.id);
+    const stored = slot.position != null && slot.scale != null;
+    if (derived === undefined && !stored) {
+      skipped.push({
+        id: slot.id,
+        kind: 'image',
+        reason: 'nothing says where this picture goes: no face masks for it, and no saved placement',
+      });
       continue;
     }
     const chosen = candidateFileFor(slot.id);
@@ -321,15 +345,17 @@ export function buildReel(options: {
      * computed from the slot's own face-mask span; without one the solved zone
      * placement is used, so a reel with no masks still builds.
      */
-    const placed = topLeftFor?.(slot.id);
+    const placed = derived;
     const scalePercent = placed === undefined
-      ? slot.scale * 100
+      ? (slot.scale as number) * 100
       : (placed.w * FRAME_WIDTH) / c.width * 100;
     const positionX = placed === undefined
-      ? slot.position.x * plan.source.width + (c.width * slot.scale) / 2
+      ? (slot.position as { x: number }).x * plan.source.width +
+        (c.width * (slot.scale as number)) / 2
       : (placed.x + placed.w / 2) * plan.source.width;
     const positionY = placed === undefined
-      ? slot.position.y * plan.source.height + (c.width * slot.scale) / 2
+      ? (slot.position as { y: number }).y * plan.source.height +
+        (c.width * (slot.scale as number)) / 2
       : (placed.y + placed.h / 2) * plan.source.height;
 
     const placement: ReelPlacement = {
