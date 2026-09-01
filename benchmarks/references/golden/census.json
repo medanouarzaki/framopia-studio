@@ -1,12 +1,12 @@
 {
   "schemaVersion": 1,
   "recordedBy": "npm run golden -- --record",
-  "recordedAt": "2026-09-01T01:35:23.275Z",
+  "recordedAt": "2026-09-01T11:16:54.559Z",
   "recordedOn": {
-    "machine": "192.168.1.5",
+    "machine": "MacBook-Air-3.local",
     "aeVersion": "26.0x67",
     "fontNames": 1198,
-    "commit": "34cc56b50427eaa975f169a49fb0c592186d53cc"
+    "commit": "8b60ef1e7faee9b18c0c850c1f53c3a5b266e85f"
   },
   "excluded": [
     {
@@ -315,7 +315,7 @@
               "inPoint": 19.719010677344,
               "index": 6,
               "name": "img004__img_float",
-              "outPoint": 21.721012679346,
+              "outPoint": 21.939981648315,
               "position": [
                 550.040954589844,
                 523.200012207031
@@ -365,7 +365,7 @@
               "inPoint": 4.59901568234902,
               "index": 8,
               "name": "img002__img_float",
-              "outPoint": 6.60101768435102,
+              "outPoint": 6.75900900900901,
               "position": [
                 550.498474121094,
                 523.200012207031
@@ -19186,7 +19186,7 @@
               "inPoint": 20,
               "index": 7,
               "name": "img005__img_float",
-              "outPoint": 22.002002002002,
+              "outPoint": 22.038997330664,
               "position": [
                 516.357116699219,
                 483.200012207031
@@ -19236,7 +19236,7 @@
               "inPoint": 11.618993993994,
               "index": 9,
               "name": "img003__img_float",
-              "outPoint": 13.620995995996,
+              "outPoint": 13.960001668335,
               "position": [
                 525.471862792969,
                 483.200012207031
@@ -19261,7 +19261,7 @@
               "inPoint": 6.25900900900901,
               "index": 10,
               "name": "img002__img_float",
-              "outPoint": 8.26101101101101,
+              "outPoint": 8.85998498498498,
               "position": [
                 483.200012207031,
                 513.852722167969

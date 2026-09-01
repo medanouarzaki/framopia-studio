@@ -48,7 +48,13 @@ import {
   WATERMARK_DURATION_S,
 } from '../placement/constants.js';
 import { assertBeepsFitWatermark, placeWatermark, watermarkEnabled, watermarkSizeOf } from '../placement/watermark.js';
-import { placementIsSafe, reelPlacements } from '../placement/top-left.js';
+import {
+  placementIsSafe,
+  reelPlacements,
+  topLeftPlacementDetail,
+} from '../placement/top-left.js';
+import { FRAME_WIDTH } from '../placement/constants.js';
+import type { Rect } from '../placement/geometry.js';
 import {
   buildReel,
   auditedSolid,
@@ -261,22 +267,79 @@ const imageScale = identity.snapshot?.imageScale ?? 1;
  * pinned path would break the moment one is moved or replaced.
  */
 const placementModeId = flag('mode') ?? plan.clientMode?.id;
+/**
+ * The `--image-size` override, kept beside its flag rather than in the
+ * placement module: it is a way of looking at a reel, not a rule a build
+ * follows, and `reelPlacements` stays the single declaration of the rule.
+ *
+ * Either way each slot is clamped to what its own corner holds, which is what
+ * makes an oversized request safe — it is refused for that slot rather than
+ * granted across the speaker.
+ */
+function overriddenPlacements(
+  slots: { id: string; faceBox: Rect | null; seed: string }[],
+  spec: string,
+): ReturnType<typeof reelPlacements> {
+  const asked = spec === 'max' ? null : Number(spec);
+  if (asked !== null && (!Number.isFinite(asked) || asked <= 0)) {
+    console.error(`--image-size wants a size in pixels or "max", not "${spec}"`);
+    process.exit(1);
+  }
+  const placed = slots.map((slot) => {
+    const own = topLeftPlacementDetail(slot);
+    const ownMaxPx = own.rect.w * FRAME_WIDTH;
+    const detail =
+      asked === null ? own : topLeftPlacementDetail({ ...slot, sidePx: asked });
+    return {
+      id: slot.id,
+      ownMaxPx,
+      givesUpPx: ownMaxPx - detail.rect.w * FRAME_WIDTH,
+      ...detail,
+    };
+  });
+  const sizes = placed.map((p) => p.rect.w * FRAME_WIDTH);
+  return {
+    slots: placed,
+    commonSidePx: sizes.length === 0 ? 0 : Math.min(...sizes),
+    setBy: null,
+  };
+}
+
 const imagePlacements: Record<string, { x: number; y: number; w: number; h: number }> = {};
 const slotFaces = new Map(
   plan.images.slots.map((slot) => [slot.id, faceSpan(slot.start, slot.end)]),
 );
-const reelPlaced = reelPlacements(
-  plan.images.slots.map((slot) => ({
-    id: slot.id,
-    faceBox: slotFaces.get(slot.id) ?? null,
-    seed: `${plan.meta.id}:${slot.id}`,
-  })),
-  { scale: imageScale },
-);
+/*
+ * **A diagnostic override, and nothing that decides a build.** The reel rule is
+ * that every picture is drawn at the size the tightest slot can hold (the
+ * user's ruling of 2026-08-29), and Block 10 session 36 measured what that
+ * costs a long reel: `sora`'s eleven slots could hold 669 to 1085 px and every
+ * one was drawn at 669. He judges sizes by eye, so this exists to build the
+ * same reel at more than one size for him to look at. Absent, the rule is
+ * exactly what it was.
+ *
+ *   --image-size <px>   one size for the reel, each slot still clamped to its
+ *                       own corner so a tight slot stays smaller rather than
+ *                       being drawn across the speaker
+ *   --image-size max    every slot at its own corner's maximum
+ */
+const imageSizeFlag = flag('image-size');
+const slotInputs = plan.images.slots.map((slot) => ({
+  id: slot.id,
+  faceBox: slotFaces.get(slot.id) ?? null,
+  seed: `${plan.meta.id}:${slot.id}`,
+}));
+const reelPlaced =
+  imageSizeFlag === undefined
+    ? reelPlacements(slotInputs, { scale: imageScale })
+    : overriddenPlacements(slotInputs, imageSizeFlag);
 if (reelPlaced.slots.length > 0) {
   console.log(
-    `every picture in this reel is ${reelPlaced.commonSidePx.toFixed(0)}px, ` +
-      `the largest ${reelPlaced.setBy} can hold`,
+    imageSizeFlag === undefined
+      ? `every picture in this reel is ${reelPlaced.commonSidePx.toFixed(0)}px, ` +
+          `the largest ${reelPlaced.setBy} can hold`
+      : `--image-size ${imageSizeFlag}: sizes are overridden for looking at, ` +
+          'not by the reel rule',
   );
 }
 for (const detail of reelPlaced.slots) {
