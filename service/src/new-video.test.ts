@@ -77,8 +77,8 @@ interface Shape {
   draft: { text: string; start: number; end: number }[];
   /** What the keyword model would have answered, replayed from here instead. */
   keywordCandidates: { wordIds: string[]; score: number; reason: string; kind: string }[];
-  /** What the slot model would have answered. */
-  slotCandidates: { wordIds: string[]; idea: string; score: number }[];
+  /** What the slot model would have answered, including the word each picture is about. */
+  slotCandidates: { wordIds: string[]; idea: string; score: number; nameWordId?: string }[];
   /**
    * How many pictures this shape must actually reach the builder with.
    *
@@ -87,6 +87,9 @@ interface Shape {
    * and spread rules decide how many of the candidates survive.
    */
   minPictures: number;
+  /** How many pictures must end up arriving at a named word, and how many not. */
+  namedPictures: number;
+  unnamedPictures: number;
 }
 
 /** Two Arabic words and two Latin ones, with timings a 6s clip can hold. */
@@ -105,8 +108,15 @@ const SHAPES: Shape[] = [
     seconds: 6,
     draft: DRAFT,
     keywordCandidates: [{ wordIds: ['w0004', 'w0005'], score: 0.95, reason: 'the claim', kind: 'promise' }],
-    slotCandidates: [{ wordIds: ['w0002', 'w0003'], idea: 'a single silk ribbon', score: 0.9 }],
+    // The naming word is the last word of the span: the picture arrives late
+    // inside it, and it is also the reel's last picture, so the entrance floor
+    // is the thing being exercised.
+    slotCandidates: [
+      { wordIds: ['w0002', 'w0003'], idea: 'a single silk ribbon', score: 0.9, nameWordId: 'w0003' },
+    ],
     minPictures: 1,
+    namedPictures: 1,
+    unnamedPictures: 0,
   },
   {
     label: 'another video with its pictures far apart',
@@ -120,29 +130,40 @@ const SHAPES: Shape[] = [
       { text: 'ونضارة', start: 8.35, end: 8.9 },
     ],
     keywordCandidates: [{ wordIds: ['w0000', 'w0001'], score: 0.9, reason: 'the greeting', kind: 'promise' }],
+    // One picture named, one not: the hand-over has to hold across both.
     slotCandidates: [
-      { wordIds: ['w0000', 'w0001'], idea: 'a calm open horizon', score: 0.9 },
+      { wordIds: ['w0000', 'w0001'], idea: 'a calm open horizon', score: 0.9, nameWordId: 'w0001' },
       { wordIds: ['w0004', 'w0005'], idea: 'a drop of water on skin', score: 0.7 },
     ],
     minPictures: 2,
+    namedPictures: 1,
+    unnamedPictures: 1,
   },
   {
     label: 'a third video whose pictures run into each other',
-    seconds: 10,
+    // Its own length and its own words: the slot cache keys on the video's
+    // sha256 and on the word **text**, not on the timings, so a shape that
+    // reuses another's words silently reuses its answer too. This test found
+    // that by asserting which name reached the plan.
+    seconds: 11,
     draft: [
-      { text: 'السلام', start: 0.4, end: 1.6 },
-      { text: 'عليكم', start: 2.2, end: 3.4 },
-      { text: 'Vita', start: 4.0, end: 5.2 },
-      { text: 'Silk', start: 5.8, end: 7.0 },
-      { text: 'البشرة', start: 7.4, end: 8.2 },
-      { text: 'ونضارة', start: 8.4, end: 9.2 },
+      { text: 'مرحبا', start: 0.4, end: 1.6 },
+      { text: 'بيكم', start: 2.2, end: 3.4 },
+      { text: 'Aqua', start: 4.0, end: 5.2 },
+      { text: 'Derm', start: 5.8, end: 7.0 },
+      { text: 'الشعر', start: 7.4, end: 8.2 },
+      { text: 'وقوة', start: 8.4, end: 9.2 },
     ],
     keywordCandidates: [{ wordIds: ['w0002', 'w0003'], score: 0.9, reason: 'the brand', kind: 'promise' }],
+    // A word the transcript does not contain, and a word from the wrong slot:
+    // neither may reach the plan, and neither may move a picture.
     slotCandidates: [
-      { wordIds: ['w0000', 'w0001'], idea: 'a calm open horizon', score: 0.9 },
-      { wordIds: ['w0002', 'w0003'], idea: 'a single silk ribbon', score: 0.8 },
+      { wordIds: ['w0000', 'w0001'], idea: 'a calm open horizon', score: 0.9, nameWordId: 'w9999' },
+      { wordIds: ['w0002', 'w0003'], idea: 'a single silk ribbon', score: 0.8, nameWordId: 'w0005' },
     ],
     minPictures: 2,
+    namedPictures: 0,
+    unnamedPictures: 2,
   },
 ];
 
@@ -496,6 +517,50 @@ describe.skipIf(!ready)('a video the tool has never seen', () => {
       );
       expect((p as { stretchPercent?: number }).stretchPercent).toBeUndefined();
     }
+    /*
+     * **A picture arrives at the word the model said it is about.**
+     *
+     * The user's ruling of 1 September, and the reason slot prompt v3 asks the
+     * question at all. What is asserted is the whole of it on a video the tool
+     * has never seen: a named word inside the span moves the picture to it, a
+     * word the transcript does not contain never reaches the plan, a word
+     * belonging to another slot never reaches it either, and a picture whose
+     * span the model named nothing in still arrives with its sentence.
+     */
+    const wordStart = new Map(plan.transcript.words.map((w) => [w.id, w.start]));
+    const asked = new Map(shape.slotCandidates.map((c) => [c.wordIds.join(' '), c.nameWordId]));
+    let checkedNamed = 0;
+    let checkedUnnamed = 0;
+    for (const slot of plan.images.slots) {
+      const wanted = asked.get(slot.wordIds.join(' '));
+      const legitimate = wanted !== undefined && slot.wordIds.includes(wanted);
+      // A word outside the span, or one the transcript never had, is dropped
+      // rather than absorbed: the plan must not carry it at all.
+      expect(
+        `${slot.id} nameWordId ${String(slot.nameWordId)}`,
+        'a name the model gave that does not belong to this slot reached the plan',
+      ).toBe(`${slot.id} nameWordId ${legitimate ? wanted : 'undefined'}`);
+
+      const placement = placedImages.get(slot.id) as { inPointS: number };
+      if (legitimate) {
+        checkedNamed += 1;
+        const at = wordStart.get(wanted) as number;
+        const latest = Math.max(slot.start, slot.end - entranceS);
+        expect(placement.inPointS).toBeCloseTo(Math.min(at, latest), 6);
+      } else {
+        checkedUnnamed += 1;
+        expect(placement.inPointS).toBeCloseTo(slot.start, 6);
+      }
+      // Never outside its own span, whatever the model said.
+      expect(placement.inPointS).toBeGreaterThanOrEqual(slot.start - 1e-9);
+      expect(placement.inPointS).toBeLessThanOrEqual(slot.end - entranceS + 1e-9);
+    }
+    // Both branches have to have been reached across the three shapes, or the
+    // assertion above is a shape of test this project has already been bitten by.
+    expect(
+      `${shape.label}: ${checkedNamed} named, ${checkedUnnamed} unnamed`,
+    ).toBe(`${shape.label}: ${shape.namedPictures} named, ${shape.unnamedPictures} unnamed`);
+
     // A and C say the same thing about a picture; only cards differ between them.
     const picturesA = built.placementsA
       .filter((p) => p.kind === 'image')

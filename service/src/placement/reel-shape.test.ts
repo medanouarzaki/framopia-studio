@@ -310,3 +310,70 @@ describe('a picture that outlives its words stays clear of the speaker', () => {
     expect(reel.slots.map((s) => Math.round(s.rect.w * FRAME_WIDTH))).toEqual([690, 870, 1180]);
   });
 });
+
+/**
+ * **A picture that arrives at the word it is about is on screen for less time,
+ * so it is sized over less of the speaker's movement.**
+ *
+ * The user's ruling of 1 September. The sizing rule did not change — the face
+ * box is still unioned over the picture's whole life — but the life now begins
+ * later, so a slot whose speaker moves during the words it no longer covers can
+ * be drawn larger. What must not change is that it is still clear of him for
+ * every frame it is actually up.
+ *
+ * Synthetic movement over invented boxes; nothing here reads a reel.
+ */
+describe('a picture that arrives at its naming word', () => {
+  function faceOver(positions: number[]): Rect {
+    const boxes = positions.map((above) => faceAt(above, above - 40));
+    return {
+      x: Math.min(...boxes.map((b) => b.x)),
+      y: Math.min(...boxes.map((b) => b.y)),
+      w: 0.3,
+      h: 0.3,
+    };
+  }
+
+  /** He leans forward early in the sentence and sits back for the rest of it. */
+  const wholeSpan = [700, 690, 1040, 1050, 1045];
+  const fromTheNamingWord = [1040, 1050, 1045];
+
+  it('is drawn larger when the movement it skips was the tightest', () => {
+    const overWholeSpan = topLeftPlacementDetail({ faceBox: faceOver(wholeSpan), seed: 'late' });
+    const overItsOwnLife = topLeftPlacementDetail({
+      faceBox: faceOver(fromTheNamingWord),
+      seed: 'late',
+    });
+    expect(Math.round(overWholeSpan.rect.w * FRAME_WIDTH)).toBe(690);
+    expect(Math.round(overItsOwnLife.rect.w * FRAME_WIDTH)).toBe(1040);
+  });
+
+  it('is still clear of the speaker for every frame it is up', () => {
+    const detail = topLeftPlacementDetail({ faceBox: faceOver(fromTheNamingWord), seed: 'late' });
+    expect(placementIsSafe(detail.rect, faceOver(fromTheNamingWord))).toEqual({
+      insideFrame: true,
+      clearsFace: true,
+    });
+  });
+
+  /**
+   * And the bound the ruling could have broken: a picture may not be sized from
+   * a life it does not have. Sizing from the naming word onward while the layer
+   * still arrives with the sentence would put it across him for the seconds in
+   * between — 1040 px where only 690 px is clear.
+   */
+  it('would be over the speaker if it were sized from later than it arrives', () => {
+    const sizedFromTheNamingWord = topLeftPlacementDetail({
+      faceBox: faceOver(fromTheNamingWord),
+      seed: 'late',
+    });
+    expect(placementIsSafe(sizedFromTheNamingWord.rect, faceOver(wholeSpan)).clearsFace).toBe(false);
+  });
+
+  it('changes nothing when the speaker does not move before the naming word', () => {
+    const still = [1050, 1048, 1045, 1046];
+    const whole = topLeftPlacementDetail({ faceBox: faceOver(still), seed: 'steady' });
+    const later = topLeftPlacementDetail({ faceBox: faceOver(still.slice(2)), seed: 'steady' });
+    expect(Math.round(later.rect.w * FRAME_WIDTH)).toBe(Math.round(whole.rect.w * FRAME_WIDTH));
+  });
+});
