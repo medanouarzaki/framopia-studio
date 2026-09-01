@@ -224,11 +224,29 @@ read by two callers that must not disagree: `build-reel-cli` sizes each picture
 from the face mask over the span it returns, and `reel-plan` sets the layer's
 out point from it.
 
+**A picture arrives at the word it is about** — the user's ruling of
+1 September. It was placed across the whole span it was given, so it appeared
+where the sentence begins rather than where the thing it depicts is named.
+Nothing on disk can identify that word: the transcript is Arabic, the idea is
+English, and Block 10 session 40 measured a text match firing on 1 of 26 slots.
+So **slot prompt v3 asks the model**, which chose the span and wrote the idea in
+the same breath, and the answer rides on the slot as `nameWordId` — optional
+with a default, absent meaning the span's start. A picture may start later
+inside its own span and nowhere else, and never so late that its entrance could
+not finish inside its own words.
+
 **A picture stays until the next one appears** — the user's ruling of
 1 September, given after looking at his own reel built two ways. A picture leaves
 on the frame the next one arrives; the alternative he was shown, where the
 outgoing picture stayed underneath for the length of the incoming one's 0.4004 s
-fade, was rejected. There is no option and nothing to select between.
+fade, was rejected. There is no option and nothing to select between. **The
+hand-over is to the next picture's arrival**, so a picture that now arrives later
+also leaves later and there is still no gap.
+
+**A picture's sound follows the picture.** The whoosh leads it by about 17
+frames, so `analysis/sfx` places it from the same `pictureStartOf` the builder
+lays the layer from; taking the span's start there would land the sound before
+anything appeared.
 
 **The face box is unioned over the whole life, never over the words.** Sizing a
 picture over its words and then holding it past them is unsafe by construction:

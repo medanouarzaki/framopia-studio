@@ -204,6 +204,15 @@ handful used in an ordinary session and points here for the rest.
   a reel rather than for building one, and absent, a build is byte for byte what
   it was: `--image-size <px|max>` draws the pictures at a size other than the
   rule's.
+- `npm run adopt:name-words -- --plan <abs path.editplan.json> [--mode <id>]
+  [--apply]` — **billable once per reel, ~$0.09, then free from the cache.**
+  Asks the slot model which word each picture is about and takes **that field
+  alone** onto a plan that already has slots. Additive by design: re-planning
+  replaces `plan.images.slots` wholesale and the call is not reproducible, so it
+  would throw away pictures already generated — `sora`'s eleven cost $3.37. A
+  slot only gets a word when the model returned its span unchanged, or exactly
+  one span inside it. Re-derives the SFX so the whoosh follows the picture.
+  Dry-run by default; prints every slot and what the model said.
 - `npm run migrate:alignment [-- --apply]` — free, local, **$0.00 and no API
   call**. Re-aligns every plan from its resolved transcription cache entry under
   the adopted transliteration cost and rewrites the word timings, then recomputes

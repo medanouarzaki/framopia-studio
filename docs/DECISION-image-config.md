@@ -590,3 +590,95 @@ pictures are not on disk.
 - `core/src/model-config.json` — pricing, both model ids.
 - `core/src/pricing.ts` — `IMAGE_COST_MULTIPLIER` and its ten observed ratios.
 - `service/src/images/config.ts` — resolution and candidate bounds.
+
+## Amendment (2026-09-01) — slot prompt v3 asks which word the picture is about
+
+**Adopted and live.** `ACTIVE_SLOT_PROMPT_VERSION` is **3**, and the slot
+response carries one new optional field, `nameWordId`.
+
+### What it fixes
+
+A picture was placed across the whole span of words the model gave it, so it
+arrived where the sentence begins rather than where the thing it depicts is
+named. On `sora` a stock doctor appeared on *"hello"*, **1.4 s before** she says
+*"I am Dr Lobna Kfafi"* — the user's own complaint. Block 10 session 40 measured
+it across the project: of 26 slots, **6 started on the naming word, 19 started
+0.10–1.58 s early, and 1 had no naming word at all** because its idea was a
+metaphor for the whole sentence.
+
+Session 40 also established that **nothing on disk can identify the word.** The
+transcript is Arabic, the idea is English, and matching one against the other
+fires on 1 of 26 slots and 0 of 11 on `sora`. There are no per-word tags; the
+keyword stage covers 8 of 26 slots and not that one; `transcript.terms` is
+orthography segmentation. A greeting-skip list would work on `sora` and is a
+value fitted to one reel's language.
+
+The model chose the span and wrote the idea in the same breath, so it is the
+only thing that knows, and it was never asked.
+
+### The change
+
+One question added to the prompt, in its own idiom, and one key in the response
+shape:
+
+> Also give the one word_id in that span that the picture is about — the word
+> naming the thing the image shows, so the picture can appear as it is said
+> rather than at the start of the sentence. It must be one of the word_ids you
+> gave for that slot. When the idea carries the mood or the outcome of the whole
+> sentence and no single word names it, give null.
+
+**`null` is the answer for a metaphor**, and it is the right one: session 40's
+`img008` — *"a scale balancing a syringe and vegetables"* over *"I combine
+aesthetic medicine and nutrition"* — depicts a balance of two things, and no
+single word names it. The planner keeps such a slot exactly as it was: the
+picture arrives with its sentence, which is what every plan did before v3.
+
+**Optional with a default, per the standing schema rule.** Absent means the
+span's start. The six existing plans stayed valid with no migration, and
+`npm run golden` did not move on their account.
+
+### What it cost, and whether it works
+
+**One call, on `sora`, $0.086570.** Projected $0.096 from the v2 call on the
+same reel; ceiling $0.35.
+
+**The model named a word on 21 of the 22 candidates it returned**, and declined
+on exactly the one that should have declined — the balance-scale idea. Judged
+against session 40's hand-read table, it agreed on every slot the two both
+covered.
+
+### The cache, and who re-bills
+
+`promptVersion` is part of the slot cache fingerprint
+(`analysis/fingerprint.ts`), so **v3 invalidates every reel's slot entry.** That
+is correct — a v2 answer has no `nameWordId` and must not be served for a v3
+prompt — and it is nearly free, because `slotsReplacementFlags` refuses to
+re-plan a reel that has generated candidates before any call is made:
+
+| reel | slot cache | would a v3 bump re-bill it? |
+|---|---|---|
+| sora | 1 entry, v2 | **no** — 11 candidates, the re-plan is refused |
+| test-1 | 2 entries, v1 | **no** — 4 candidates, refused |
+| vitasilk | 2 entries, v1 | **no** — 5 candidates, refused |
+| ground-truth | 1 entry, v2 | **yes**, ~$0.065 — 6 slots, no candidates |
+| test-2 | none | already bills; nothing is lost |
+| test-3 | none | already bills; nothing is lost |
+
+**One reel of six**, and it is the one already unable to build.
+
+### Where it breaks
+
+- **A span the model no longer returns.** Adopting the field onto an existing
+  plan matches candidates to slots by span; `sora`'s `img004` and `img011` were
+  not returned at all and still arrive with their sentences.
+- **A naming word near the end of its span.** A picture may not arrive so late
+  that its entrance could not finish inside its own words, so it is pulled back
+  to `end − entrance`, the entrance being the template's authored opacity ramp
+  read from the audit.
+- **A word outside the span, or one the transcript never had.** Dropped at the
+  parser, again at `planSlots`, and refused by the plan validator. A picture may
+  start later inside its own span and nowhere else.
+- **The version labels the cache entry; it does not select a prompt.**
+  `buildSlotPrompt` takes a version and never branches on it, so asking for v1
+  returns today's text. The keyword prompt beside it does branch. Recorded at
+  session 41 rather than changed.
