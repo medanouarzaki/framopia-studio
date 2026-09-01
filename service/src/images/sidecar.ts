@@ -15,6 +15,16 @@ import { REPO_ROOT } from '@framopia/core';
 export const SIDECAR_DIR = path.join(REPO_ROOT, 'tools', 'cv');
 export const SIDECAR_PYTHON = path.join(SIDECAR_DIR, '.venv', 'bin', 'python');
 
+/**
+ * `FRAMOPIA_SIDECAR_DIR` runs a scratch package instead, so a sidecar that dies
+ * can be watched without touching the real one — the device
+ * `FRAMOPIA_REFERENCE_ROOT` gives the reference gate. The interpreter is always
+ * the real venv's: the crash being reproduced is Python's, not this repo's.
+ */
+function sidecarCwd(): string {
+  return process.env['FRAMOPIA_SIDECAR_DIR'] ?? SIDECAR_DIR;
+}
+
 export class SidecarError extends Error {
   constructor(
     message: string,
@@ -72,9 +82,37 @@ export interface RemoveBgResult {
   ocr?: SidecarOcr;
 }
 
+/**
+ * How a child process ended, in words, or null when it ended normally.
+ *
+ * The exit status was **not read at all** until Block 10 session 32:
+ * `child.on('close', () => …)` took no arguments, so a process that died by
+ * signal was indistinguishable from one that returned 0. That was invisible
+ * rather than harmless — 29 Python crash reports had accumulated on the user's
+ * machine since 25 August and nothing in this project had ever mentioned one.
+ */
+function abnormalExit(code: number | null, signal: NodeJS.Signals | null): string | null {
+  if (signal !== null) return `it was killed by ${signal}`;
+  if (code !== null && code !== 0) return `it exited ${String(code)}`;
+  return null;
+}
+
+/**
+ * Reports a sidecar that did its work and then died on the way out.
+ *
+ * Replaceable so a test can watch it without reading the service's log.
+ */
+export let reportAbnormalExit: (message: string) => void = (message) => {
+  console.error(message);
+};
+
+export function setAbnormalExitReporter(report: (message: string) => void): void {
+  reportAbnormalExit = report;
+}
+
 export function runSidecar<T>(request: Record<string, unknown>): Promise<T> {
   return new Promise((resolve, reject) => {
-    const child = spawn(SIDECAR_PYTHON, ['-m', 'framopia_cv.cli'], { cwd: SIDECAR_DIR });
+    const child = spawn(SIDECAR_PYTHON, ['-m', 'framopia_cv.cli'], { cwd: sidecarCwd() });
     let out = '';
     let err = '';
     child.stdout.on('data', (chunk) => (out += String(chunk)));
@@ -82,18 +120,50 @@ export function runSidecar<T>(request: Record<string, unknown>): Promise<T> {
     child.on('error', (error) =>
       reject(new SidecarError(`could not start the sidecar: ${error.message}. ` +
         'Run tools/cv/setup.sh.', err)));
-    child.on('close', () => {
+    child.on('close', (code, signal) => {
+      const died = abnormalExit(code, signal);
+      const task = String(request['task'] ?? 'unknown');
       let parsed: unknown;
       try {
         parsed = JSON.parse(out);
       } catch {
-        reject(new SidecarError(`sidecar stdout was not JSON: ${out.slice(0, 200)}`, err));
+        /*
+         * Without the exit status this said only "stdout was not JSON", which
+         * for a process that aborted names the symptom and not the cause. The
+         * empty-output case is the common one and it is what a crash mid-work
+         * looks like.
+         */
+        reject(
+          new SidecarError(
+            died === null
+              ? `the picture tools answered nothing readable for ${task}: ${out.slice(0, 200)}`
+              : `the picture tools stopped during ${task} — ${died}, and wrote ` +
+                `${out.length === 0 ? 'nothing' : 'only part of an answer'}`,
+            err,
+          ),
+        );
         return;
       }
       const record = parsed as { ok?: boolean; error?: string };
       if (record.ok !== true) {
         reject(new SidecarError(`sidecar failed: ${record.error ?? 'no reason given'}`, err));
         return;
+      }
+      /*
+       * **A complete answer and an abnormal exit at the same time is the shape
+       * this project actually has.** onnxruntime's bundled telemetry aborts
+       * during static destruction — the main thread is inside `exit()` while a
+       * worker thread throws a `system_error` from a mutex that is already
+       * gone — so the work is finished and the JSON is flushed before the
+       * process dies. Failing on the exit status alone would have broken the
+       * image stage, which is why the answer decides and the death is reported
+       * rather than raised.
+       */
+      if (died !== null) {
+        reportAbnormalExit(
+          `sidecar: ${task} finished and answered, then the process died — ${died}. ` +
+            'The result was used; see ~/Library/Logs/DiagnosticReports for the crash.',
+        );
       }
       resolve(parsed as T);
     });
