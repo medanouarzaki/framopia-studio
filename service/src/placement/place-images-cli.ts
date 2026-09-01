@@ -8,6 +8,8 @@ import { FRAME_HEIGHT, FRAME_WIDTH, HEAD_CLEARANCE, TOP_LEFT_MARGIN } from './co
 import { type Rect } from './geometry.js';
 import { placementIsSafe, reelPlacements } from './top-left.js';
 import { reelMasksDir } from '../frames/segment.js';
+import { pictureLives, pictureWindows } from '../build/picture-life.js';
+import { imageEntranceS } from '../analysis/template-impacts.js';
 
 /**
  * Where each image slot goes, per reel, and what the change from the corner is
@@ -52,28 +54,38 @@ for (const file of readdirSync(FOOTAGE_DIR).filter((f) => f.endsWith('.editplan.
   const faces = maskBoxes(reel, 'face');
   const sampleFps = plan.zones.sampleFps || 2;
 
-  const spanBox = (slot: ImageSlot): Rect | null => {
-    if (faces === null) return null;
-    const boxes = faces
+  /*
+   * The frames of the picture's **life**, one box each — the same two things
+   * the builder reads. This report existed to say whether a picture clears the
+   * speaker, and a report computing its own answer from the words' span and a
+   * union would now disagree with the build about both.
+   */
+  const wordStartById = new Map(plan.transcript.words.map((w) => [w.id, w.start]));
+  const lives = new Map(
+    pictureLives(
+      pictureWindows(plan.images.slots, (id) => wordStartById.get(id)),
+      imageEntranceS(),
+    ).map((l) => [l.id, l]),
+  );
+  const spanBoxes = (slot: ImageSlot): Rect[] => {
+    if (faces === null) return [];
+    const life = lives.get(slot.id);
+    const from = life?.screenStartS ?? slot.start;
+    const to = life?.screenEndS ?? slot.end;
+    return faces
       .filter((f) => {
         const t = Number(f.index) / sampleFps;
-        return f.box !== null && t >= slot.start - 1 / sampleFps && t <= slot.end + 1 / sampleFps;
+        return f.box !== null && t >= from - 1 / sampleFps && t <= to + 1 / sampleFps;
       })
-      .map((f) => f.box as [number, number, number, number]);
-    if (boxes.length === 0) return null;
-    const x0 = Math.min(...boxes.map((b) => b[0]));
-    const y0 = Math.min(...boxes.map((b) => b[1]));
-    return {
-      x: x0,
-      y: y0,
-      w: Math.max(...boxes.map((b) => b[2])) - x0,
-      h: Math.max(...boxes.map((b) => b[3])) - y0,
-    };
+      .map((f) => {
+        const b = f.box as [number, number, number, number];
+        return { x: b[0], y: b[1], w: b[2] - b[0], h: b[3] - b[1] };
+      });
   };
 
   const out: Record<string, Rect> = {};
   const faceBoxes = new Map(
-    (plan.images.slots as ImageSlot[]).map((slot) => [slot.id, spanBox(slot)]),
+    (plan.images.slots as ImageSlot[]).map((slot) => [slot.id, spanBoxes(slot)]),
   );
   const reel_ = reelPlacements(
     (plan.images.slots as ImageSlot[]).map((slot) => ({
@@ -91,13 +103,13 @@ for (const file of readdirSync(FOOTAGE_DIR).filter((f) => f.endsWith('.editplan.
   }
   for (const detail of reel_.slots) {
     const slot = { id: detail.id };
-    const faceBox = faceBoxes.get(detail.id) ?? null;
+    const framesForSlot = faceBoxes.get(detail.id) ?? [];
     const rect = detail.rect;
     if (detail.clamped) clamped += 1;
     out[slot.id] = rect;
     placedTotal += 1;
 
-    if (faceBox === null) {
+    if (framesForSlot.length === 0) {
       // A slot with no face box used to be reported as clearing the face, which
       // is how a 2030 px picture across the speaker passed this report.
       console.error(
@@ -107,7 +119,13 @@ for (const file of readdirSync(FOOTAGE_DIR).filter((f) => f.endsWith('.editplan.
       faceHits += 1;
       continue;
     }
-    const safe = placementIsSafe(rect, faceBox);
+    // Every frame of the life, not their union: the union is neither what the
+    // size is taken from nor what has to be clear.
+    const perFrame = framesForSlot.map((b) => placementIsSafe(rect, b));
+    const safe = {
+      insideFrame: perFrame.every((r) => r.insideFrame),
+      clearsFace: perFrame.every((r) => r.clearsFace),
+    };
     if (!safe.insideFrame) escapes += 1;
     if (!safe.clearsFace) faceHits += 1;
     const px = (v: number): string => (v * FRAME_WIDTH).toFixed(0);
@@ -120,7 +138,7 @@ for (const file of readdirSync(FOOTAGE_DIR).filter((f) => f.endsWith('.editplan.
         `  nudged ${detail.offsetPx.x.toFixed(0)}px right, ${detail.offsetPx.y.toFixed(0)}px down` +
         `  clears face ${safe.clearsFace ? 'yes' : 'NO'}, in frame ${safe.insideFrame ? 'yes' : 'NO'}` +
         `${detail.clamped ? `  (asked ${detail.wantedSidePx.toFixed(0)}px, corner holds ${detail.cornerSidePx.toFixed(0)})` : ''}` +
-        `${faceBox === null ? '  [no face mask; frame-bounded only]' : ''}`,
+        `  over ${framesForSlot.length} frame(s) of its life`,
     );
     sides.push(rect.w * FRAME_WIDTH);
   }

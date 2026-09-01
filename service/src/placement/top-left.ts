@@ -30,8 +30,19 @@ import { unitStream } from './solve.js';
  * is the third time in this block the same mistake has been found.
  */
 export interface TopLeftInput {
-  /** Union of the face mask over the frames this slot is on screen, in fractions. */
-  faceBox: Rect | null;
+  /**
+   * The face mask over the frames this slot is on screen, in frame fractions.
+   *
+   * **One box per sampled frame, not their union.** A union is a box the
+   * speaker is never actually inside: it pairs the leftmost she reaches in one
+   * frame with the highest she reaches in another, and the corner is then sized
+   * for a position that never happens. On `sora` that cost `img002` 272 px —
+   * its life spans a cut from a standing shot to a seated one, and the union of
+   * the two framings is larger than either. Block 10 session 42.
+   *
+   * A single box is still accepted and means exactly what it did before.
+   */
+  faceBox: Rect | Rect[] | null;
   /** Deterministic per slot, so two runs place identically. */
   seed: string;
   marginW?: number;
@@ -98,15 +109,27 @@ export function topLeftPlacementDetail(input: TopLeftInput): TopLeftDetail {
   const jitter = input.jitter ?? TOP_LEFT_POSITION_JITTER;
   const scale = input.scale ?? 1;
 
+  const boxes =
+    input.faceBox === null ? [] : Array.isArray(input.faceBox) ? input.faceBox : [input.faceBox];
+
   const byFramePx = Math.min(FRAME_WIDTH - 2 * marginPx, FRAME_HEIGHT - 2 * marginPx);
   let cornerSidePx = byFramePx;
   let boundBy: TopLeftDetail['boundBy'] = 'the frame';
 
-  if (input.faceBox !== null) {
-    // Stop before the speaker's left edge, or above the top of his head,
-    // whichever leaves the larger square. Both measured from the margin.
-    const besidePx = input.faceBox.x * FRAME_WIDTH - clearancePx - marginPx;
-    const abovePx = input.faceBox.y * FRAME_HEIGHT - clearancePx - marginPx;
+  /*
+   * **The largest square that is clear at every frame, which is not the same as
+   * the largest square clear of every frame's union.**
+   *
+   * A square is clear at one frame if it stops before the speaker's left edge
+   * *or* above the top of her head — either separation is enough on its own. So
+   * the largest square that is safe for a whole life is the smallest, across
+   * the frames, of each frame's own better bound. Taking the union first and
+   * then the better bound is a different and always smaller number, because the
+   * union's left edge and its top edge can come from different frames.
+   */
+  for (const box of boxes) {
+    const besidePx = box.x * FRAME_WIDTH - clearancePx - marginPx;
+    const abovePx = box.y * FRAME_HEIGHT - clearancePx - marginPx;
     const bestPx = Math.max(besidePx, abovePx);
     if (bestPx < cornerSidePx) {
       cornerSidePx = bestPx;
@@ -119,12 +142,18 @@ export function topLeftPlacementDetail(input: TopLeftInput): TopLeftDetail {
   const wantedSidePx = cornerSidePx * scale;
   const sidePx = Math.min(input.sidePx ?? wantedSidePx, cornerSidePx);
 
-  // The face box grown by the clearance, in pixels. The grow is the same figure
-  // on both axes here; it is only the fractions that have different denominators.
+  /*
+   * The face grown by the clearance, in pixels — and here the **union across
+   * the life is the right box**, unlike the size above. Jitter is only ever
+   * offered a move that one bound already guarantees on its own, and a move
+   * that is safe at every frame has to clear the extreme of every frame. The
+   * size is the smallest per-frame allowance; the nudge is bounded by the
+   * union. They are different questions and take different boxes.
+   */
   const faceX0Px =
-    input.faceBox === null ? null : input.faceBox.x * FRAME_WIDTH - clearancePx;
+    boxes.length === 0 ? null : Math.min(...boxes.map((b) => b.x)) * FRAME_WIDTH - clearancePx;
   const faceY0Px =
-    input.faceBox === null ? null : input.faceBox.y * FRAME_HEIGHT - clearancePx;
+    boxes.length === 0 ? null : Math.min(...boxes.map((b) => b.y)) * FRAME_HEIGHT - clearancePx;
 
   const draw = unitStream(`${input.seed}:topleft`);
   const jitterPx = jitter * FRAME_WIDTH;
@@ -192,7 +221,8 @@ export function placementIsSafe(
 
 export interface ReelSlotInput {
   id: string;
-  faceBox: Rect | null;
+  /** One box per sampled frame of this slot's life; a single box still works. */
+  faceBox: Rect | Rect[] | null;
   seed: string;
 }
 

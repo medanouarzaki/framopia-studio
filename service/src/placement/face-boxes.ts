@@ -5,6 +5,8 @@ import { REPO_ROOT } from '@framopia/core';
 import type { EditPlan } from '../editplan/types.js';
 import type { Rect } from './geometry.js';
 import { reelMasksDir } from '../frames/segment.js';
+import { pictureLives, pictureWindows } from '../build/picture-life.js';
+import { imageEntranceS } from '../analysis/template-impacts.js';
 
 /**
  * Each image slot's face box: the union of the face mask over the frames the
@@ -26,8 +28,8 @@ interface MaskFrame {
   box: [number, number, number, number] | null;
 }
 
-export function faceBoxesFor(plan: EditPlan): Map<string, Rect> {
-  const boxes = new Map<string, Rect>();
+export function faceBoxesFor(plan: EditPlan): Map<string, Rect[]> {
+  const boxes = new Map<string, Rect[]>();
   const dir = reelMasksDir(plan.source.videoPath);
   if (!existsSync(dir) || !existsSync(PY)) return boxes;
 
@@ -46,22 +48,35 @@ export function faceBoxesFor(plan: EditPlan): Map<string, Rect> {
   }
 
   const fps = plan.zones.sampleFps || 2;
+  /*
+   * Over the picture's **life**, not its words, and as the frames themselves
+   * rather than their union — the same two things the builder does, because a
+   * panel that predicts a different size from the one the build draws is worse
+   * than one that predicts none.
+   */
+  const wordStartById = new Map(plan.transcript.words.map((w) => [w.id, w.start]));
+  const entranceS = imageEntranceS();
+  const lives = new Map(
+    pictureLives(
+      pictureWindows(plan.images.slots, (id) => wordStartById.get(id)),
+      entranceS,
+    ).map((l) => [l.id, l]),
+  );
   for (const slot of plan.images.slots) {
+    const life = lives.get(slot.id);
+    const from = life?.screenStartS ?? slot.start;
+    const to = life?.screenEndS ?? slot.end;
     const spans = frames
       .filter((f) => {
         const t = Number(f.index) / fps;
-        return f.box !== null && t >= slot.start - 1 / fps && t <= slot.end + 1 / fps;
+        return f.box !== null && t >= from - 1 / fps && t <= to + 1 / fps;
       })
       .map((f) => f.box as [number, number, number, number]);
     if (spans.length === 0) continue;
-    const x0 = Math.min(...spans.map((b) => b[0]));
-    const y0 = Math.min(...spans.map((b) => b[1]));
-    boxes.set(slot.id, {
-      x: x0,
-      y: y0,
-      w: Math.max(...spans.map((b) => b[2])) - x0,
-      h: Math.max(...spans.map((b) => b[3])) - y0,
-    });
+    boxes.set(
+      slot.id,
+      spans.map((b) => ({ x: b[0], y: b[1], w: b[2] - b[0], h: b[3] - b[1] })),
+    );
   }
   return boxes;
 }

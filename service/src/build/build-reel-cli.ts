@@ -201,22 +201,48 @@ const faceFrames: MaskFrame[] = existsSync(maskDir) && existsSync(MASK_PY)
     ) as { frames: MaskFrame[] }).frames
   : [];
 
-function faceSpan(startS: number, endS: number): { x: number; y: number; w: number; h: number } | null {
+/**
+ * Every sampled frame the speaker is in, over the span, one box each.
+ *
+ * **Not their union**, which is a box she is never inside: it pairs the
+ * leftmost she reaches in one frame with the highest she reaches in another.
+ * `sora`'s `img002` spans a cut from a standing shot to a seated one, and the
+ * union of the two framings sized its picture for a position that happens in
+ * neither — 669 px where every single frame of its life allows at least 941.
+ *
+ * The half-sample of slack at each end is what catches a movement that begins
+ * just outside the span; at 2 fps a frame between samples is not measured at
+ * all, and `HEAD_CLEARANCE` is what absorbs that.
+ */
+function faceSpan(startS: number, endS: number): { x: number; y: number; w: number; h: number }[] {
   const fps = plan.zones.sampleFps || 2;
-  const boxes = faceFrames
+  return faceFrames
     .filter((f) => {
       const t = Number(f.index) / fps;
       return f.box !== null && t >= startS - 1 / fps && t <= endS + 1 / fps;
     })
-    .map((f) => f.box as [number, number, number, number]);
+    .map((f) => {
+      const b = f.box as [number, number, number, number];
+      return { x: b[0], y: b[1], w: b[2] - b[0], h: b[3] - b[1] };
+    });
+}
+
+/**
+ * The one box containing every frame's.
+ *
+ * Right for the watermark, which is placed once for a fixed run and only has to
+ * avoid the speaker wherever she goes in it; wrong for sizing a picture, which
+ * is why `faceSpan` returns the frames themselves.
+ */
+function unionOf(boxes: { x: number; y: number; w: number; h: number }[]): Rect | null {
   if (boxes.length === 0) return null;
-  const x0 = Math.min(...boxes.map((b) => b[0]));
-  const y0 = Math.min(...boxes.map((b) => b[1]));
+  const x = Math.min(...boxes.map((b) => b.x));
+  const y = Math.min(...boxes.map((b) => b.y));
   return {
-    x: x0,
-    y: y0,
-    w: Math.max(...boxes.map((b) => b[2])) - x0,
-    h: Math.max(...boxes.map((b) => b[3])) - y0,
+    x,
+    y,
+    w: Math.max(...boxes.map((b) => b.x + b.w)) - x,
+    h: Math.max(...boxes.map((b) => b.y + b.h)) - y,
   };
 }
 
@@ -279,7 +305,7 @@ const placementModeId = flag('mode') ?? plan.clientMode?.id;
  * granted across the speaker.
  */
 function overriddenPlacements(
-  slots: { id: string; faceBox: Rect | null; seed: string }[],
+  slots: { id: string; faceBox: Rect | Rect[] | null; seed: string }[],
   spec: string,
 ): ReturnType<typeof reelPlacements> {
   const asked = spec === 'max' ? null : Number(spec);
@@ -361,11 +387,14 @@ const slotFaces = new Map(
  *   --image-size max    every slot at its own corner's maximum
  */
 const imageSizeFlag = flag('image-size');
-const slotInputs = plan.images.slots.map((slot) => ({
-  id: slot.id,
-  faceBox: slotFaces.get(slot.id) ?? null,
-  seed: `${plan.meta.id}:${slot.id}`,
-}));
+const slotInputs = plan.images.slots.map((slot) => {
+  const frames = slotFaces.get(slot.id) ?? [];
+  return {
+    id: slot.id,
+    faceBox: frames.length === 0 ? null : frames,
+    seed: `${plan.meta.id}:${slot.id}`,
+  };
+});
 const reelPlaced =
   imageSizeFlag === undefined
     ? reelPlacements(slotInputs, { scale: imageScale })
@@ -381,8 +410,8 @@ if (reelPlaced.slots.length > 0) {
   );
 }
 for (const detail of reelPlaced.slots) {
-  const faceBox = slotFaces.get(detail.id) ?? null;
-  if (faceBox === null) {
+  const faceFramesForSlot = slotFaces.get(detail.id) ?? [];
+  if (faceFramesForSlot.length === 0) {
     // The requirements check above refuses a reel with no masks, so reaching
     // here means the masks exist and cover no frame of this slot's window.
     // No command and no terminal: the pipeline's own "Looking at the video"
@@ -396,11 +425,21 @@ for (const detail of reelPlaced.slots) {
     );
     process.exit(1);
   }
-  const safe = placementIsSafe(detail.rect, faceBox);
-  if (!safe.insideFrame || !safe.clearsFace) {
+  /*
+   * **Asserted at every frame of the picture's life, not against their union.**
+   * The union is the wrong box to size against and it is the wrong box to check
+   * against too: what has to be true is that the picture is clear of the
+   * speaker in every frame it is actually on screen.
+   */
+  const unsafeAt = faceFramesForSlot
+    .map((box, i) => ({ i, safe: placementIsSafe(detail.rect, box) }))
+    .filter((r) => !r.safe.insideFrame || !r.safe.clearsFace);
+  if (unsafeAt.length > 0) {
+    const first = unsafeAt[0] as { safe: { insideFrame: boolean; clearsFace: boolean } };
     console.error(
-      `${detail.id}: this picture would ${safe.insideFrame ? '' : 'fall outside the frame'}` +
-        `${safe.clearsFace ? '' : 'cover the speaker’s face'}, so nothing was built`,
+      `${detail.id}: this picture would ${first.safe.insideFrame ? '' : 'fall outside the frame'}` +
+        `${first.safe.clearsFace ? '' : 'cover the speaker’s face'} in ` +
+        `${unsafeAt.length} of ${faceFramesForSlot.length} frames of its life, so nothing was built`,
     );
     process.exit(1);
   }
@@ -639,7 +678,7 @@ if (!watermarkEnabled(plan.watermark)) {
         h: side / plan.source.height,
       };
     });
-  const wmFace = faceSpan(0, outPointS);
+  const wmFace = unionOf(faceSpan(0, outPointS));
   const placed = placeWatermark({
     faceBox: wmFace,
     occupied,
