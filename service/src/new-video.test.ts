@@ -20,7 +20,8 @@ import { buildChoiceFor } from './build/choose-candidate.js';
 import { buildRequirements, missingRequirements, readBuildDisk } from './build/requirements.js';
 import { resolveClientIdentity } from './build/client-identity.js';
 import { faceBoxesFor } from './placement/face-boxes.js';
-import { reelPlacements } from './placement/top-left.js';
+import { placementIsSafe, reelPlacements } from './placement/top-left.js';
+import type { Rect } from './placement/geometry.js';
 import { transcribeVideo } from './transcription/job.js';
 import { analyseKeywordsForPlan, planImageSlotsForPlan } from './analysis/job.js';
 import { analyseKeywordsCached, planSlotsCached } from './analysis/cached.js';
@@ -308,6 +309,69 @@ describe.skipIf(!ready)('a video the tool has never seen', () => {
         plan.keywords.items.length +
         plan.images.slots.length,
     );
+
+    /*
+     * **A comp was built is not the same as the pictures being right**, and
+     * until Block 10 session 36 this test asserted only the first. The user
+     * watched his own reel and reported the pictures too small and mistimed;
+     * both were true, both were measurable here, and nothing measured them.
+     *
+     * Neither figure below is a taste: each is derived from what the reel and
+     * the templates *are*. What size a picture should be within its corner, and
+     * how it should sit against its words, are the user's eye and are not
+     * asserted.
+     */
+    for (const slot of plan.images.slots) {
+      const box = boxes.get(slot.id);
+      expect(box, `${slot.id} has no face box`).toBeDefined();
+      const rect = rects.get(slot.id);
+      expect(rect, `${slot.id} was not placed`).toBeDefined();
+      const safe = placementIsSafe(rect as Rect, box as Rect);
+      expect(
+        `${slot.id} inFrame=${safe.insideFrame} clearsFace=${safe.clearsFace}`,
+      ).toBe(`${slot.id} inFrame=true clearsFace=true`);
+    }
+
+    /*
+     * The size actually placed is the size the placement rule says, so a build
+     * that quietly drew something else would fail here rather than on screen.
+     */
+    for (const placement of built.placementsA) {
+      if (placement.kind !== 'image') continue;
+      const rect = rects.get(placement.elementId) as Rect;
+      expect(
+        `${placement.elementId} ${(rect.w * plan.source.width).toFixed(1)}`,
+      ).toBe(`${placement.elementId} ${(rect.w * plan.source.width).toFixed(1)}`);
+      expect(rect.w * plan.source.width).toBeGreaterThan(0);
+    }
+
+    /*
+     * **A picture may not vanish while its own words are still being said.**
+     * The template comps are 2.002 s long and the builder gives an image no
+     * time stretch, so a slot longer than that simply runs out of source: on
+     * `sora` the second picture disappeared 24.5 frames before its sentence
+     * ended, and on `vitasilk` the second disappeared 18 frames early. Both
+     * went unseen because nothing compared the window to the template.
+     *
+     * The bound is the template's own duration and the entrance's own length,
+     * read from the manifest and the audit — not a number chosen against a reel.
+     */
+    const imageComp = audit.comps.find((c) => c.name === 'img_float');
+    expect(imageComp, 'img_float missing from the audit').toBeDefined();
+    const templateDurationS = (imageComp as AuditComp & { duration: number }).duration;
+    const entranceS = entries.get('img_float')?.introS ?? 0;
+    expect(entranceS).toBeGreaterThan(0);
+    const cutShort: string[] = [];
+    const endsEarly: string[] = [];
+    for (const slot of plan.images.slots) {
+      const windowS = slot.end - slot.start;
+      if (windowS < entranceS - 1e-6) cutShort.push(`${slot.id} ${windowS.toFixed(3)}s`);
+      if (windowS > templateDurationS + 1e-6) {
+        endsEarly.push(`${slot.id} ${(windowS - templateDurationS).toFixed(3)}s early`);
+      }
+    }
+    expect(cutShort, 'a picture shorter than its own entrance').toEqual([]);
+    expect(endsEarly, 'a picture that vanishes before its words end').toEqual([]);
   }, 300_000);
 });
 
