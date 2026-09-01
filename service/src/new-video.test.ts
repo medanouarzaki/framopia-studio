@@ -333,16 +333,19 @@ describe.skipIf(!ready)('a video the tool has never seen', () => {
     }
 
     /*
-     * The size actually placed is the size the placement rule says, so a build
-     * that quietly drew something else would fail here rather than on screen.
+     * **Every picture as large as its own corner allows** — the user's ruling of
+     * 2026-09-01, replacing the one-size-per-reel rule. What is asserted is that
+     * no slot was drawn smaller than its own corner holds, which is the whole of
+     * the rule and depends on nothing but this reel's geometry. Under the rule
+     * it replaced, one tight slot took every other picture down with it and this
+     * would have failed on every slot but that one.
      */
-    for (const placement of built.placementsA) {
-      if (placement.kind !== 'image') continue;
-      const rect = rects.get(placement.elementId) as Rect;
-      expect(
-        `${placement.elementId} ${(rect.w * plan.source.width).toFixed(1)}`,
-      ).toBe(`${placement.elementId} ${(rect.w * plan.source.width).toFixed(1)}`);
-      expect(rect.w * plan.source.width).toBeGreaterThan(0);
+    for (const slot of placed.slots) {
+      expect(`${slot.id} gives up ${slot.givesUpPx.toFixed(3)}px`).toBe(
+        `${slot.id} gives up 0.000px`,
+      );
+      expect(slot.rect.w * plan.source.width).toBeCloseTo(slot.ownMaxPx, 6);
+      expect(slot.ownMaxPx).toBeGreaterThan(0);
     }
 
     /*
