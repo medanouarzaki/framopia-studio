@@ -3165,7 +3165,21 @@ describe.skipIf(!built)('setting up a client', () => {
       const values = await loaded.page.$$eval('.colours input[type="color"]', (els) =>
         els.map((e) => (e as HTMLInputElement).value.toUpperCase()),
       );
-      expect(values).toEqual(['#F8F6F2', '#C9A96E', '#820000', '#1A0000']);
+      /*
+       * **Retired 2026-09-03: these were K2 Syndicalia's four exact hexes.**
+       * The screen opened as K2 for every client, and Block 10 session 44 found
+       * that `save()` never sent the palette at all, so a client who changed
+       * them got K2's anyway. The swatches now start on a grey ramp that reads
+       * as unset, and the word beside each says "not set" until it is one —
+       * a colour input always has a value, so the swatch alone cannot say it.
+       */
+      expect(values).toEqual(['#FFFFFF', '#B0B0B0', '#585858', '#000000']);
+      expect(text).not.toContain('#F8F6F2');
+      expect(text).not.toContain('#C9A96E');
+      expect(text).not.toContain('#820000');
+      expect(text).not.toContain('#1A0000');
+      expect(text).toContain('not set');
+      expect(text).toContain('Left alone, this client is built in the standard one.');
       // The sentence that made this a two-visit screen is gone.
       const all = (await loaded.page.textContent('main.editor')) ?? '';
       expect(all).not.toContain('Colours and their own pictures are added afterwards');
