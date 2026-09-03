@@ -1,0 +1,76 @@
+{
+  "id": "dr-loubna-kfafi",
+  "name": "Dr Loubna Kfafi",
+  "version": 1,
+  "palette": {
+    "light": "#FFF4E8",
+    "accent": "#E8873A",
+    "primary": "#123448",
+    "background": "#1C1210"
+  },
+  "imageStyle": {
+    "stylePrompt": [
+      "a single clear idea, readable at a glance",
+      "one subject, centred and unobstructed",
+      "the brighter end of the palette leads: {{palette.accent}} and {{palette.light}} carry the subject, with {{palette.primary}} for depth and {{palette.background}} kept to the ground behind it",
+      "lit so the subject reads immediately at a glance, bright and clearly separated from its ground, not sunk into it"
+    ],
+    "negativePrompt": [
+      "no extraneous objects",
+      "no background clutter",
+      "no incidental detail",
+      "nothing in frame that is not carrying the idea",
+      "no busy or competing composition"
+    ]
+  },
+  "imageVariation": {
+    "note": "The user's ruling (Block 3 session 3): the mode palette is dominant in every image, and the slots of one reel vary so the set reads as designed rather than batched. imageStyle.stylePrompt is the invariant half and applies unchanged to every slot -- that is what keeps the palette dominant. These axes are the varying half. Block 4 session 3 replaced the composition axis: when the quality gate returns `cutout` the background is discarded, so any variation expressed as where the subject sits inside the generated frame is erased, and the set would read as batched precisely where cutouts work best. The three axes here are properties of the subject itself, which survive being cut out. Placement language is gone from both halves except `centred`, which the invariant fragment keeps because it helps the cutout by holding the subject clear of the frame edge. The specific terms are placeholders like the rest of this stub and are refined with the user at Block 9; the axis names are the part that is settled. Block 4 session 5 pruned the flat/frontal/unmodelled lighting entry: a cutout needs the subject separated from its ground and flat frontal light removes that separation. Stated honestly, the prune's effect is unmeasured -- all six corpus images carried `flat frontal light, no modelling` and the pro model rendered dramatic rim light regardless, so this axis is not reliably obeyed. `soft diffuse light, shadows barely readable` was pruned at session 6 by the user's ruling: the prune targets the flat characterless look, and barely-readable shadows are that look under a gentler name. Diffuse light itself is fine -- an entry that is diffuse *and* modelled belongs here, and none is written yet. The axis is at the validator's minimum of two values; a third is the user's to write at Block 9, like the fonts. Block 9 session 12 replaced the palette and lighting fragments and the user approved the eight images that came back. Looking at them he ruled the framing axis: `wide, the whole subject with air around it` is gone. A picture is placed at a fixed small size in the top-left corner, so a wide shot is unreadable there -- `img002`'s two candidates are the evidence, one a whole doctor showing nothing and the other her from the chest with the vial large in frame, reading instantly. Medium is the loosest value left; close and macro lead. The subject fills the frame.",
+    "axes": {
+      "cameraAngle": [
+        "seen straight on at eye level",
+        "seen from slightly below, looking up",
+        "seen from slightly above, looking down",
+        "seen at a three-quarter turn"
+      ],
+      "framingTightness": [
+        "medium, the subject from the waist",
+        "close, the subject filling most of the height",
+        "macro, a single detail standing for the whole"
+      ],
+      "lighting": [
+        "hard directional light with defined shadow",
+        "rim light separating the subject from the ground"
+      ]
+    }
+  },
+  "allowedTemplates": {
+    "subtitle": [
+      "sub_pop",
+      "sub_pop_ar"
+    ],
+    "keyword": [
+      "kw_slam",
+      "kw_slam_ar"
+    ],
+    "image": [
+      "img_slide_left",
+      "img_float"
+    ]
+  },
+  "imageScale": 1.4,
+  "imageCandidates": 2,
+  "fonts": {
+    "status": "set",
+    "latin": "Inter Semi-Bold",
+    "arabic": "Almarai Bold",
+    "emphasis": "Cormorant Garamond SemiBold Italic",
+    "postScriptNames": {
+      "latin": "Inter-SemiBold",
+      "arabic": "Almarai-Bold",
+      "emphasis": "CormorantGaramondItalic-SemiBoldItalic"
+    },
+    "note": "Borrowed from K2 Syndicalia on 2026-09-04 so her first reel could be built, and pending her own: a client gets a Latin sans, a Latin serif for emphasis and an Arabic, and hers have not been chosen. These three are what running her reel under k2-syndicalia would have pinned anyway. Not a decision she or the user has made. The PostScript names are what After Effects accepts; see the K2 note for why."
+  },
+  "vocabulary": [],
+  "note": "Created 2026-09-04 for her first reel. The four colours are hers, read off her own footage. The three typefaces are borrowed from K2 Syndicalia and are pending the user’s choice — see fonts.note."
+}
