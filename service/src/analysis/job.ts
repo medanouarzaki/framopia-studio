@@ -15,6 +15,7 @@ import { regroupForKeywords, type DroppedKeyword } from './regroup.js';
 import { assignTemplates, type AssignmentResult } from './assign.js';
 import { applyDisplayTiming, type DisplayTimingResult } from './display-timing.js';
 import { deriveSfxEvents } from './sfx.js';
+import { applyClientDefaultsToPlan } from '../clients/apply-to-plan.js';
 import { imageEntranceS, templateImpacts } from './template-impacts.js';
 import { analyseKeywordsCached, planSlotsCached, type CachedKeywordResult, type CachedSlotResult } from './cached.js';
 import { ACTIVE_ANALYSIS_PROMPT_VERSION, parseKeywordResponse } from './keywords.js';
@@ -234,6 +235,7 @@ export async function analyseKeywordsForPlan(
   // copy so a mode file edited later cannot change a reel that was approved.
   plan.clientMode = { id: mode.id, version: mode.version, path: modePathFor(mode.id) };
   plan.clientSnapshot = snapshotOfMode(mode, timestamp);
+  applyClientDefaultsToPlan(plan, mode);
   plan.pipeline.analysis = {
     status: 'done',
     config: analysisConfigLabel(ACTIVE_ANALYSIS_PROMPT_VERSION, mode),
@@ -425,6 +427,7 @@ export async function planImageSlotsForPlan(
   ) };
   plan.clientMode = { id: mode.id, version: mode.version, path: modePathFor(mode.id) };
   plan.clientSnapshot = snapshotOfMode(mode, timestamp);
+  applyClientDefaultsToPlan(plan, mode);
   plan.pipeline.images = {
     status: 'done',
     config: slotConfigLabel(ACTIVE_SLOT_PROMPT_VERSION, mode),

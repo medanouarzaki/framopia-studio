@@ -13,6 +13,7 @@ import { chooseCandidate, imagesView, ImageViewError } from './image-view.js';
 const WATERMARK_ASSET = path.join(REPO_ROOT, 'assets', 'watermark', 'intro.mov');
 import { WATERMARK_SIZES, type WatermarkSize, type Zone } from './editplan/types.js';
 import { DEFAULT_WATERMARK_SIZE } from './placement/constants.js';
+import { applyClientDefaultsToPlan } from './clients/apply-to-plan.js';
 import { describeVideo, listModes, listVideosFor } from './catalogue.js';
 import { fontListView } from './fonts.js';
 import { subtitlePreview } from './subtitle-preview.js';
@@ -666,6 +667,8 @@ export function createApp(token: string): http.Server {
           }
           plan.clientMode = { id: mode.id, version: mode.version, path: modePathFor(mode.id) };
           plan.clientSnapshot = snapshotOfMode(mode, new Date().toISOString());
+          // The client's own watermark default, on a reel that has not decided.
+          applyClientDefaultsToPlan(plan, mode);
         });
         return;
       }

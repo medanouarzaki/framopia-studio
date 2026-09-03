@@ -82,15 +82,36 @@ describe('server', () => {
       expect(after.clientMode?.version).toBe(after.clientSnapshot?.version);
     });
 
-    it('changes nothing but the client and the timestamp', async () => {
+    /**
+     * `watermark` joined the list at Block 10 session 44. Choosing a client for
+     * a reel that has decided nothing about the mark is the moment that
+     * client's own default applies — a client created with the mark off used to
+     * be watermarked anyway, because nothing between the client file and the
+     * build read the setting.
+     */
+    it('changes nothing but the client, the watermark and the timestamp', async () => {
       const planPath = scratchPlan();
       const before = JSON.parse(readFileSync(planPath, 'utf8')) as Record<string, unknown>;
+      expect(before['watermark']).toBeNull();
       await post({ planPath, modeId: 'k2-syndicalia' });
       const after = JSON.parse(readFileSync(planPath, 'utf8')) as Record<string, unknown>;
       const moved = Object.keys(after).filter(
         (k) => JSON.stringify(after[k]) !== JSON.stringify(before[k]),
       );
-      expect(moved.sort()).toEqual(['clientMode', 'clientSnapshot', 'meta']);
+      expect(moved.sort()).toEqual(['clientMode', 'clientSnapshot', 'meta', 'watermark']);
+      // K2 names no preference, so the reel keeps the mark it has always had.
+      expect((after['watermark'] as { enabled: boolean }).enabled).toBe(true);
+    });
+
+    /** A decision the reel already carries is never overwritten by a client. */
+    it('leaves a reel’s own watermark choice alone', async () => {
+      const planPath = scratchPlan();
+      const plan = JSON.parse(readFileSync(planPath, 'utf8')) as Record<string, unknown>;
+      plan['watermark'] = { assetPath: '/a', startS: 0, durationS: null, enabled: false };
+      writeFileSync(planPath, JSON.stringify(plan, null, 2), 'utf8');
+      await post({ planPath, modeId: 'k2-syndicalia' });
+      const after = JSON.parse(readFileSync(planPath, 'utf8')) as Record<string, unknown>;
+      expect((after['watermark'] as { enabled: boolean }).enabled).toBe(false);
     });
 
     it('refuses a client that does not exist, and writes nothing', async () => {
