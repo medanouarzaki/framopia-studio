@@ -77,3 +77,35 @@ export function paletteRolesInDisplayOrder(): PaletteRole[] {
   const rest = PALETTE_ROLES.filter((role) => !PALETTE_DISPLAY_ORDER.includes(role));
   return [...ordered, ...rest];
 }
+
+/**
+ * A colour a person typed or pasted, turned into the `#RRGGBB` the mode files
+ * hold — or `null` when it is not a colour at all.
+ *
+ * **Why this exists.** Until Block 10 session 47 the four colour fields were a
+ * native `<input type="color">` and a `<code>` label, so the only way to set a
+ * brand colour was to drag inside the operating system's colour picker. The
+ * hex was not an input at all: it was `contentEditable=false` and could not
+ * even take focus. A brand colour is a code that arrives in a document, and
+ * pressing a key with the OS picker open only dismisses it, so the control had
+ * never been usable for the one way it would ever be used.
+ *
+ * **What a person actually pastes** is what this accepts: with or without the
+ * `#`, upper or lower case, the three-digit short form, and whitespace around
+ * any of it. Everything else is refused rather than repaired — a field that
+ * turns `#12345` into black is worse than one that says no, because the wrong
+ * colour is silent and a refusal is not.
+ *
+ * `mode.ts` validates a stored palette as uppercase `#RRGGBB`, so that is what
+ * this returns and nothing else.
+ */
+export function normaliseHexColour(typed: string): string | null {
+  const bare = typed.trim().replace(/^#/, '');
+  if (/^[0-9a-fA-F]{3}$/.test(bare)) {
+    // `#E83` is the CSS short form for `#EE8833`, and someone reading a brand
+    // sheet writes it that way.
+    return `#${[...bare].map((c) => `${c}${c}`).join('').toUpperCase()}`;
+  }
+  if (/^[0-9a-fA-F]{6}$/.test(bare)) return `#${bare.toUpperCase()}`;
+  return null;
+}
