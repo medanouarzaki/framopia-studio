@@ -32,8 +32,15 @@ import {
  * Inter's nominal size and read smaller than the words around it.
  */
 export interface TextStyle {
-  /** The PostScript name. After Effects rejects any name containing a space. */
-  font: string;
+  /**
+   * The PostScript name. After Effects rejects any name containing a space.
+   *
+   * **Absent when this client has no measured faces**, and then the template's
+   * own type is left alone while the colours still travel. `framopiaSetText`
+   * writes `font` only when it is there, so a colour-only style is legal and
+   * always was — it is what shrink-to-fit already sends.
+   */
+  font?: string;
   /** Absent when the template's own size is right, which is the usual case. */
   fontSize?: number;
   /** Three floats in 0..1, as After Effects wants them. */
@@ -65,29 +72,45 @@ export interface TextStyleInputs {
 }
 
 /**
- * Null when this client has no measured font names.
+ * The face, size and colours a card is set in.
  *
- * A client whose faces have never been checked on a host must build exactly as
- * it did before rather than have a name guessed for it: **After Effects accepts
- * a font name it cannot resolve and renders a substitute without saying so**, so
- * a guess would not fail, it would quietly set the wrong type.
+ * **The face is absent when this client has no measured font names**, and then
+ * the template's own type is left alone rather than have a name guessed for it:
+ * After Effects accepts a font name it cannot resolve and renders a substitute
+ * without saying so, so a guess would not fail, it would quietly set the wrong
+ * type. The colours are always this client's.
  */
-export function textStyleFor(inputs: TextStyleInputs): TextStyle | null {
+export function textStyleFor(inputs: TextStyleInputs): TextStyle {
   const { snapshot } = inputs;
-  if (snapshot.fonts.status !== 'set') return null;
-  const names = snapshot.fonts.postScriptNames;
-  if (names === undefined) return null;
 
+  /*
+   * **The colours travel whether or not the faces do.** They used to be the
+   * same answer: no measured font names meant no style at all, so a client with
+   * colours but no fonts had their cards drawn in the template's own — and the
+   * template's shadow is `#820000`, which is K2 Syndicalia's Rouge. Every such
+   * client got K2's shadow with nothing saying so. Block 10 session 45 found it
+   * while proving a second client's palette reaches the comp.
+   *
+   * A face and a colour are separate things: a guessed font renders the wrong
+   * type silently, which is why one is never guessed, but a colour the client
+   * chose has nothing to guess about.
+   */
   const colours = resolveTextColours(snapshot);
   const role = inputs.kind === 'keyword' ? colours.emphasis : colours.ordinary;
-  const fillColor = toAeColour(parseHexColour(role.hex));
-  const shadowFillColor = toAeColour(parseHexColour(colours.shadow.hex));
+  const own = {
+    fillColor: toAeColour(parseHexColour(role.hex)),
+    shadowFillColor: toAeColour(parseHexColour(colours.shadow.hex)),
+  };
+
+  if (snapshot.fonts.status !== 'set') return own;
+  const names = snapshot.fonts.postScriptNames;
+  if (names === undefined) return own;
 
   if (isArabicTemplate(inputs.templateId)) {
-    if (names.arabic === undefined) return null;
+    if (names.arabic === undefined) return own;
     // The `_ar` comps are already authored at ARABIC_SIZE_RATIO of the Latin
     // size, so the size is right and only the face and the colour move.
-    return { font: names.arabic, fillColor, shadowFillColor };
+    return { font: names.arabic, ...own };
   }
 
   if (inputs.kind === 'keyword' && names.emphasis !== undefined) {
@@ -95,13 +118,12 @@ export function textStyleFor(inputs: TextStyleInputs): TextStyle | null {
     return {
       font: names.emphasis,
       fontSize: Math.round(inputs.templateFontSize * ratio * 1000) / 1000,
-      fillColor,
-      shadowFillColor,
+      ...own,
     };
   }
 
-  if (names.latin === undefined) return null;
-  return { font: names.latin, fillColor, shadowFillColor };
+  if (names.latin === undefined) return own;
+  return { font: names.latin, ...own };
 }
 
 /** What the Arabic ratio is, for a report that wants to state it. */

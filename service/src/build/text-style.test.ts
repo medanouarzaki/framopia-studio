@@ -89,49 +89,57 @@ describe('textStyleFor', () => {
   });
 
   /*
-   * The defect the whole guard exists for. After Effects accepts a font name it
+   * The defect the guard exists for. After Effects accepts a font name it
    * cannot resolve and renders a substitute without saying so, so a build that
    * invented a name would not fail — it would silently set the wrong type. A
-   * client with no measured names therefore gets **no style at all**, and the
-   * template's own type is left alone.
+   * client with no measured names therefore gets **no face**, and the template's
+   * own type is left alone.
+   *
+   * **Retired 2026-09-03: it used to get no style at all.** The colours went
+   * with the face, so a client with their own four colours and no measured
+   * faces had their cards drawn in the template's own — whose shadow is
+   * `#820000`, K2 Syndicalia's Rouge. A face is guessed at; a colour the client
+   * chose is not.
    */
   describe('a name that has not been checked on a host never reaches a layer', () => {
-    it('returns nothing when the client has no measured names', () => {
-      expect(
-        textStyleFor({
-          kind: 'subtitle',
-          templateId: 'sub_pop',
-          templateFontSize: 343,
-          snapshot: withFonts({ status: 'set', latin: 'Inter Semi-Bold', arabic: 'Almarai Bold' }),
-        }),
-      ).toBeNull();
+    it('sends no face, but this client’s colours, when no name was measured', () => {
+      const style = textStyleFor({
+        kind: 'subtitle',
+        templateId: 'sub_pop',
+        templateFontSize: 343,
+        snapshot: withFonts({ status: 'set', latin: 'Inter Semi-Bold', arabic: 'Almarai Bold' }),
+      });
+      expect(style.font).toBeUndefined();
+      expect(style.fontSize).toBeUndefined();
+      expect(style.fillColor).toBeDefined();
+      expect(style.shadowFillColor).toBeDefined();
     });
 
-    it('returns nothing when the client has no fonts at all', () => {
-      expect(
-        textStyleFor({
-          kind: 'subtitle',
-          templateId: 'sub_pop',
-          templateFontSize: 343,
-          snapshot: withFonts({ status: 'tbd', note: 'later' }),
-        }),
-      ).toBeNull();
+    it('sends no face when the client has no fonts at all', () => {
+      const style = textStyleFor({
+        kind: 'subtitle',
+        templateId: 'sub_pop',
+        templateFontSize: 343,
+        snapshot: withFonts({ status: 'tbd', note: 'later' }),
+      });
+      expect(style.font).toBeUndefined();
+      expect(style.fillColor).toBeDefined();
     });
 
-    it('returns nothing for an Arabic card when only the Latin name was measured', () => {
-      expect(
-        textStyleFor({
-          kind: 'subtitle',
-          templateId: 'sub_pop_ar',
-          templateFontSize: 367,
-          snapshot: withFonts({
-            status: 'set',
-            latin: 'A',
-            arabic: 'B',
-            postScriptNames: { latin: 'A-Reg' },
-          }),
+    it('sends no face for an Arabic card when only the Latin name was measured', () => {
+      const style = textStyleFor({
+        kind: 'subtitle',
+        templateId: 'sub_pop_ar',
+        templateFontSize: 367,
+        snapshot: withFonts({
+          status: 'set',
+          latin: 'A',
+          arabic: 'B',
+          postScriptNames: { latin: 'A-Reg' },
         }),
-      ).toBeNull();
+      });
+      expect(style.font).toBeUndefined();
+      expect(style.fillColor).toBeDefined();
     });
 
     it('falls back to the ordinary face when no emphasis name was measured', () => {
@@ -219,10 +227,20 @@ describe('the shadow copy’s colour', () => {
     expect(style?.shadowFillColor).toEqual(toAeColour(parseHexColour('#00A0FF')));
   });
 
-  it('is absent with the rest of the style when a client has no measured faces', () => {
+  /**
+   * Retired 2026-09-03: the shadow used to be absent with the rest of the style,
+   * which left the template's own `#820000` — K2's Rouge — behind every word of
+   * every client without measured faces.
+   */
+  it('is this client’s deeper colour even when they have no measured faces', () => {
     const noFaces = { ...snapshot, fonts: { status: 'tbd' as const } };
-    expect(
-      textStyleFor({ kind: 'subtitle', templateId: 'sub_pop', templateFontSize: 343, snapshot: noFaces }),
-    ).toBeNull();
+    const style = textStyleFor({
+      kind: 'subtitle', templateId: 'sub_pop', templateFontSize: 343, snapshot: noFaces,
+    });
+    expect(style.font).toBeUndefined();
+    expect(style.shadowFillColor).toEqual(
+      textStyleFor({ kind: 'subtitle', templateId: 'sub_pop', templateFontSize: 343, snapshot })
+        .shadowFillColor,
+    );
   });
 });
