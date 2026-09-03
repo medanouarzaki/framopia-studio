@@ -39,20 +39,34 @@ import type { ClientMode } from './types.js';
  *
  * The captions and their order are `@framopia/core/palette-meaning`, which the
  * client card reads too — they were two copies until Block 10 session 18 and had
- * already drifted from what the builds do. The hexes are the defaults a client
- * with no colours gets today: the service inherits the template client's
- * palette, so a client saved without touching them comes out exactly as before.
+ * already drifted from what the builds do.
+ *
+ * **The swatches start unset, and the values below are not a default palette.**
+ * They were K2 Syndicalia's four exact hexes until Block 10 session 45, so every
+ * client this agency set up opened as K2 and stayed K2 unless someone noticed.
+ *
+ * There is no honest palette to open with instead. The four roles are a
+ * *brand*, and this project has no brand that is not a client's: the template
+ * library supplies only two of the four roles, and the one it gives for
+ * `primary` is `#820000`, which is K2's own Rouge. So rather than pick a
+ * replacement, the swatches show a grey ramp that reads as "nothing chosen
+ * yet", and **an untouched colour is never sent** — `save()` sends the palette
+ * only once one has been set. A client saved without setting any takes whatever
+ * the service falls back to, and the caption on the screen says so.
  */
+const UNSET_SWATCHES: Record<PaletteRole, string> = {
+  light: '#FFFFFF',
+  accent: '#B0B0B0',
+  primary: '#585858',
+  background: '#000000',
+};
+
 const PALETTE_FIELDS: { role: PaletteRole; what: string; hex: string }[] =
   paletteRolesInDisplayOrder().map((role) => ({
     role,
     what: PALETTE_MEANING[role],
-    hex: { light: '#F8F6F2', accent: '#C9A96E', background: '#1A0000', primary: '#820000' }[role],
+    hex: UNSET_SWATCHES[role],
   }));
-
-const DEFAULT_PALETTE: Record<string, string> = Object.fromEntries(
-  PALETTE_FIELDS.map((f) => [f.role, f.hex]),
-);
 
 export function NewClient({
   connection,
@@ -75,7 +89,9 @@ export function NewClient({
   const [shape, setShape] = useState('');
   const [baseline, setBaseline] = useState('');
   const [watermark, setWatermark] = useState(true);
-  const [palette, setPalette] = useState<Record<string, string>>(DEFAULT_PALETTE);
+  // Only the roles the user has actually set. An untouched one is not a
+  // choice and is never sent.
+  const [palette, setPalette] = useState<Partial<Record<PaletteRole, string>>>({});
   const [photos, setPhotos] = useState<{ path: string; description: string }[]>([]);
   const [fonts, setFonts] = useState<FontList>({
     available: false,
@@ -114,6 +130,25 @@ export function NewClient({
       }
       if (language !== '') body['language'] = language;
       if (!watermark) body['watermarkByDefault'] = false;
+      /*
+       * **The four colours, which never left this screen until Block 10 session
+       * 45.** They were collected, shown, and dropped: `save()` did not put them
+       * in the body, so `createClient` fell back to the template client's
+       * palette and every client came out in K2 Syndicalia's four. They set
+       * every ordinary word, every emphasised one, the shadow behind both, the
+       * frame around a picture, and the palette named in every image prompt.
+       *
+       * Sent only when the user has set all four, because the palette is one
+       * object on the mode and a partial one would leave roles undefined —
+       * `renderStylePrompt` substitutes every role into the image prompt, and an
+       * undefined role would reach the model as the word "undefined".
+       */
+      const chosen = paletteRolesInDisplayOrder().filter((r) => palette[r] !== undefined);
+      if (permanent && chosen.length === paletteRolesInDisplayOrder().length) {
+        body['palette'] = Object.fromEntries(
+          paletteRolesInDisplayOrder().map((r) => [r, palette[r]]),
+        );
+      }
       // The client does not exist yet, so there is no `/clients/pictures` to
       // call: the photographs travel with the client and the service numbers
       // them, by the same rule it uses when one is added to a saved client.
@@ -250,9 +285,20 @@ export function NewClient({
                   }
                 />
                 <span className="what">{f.what}</span>
-                <code>{palette[f.role] ?? f.hex}</code>
+                {/*
+                  A colour input always has a value, so "not set" cannot be shown
+                  by the swatch itself — the word beside it is what says so, and
+                  it is the difference between a client whose brand this is and
+                  one who simply has not been asked yet.
+                */}
+                <code>{palette[f.role] ?? 'not set'}</code>
               </label>
             ))}
+            <span className="hint">
+              {paletteRolesInDisplayOrder().every((r) => palette[r] !== undefined)
+                ? 'These four style every word, the shadow behind it, the frame round a picture, and the pictures themselves.'
+                : 'Set all four to give them their own look. Left alone, this client is built in the standard one.'}
+            </span>
           </div>
         ) : null}
 
