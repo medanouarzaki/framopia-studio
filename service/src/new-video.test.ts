@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, rmSync, statSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
@@ -71,6 +71,25 @@ const ready = FFMPEG !== null && existsSync(SOURCE) && existsSync(SIDECAR_PYTHON
  * are seconds apart, and one whose pictures run into each other with the last
  * ending on the last word.
  */
+/**
+ * A client written for these runs and removed after them, sharing nothing with
+ * K2 Syndicalia: its own four colours, its own colour roles, the standard faces
+ * instead of K2's measured ones, its own image scale, and the watermark off.
+ *
+ * Block 10 session 43 found four settings this screen collects that reached
+ * nothing, the watermark among them, and session 19 found the card shadow was
+ * K2's red by coincidence of the brand. A second client is the only way either
+ * would have shown.
+ */
+const SECOND_CLIENT = 'a-second-client-for-the-new-video-test';
+const SECOND_CLIENT_PATH = path.join(REPO_ROOT, 'modes', `${SECOND_CLIENT}.json`);
+const SECOND_CLIENT_PALETTE = {
+  background: '#06131F',
+  primary: '#12507A',
+  accent: '#5FD0F0',
+  light: '#F2FBFF',
+};
+
 interface Shape {
   label: string;
   seconds: number;
@@ -90,6 +109,10 @@ interface Shape {
   /** How many pictures must end up arriving at a named word, and how many not. */
   namedPictures: number;
   unnamedPictures: number;
+  /** The client this reel is made for. Absent means K2 Syndicalia. */
+  modeId?: string;
+  /** Whether that client's reels carry the mark. */
+  expectWatermark: boolean;
 }
 
 /** Two Arabic words and two Latin ones, with timings a 6s clip can hold. */
@@ -117,6 +140,10 @@ const SHAPES: Shape[] = [
     minPictures: 1,
     namedPictures: 1,
     unnamedPictures: 0,
+    // A client that shares nothing with K2 — its own colours, its own colour
+    // roles, the standard faces rather than K2's, and the watermark off.
+    modeId: SECOND_CLIENT,
+    expectWatermark: false,
   },
   {
     label: 'another video with its pictures far apart',
@@ -138,6 +165,7 @@ const SHAPES: Shape[] = [
     minPictures: 2,
     namedPictures: 1,
     unnamedPictures: 1,
+    expectWatermark: true,
   },
   {
     label: 'a third video whose pictures run into each other',
@@ -164,6 +192,7 @@ const SHAPES: Shape[] = [
     minPictures: 2,
     namedPictures: 0,
     unnamedPictures: 2,
+    expectWatermark: true,
   },
 ];
 
@@ -173,6 +202,29 @@ const saved = process.env['FRAMOPIA_VIDEO_REGISTRY'];
 
 beforeAll(() => {
   if (!ready) return;
+  const k2 = JSON.parse(
+    readFileSync(path.join(REPO_ROOT, 'modes', 'k2-syndicalia.json'), 'utf8'),
+  ) as Record<string, unknown>;
+  writeFileSync(
+    SECOND_CLIENT_PATH,
+    `${JSON.stringify(
+      {
+        ...k2,
+        id: SECOND_CLIENT,
+        name: 'A Second Client',
+        version: 1,
+        note: 'written by new-video.test.ts and deleted when it finishes',
+        palette: SECOND_CLIENT_PALETTE,
+        textColours: { ordinary: 'accent', emphasis: 'light', shadow: 'background' },
+        fonts: { status: 'tbd', note: 'the standard pair, as a new client gets' },
+        imageScale: 0.8,
+        watermarkByDefault: false,
+      },
+      null,
+      2,
+    )}\n`,
+    'utf8',
+  );
   dir = mkdtempSync(path.join(tmpdir(), 'framopia-new-video-'));
   for (const shape of SHAPES) {
     const videoPath = path.join(dir, `${shape.label}.mov`);
@@ -191,6 +243,7 @@ beforeAll(() => {
 });
 
 afterAll(() => {
+  rmSync(SECOND_CLIENT_PATH, { force: true });
   if (saved === undefined) delete process.env['FRAMOPIA_VIDEO_REGISTRY'];
   else process.env['FRAMOPIA_VIDEO_REGISTRY'] = saved;
   /*
@@ -226,7 +279,7 @@ describe.skipIf(!ready)('a video the tool has never seen', () => {
 
     const result = await runPipeline({
       reel: known.label,
-      modeId: 'k2-syndicalia',
+      modeId: shape.modeId ?? 'k2-syndicalia',
       costsPath,
       cacheRoot,
       log: () => undefined,
@@ -349,8 +402,8 @@ describe.skipIf(!ready)('a video the tool has never seen', () => {
     expect(plan.transcript.words.length).toBeGreaterThan(0);
     expect(plan.subtitles.groups.every((g) => g.templateId !== null)).toBe(true);
     expect(plan.subtitles.groups.every((g) => g.displayStart !== undefined)).toBe(true);
-    expect(plan.clientMode?.id).toBe('k2-syndicalia');
-    expect(plan.clientSnapshot?.id).toBe('k2-syndicalia');
+    expect(plan.clientMode?.id).toBe(shape.modeId ?? 'k2-syndicalia');
+    expect(plan.clientSnapshot?.id).toBe(shape.modeId ?? 'k2-syndicalia');
     expect(plan.source.dialogueLufs).not.toBeNull();
     expect(plan.zones.zones.length).toBeGreaterThan(0);
 
@@ -577,6 +630,45 @@ describe.skipIf(!ready)('a video the tool has never seen', () => {
     expect(
       `${shape.label}: ${checkedNamed} named, ${checkedUnnamed} unnamed`,
     ).toBe(`${shape.label}: ${shape.namedPictures} named, ${shape.unnamedPictures} unnamed`);
+
+    /*
+     * **The client's own settings reach the reel.**
+     *
+     * Block 10 session 43 built a comp for a client who had switched the
+     * watermark off and found the mark on layer 2: `watermarkByDefault` was
+     * written, validated and shown back on the client card, and nothing
+     * between there and the build read it. What is asserted is the decision the
+     * build acts on — `plan.watermark` — for a client with it off and for one
+     * with it on, plus the rest of that client's look reaching the snapshot and
+     * the image prompt.
+     */
+    expect(
+      `${shape.label} watermark ${String(plan.watermark?.enabled)}`,
+      'the client’s watermark setting did not reach the reel',
+    ).toBe(`${shape.label} watermark ${String(shape.expectWatermark)}`);
+
+    if (shape.modeId === SECOND_CLIENT) {
+      const snap = plan.clientSnapshot;
+      expect(snap?.id).toBe(SECOND_CLIENT);
+      // Nothing of K2's survives into a client that shares nothing with it.
+      expect(snap?.palette).toEqual(SECOND_CLIENT_PALETTE);
+      expect(snap?.textColours).toEqual({
+        ordinary: 'accent',
+        emphasis: 'light',
+        shadow: 'background',
+      });
+      expect(snap?.imageScale).toBe(0.8);
+      expect(snap?.fonts.status).toBe('tbd');
+      for (const slot of plan.images.slots) {
+        for (const hex of Object.values(SECOND_CLIENT_PALETTE)) {
+          expect(slot.prompt, `${slot.id} did not carry this client’s colours`).toContain(hex);
+        }
+        // K2's four, which the prompt would carry if the palette had not moved.
+        for (const hex of ['#C9A96E', '#F8F6F2', '#820000', '#1A0000']) {
+          expect(slot.prompt, `${slot.id} still carries K2’s colours`).not.toContain(hex);
+        }
+      }
+    }
 
     // A and C say the same thing about a picture; only cards differ between them.
     const picturesA = built.placementsA
