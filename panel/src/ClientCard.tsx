@@ -153,15 +153,29 @@ function Standards({
   standards: NonNullable<ClientMode['standards']>;
 }): JSX.Element {
   const his = new Set(standards.chosen);
-  const line = [
-    `Mostly ${SPOKEN[standards.language] ?? standards.language}`,
-    `${SHAPE[standards.videoShape] ?? standards.videoShape} video`,
+  /*
+   * **Only what decides a build is stated as a fact.** The watermark and the
+   * subtitle baseline reach the comp; the language and the shape are recorded
+   * about the client and read by nothing that builds a reel, so they are
+   * described as noted rather than applied. Block 10 session 43 found all four
+   * reported alike, and a client card saying "no watermark" over a reel
+   * carrying one is the reason the distinction is drawn here.
+   */
+  const applied = [
     standards.watermark ? 'your watermark on' : 'no watermark',
+    ...(his.has('subtitleBaselineY')
+      ? [`subtitles at ${Math.round(standards.subtitleBaselineY)}px`]
+      : []),
   ].join(' · ');
+  const noted = `Mostly ${SPOKEN[standards.language] ?? standards.language}, ` +
+    `${SHAPE[standards.videoShape] ?? standards.videoShape} video`;
   return (
-    <p className="hint">
-      {line}
-      {his.size === 0 ? ' — all standard, nothing set for this client' : ''}
-    </p>
+    <>
+      <p className="hint">
+        {applied}
+        {his.size === 0 ? ' — all standard, nothing set for this client' : ''}
+      </p>
+      <p className="hint">{noted} — noted, neither changes what is built.</p>
+    </>
   );
 }
