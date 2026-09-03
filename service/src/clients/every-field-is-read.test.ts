@@ -27,6 +27,7 @@ const PANEL = path.join(REPO_ROOT, 'panel', 'src', 'NewClient.tsx');
 /** What the panel sends, and what the project says each one does. */
 const FIELDS: Record<string, 'builds a reel' | 'runs the tool' | 'shown to the user' | 'recorded only'> = {
   name: 'builds a reel',
+  palette: 'builds a reel',
   fonts: 'builds a reel',
   watermarkByDefault: 'builds a reel',
   subtitleBaselineY: 'builds a reel',
@@ -44,18 +45,15 @@ const FIELDS: Record<string, 'builds a reel' | 'runs the tool' | 'shown to the u
 };
 
 /**
- * **Collected on the screen and never sent.** The four colour swatches are the
- * whole of a client's brand — they style every card and they are the only thing
- * that reaches the image model about a client's look — and the save function
- * never puts them in the body. `createClient` then falls back to
- * `k2-syndicalia`'s palette, so a user who picks four colours gets K2's four.
+ * Fields the screen collects and does not send.
  *
- * Found by this test at Block 10 session 44 and left standing on purpose: the
- * session was authorised to fix the four fields session 43 measured, and this
- * is a fifth. Pinned here so it cannot drift quietly, and so that fixing it
- * means deleting this entry rather than editing an assertion.
+ * `palette` sat here from Block 10 session 44 to session 45: the four colour
+ * swatches were collected, shown, and dropped, so `createClient` fell back to
+ * the template client's palette and every client came out in K2 Syndicalia's
+ * four. Session 45 sent them, and the entry moved into `FIELDS` above — which
+ * is what this list is for. **Empty is the healthy state.**
  */
-const COLLECTED_BUT_NEVER_SENT = ['palette'];
+const COLLECTED_BUT_NEVER_SENT: string[] = [];
 
 /** Every `body['x'] = …` the save function writes, which is what reaches the service. */
 function fieldsThePanelSends(): string[] {

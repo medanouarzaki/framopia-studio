@@ -17,6 +17,7 @@ import { reelMasksDir } from './frames/segment.js';
 import { reelFramesDir } from './frames/sample.js';
 import { buildReel } from './build/reel-plan.js';
 import { buildChoiceFor } from './build/choose-candidate.js';
+import { textStyleFor } from './build/text-style.js';
 import { buildRequirements, missingRequirements, readBuildDisk } from './build/requirements.js';
 import { resolveClientIdentity } from './build/client-identity.js';
 import { faceBoxesFor } from './placement/face-boxes.js';
@@ -449,6 +450,25 @@ describe.skipIf(!ready)('a video the tool has never seen', () => {
         const c = slot.candidates.find((x) => x.id === choice.candidateId);
         return c === undefined ? null : { path: c.path, id: c.id };
       },
+      /*
+       * The face, size and colours a card is set in — wired exactly as
+       * `build-reel-cli` wires it, from the reel's own pinned snapshot and the
+       * template's audited size. Without it every card came back with no style
+       * and the colour assertions below passed on nothing.
+       */
+      textStyleFor: (card) => {
+        const snap = plan.clientSnapshot;
+        if (snap === null || snap === undefined) return undefined;
+        const comp = audit.comps.find((x) => x.name === card.templateId);
+        const size = comp?.layers.find((l) => l.name === 'TXT_MAIN')?.text?.fontSize;
+        if (size === undefined) return undefined;
+        return textStyleFor({
+          kind: card.kind,
+          templateId: card.templateId,
+          templateFontSize: size,
+          snapshot: snap,
+        });
+      },
     });
 
     expect(built.skipped.map((s) => `${s.kind} ${s.id}: ${s.reason}`)).toEqual([]);
@@ -659,6 +679,45 @@ describe.skipIf(!ready)('a video the tool has never seen', () => {
       });
       expect(snap?.imageScale).toBe(0.8);
       expect(snap?.fonts.status).toBe('tbd');
+
+      /*
+       * **This client's four colours reach the cards the build will place.**
+       *
+       * Block 10 session 44 found the New Client screen never sent the palette,
+       * so every client was built in K2 Syndicalia's four; session 45 sent it
+       * and then found the colours travelled with the *faces* — a client with no
+       * measured fonts, which is what a new client has, got no style at all and
+       * so was drawn in the template's own, whose shadow is `#820000`, K2's
+       * Rouge. This client has no fonts on purpose, so it is the case that was
+       * broken.
+       */
+      const wanted = (hex: string): [number, number, number] => {
+        const n = Number.parseInt(hex.slice(1), 16);
+        return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255];
+      };
+      const near = (a: number[] | undefined, b: number[]): boolean =>
+        a !== undefined && a.every((v, i) => Math.abs(v - (b[i] as number)) < 1 / 255);
+      const cards = built.elements.filter((e) => e.kind === 'subtitle' || e.kind === 'keyword');
+      expect(cards.length, 'no cards to check the colours on').toBeGreaterThan(0);
+      const wrong: string[] = [];
+      for (const card of cards) {
+        const style = card.textStyle;
+        if (style === undefined) { wrong.push(`${card.id} got no style at all`); continue; }
+        // No face: this client has none measured, and one is never guessed.
+        if (style.font !== undefined) wrong.push(`${card.id} was given a face it never named`);
+        const role = card.kind === 'keyword' ? SECOND_CLIENT_PALETTE.light : SECOND_CLIENT_PALETTE.accent;
+        if (!near(style.fillColor, wanted(role))) {
+          wrong.push(`${card.id} is not this client’s ${card.kind} colour`);
+        }
+        if (!near(style.shadowFillColor, wanted(SECOND_CLIENT_PALETTE.background))) {
+          wrong.push(`${card.id} shadow is not this client’s`);
+        }
+        // K2's Rouge is what the templates carry, so it is the one to be sure of.
+        if (near(style.shadowFillColor, wanted('#820000'))) {
+          wrong.push(`${card.id} shadow is still K2’s red`);
+        }
+      }
+      expect(wrong, 'a card not drawn in this client’s colours').toEqual([]);
       for (const slot of plan.images.slots) {
         for (const hex of Object.values(SECOND_CLIENT_PALETTE)) {
           expect(slot.prompt, `${slot.id} did not carry this client’s colours`).toContain(hex);
