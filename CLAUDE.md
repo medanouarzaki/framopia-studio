@@ -111,7 +111,7 @@ out as a built `.aep` with subtitles, keywords, pictures, SFX and the
 watermark. **The whole of making a video is driven from the panel** and needs no
 terminal. `npm run golden` is green — **17,174 fields** across four reels, with
 the four text card comps at **2160x1300**. `npm run check` passed whole at
-sessions 39 through 44, panel included, but see the image-picker tests below before
+sessions 39 through 45, panel included, but see the image-picker tests below before
 reading that as settled.
 
 What is open, in one line each: `ground-truth` cannot build until its six image
@@ -125,13 +125,19 @@ still gets a picture whether or not it earns one**; **only `sora` has been
 through slot prompt v3** — the corpus plans still start every picture at the
 first word of its span, and moving them means one billable call each; **a sparse
 reel holds one picture motionless for a long time** — `test-1` for 6.8 s,
-because the hold is exactly the gap the planner left; **a client's brand colours
-can only be set when the client is created**, editing them never reaches a reel
-whose slots are already planned, and **the four colours the New Client screen
-collects are never sent at all** — a new client silently gets K2's; **a client's
-video shape and language are recorded and read by nothing that builds a reel**,
-and the client card now says so rather than claiming otherwise. Since 2026-09-02 a client's **watermark setting and subtitle baseline reach the
-build**, pinned on the reel's snapshot. Since 2026-09-01 every picture **arrives
+because the hold is exactly the gap the planner left; **a client saved without setting any
+colours still inherits K2's four**, because `createClient` copies the template
+client's palette and the templates themselves carry K2's Rouge as their authored
+shadow; **a client's fonts, name, folder and logo still cannot be edited after
+creation** — only the palette and the photographs can; **a client's video shape
+and language are recorded and read by nothing that builds a reel**, and the
+client card says so rather than claiming otherwise. Since 2026-09-03 a client's **four brand colours reach the built comp** — they
+were collected and never sent — and **a saved client's colours can be corrected**
+(`POST /clients/palette`), which no reel already built feels. A client's colours
+now travel whether or not their faces have been measured; they used to go with
+the fonts, so every client without measured faces was drawn in the templates'
+own K2 red. Since 2026-09-02 a client's **watermark setting and subtitle baseline
+reach the build**, pinned on the reel's snapshot. Since 2026-09-01 every picture **arrives
 at the word the model says it is about** (slot prompt v3, `nameWordId`), is drawn
 **as large as its own corner allows**, is sized against **every frame of its
 own life** rather than against their union, and **stays until the next picture
