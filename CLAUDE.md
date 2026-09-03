@@ -131,7 +131,9 @@ client's palette and the templates themselves carry K2's Rouge as their authored
 shadow; **a client's fonts, name, folder and logo still cannot be edited after
 creation** — only the palette and the photographs can; **a client's video shape
 and language are recorded and read by nothing that builds a reel**, and the
-client card says so rather than claiming otherwise. Since 2026-09-03 a client's **four brand colours reach the built comp** — they
+client card says so rather than claiming otherwise. Since 2026-09-03 a client's **four brand colours can be typed or pasted as
+codes** — the fields were a swatch and a `<code>` label, so a colour could only
+be set by dragging inside the OS picker — and they **reach the built comp** — they
 were collected and never sent — and **a saved client's colours can be corrected**
 (`POST /clients/palette`), which no reel already built feels. A client's colours
 now travel whether or not their faces have been measured; they used to go with
