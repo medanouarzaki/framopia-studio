@@ -140,16 +140,25 @@ function settled(l: AuditLayer, field: 'position' | 'anchorPoint' | 'scale'): nu
 
 /**
  * Where a text comp layer must sit so its placeholder's baseline lands on the
- * global anchor. The comp layer's anchor defaults to the comp centre, which is
+ * anchor. The comp layer's anchor defaults to the comp centre, which is
  * measured from the audit rather than assumed.
+ *
+ * `baselineY` is where this client wants its subtitles, defaulting to the
+ * standard anchor. It moves the **card in the master** and nothing inside the
+ * card: the comp is still 1300 px tall with its first baseline at 700, so the
+ * height rules and the two-line check are untouched by it.
  */
-export function textCompPosition(c: AuditComp, placeholder: string): { x: number; y: number } {
+export function textCompPosition(
+  c: AuditComp,
+  placeholder: string,
+  baselineY: number = SUBTITLE_ANCHOR_BASELINE_Y,
+): { x: number; y: number } {
   const baseline = settled(layerOf(c, placeholder), 'position');
   const anchorX = c.width / 2;
   const anchorY = c.height / 2;
   return {
     x: SUBTITLE_ANCHOR_X - ((baseline[0] as number) - anchorX),
-    y: SUBTITLE_ANCHOR_BASELINE_Y - ((baseline[1] as number) - anchorY),
+    y: baselineY - ((baseline[1] as number) - anchorY),
   };
 }
 
@@ -252,6 +261,13 @@ export function buildReel(options: {
         : authoredEntranceS(audit, cardTemplateId ?? (plan.images.slots[0]?.templateId as string)),
     ).map((l) => [l.id, l]),
   );
+  /*
+   * Where this client wants its subtitles. From the reel's pinned snapshot, so
+   * a reel approved in March rebuilds in June as approved; absent means the
+   * standard anchor, which is every plan written before a client could name
+   * one.
+   */
+  const subtitleBaselineY = plan.clientSnapshot?.subtitleBaselineY ?? SUBTITLE_ANCHOR_BASELINE_Y;
   const styleFor = options.textStyleFor ?? ((): undefined => undefined);
   const shadowsFor = options.shadowLayersFor ?? ((): string[] => []);
   const shortened: { id: string; stretchPercent: number; introS: number; onFloor: boolean }[] = [];
@@ -316,7 +332,7 @@ export function buildReel(options: {
   const holdFor = (templateId: string): number => minHoldFor?.(templateId) ?? 0;
   cards.forEach((card, i) => {
     const c = comp(audit, card.templateId);
-    const pos = textCompPosition(c, 'TXT_MAIN');
+    const pos = textCompPosition(c, 'TXT_MAIN', subtitleBaselineY);
     elements.push({
       id: card.id,
       kind: card.kind,

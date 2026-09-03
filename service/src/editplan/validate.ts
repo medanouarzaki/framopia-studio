@@ -748,6 +748,11 @@ export function validateEditPlan(value: unknown): PlanValidationIssue[] {
       c.number('clientSnapshot.version', snap.version);
       c.string('clientSnapshot.capturedAt', snap.capturedAt);
       c.number('clientSnapshot.imageScale', snap.imageScale);
+      // Optional with no default: absent means the standard anchor, which is
+      // every plan written before a client could name its own.
+      if (snap.subtitleBaselineY !== undefined) {
+        c.number('clientSnapshot.subtitleBaselineY', snap.subtitleBaselineY);
+      }
       const palette = c.object('clientSnapshot.palette', snap.palette);
       if (palette !== null) {
         for (const role of PALETTE_ROLES) {

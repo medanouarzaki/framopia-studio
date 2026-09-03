@@ -36,6 +36,18 @@ export interface ClientSnapshot {
   /** Resolved, so a snapshot never has to be read against today's defaults. */
   textColours: { ordinary: PaletteRole; emphasis: PaletteRole; shadow?: PaletteRole };
   imageScale: number;
+  /**
+   * Where this client's subtitles sit, in master pixels.
+   *
+   * **Optional with no default, deliberately.** Absent means the client never
+   * named one and the standard anchor applies — which is what every reel in
+   * this project does. Writing the standard value here instead would put a key
+   * on every fresh snapshot that no pinned one has, and `snapshotsAgree` is a
+   * string comparison: all six existing plans would report themselves behind
+   * for a look that has not moved. `textColours.shadow` beside it is absent for
+   * the same reason.
+   */
+  subtitleBaselineY?: number;
   capturedAt: string;
 }
 
@@ -55,6 +67,9 @@ export function snapshotOfMode(mode: ClientMode, capturedAt: string): ClientSnap
       ...(mode.textColours?.shadow === undefined ? {} : { shadow: mode.textColours.shadow }),
     },
     imageScale: mode.imageScale ?? 1,
+    ...(mode.subtitleBaselineY === undefined
+      ? {}
+      : { subtitleBaselineY: mode.subtitleBaselineY }),
     capturedAt,
   };
 }
