@@ -18,7 +18,13 @@ import { describeVideo, listModes, listVideosFor } from './catalogue.js';
 import { fontListView } from './fonts.js';
 import { subtitlePreview } from './subtitle-preview.js';
 import { dryRun, DryRunError } from './dry-run.js';
-import { addPicture, createClient, removePicture, type NewClient } from './clients/create.js';
+import {
+  addPicture,
+  createClient,
+  removePicture,
+  setPalette,
+  type NewClient,
+} from './clients/create.js';
 import { stepsFor, StepsError } from './steps.js';
 import {
   editCard,
@@ -202,6 +208,41 @@ export function createApp(token: string): http.Server {
             description: typeof body.description === 'string' ? body.description : '',
           });
           sendJson(res, 200, { picture });
+        } catch (error) {
+          sendJson(res, 400, { error: (error as Error).message });
+        }
+        return;
+      }
+
+      /*
+       * A saved client's four colours, corrected. Mirrors the picture routes
+       * below: name the client, send the whole thing, get the modes back so the
+       * panel re-renders from the service rather than from what it hoped.
+       *
+       * **No reel already built changes.** Every reel pins a snapshot of the
+       * client and rebuilds from it; this bumps the client's version, which is
+       * what makes `snapshotIsBehind` offer to move a reel forward — a control
+       * someone presses, never something an edit does.
+       */
+      if (req.method === 'POST' && url.pathname === '/clients/palette') {
+        let body: { client?: unknown; palette?: unknown };
+        try {
+          body = JSON.parse((await readBody(req)) || '{}') as typeof body;
+        } catch {
+          sendJson(res, 400, { error: 'invalid JSON body' });
+          return;
+        }
+        if (typeof body.client !== 'string' || body.client === '') {
+          sendJson(res, 400, { error: 'name the client whose colours these are' });
+          return;
+        }
+        if (typeof body.palette !== 'object' || body.palette === null) {
+          sendJson(res, 400, { error: 'send the four colours as "palette"' });
+          return;
+        }
+        try {
+          setPalette(body.client, body.palette as Record<string, string>);
+          sendJson(res, 200, { modes: listModes() });
         } catch (error) {
           sendJson(res, 400, { error: (error as Error).message });
         }

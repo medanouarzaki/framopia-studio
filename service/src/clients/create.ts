@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import {
+  PALETTE_ROLES,
   CLIENT_LANGUAGES,
   MODES_DIR,
   VIDEO_SHAPES,
@@ -167,6 +168,48 @@ export function addPicture(
   };
   writeMode(modePath, { ...raw, pictures: [...pictures, entry] });
   return entry;
+}
+
+/**
+ * A saved client's four brand colours, corrected.
+ *
+ * **Why this exists.** Until Block 10 session 45 a palette could only be set
+ * when the client was created, and — because `save()` never sent it — could not
+ * really be set even then. A client saved with the wrong colours could not be
+ * put right at all. Block 10 session 40 found the missing route, 44 found the
+ * missing send, and this closes both.
+ *
+ * Re-read, edited and written back like the picture routes above it, so a note
+ * or a font someone typed into the file by hand survives the edit. The whole
+ * palette is replaced rather than one role: the four are one object on the mode,
+ * `renderStylePrompt` substitutes every one of them into an image prompt, and a
+ * half-written palette would reach the model as the word "undefined".
+ *
+ * **It bumps the client's version, and that is the point.** Every reel pins a
+ * snapshot of the client at the moment it was analysed and rebuilds from that
+ * snapshot forever, so a reel already made keeps the look it was made with.
+ * `snapshotIsBehind` is what then tells the panel a reel could be moved forward,
+ * and moving it is a control someone presses.
+ */
+export function setPalette(modeId: string, palette: Record<string, string>): ClientMode {
+  const modePath = modePathFor(modeId);
+  if (!existsSync(modePath)) throw new ClientWriteError(`there is no client called ${modeId}`);
+  const missing = PALETTE_ROLES.filter((role) => typeof palette[role] !== 'string');
+  if (missing.length > 0) {
+    throw new ClientWriteError(
+      `a palette needs all four colours; ${missing.join(', ')} ${missing.length === 1 ? 'is' : 'are'} missing`,
+    );
+  }
+  const raw = JSON.parse(readFileSync(modePath, 'utf8')) as ClientMode;
+  const next = {
+    ...raw,
+    version: raw.version + 1,
+    palette: Object.fromEntries(
+      PALETTE_ROLES.map((role) => [role, (palette[role] as string).toUpperCase()]),
+    ) as ClientMode['palette'],
+  };
+  writeMode(modePath, next);
+  return next;
 }
 
 export function removePicture(modeId: string, pictureId: string): void {

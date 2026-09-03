@@ -441,6 +441,27 @@ export async function addClientPicture(
  * It forgets, it does not delete: the file on the disk is untouched and only
  * the client's file stops naming it.
  */
+/**
+ * A saved client's four colours, corrected.
+ *
+ * Until Block 10 session 45 there was no way to change them: they could only be
+ * chosen when the client was created, and the screen that chose them never sent
+ * them. Returns the modes so every screen re-reads the client from the service.
+ */
+export async function setClientPalette(
+  connection: Connection,
+  edit: { client: string; palette: Record<string, string> },
+): Promise<ClientMode[]> {
+  const res = await fetch(`http://127.0.0.1:${connection.port}/clients/palette`, {
+    method: 'POST',
+    headers: { 'x-service-token': connection.token, 'content-type': 'application/json' },
+    body: JSON.stringify(edit),
+  });
+  const body = (await res.json().catch(() => ({}))) as { error?: string; modes?: ClientMode[] };
+  if (!res.ok) throw new Error(body.error ?? 'those colours could not be saved');
+  return body.modes ?? [];
+}
+
 export async function removeClientPicture(
   connection: Connection,
   edit: { client: string; picture: string },

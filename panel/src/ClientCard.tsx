@@ -6,6 +6,7 @@ import {
   addClientPicture,
   fetchModes,
   removeClientPicture,
+  setClientPalette,
   type Connection,
 } from './service.js';
 import type { ClientMode } from './types.js';
@@ -39,14 +40,7 @@ export function ClientCard({
     <div className="clientcard">
       {client.about == null ? null : <p className="about">{client.about}</p>}
 
-      <ul className="swatches">
-        {look.palette.map((colour) => (
-          <li key={colour.role}>
-            <span className="chip" style={{ background: colour.hex }} aria-hidden="true" />
-            <span className="what">{colour.what}</span>
-          </li>
-        ))}
-      </ul>
+      <Palette client={client} connection={connection} onModes={onModes} />
 
       {/* Set in the face it names, so he can see it rather than read about it. */}
       <div className="typesample">
@@ -177,5 +171,101 @@ function Standards({
       </p>
       <p className="hint">{noted} — noted, neither changes what is built.</p>
     </>
+  );
+}
+
+
+/**
+ * The client's four colours, and the only way to change them.
+ *
+ * They could be chosen when the client was created and never afterwards, so a
+ * client saved with the wrong colours stayed wrong — Block 10 session 40 found
+ * the missing route and 45 added it. The swatches are still the resting state;
+ * editing is a thing you ask for.
+ */
+function Palette({
+  client,
+  connection,
+  onModes,
+}: {
+  client: ClientMode;
+  connection: Connection | null;
+  onModes: (modes: ClientMode[]) => void;
+}): JSX.Element | null {
+  const look = client.look;
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  if (look === undefined) return null;
+
+  const start = (): void => {
+    setDraft(Object.fromEntries(look.palette.map((c) => [c.role, c.hex])));
+    setError(null);
+    setEditing(true);
+  };
+
+  const save = async (): Promise<void> => {
+    if (connection === null) return;
+    setSaving(true);
+    setError(null);
+    try {
+      onModes(await setClientPalette(connection, { client: client.id, palette: draft }));
+      setEditing(false);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="palette">
+      <ul className="swatches">
+        {look.palette.map((colour) => (
+          <li key={colour.role}>
+            {editing ? (
+              <input
+                type="color"
+                aria-label={colour.what}
+                value={draft[colour.role] ?? colour.hex}
+                onChange={(e) =>
+                  setDraft((d) => ({ ...d, [colour.role]: e.target.value.toUpperCase() }))
+                }
+              />
+            ) : (
+              <span className="chip" style={{ background: colour.hex }} aria-hidden="true" />
+            )}
+            <span className="what">{colour.what}</span>
+          </li>
+        ))}
+      </ul>
+
+      {connection === null ? null : editing ? (
+        <div className="paletteedit">
+          {/*
+            What an edit does and does not touch. A reel pins the client's look
+            when it is analysed and rebuilds from that pin, so the videos already
+            made keep the look they were made with — this says so before he
+            presses, rather than leaving him to find out.
+          */}
+          <p className="hint">
+            New colours apply to videos you make from now on. Videos already made keep the
+            look they were made with, until you move them forward yourself.
+          </p>
+          {error === null ? null : <p className="trouble">{error}</p>}
+          <button type="button" className="ghost" disabled={saving} onClick={() => void save()}>
+            {saving ? 'Saving…' : 'Save their colours'}
+          </button>
+          <button type="button" className="ghost" disabled={saving} onClick={() => setEditing(false)}>
+            Cancel
+          </button>
+        </div>
+      ) : (
+        <button type="button" className="ghost" onClick={start}>
+          Change their colours
+        </button>
+      )}
+    </div>
   );
 }

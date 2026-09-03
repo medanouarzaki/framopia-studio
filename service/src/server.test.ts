@@ -4,7 +4,8 @@ import path from 'node:path';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { ServiceAlreadyRunningError, startServer, type RunningService } from './server.js';
 import { readHandshake, writeHandshake } from './lock.js';
-import { REPO_ROOT } from '@framopia/core';
+import { REPO_ROOT, loadMode, modePathFor } from '@framopia/core';
+import { createClient } from './clients/create.js';
 
 /*
  * Every test drives its own lock file. Sharing `.local/service.json` would
@@ -41,6 +42,72 @@ describe('server', () => {
    * paying for one. A build refuses without a client and tells the user to
    * choose one in the panel; this is what makes that sentence true.
    */
+  /*
+   * A client's four colours could be chosen when the client was created and
+   * never afterwards — Block 10 session 40 found there was no route, and 44
+   * found the screen that chose them never sent them, so they had never reached
+   * anything for anybody but K2 Syndicalia.
+   */
+  describe('POST /clients/palette', () => {
+    const ID = 'server-palette-test-scratch';
+    const THEIRS = {
+      background: '#06131F',
+      primary: '#12507A',
+      accent: '#5FD0F0',
+      light: '#F2FBFF',
+    };
+
+    afterEach(() => rmSync(modePathFor(ID), { force: true }));
+
+    async function post(body: unknown): Promise<Response> {
+      return await fetch(`${base}/clients/palette`, {
+        method: 'POST',
+        headers: { 'x-service-token': running.token, 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+    }
+
+    it('saves the four colours and hands the modes back', async () => {
+      rmSync(modePathFor(ID), { force: true });
+      createClient({ name: 'Server Palette Test Scratch' });
+      const res = await post({ client: ID, palette: THEIRS });
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { modes: { id: string }[] };
+      expect(body.modes.some((m) => m.id === ID)).toBe(true);
+      expect(loadMode(ID).palette).toEqual(THEIRS);
+    });
+
+    it('refuses a palette with a colour missing, and writes nothing', async () => {
+      rmSync(modePathFor(ID), { force: true });
+      createClient({ name: 'Server Palette Test Scratch' });
+      const before = loadMode(ID).palette;
+      const res = await post({ client: ID, palette: { light: '#FFFFFF' } });
+      expect(res.status).toBe(400);
+      expect((await res.json()).error).toContain('all four colours');
+      expect(loadMode(ID).palette).toEqual(before);
+    });
+
+    it('refuses a client that does not exist', async () => {
+      const res = await post({ client: 'no-such-client-anywhere', palette: THEIRS });
+      expect(res.status).toBe(400);
+      expect((await res.json()).error).toContain('there is no client');
+    });
+
+    it('needs both a client and a palette', async () => {
+      expect((await post({ palette: THEIRS })).status).toBe(400);
+      expect((await post({ client: ID })).status).toBe(400);
+    });
+
+    it('rejects a request with no token', async () => {
+      const res = await fetch(`${base}/clients/palette`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ client: ID, palette: THEIRS }),
+      });
+      expect(res.status).toBe(401);
+    });
+  });
+
   describe('POST /client', () => {
     /* A copy with the client stripped, so the route is exercised on the state
      * it exists for: a plan whose analysis has never run. */
