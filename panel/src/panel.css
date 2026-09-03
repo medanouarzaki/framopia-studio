@@ -683,3 +683,13 @@ section.client .say, section.video .say { margin: 8px 0 0; color: var(--muted); 
 .palette .swatches input[type='color'] {
   width: 22px; height: 22px; padding: 0; border: 1px solid var(--line); background: none;
 }
+
+.colours .colour { flex-wrap: wrap; }
+.colours .colour input.hex {
+  width: 8.5em; font-family: var(--mono, ui-monospace, monospace); font-size: 0.78em;
+  text-transform: uppercase; padding: 2px 4px;
+  border: 1px solid var(--line); background: none; color: inherit;
+}
+.colours .colour input.hex.refused { border-color: var(--bad, #c0392b); }
+.colours .colour .trouble { flex-basis: 100%; font-size: 0.72em; color: var(--bad, #c0392b); }
+.palette .swatches input.hex { width: 7em; }

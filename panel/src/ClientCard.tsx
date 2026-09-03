@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { fileUrl } from './picture.js';
 import { ClientPictures, type ShownPicture } from './ClientPictures.js';
+import { ColourField } from './ColourField.js';
 import { fileDialogSupport } from './file-dialog.js';
 import {
   addClientPicture,
@@ -225,18 +226,27 @@ function Palette({
         {look.palette.map((colour) => (
           <li key={colour.role}>
             {editing ? (
-              <input
-                type="color"
-                aria-label={colour.what}
+              /*
+                The same field as the New Client screen, for the same reason:
+                the swatch alone could only be dragged, and a brand colour is a
+                code. Here every role already has a value, so emptying the box
+                puts back the one it had rather than unsetting it — a client's
+                palette is all four or nothing.
+              */
+              <ColourField
+                what={colour.what}
+                unset={colour.hex}
                 value={draft[colour.role] ?? colour.hex}
-                onChange={(e) =>
-                  setDraft((d) => ({ ...d, [colour.role]: e.target.value.toUpperCase() }))
+                onChange={(hex) =>
+                  setDraft((d) => ({ ...d, [colour.role]: hex ?? colour.hex }))
                 }
               />
             ) : (
-              <span className="chip" style={{ background: colour.hex }} aria-hidden="true" />
+              <>
+                <span className="chip" style={{ background: colour.hex }} aria-hidden="true" />
+                <span className="what">{colour.what}</span>
+              </>
             )}
-            <span className="what">{colour.what}</span>
           </li>
         ))}
       </ul>

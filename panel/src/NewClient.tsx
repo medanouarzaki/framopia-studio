@@ -19,6 +19,7 @@ import {
   judgeStill,
   stillVerdictSentence,
 } from './still-formats.js';
+import { ColourField } from './ColourField.js';
 import { ClientPictures, type ShownPicture } from './ClientPictures.js';
 import type { ClientMode } from './types.js';
 
@@ -275,24 +276,24 @@ export function NewClient({
           <div className="colours">
             <span className="colourhead">Their colours</span>
             {PALETTE_FIELDS.map((f) => (
-              <label className="colour" key={f.role}>
-                <input
-                  type="color"
-                  aria-label={f.what}
-                  value={palette[f.role] ?? f.hex}
-                  onChange={(e) =>
-                    setPalette((p) => ({ ...p, [f.role]: e.target.value.toUpperCase() }))
-                  }
-                />
-                <span className="what">{f.what}</span>
-                {/*
-                  A colour input always has a value, so "not set" cannot be shown
-                  by the swatch itself — the word beside it is what says so, and
-                  it is the difference between a client whose brand this is and
-                  one who simply has not been asked yet.
-                */}
-                <code>{palette[f.role] ?? 'not set'}</code>
-              </label>
+              <ColourField
+                key={f.role}
+                what={f.what}
+                unset={f.hex}
+                value={palette[f.role]}
+                onChange={(hex) =>
+                  setPalette((p) => {
+                    // Emptying the box puts the role back to unset, which is
+                    // what stops it being sent at all.
+                    if (hex === null) {
+                      const rest = { ...p };
+                      delete rest[f.role];
+                      return rest;
+                    }
+                    return { ...p, [f.role]: hex };
+                  })
+                }
+              />
             ))}
             <span className="hint">
               {paletteRolesInDisplayOrder().every((r) => palette[r] !== undefined)
