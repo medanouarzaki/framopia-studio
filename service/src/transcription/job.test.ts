@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createJob, getJob, UnknownJobTypeError } from '../jobs.js';
 import { transcribeVideo, TRANSCRIBE_JOB_TYPE } from './job.js';
 import { transcribeHybridCached } from './cached.js';
+import { extractedAudioPath } from './media.js';
 import { mapScribeResponse, type ScribeRawResponse } from './scribe.js';
 import { parseCorrectionResponseText } from './correction.js';
 import { alignCorrectedOntoDraft } from './align.js';
@@ -86,7 +87,10 @@ describe('transcribeVideo — composition', () => {
   beforeEach(() => {
     dir = mkdtempSync(path.join(tmpdir(), 'framopia-job-'));
     videoPath = path.join(dir, 'vitasilk.mov');
-    audioPath = path.join(dir, 'vitasilk.wav');
+    // Named the way production names it — from the video's content, not its
+    // filename (Block 10 session 51). Hard-coding `vitasilk.wav` here would
+    // pin the collision this fixed.
+    audioPath = extractedAudioPath(path.join(dir, 'vitasilk.mov'), dir, 'c'.repeat(64));
     cacheRoot = path.join(dir, 'cache');
     writeFileSync(videoPath, 'not really a video');
     writeFileSync(audioPath, 'not really audio');
@@ -207,7 +211,7 @@ describe('transcribeVideo — re-run on an unchanged video', () => {
   beforeEach(() => {
     dir = mkdtempSync(path.join(tmpdir(), 'framopia-job-'));
     videoPath = path.join(dir, 'vitasilk.mov');
-    audioPath = path.join(dir, 'vitasilk.wav');
+    audioPath = extractedAudioPath(path.join(dir, 'vitasilk.mov'), dir, 'c'.repeat(64));
     cacheRoot = path.join(dir, 'cache');
     writeFileSync(videoPath, 'not really a video');
     writeFileSync(audioPath, 'not really audio');
@@ -318,9 +322,9 @@ describe('transcribeVideo — media work is not repeated', () => {
           return 'e'.repeat(64);
         },
         probeVideo: async () => ({ durationS: 25.692333, fps: 29.97, width: 2160, height: 3840 }),
-        extractAudio: async (_input: string, outDir: string) => {
+        extractAudio: async (input: string, outDir: string, sha: string) => {
           extractions += 1;
-          const out = path.join(outDir, 'vitasilk.wav');
+          const out = extractedAudioPath(input, outDir, sha);
           writeFileSync(out, 'extracted audio');
           return out;
         },

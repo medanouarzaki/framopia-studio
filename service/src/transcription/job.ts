@@ -103,7 +103,7 @@ export async function transcribeVideo(
   // ffmpeg on a large ProRes reel is the slowest step in an otherwise free
   // run, so it happens only when neither a previous extraction nor a cache
   // entry can supply the audio.
-  const canonicalAudio = extractedAudioPath(videoPath, audioDir);
+  const canonicalAudio = extractedAudioPath(videoPath, audioDir, videoSha256);
   let audioPath: string;
   if (existsSync(canonicalAudio)) {
     audioPath = canonicalAudio;
@@ -115,7 +115,7 @@ export async function transcribeVideo(
       audioPath = canonicalAudio;
       log('cache: restored extracted audio from the cache instead of running ffmpeg');
     } else {
-      audioPath = await extract(videoPath, audioDir);
+      audioPath = await extract(videoPath, audioDir, videoSha256, log);
     }
   }
 
