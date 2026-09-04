@@ -20,6 +20,7 @@
     "images": "tsx src/images/images-cli.ts",
     "plan-page": "tsx src/images/plan-page-cli.ts",
     "frames": "tsx src/frames/frames-cli.ts",
+    "migrate:cv-dirs": "tsx src/frames/migrate-cv-dirs-cli.ts",
     "face-sheets": "tsx src/frames/face-sheets-cli.ts",
     "segment": "tsx src/frames/segment-cli.ts",
     "zones": "tsx src/frames/zones-cli.ts",

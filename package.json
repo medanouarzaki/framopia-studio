@@ -26,6 +26,7 @@
     "images": "npm run build:core && npm run images --workspace framopia-service --",
     "plan-page": "npm run build:core && npm run plan-page --workspace framopia-service --",
     "frames": "npm run build:core && npm run frames --workspace framopia-service --",
+    "migrate:cv-dirs": "npm run build:core && npm run migrate:cv-dirs --workspace framopia-service --",
     "segment": "npm run build:core && npm run segment --workspace framopia-service --",
     "face-sheets": "npm run build:core && npm run face-sheets --workspace framopia-service --",
     "zones": "npm run build:core && npm run zones --workspace framopia-service --",

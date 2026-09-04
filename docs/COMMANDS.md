@@ -109,12 +109,14 @@ handful used in an ordinary session and points here for the rest.
   the terminal path and are unchanged.
 - `npm run frames -- (--reel <label> | --all) [--force]` — free, local. Samples
   a reel from `benchmarks/footage.json` at ARCHITECTURE §5.5's 2 fps into
-  `.local/cv/<video-basename>/frames-2fps/` with a `frames.json` manifest
+  `.local/cv/<video-name>-<first 12 of its sha256>/frames-2fps/` with a
+  `frames.json` manifest
   beside them. An existing sample is **refused, not replaced**, without
   `--force`: the masks next to it were computed from those exact frames.
 - `npm run segment -- (--reel <label> | --all) [--no-debug]` — free, local.
   Person segmentation over an already-sampled reel into
-  `.local/cv/<video-basename>/masks-2fps/`, plus contact sheets and close-ups
+  `.local/cv/<video-name>-<first 12 of its sha256>/masks-2fps/`, plus contact
+  sheets and close-ups
   under `benchmarks/results/latest-segmentation/`. Needs `tools/cv/setup.sh`.
 - `npm run zones -- (--reel <label> | --all) [--method maximal|three]
   [--threshold <t>] [--write-plan] [--no-debug]` —
@@ -251,6 +253,15 @@ handful used in an ordinary session and points here for the rest.
   how many consecutive subtitle pairs would overlap on screen under each
   reading of TEMPLATE_LIBRARY_GUIDE §5's retiming rule. Writes
   `benchmarks/RESULTS-block7-retiming.md`. Modifies no plan.
+- `npm run migrate:cv-dirs [-- --dry-run]` — free, local, one-shot, **spends
+  nothing and recomputes nothing**. Renames `.local/cv/<name>/` and
+  `.local/build/loudness/<name>.json` — which were keyed on a video's filename
+  until Block 10 session 52, and two of his files are called `sora.mov` — into
+  the name that video's own sha256 gives it, and repoints the absolute paths
+  inside the manifests it moved. The hash is read from the record being moved,
+  never recomputed, and a directory with no readable hash is **left exactly
+  where it is and reported** rather than filed under a guess. Safe to run
+  twice.
 - `npm run migrate:image-cache [-- --apply]` — free, local, one-shot. Re-keys
   image cache entries onto the Block 7 fingerprint. Dry-run by default; it
   refuses to move an entry whose **old** key does not reproduce from its own

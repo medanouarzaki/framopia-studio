@@ -694,8 +694,21 @@ empty. A whole reel is **25–31 s** on this corpus, not the "minutes" the Block
 handoff estimated; the panel still warns it can take a few minutes the first
 time, because that is a claim about an unknown video rather than about these five.
 
+**A video is filed under its content, not its name.** `.local/cv/` is
+`<the name he gave the file>-<the first twelve hex of its sha256>/` — for
+example `sora-619b8eaecae4/` — and so are `.local/build/loudness/<…>.json` and
+the extracted audio in `.local/audio/`. Two of the client's files are both
+called `sora.mov`, in different folders of her drive; keying on the basename
+alone spent $1.01 on the wrong transcript in session 50 and, one directory
+over, left one reel's 81 face masks in the same place as the other's 28 frames.
+`videoDirName` in `service/src/video-identity.ts` is the one rule, and it takes
+a path **and** a sha256 together so that no caller can name a directory without
+knowing which recording it belongs to. The hash is never computed for this: the
+plan records it because transcription already did. `npm run migrate:cv-dirs`
+moved what was on disk into the new names without recomputing anything.
+
 **Freshness is decided by a manifest, and it is the artifact.**
-`.local/cv/<stem>/masks-2fps/frame-analysis.json` records the source path and
+`.local/cv/<name>-<sha12>/masks-2fps/frame-analysis.json` records the source path and
 **sha256**, the sample fps, the frame count, the sidecar task, the model and its
 path, the threshold, the zone method and count, the wall-clock seconds and the
 code version. Any mismatch, or no manifest, is a re-run — masks are reproducible,
