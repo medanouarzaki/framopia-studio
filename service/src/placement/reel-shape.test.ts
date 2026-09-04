@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { placementIsSafe, reelPlacements, topLeftPlacementDetail } from './top-left.js';
 import { FRAME_WIDTH, FRAME_HEIGHT, HEAD_CLEARANCE, TOP_LEFT_MARGIN } from './constants.js';
 import type { Rect } from './geometry.js';
+import { pictureLives, pictureWindows } from '../build/picture-life.js';
 
 /**
  * **How a picture's size behaves on a video the tool has never seen.**
@@ -458,5 +459,74 @@ describe('a picture that arrives at its naming word', () => {
     const whole = topLeftPlacementDetail({ faceBox: steady, seed: 'steady' });
     const later = topLeftPlacementDetail({ faceBox: steady.slice(2), seed: 'steady' });
     expect(Math.round(later.rect.w * FRAME_WIDTH)).toBe(Math.round(whole.rect.w * FRAME_WIDTH));
+  });
+});
+
+/**
+ * **A picture the client supplied obeys every rule a generated one does.**
+ *
+ * The rules are here, in geometry and in timing, and neither reads a file: a
+ * placement is decided from a slot id, a face box and a seed, and a picture's
+ * life from its span and its naming word. So the honest thing to pin is that a
+ * reel where some slots the client filled and some the model did comes out with
+ * the same sizes, the same clearance and the same hand-over as one where they
+ * all came from the model — and that a slot with nothing generated for it is
+ * still a picture to every rule that decides where pictures go.
+ *
+ * The rule this could break is the hand-over: a client's picture reaches the
+ * builder with **no candidates at all**, and anything that took "has a
+ * generated candidate" for "is a picture" would drop it out of the sequence,
+ * leaving the picture before it on screen across the gap.
+ */
+describe('a picture the client supplied, among generated ones', () => {
+  /** Four slots; the second and fourth are filled from the client's own pictures. */
+  const slots = [
+    { id: 'img001', start: 0.5, end: 3.0, nameWordId: 'w002' },
+    { id: 'img002', start: 3.0, end: 5.5, nameWordId: 'w010', chosenClientPictureId: 'pic001' },
+    { id: 'img003', start: 5.5, end: 8.0 },
+    { id: 'img004', start: 8.0, end: 10.5, nameWordId: 'w030', chosenClientPictureId: 'pic002' },
+  ];
+  const wordStarts = new Map([['w002', 1.2], ['w010', 3.9], ['w030', 8.6]]);
+  const windows = pictureWindows(slots, (id) => wordStarts.get(id));
+  const lives = pictureLives(windows, 0.5);
+
+  it('is one of the pictures, not a slot the sequence skipped', () => {
+    expect(lives.map((l) => l.id)).toEqual(['img001', 'img002', 'img003', 'img004']);
+  });
+
+  it('arrives at the word that names it, exactly as a generated one does', () => {
+    expect(lives.find((l) => l.id === 'img002')?.screenStartS).toBeCloseTo(3.9, 9);
+    expect(lives.find((l) => l.id === 'img004')?.screenStartS).toBeCloseTo(8.6, 9);
+    // The generated slot beside it is unmoved by their presence.
+    expect(lives.find((l) => l.id === 'img001')?.screenStartS).toBeCloseTo(1.2, 9);
+  });
+
+  it('leaves no gap on either side of itself', () => {
+    for (let i = 1; i < lives.length; i += 1) {
+      const before = lives[i - 1] as { screenEndS: number };
+      const now = lives[i] as { screenStartS: number };
+      expect(now.screenStartS - before.screenEndS).toBeCloseTo(0, 9);
+    }
+  });
+
+  it('is sized by its own corner, from the same rule and the same seed', () => {
+    const faces = [faceAt(900, 860), faceAt(1040, 1000), faceAt(760, 720), faceAt(980, 940)];
+    const placed = reelPlacements(
+      slots.map((s, i) => ({ id: s.id, faceBox: faces[i] as Rect, seed: `seed:${s.id}` })),
+    );
+    for (const [i, s] of slots.entries()) {
+      const own = topLeftPlacementDetail({ faceBox: faces[i] as Rect, seed: `seed:${s.id}` });
+      const inReel = placed.slots.find((p) => p.id === s.id);
+      expect(`${s.id}: ${Math.round((inReel?.rect.w ?? 0) * FRAME_WIDTH)}`).toBe(
+        `${s.id}: ${Math.round(own.rect.w * FRAME_WIDTH)}`,
+      );
+      expect(placementIsSafe(inReel?.rect as Rect, faces[i] as Rect)).toEqual({
+        insideFrame: true,
+        clearsFace: true,
+      });
+    }
+    // Its own corner, not the reel's tightest: the two differ here on purpose.
+    const widths = placed.slots.map((p) => Math.round(p.rect.w * FRAME_WIDTH));
+    expect(new Set(widths).size).toBeGreaterThan(1);
   });
 });

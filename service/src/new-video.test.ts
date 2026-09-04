@@ -17,6 +17,7 @@ import { reelMasksDir } from './frames/segment.js';
 import { reelFramesDir } from './frames/sample.js';
 import { buildReel } from './build/reel-plan.js';
 import { buildChoiceFor } from './build/choose-candidate.js';
+import { clientPictureFileFor } from './build/client-picture.js';
 import { textStyleFor } from './build/text-style.js';
 import { buildRequirements, missingRequirements, readBuildDisk } from './build/requirements.js';
 import { resolveClientIdentity } from './build/client-identity.js';
@@ -84,6 +85,22 @@ const ready = FFMPEG !== null && existsSync(SOURCE) && existsSync(SIDECAR_PYTHON
  */
 const SECOND_CLIENT = 'a-second-client-for-the-new-video-test';
 const SECOND_CLIENT_PATH = path.join(REPO_ROOT, 'modes', `${SECOND_CLIENT}.json`);
+
+/**
+ * **Three clients, so the client's own pictures are proved general rather than
+ * fitted.** One has many pictures and one of their labels is a word its reel
+ * actually says; one has pictures whose labels never fire; one has none at all.
+ * Nothing here is keyed to a name, a language or a trade: the labels are
+ * nonsense words in both scripts and the reels are re-encoded corpus footage.
+ */
+const PICTURE_CLIENT = 'a-client-with-its-own-pictures-test';
+const PICTURE_CLIENT_PATH = path.join(REPO_ROOT, 'modes', `${PICTURE_CLIENT}.json`);
+const NO_PICTURE_CLIENT = 'a-client-with-no-pictures-test';
+const NO_PICTURE_CLIENT_PATH = path.join(REPO_ROOT, 'modes', `${NO_PICTURE_CLIENT}.json`);
+const SCRATCH_CLIENTS = [SECOND_CLIENT_PATH, PICTURE_CLIENT_PATH, NO_PICTURE_CLIENT_PATH];
+
+/** The word one of the picture client's labels holds, and its reel speaks. */
+const LABELLED_WORD = 'Zephyrine';
 const SECOND_CLIENT_PALETTE = {
   background: '#06131F',
   primary: '#12507A',
@@ -114,6 +131,13 @@ interface Shape {
   modeId?: string;
   /** Whether that client's reels carry the mark. */
   expectWatermark: boolean;
+  /**
+   * How many of this reel's slots one of the client's own pictures fills, and
+   * which picture. Zero is the case that must behave exactly as it did before
+   * any of this existed, and three of the five shapes are that case.
+   */
+  ownPictures: number;
+  ownPictureId?: string;
 }
 
 /** Two Arabic words and two Latin ones, with timings a 6s clip can hold. */
@@ -145,6 +169,9 @@ const SHAPES: Shape[] = [
     // roles, the standard faces rather than K2's, and the watermark off.
     modeId: SECOND_CLIENT,
     expectWatermark: false,
+    // This client has pictures, and not one of their labels is a word this
+    // reel says: it generates, exactly as a client with none does.
+    ownPictures: 0,
   },
   {
     label: 'another video with its pictures far apart',
@@ -167,6 +194,7 @@ const SHAPES: Shape[] = [
     namedPictures: 1,
     unnamedPictures: 1,
     expectWatermark: true,
+    ownPictures: 0,
   },
   {
     label: 'a third video whose pictures run into each other',
@@ -194,6 +222,63 @@ const SHAPES: Shape[] = [
     namedPictures: 0,
     unnamedPictures: 2,
     expectWatermark: true,
+    ownPictures: 0,
+  },
+  /*
+   * **The reel that says a word one of its client's pictures is labelled
+   * with.** Its second picture is his own photograph, chosen by the word alone,
+   * and nothing is generated for that slot.
+   */
+  {
+    label: 'a video whose client has pictures of his own',
+    seconds: 9,
+    draft: [
+      { text: 'أهلا', start: 0.4, end: 1.2 },
+      { text: 'وسهلا', start: 1.4, end: 2.2 },
+      { text: LABELLED_WORD, start: 3.6, end: 4.6 },
+      { text: 'Complex', start: 4.8, end: 5.8 },
+      { text: 'للبشرة', start: 6.6, end: 7.4 },
+      { text: 'والشعر', start: 7.6, end: 8.4 },
+    ],
+    keywordCandidates: [
+      { wordIds: ['w0002', 'w0003'], score: 0.9, reason: 'the product', kind: 'promise' },
+    ],
+    slotCandidates: [
+      { wordIds: ['w0000', 'w0001'], idea: 'a calm open horizon', score: 0.9, nameWordId: 'w0001' },
+      { wordIds: ['w0002', 'w0003'], idea: 'a bottle on a plain ground', score: 0.8, nameWordId: 'w0002' },
+    ],
+    minPictures: 2,
+    namedPictures: 2,
+    unnamedPictures: 0,
+    modeId: PICTURE_CLIENT,
+    expectWatermark: true,
+    ownPictures: 1,
+    ownPictureId: 'pic007',
+  },
+  /* A client with no pictures at all, which is every client until he adds one. */
+  {
+    label: 'a video whose client has no pictures at all',
+    seconds: 7,
+    draft: [
+      { text: 'صباح', start: 0.4, end: 1.1 },
+      { text: 'الخير', start: 1.3, end: 2.0 },
+      { text: 'Lumina', start: 2.8, end: 3.6 },
+      { text: 'Serum', start: 3.8, end: 4.6 },
+      { text: 'للوجه', start: 5.2, end: 5.9 },
+      { text: 'ديالك', start: 6.0, end: 6.7 },
+    ],
+    keywordCandidates: [
+      { wordIds: ['w0002', 'w0003'], score: 0.9, reason: 'the product', kind: 'promise' },
+    ],
+    slotCandidates: [
+      { wordIds: ['w0002', 'w0003'], idea: 'a single bottle', score: 0.9, nameWordId: 'w0002' },
+    ],
+    minPictures: 1,
+    namedPictures: 1,
+    unnamedPictures: 0,
+    modeId: NO_PICTURE_CLIENT,
+    expectWatermark: true,
+    ownPictures: 0,
   },
 ];
 
@@ -201,11 +286,69 @@ let dir: string;
 const videoPaths = new Map<string, string>();
 const saved = process.env['FRAMOPIA_VIDEO_REGISTRY'];
 
+/**
+ * **No request may leave this machine, and that is checked rather than
+ * intended.** Every billable call is already replaced with a local substitute,
+ * so the only way one could go out is a path nobody thought of — and `fetch` is
+ * the single door all of them use. It is replaced by a recorder that throws,
+ * and the count is asserted to be zero at the end of every run.
+ */
+const attempted: string[] = [];
+const realFetch = globalThis.fetch;
+
 beforeAll(() => {
+  globalThis.fetch = ((input: unknown): never => {
+    const where = typeof input === 'string' ? input : String((input as { url?: string })?.url);
+    attempted.push(where);
+    throw new Error(`this test may not reach the network, and something tried: ${where}`);
+  }) as typeof globalThis.fetch;
   if (!ready) return;
+  dir = mkdtempSync(path.join(tmpdir(), 'framopia-new-video-'));
+
   const k2 = JSON.parse(
     readFileSync(path.join(REPO_ROOT, 'modes', 'k2-syndicalia.json'), 'utf8'),
   ) as Record<string, unknown>;
+
+  /*
+   * Real files, in the temporary directory, so the pictures a client names are
+   * pictures that exist — the validator wants an absolute path and pre-flight
+   * wants a file. They are deleted with the directory.
+   */
+  const pictureFile = (name: string): string => {
+    const file = path.join(dir, `${name}.png`);
+    writeFileSync(file, pngBytes());
+    return file;
+  };
+  /* Fifty of them, because a client with fifty must work as well as one with one. */
+  const ownPictures = Array.from({ length: 50 }, (_, i) => ({
+    id: `pic${String(i + 1).padStart(3, '0')}`,
+    path: pictureFile(`own-${i + 1}`),
+    description: `a picture the client supplied, number ${i + 1}`,
+    label: i === 6 ? `${LABELLED_WORD} Kalimba` : `label${i + 1}`,
+  }));
+  const scratchClient = (id: string, name: string, extra: Record<string, unknown>) => ({
+    ...k2,
+    id,
+    name,
+    version: 1,
+    note: 'written by new-video.test.ts and deleted when it finishes',
+    ...extra,
+  });
+  writeFileSync(
+    PICTURE_CLIENT_PATH,
+    `${JSON.stringify(
+      scratchClient(PICTURE_CLIENT, 'A Client With Pictures', { pictures: ownPictures }),
+      null,
+      2,
+    )}\n`,
+    'utf8',
+  );
+  writeFileSync(
+    NO_PICTURE_CLIENT_PATH,
+    `${JSON.stringify(scratchClient(NO_PICTURE_CLIENT, 'A Client With No Pictures', {}), null, 2)}\n`,
+    'utf8',
+  );
+
   writeFileSync(
     SECOND_CLIENT_PATH,
     `${JSON.stringify(
@@ -220,13 +363,32 @@ beforeAll(() => {
         fonts: { status: 'tbd', note: 'the standard pair, as a new client gets' },
         imageScale: 0.8,
         watermarkByDefault: false,
+        /*
+         * Labelled pictures that never fire: not one of these words is spoken
+         * on its reel, so this client generates exactly as one with no
+         * pictures does. It is the case a rule written for the first client
+         * would have got wrong.
+         */
+        pictures: [
+          {
+            id: 'pic001',
+            path: pictureFile('second-client-1'),
+            description: 'a picture whose label this reel never says',
+            label: 'Kalimba, Zephyrine',
+          },
+          {
+            id: 'pic002',
+            path: pictureFile('second-client-2'),
+            description: 'another one',
+            label: 'مرصاد',
+          },
+        ],
       },
       null,
       2,
     )}\n`,
     'utf8',
   );
-  dir = mkdtempSync(path.join(tmpdir(), 'framopia-new-video-'));
   for (const shape of SHAPES) {
     const videoPath = path.join(dir, `${shape.label}.mov`);
     // A few seconds of a corpus reel, re-encoded: a new file with a new hash
@@ -244,7 +406,8 @@ beforeAll(() => {
 });
 
 afterAll(() => {
-  rmSync(SECOND_CLIENT_PATH, { force: true });
+  globalThis.fetch = realFetch;
+  for (const scratch of SCRATCH_CLIENTS) rmSync(scratch, { force: true });
   if (saved === undefined) delete process.env['FRAMOPIA_VIDEO_REGISTRY'];
   else process.env['FRAMOPIA_VIDEO_REGISTRY'] = saved;
   /*
@@ -413,6 +576,57 @@ describe.skipIf(!ready)('a video the tool has never seen', () => {
     const planPath = result.planPath as string;
     const plan = await readEditPlan(planPath);
 
+    /*
+     * **The slots one of this client's own pictures answered.**
+     *
+     * Three of the five shapes must read zero here: two clients with no
+     * pictures, and one whose pictures are labelled with words its reel never
+     * says. That is what "a client with no pictures behaves exactly as today"
+     * means, and it is asserted rather than assumed.
+     */
+    const own = plan.images.slots.filter((s) => s.chosenClientPictureId !== undefined);
+    expect(own.length, `${shape.label}: slots filled from the client's own pictures`).toBe(
+      shape.ownPictures,
+    );
+
+    if (shape.ownPictureId !== undefined) {
+      const filled = own[0];
+      /*
+       * The picture is the one on *this* client. Both scratch clients label a
+       * picture with the same word, and they number their pictures from
+       * `pic001` alike, so a rule that resolved an id without knowing whose it
+       * was would land on the wrong photograph.
+       */
+      expect(filled?.chosenClientPictureId).toBe(shape.ownPictureId);
+      expect(filled?.chosenClientPictureWord).toBe(LABELLED_WORD);
+
+      /* Nothing was bought for it. This is the whole point of the feature. */
+      expect(filled?.candidates.length, 'a picture was generated for a slot he had filled').toBe(0);
+
+      /* The file stays where the client put it: his own path, not a cache. */
+      const mode = JSON.parse(readFileSync(PICTURE_CLIENT_PATH, 'utf8')) as {
+        pictures: { id: string; path: string }[];
+      };
+      const source = mode.pictures.find((pic) => pic.id === shape.ownPictureId);
+      expect(existsSync(source?.path as string)).toBe(true);
+      expect(source?.path.startsWith(dir)).toBe(true);
+      expect(source?.path).not.toContain(path.join('.local', 'cache'));
+
+      /* Every other slot on the same reel was generated, exactly as before. */
+      const generated = plan.images.slots.filter((s) => s.chosenClientPictureId === undefined);
+      expect(generated.length).toBeGreaterThan(0);
+      for (const slot of generated) {
+        expect(`${slot.id}: ${slot.candidates.length > 0}`).toBe(`${slot.id}: true`);
+      }
+    } else {
+      for (const slot of plan.images.slots) {
+        expect(`${slot.id}: ${slot.candidates.length > 0}`).toBe(`${slot.id}: true`);
+      }
+    }
+
+    // Nothing tried to reach the network, at any point of the whole run.
+    expect(attempted, 'something tried to leave this machine').toEqual([]);
+
     // What a build reads, all of it, produced by the pipeline alone.
     expect(plan.transcript.words.length).toBeGreaterThan(0);
     expect(plan.subtitles.groups.every((g) => g.templateId !== null)).toBe(true);
@@ -460,6 +674,14 @@ describe.skipIf(!ready)('a video the tool has never seen', () => {
       candidateFileFor: (slotId) => {
         const slot = plan.images.slots.find((s) => s.id === slotId);
         if (slot === undefined) return null;
+        /*
+         * One of the client's own pictures wins over anything generated, and
+         * it is resolved by the same function the build CLI uses — a second
+         * copy of that rule here is exactly how session 4 lost four of five
+         * images.
+         */
+        const own = clientPictureFileFor(plan, slot);
+        if (own !== null) return own;
         const choice = buildChoiceFor(slot);
         const c = slot.candidates.find((x) => x.id === choice.candidateId);
         return c === undefined ? null : { path: c.path, id: c.id };
