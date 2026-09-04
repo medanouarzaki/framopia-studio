@@ -5,6 +5,7 @@ import { loadSfxIndex, loadTemplateManifest, templatesById } from '@framopia/cor
 import { readEditPlan, writeEditPlan } from '../editplan/io.js';
 import { deriveSfxEvents } from '../analysis/sfx.js';
 import { templateImpacts } from '../analysis/template-impacts.js';
+import { videoDirName, type VideoIdentity } from '../video-identity.js';
 import {
   hashFileSync,
   loudnessIsFresh,
@@ -177,9 +178,16 @@ export function ensureWatermarkFacts(
   return { measured: true, why: fresh.why, facts: written };
 }
 
-export function loudnessRecordPath(videoPath: string): string {
-  const stem = path.basename(videoPath).replace(/\.[^.]+$/, '');
-  return path.join(REPO_ROOT, '.local', 'build', 'loudness', `${stem}.json`);
+/**
+ * Named for the video's content, not its name: `.local/build/loudness/sora.json`
+ * was written by whichever of his two `sora.mov` files was built last, and each
+ * build of the other one silently measured over it. The record carries a
+ * `sourceSha256` and `loudnessIsFresh` checks it, so nothing was ever mixed —
+ * but the work was thrown away on every alternation, and one rule for naming a
+ * video is better than a rule and an apology.
+ */
+export function loudnessRecordPath(video: VideoIdentity): string {
+  return path.join(REPO_ROOT, '.local', 'build', 'loudness', `${videoDirName(video)}.json`);
 }
 
 export function readLoudnessRecord(recordPath: string): LoudnessRecord | null {
@@ -213,7 +221,7 @@ export function ensureLoudness(options: {
     }]);
   }
 
-  const recordPath = loudnessRecordPath(videoPath);
+  const recordPath = loudnessRecordPath({ path: videoPath, sha256: sourceSha256 });
   const existing = readLoudnessRecord(recordPath);
   const fresh = loudnessIsFresh(existing, videoPath, sourceSha256);
   if (fresh.fresh && existing !== null) {

@@ -4,6 +4,7 @@ import { REPO_ROOT } from '@framopia/core';
 import { runSidecar } from '../images/sidecar.js';
 import { reelMasksDir } from './segment.js';
 import { readFramesManifest } from './sample.js';
+import { type VideoIdentity } from '../video-identity.js';
 
 /** ARCHITECTURE §3's zones block, normalized 0-1 against the frame. */
 export interface ZoneRect {
@@ -90,9 +91,9 @@ export interface MaskFrame {
   headMaskPath?: string;
 }
 
-export function maskFramesFor(reelPath: string): MaskFrame[] {
-  const manifest = readFramesManifest(reelPath);
-  const segmentation = readSegmentation(reelPath);
+export function maskFramesFor(video: VideoIdentity): MaskFrame[] {
+  const manifest = readFramesManifest(video);
+  const segmentation = readSegmentation(video);
   if (segmentation.length !== manifest.frames.length) {
     throw new Error(
       `${segmentation.length} masks against ${manifest.frames.length} sampled frames`,
@@ -119,8 +120,8 @@ interface SegmentationRecord {
   headMaskPath?: string;
 }
 
-function readSegmentation(reelPath: string): SegmentationRecord[] {
-  const file = path.join(reelMasksDir(reelPath), 'segmentation.json');
+function readSegmentation(video: VideoIdentity): SegmentationRecord[] {
+  const file = path.join(reelMasksDir(video), 'segmentation.json');
   const parsed = JSON.parse(readUtf8(file)) as { frames?: SegmentationRecord[] };
   if (!parsed.frames?.length) {
     throw new Error(`${file} lists no frames; run npm run segment first`);

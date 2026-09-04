@@ -8,6 +8,7 @@ import { SUBTITLE_BAND } from '../placement/constants.js';
 import { SIDECAR_PYTHON } from '../images/sidecar.js';
 import { writeZonesToPlan } from './plan-zones.js';
 import { reelMasksDir, segmentPerson, type SegmentedFrame } from './segment.js';
+import { type VideoIdentity } from '../video-identity.js';
 import { SAMPLE_FPS, reelFramesDir, sampleFrames } from './sample.js';
 import { computeZones, type Zone } from './zones.js';
 
@@ -153,12 +154,12 @@ export function assertFrameAnalysisAvailable(needs = frameAnalysisNeeds()): void
   if (needs.length > 0) throw new FrameAnalysisUnavailableError(needs);
 }
 
-export function frameAnalysisManifestPath(sourcePath: string): string {
-  return path.join(reelMasksDir(sourcePath), FRAME_ANALYSIS_MANIFEST);
+export function frameAnalysisManifestPath(video: VideoIdentity): string {
+  return path.join(reelMasksDir(video), FRAME_ANALYSIS_MANIFEST);
 }
 
-export function readFrameAnalysisManifest(sourcePath: string): FrameAnalysisManifest | null {
-  const file = frameAnalysisManifestPath(sourcePath);
+export function readFrameAnalysisManifest(video: VideoIdentity): FrameAnalysisManifest | null {
+  const file = frameAnalysisManifestPath(video);
   if (!existsSync(file)) return null;
   try {
     return JSON.parse(readFileSync(file, 'utf8')) as FrameAnalysisManifest;
@@ -291,13 +292,21 @@ export async function analyseFrames(options: FrameAnalysisOptions): Promise<Fram
 
   assertFrameAnalysisAvailable(deps.needs());
 
-  const masksDir = reelMasksDir(videoPath);
-  const manifestPath = frameAnalysisManifestPath(videoPath);
-
+  /*
+   * The hash comes before the directory, not after it: `.local/cv/` is named
+   * for the video's content as well as its name, because two of his files are
+   * called `sora.mov`. It was already being computed here for the freshness
+   * check, so this costs nothing it did not already cost.
+   */
   onProgress({ percent: 0, message: 'Checking whether this video has been looked at' });
   const sourceSha256 = await deps.hash(videoPath);
+  const video: VideoIdentity = { path: videoPath, sha256: sourceSha256 };
+
+  const masksDir = reelMasksDir(video);
+  const manifestPath = frameAnalysisManifestPath(video);
+
   const freshness = frameAnalysisIsFresh({
-    manifest: readFrameAnalysisManifest(videoPath),
+    manifest: readFrameAnalysisManifest(video),
     sourcePath: videoPath,
     sourceSha256,
     masksPresent: masksPresentIn(masksDir),
@@ -324,10 +333,10 @@ export async function analyseFrames(options: FrameAnalysisOptions): Promise<Fram
    * rather than numbered, and it is safe: frames are regenerated from the
    * video, never edited.
    */
-  clearPngs(reelFramesDir(videoPath));
+  clearPngs(reelFramesDir(video));
 
   onProgress({ percent: 0.05, message: 'Taking still frames from the video' });
-  const frames = await deps.sample(reelLabel, videoPath, {
+  const frames = await deps.sample(reelLabel, video, {
     force: true,
     onProgress: (message) => log(message),
   });

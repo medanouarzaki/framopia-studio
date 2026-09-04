@@ -6,6 +6,7 @@ import { REPO_ROOT, loadTemplateManifest, templatesById } from '@framopia/core';
 import { readEditPlan } from '../editplan/io.js';
 import { resolveClientIdentity } from './client-identity.js';
 import { reelMasksDir } from '../frames/segment.js';
+import { videoOf } from '../video-identity.js';
 import {
   MissingBuildMeasurementsError,
   assertRequirementsMet,
@@ -56,7 +57,7 @@ describe('what a build requires', () => {
     writeFileSync(copied, JSON.stringify(raw), 'utf8');
 
     const plan = await readEditPlan(copied);
-    expect(reelMasksDir(plan.source.videoPath)).toContain('a reel nobody has sampled');
+    expect(reelMasksDir(videoOf(plan.source))).toContain('a reel nobody has sampled');
     expect(readBuildDisk(plan).faceMasks).toBe(false);
 
     const missing = missingRequirements(
@@ -75,8 +76,14 @@ describe('what a build requires', () => {
   it('asks one function where the masks are, and it is keyed on the video', async () => {
     const plan = await readEditPlan(planPath('vitasilk'));
     expect(readBuildDisk(plan).faceMasks).toBe(true);
-    expect(reelMasksDir(plan.source.videoPath)).toBe(
-      path.join(REPO_ROOT, '.local', 'cv', 'vitasilk', 'masks-2fps'),
+    expect(reelMasksDir(videoOf(plan.source))).toBe(
+      path.join(
+        REPO_ROOT,
+        '.local',
+        'cv',
+        `vitasilk-${plan.source.sha256.slice(0, 12)}`,
+        'masks-2fps',
+      ),
     );
 
     const src = path.join(REPO_ROOT, 'service', 'src');
@@ -90,6 +97,10 @@ describe('what a build requires', () => {
         }
         if (!entry.name.endsWith('.ts') || entry.name.includes('.test.')) continue;
         if (full.endsWith(path.join('frames', 'segment.ts'))) continue;
+        // The migration reads directories written before `reelMasksDir` was
+        // keyed on the video's content, so it is the one tool that has to spell
+        // the old layout: it is what it is moving.
+        if (full.endsWith(path.join('frames', 'migrate-cv-dirs-cli.ts'))) continue;
         const text = readFileSync(full, 'utf8')
           .replace(/\/\*[\s\S]*?\*\//g, '')
           .replace(/^\s*\/\/.*$/gm, '');

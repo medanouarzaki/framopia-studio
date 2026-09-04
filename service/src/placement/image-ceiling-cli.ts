@@ -18,6 +18,7 @@ import {
 import { inset, largestSquare } from './geometry.js';
 import { footprintOf } from './solve.js';
 import { reelMasksDir } from '../frames/segment.js';
+import { videoByLabel } from '../frames/footage.js';
 
 /**
  * What each placement constraint is *worth*, one relaxation at a time.
@@ -37,7 +38,7 @@ interface Rect { x: number; y: number; w: number; h: number }
 interface MaskFrame { index: string; box: [number, number, number, number] | null }
 
 function maskBoxes(reel: string, kind: 'head' | 'face'): MaskFrame[] | null {
-  const dir = reelMasksDir(reel);
+  const dir = reelMasksDir(videoByLabel(reel));
   if (!existsSync(dir) || !existsSync(PY)) return null;
   const raw = execFileSync(PY, [HEAD_BOXES, dir, kind], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
   return (JSON.parse(raw) as { frames: MaskFrame[] }).frames;

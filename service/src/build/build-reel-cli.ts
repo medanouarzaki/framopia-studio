@@ -26,6 +26,7 @@ import {
 } from '@framopia/core';
 import { edgeLuminance, flattenCutout } from '../images/sidecar.js';
 import { reelMasksDir } from '../frames/segment.js';
+import { videoOf } from '../video-identity.js';
 import { readEditPlan, writeEditPlan } from '../editplan/io.js';
 import { buildRecordFor } from './build-record.js';
 import { runBuildReel } from './drive.js';
@@ -194,7 +195,7 @@ interface MaskFrame { index: string; box: [number, number, number, number] | nul
 // Asked of `reelMasksDir`, the one function that decides where masks live.
 // This used to build the path from the plan's filename, which agreed with the
 // masks only while every plan sat beside its video.
-const maskDir = reelMasksDir(plan.source.videoPath);
+const maskDir = reelMasksDir(videoOf(plan.source));
 const faceFrames: MaskFrame[] = existsSync(maskDir) && existsSync(MASK_PY)
   ? (JSON.parse(
       execFileSync(MASK_PY, [MASK_SCRIPT, maskDir, 'face'], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }),

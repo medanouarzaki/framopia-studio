@@ -5,6 +5,7 @@ import { REPO_ROOT } from '@framopia/core';
 import type { EditPlan } from '../editplan/types.js';
 import type { Rect } from './geometry.js';
 import { reelMasksDir } from '../frames/segment.js';
+import { videoOf } from '../video-identity.js';
 import { pictureLives, pictureWindows } from '../build/picture-life.js';
 import { imageEntranceS } from '../analysis/template-impacts.js';
 
@@ -30,7 +31,7 @@ interface MaskFrame {
 
 export function faceBoxesFor(plan: EditPlan): Map<string, Rect[]> {
   const boxes = new Map<string, Rect[]>();
-  const dir = reelMasksDir(plan.source.videoPath);
+  const dir = reelMasksDir(videoOf(plan.source));
   if (!existsSync(dir) || !existsSync(PY)) return boxes;
 
   let frames: MaskFrame[];

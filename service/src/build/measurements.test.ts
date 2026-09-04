@@ -89,8 +89,22 @@ describe('the loudness freshness record', () => {
   });
 
   it('keeps each reel’s record under its own name', () => {
-    expect(loudnessRecordPath('/videos/test 1.mov')).not.toBe(loudnessRecordPath('/videos/vitasilk.mov'));
-    expect(path.basename(loudnessRecordPath('/videos/test 1.mov'))).toBe('test 1.json');
+    const one = { path: '/videos/test 1.mov', sha256: 'a'.repeat(64) };
+    const other = { path: '/videos/vitasilk.mov', sha256: 'b'.repeat(64) };
+    expect(loudnessRecordPath(one)).not.toBe(loudnessRecordPath(other));
+    expect(path.basename(loudnessRecordPath(one))).toBe(`test 1-${'a'.repeat(12)}.json`);
+  });
+
+  /*
+   * Both of his `sora.mov` files wrote to `.local/build/loudness/sora.json`,
+   * so each build of one measured over the other's answer. The record's own
+   * `sourceSha256` meant nothing was ever mixed, but the work was thrown away
+   * on every alternation.
+   */
+  it('keeps two videos of the same name apart', () => {
+    const hers = { path: '/Footages/sora.mov', sha256: 'c'.repeat(64) };
+    const his = { path: '/Work in Progress/sora.mov', sha256: 'd'.repeat(64) };
+    expect(loudnessRecordPath(hers)).not.toBe(loudnessRecordPath(his));
   });
 
   it('reads a corrupt record as absent rather than throwing', () => {

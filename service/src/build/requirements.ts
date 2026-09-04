@@ -5,6 +5,7 @@ import type { EditPlan } from '../editplan/types.js';
 import type { ClientIdentitySource } from './client-identity.js';
 import { watermarkEnabled } from '../placement/watermark.js';
 import { reelMasksDir } from '../frames/segment.js';
+import { videoOf } from '../video-identity.js';
 
 /**
  * Measurements a build needs, and what it used to do without them.
@@ -84,7 +85,7 @@ export interface BuildDisk {
  * `CLAUDE_CODE_GUIDELINES.md` §3 says to pin with a test rather than a comment.
  */
 export function readBuildDisk(plan: EditPlan): BuildDisk {
-  const masks = reelMasksDir(plan.source.videoPath);
+  const masks = reelMasksDir(videoOf(plan.source));
   return {
     faceMasks: existsSync(masks) && readdirSync(masks).some((f) => f.endsWith('.png')),
     cvPython: existsSync(path.join(REPO_ROOT, 'tools', 'cv', '.venv', 'bin', 'python')),

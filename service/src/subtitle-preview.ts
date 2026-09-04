@@ -1,6 +1,7 @@
 import { existsSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { LOCAL_DIR, SUBTITLE_ANCHOR_BASELINE_Y } from '@framopia/core';
+import { videoNameFromDirName } from './video-identity.js';
 import { FRAME_HEIGHT, FRAME_WIDTH } from './placement/constants.js';
 
 /**
@@ -60,7 +61,7 @@ export function subtitlePreview(): SubtitlePreview {
   if (!existsSync(cv)) return { ...base, framePath: null, fromReel: null };
   for (const stem of readdirSync(cv).sort()) {
     const frame = middleFrameOf(path.join(cv, stem, FRAMES_DIR));
-    if (frame !== null) return { ...base, framePath: frame, fromReel: stem };
+    if (frame !== null) return { ...base, framePath: frame, fromReel: videoNameFromDirName(stem) };
   }
   return { ...base, framePath: null, fromReel: null };
 }

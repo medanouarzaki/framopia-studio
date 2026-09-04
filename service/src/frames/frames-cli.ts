@@ -1,4 +1,4 @@
-import { loadReels, reelByLabel } from './footage.js';
+import { loadReels, reelByLabel, reelVideo } from './footage.js';
 import { sampleFrames } from './sample.js';
 
 /**
@@ -20,7 +20,7 @@ if (!all && !label) {
 const reels = all ? loadReels() : [reelByLabel(label as string)];
 
 for (const reel of reels) {
-  const manifest = await sampleFrames(reel.label, reel.path, {
+  const manifest = await sampleFrames(reel.label, reelVideo(reel), {
     force,
     onProgress: (message) => process.stderr.write(`${message}\n`),
   });

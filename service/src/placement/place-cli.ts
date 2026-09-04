@@ -2,7 +2,7 @@ import { mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { REPO_ROOT } from '@framopia/core';
 import { editPlanPathFor, readEditPlan } from '../editplan/io.js';
-import { loadReels, reelByLabel } from '../frames/footage.js';
+import { loadReels, reelByLabel, reelVideo } from '../frames/footage.js';
 import { maskFramesFor } from '../frames/zones.js';
 import { runSidecar } from '../images/sidecar.js';
 import { FRAME_HEIGHT, FRAME_WIDTH, SUBTITLE_BAND } from './constants.js';
@@ -71,7 +71,7 @@ for (const reel of reels) {
 
   if (noDebug) continue;
 
-  const frames = maskFramesFor(reel.path);
+  const frames = maskFramesFor(reelVideo(reel));
   const nearest = (timeS: number) =>
     frames.reduce((best, frame) =>
       Math.abs(frame.timeS - timeS) < Math.abs(best.timeS - timeS) ? frame : best,

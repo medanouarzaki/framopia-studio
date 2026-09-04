@@ -254,11 +254,25 @@ afterAll(() => {
    * — session 30's `job.test.ts` left 65 stray plans behind by not doing this.
    */
   for (const videoPath of videoPaths.values()) {
-    rmSync(cutoutDirFor(editPlanPathFor(videoPath)), { recursive: true, force: true });
-    rmSync(editPlanPathFor(videoPath), { force: true });
-    rmSync(reelMasksDir(videoPath), { recursive: true, force: true });
-    rmSync(reelFramesDir(videoPath), { recursive: true, force: true });
-    rmSync(path.dirname(reelMasksDir(videoPath)), { recursive: true, force: true });
+    // The cv directory is named for the video's content as well as its name,
+    // and the plan is the only place that hash still exists once the temporary
+    // video is gone — so it is read before the plan is removed.
+    const planPath = editPlanPathFor(videoPath);
+    let sha256: string | null = null;
+    try {
+      const raw = JSON.parse(readFileSync(planPath, 'utf8')) as { source?: { sha256?: string } };
+      sha256 = raw.source?.sha256 ?? null;
+    } catch {
+      sha256 = null;
+    }
+    rmSync(cutoutDirFor(planPath), { recursive: true, force: true });
+    rmSync(planPath, { force: true });
+    if (sha256 !== null) {
+      const video = { path: videoPath, sha256 };
+      rmSync(reelMasksDir(video), { recursive: true, force: true });
+      rmSync(reelFramesDir(video), { recursive: true, force: true });
+      rmSync(path.dirname(reelMasksDir(video)), { recursive: true, force: true });
+    }
   }
   if (dir !== undefined) rmSync(dir, { recursive: true, force: true });
   vi.restoreAllMocks();

@@ -1,6 +1,6 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { loadReels, reelByLabel } from './footage.js';
+import { loadReels, reelByLabel, reelVideo } from './footage.js';
 import { readFramesManifest } from './sample.js';
 import {
   SEGMENTATION_DEBUG_DIR,
@@ -31,8 +31,9 @@ const reels = all ? loadReels() : [reelByLabel(label as string)];
 if (!noDebug) mkdirSync(SEGMENTATION_DEBUG_DIR, { recursive: true });
 
 for (const reel of reels) {
-  const manifest = readFramesManifest(reel.path);
-  const outDir = reelMasksDir(reel.path);
+  const video = reelVideo(reel);
+  const manifest = readFramesManifest(video);
+  const outDir = reelMasksDir(video);
 
   const started = Date.now();
   const result: SegmentPersonResult = await segmentPerson({

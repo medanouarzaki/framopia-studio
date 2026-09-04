@@ -3,6 +3,7 @@ import path from 'node:path';
 import { REPO_ROOT } from '@framopia/core';
 import { runSidecar } from '../images/sidecar.js';
 import { reelMasksDir } from './segment.js';
+import { videoByLabel } from './footage.js';
 
 /**
  * Contact sheets of the **face-only** mask, so the user can judge it the way
@@ -35,7 +36,7 @@ interface SegmentationRecord {
 const sheets: { reel: string; sheet: string; worst: string }[] = [];
 
 for (const reel of REELS) {
-  const masks = reelMasksDir(reel);
+  const masks = reelMasksDir(videoByLabel(reel));
   const record = path.join(masks, 'segmentation.json');
   if (!existsSync(record)) {
     console.log(`${reel}: no segmentation record; skipped`);

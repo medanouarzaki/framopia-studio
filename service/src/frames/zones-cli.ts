@@ -4,7 +4,7 @@ import { runSidecar } from '../images/sidecar.js';
 import { SUBTITLE_BAND } from '../placement/constants.js';
 import { editPlanPathFor } from '../editplan/io.js';
 import { writeZonesToPlan } from './plan-zones.js';
-import { loadReels, reelByLabel } from './footage.js';
+import { loadReels, reelByLabel, reelVideo } from './footage.js';
 import { reelMasksDir } from './segment.js';
 import { SAMPLE_FPS } from './sample.js';
 import {
@@ -51,7 +51,8 @@ const reels = all ? loadReels() : [reelByLabel(label as string)];
 if (!noDebug) mkdirSync(ZONES_DEBUG_DIR, { recursive: true });
 
 for (const reel of reels) {
-  const frames = maskFramesFor(reel.path);
+  const video = reelVideo(reel);
+  const frames = maskFramesFor(video);
   const maskPaths = frames.map((frame) =>
     threshold === undefined ? frame.binaryMaskPath : frame.confidenceMaskPath,
   );
@@ -75,7 +76,7 @@ for (const reel of reels) {
   const summary = summariseZones(result.zones);
   const suffix = threshold === undefined ? '' : `-t${threshold}`;
   writeFileSync(
-    path.join(reelMasksDir(reel.path), `zones${suffix}.json`),
+    path.join(reelMasksDir(video), `zones${suffix}.json`),
     `${JSON.stringify({ reel: reel.label, elapsedS, ...result }, null, 2)}\n`,
     'utf8',
   );

@@ -16,6 +16,7 @@ import {
 } from './analyse.js';
 import { reelFramesDir, SAMPLE_FPS } from './sample.js';
 import { reelMasksDir } from './segment.js';
+import { type VideoIdentity } from '../video-identity.js';
 
 vi.mock('node:child_process', () => ({
   spawn: vi.fn(),
@@ -24,25 +25,30 @@ vi.mock('node:child_process', () => ({
 }));
 
 /**
- * The video's basename decides where the frames and masks go, so every test
- * gets its own and cleans up after itself. `.local/cv/` is not injectable —
- * it is derived from the repository root — and a test that wrote into a real
- * reel's directory would destroy measurements nothing can re-derive for free.
+ * The video's name **and its hash** decide where the frames and masks go, so
+ * every test gets its own and cleans up after itself. `.local/cv/` is not
+ * injectable — it is derived from the repository root — and a test that wrote
+ * into a real reel's directory would destroy measurements nothing can
+ * re-derive for free.
  */
+const THIS_VIDEO = 'e'.repeat(64);
+const ANOTHER_VIDEO = 'f'.repeat(64);
 let videoPath = '';
+let video: VideoIdentity = { path: '', sha256: THIS_VIDEO };
 let stem = '';
 
 beforeEach(() => {
   const dir = mkdtempSync(path.join(tmpdir(), 'framopia-analyse-'));
   stem = `analyse-test-${path.basename(dir)}`;
   videoPath = path.join(dir, `${stem}.mov`);
+  video = { path: videoPath, sha256: THIS_VIDEO };
   writeFileSync(videoPath, 'not really a video', 'utf8');
   vi.clearAllMocks();
 });
 
 afterEach(() => {
   rmSync(path.dirname(videoPath), { recursive: true, force: true });
-  rmSync(path.dirname(reelMasksDir(videoPath)), { recursive: true, force: true });
+  rmSync(path.dirname(reelMasksDir(video)), { recursive: true, force: true });
 });
 
 function writeManifest(over: Partial<FrameAnalysisManifest> = {}): FrameAnalysisManifest {
@@ -50,7 +56,7 @@ function writeManifest(over: Partial<FrameAnalysisManifest> = {}): FrameAnalysis
     schemaVersion: FRAME_ANALYSIS_VERSION,
     reel: stem,
     sourcePath: videoPath,
-    sourceSha256: 'sha-of-this-video',
+    sourceSha256: THIS_VIDEO,
     sampleFps: SAMPLE_FPS,
     frameCount: 3,
     task: 'segment_person',
@@ -63,17 +69,17 @@ function writeManifest(over: Partial<FrameAnalysisManifest> = {}): FrameAnalysis
     completedAt: '2026-08-29T00:00:00.000Z',
     ...over,
   };
-  const masks = reelMasksDir(videoPath);
+  const masks = reelMasksDir(video);
   mkdirSync(masks, { recursive: true });
   writeFileSync(path.join(masks, 'frame-0000-binary.png'), 'png-bytes');
-  writeFileSync(frameAnalysisManifestPath(videoPath), JSON.stringify(manifest), 'utf8');
+  writeFileSync(frameAnalysisManifestPath(video), JSON.stringify(manifest), 'utf8');
   return manifest;
 }
 
 function fakeDeps(over: Partial<FrameAnalysisDeps> = {}): Partial<FrameAnalysisDeps> {
   return {
     needs: () => [],
-    hash: async () => 'sha-of-this-video',
+    hash: async () => THIS_VIDEO,
     sample: vi.fn(async () => ({
       schemaVersion: 1,
       reel: stem,
@@ -91,7 +97,7 @@ function fakeDeps(over: Partial<FrameAnalysisDeps> = {}): Partial<FrameAnalysisD
       frames: [0, 1, 2].map((index) => ({
         index,
         timeS: index / SAMPLE_FPS,
-        path: path.join(reelFramesDir(videoPath), `frame-000${index}.png`),
+        path: path.join(reelFramesDir(video), `frame-000${index}.png`),
       })),
     })),
     segment: vi.fn(async (options: { framePaths: string[]; outDir: string }) => ({
@@ -205,7 +211,7 @@ describe('analyseFrames', () => {
     const result = await analyseFrames({
       reelLabel: stem,
       videoPath,
-      deps: { needs: () => [], hash: async () => 'sha-of-this-video' },
+      deps: { needs: () => [], hash: async () => THIS_VIDEO },
     });
     expect(result.skipped).toContain('already done');
     expect(result.frameCount).toBe(0);
@@ -216,7 +222,7 @@ describe('analyseFrames', () => {
   });
 
   it('re-runs when the video sha has moved', async () => {
-    writeManifest({ sourceSha256: 'a-different-video' });
+    writeManifest({ sourceSha256: ANOTHER_VIDEO });
     const deps = fakeDeps();
     const result = await analyseFrames({ reelLabel: stem, videoPath, deps });
     expect(result.skipped).toBeNull();
@@ -225,19 +231,19 @@ describe('analyseFrames', () => {
   });
 
   it('re-runs and writes the manifest when the masks are there but nothing says what they are', async () => {
-    const masks = reelMasksDir(videoPath);
+    const masks = reelMasksDir(video);
     mkdirSync(masks, { recursive: true });
     writeFileSync(path.join(masks, 'frame-0000-binary.png'), 'png-bytes');
-    expect(existsSync(frameAnalysisManifestPath(videoPath))).toBe(false);
+    expect(existsSync(frameAnalysisManifestPath(video))).toBe(false);
 
     const result = await analyseFrames({ reelLabel: stem, videoPath, deps: fakeDeps() });
 
     expect(result.skipped).toBeNull();
     expect(result.frameCount).toBe(3);
     const written = JSON.parse(
-      readFileSync(frameAnalysisManifestPath(videoPath), 'utf8'),
+      readFileSync(frameAnalysisManifestPath(video), 'utf8'),
     ) as FrameAnalysisManifest;
-    expect(written.sourceSha256).toBe('sha-of-this-video');
+    expect(written.sourceSha256).toBe(THIS_VIDEO);
     expect(written.task).toBe('segment_person');
     expect(written.model).toBe('selfie_multiclass_256x256');
     expect(written.sampleFps).toBe(SAMPLE_FPS);
@@ -270,7 +276,7 @@ describe('analyseFrames', () => {
         }),
       }),
     ).rejects.toThrow('sidecar failed');
-    expect(existsSync(frameAnalysisManifestPath(videoPath))).toBe(false);
+    expect(existsSync(frameAnalysisManifestPath(video))).toBe(false);
   });
 
   it('refuses, naming the setup command, when the picture tools are missing', async () => {
@@ -283,7 +289,7 @@ describe('analyseFrames', () => {
         }),
       }),
     ).rejects.toThrow(/tools\/cv\/setup\.sh/);
-    expect(existsSync(frameAnalysisManifestPath(videoPath))).toBe(false);
+    expect(existsSync(frameAnalysisManifestPath(video))).toBe(false);
   });
 
   it('replaces a mask the model no longer reproduces', async () => {

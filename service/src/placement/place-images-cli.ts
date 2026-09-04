@@ -8,6 +8,7 @@ import { FRAME_HEIGHT, FRAME_WIDTH, HEAD_CLEARANCE, TOP_LEFT_MARGIN } from './co
 import { type Rect } from './geometry.js';
 import { placementIsSafe, reelPlacements } from './top-left.js';
 import { reelMasksDir } from '../frames/segment.js';
+import { videoByLabel } from '../frames/footage.js';
 import { pictureLives, pictureWindows } from '../build/picture-life.js';
 import { imageEntranceS } from '../analysis/template-impacts.js';
 
@@ -26,7 +27,7 @@ const SCRIPT = path.join(REPO_ROOT, 'tools', 'cv', 'head_boxes.py');
 interface MaskFrame { index: string; box: [number, number, number, number] | null }
 
 function maskBoxes(reel: string, kind: 'face' | 'head'): MaskFrame[] | null {
-  const dir = reelMasksDir(reel);
+  const dir = reelMasksDir(videoByLabel(reel));
   if (!existsSync(dir) || !existsSync(PY)) return null;
   const raw = execFileSync(PY, [SCRIPT, dir, kind], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
   return (JSON.parse(raw) as { frames: MaskFrame[] }).frames;

@@ -1,7 +1,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { runSidecar } from '../images/sidecar.js';
-import { loadReels } from './footage.js';
+import { loadReels, reelVideo } from './footage.js';
 import {
   COMPONENTS_DEBUG_DIR,
   componentStats,
@@ -39,7 +39,7 @@ const worst: Dropped[] = [];
 let floorUsed = 0;
 
 for (const reel of loadReels()) {
-  const frames = maskFramesFor(reel.path);
+  const frames = maskFramesFor(reelVideo(reel));
   const stats = await componentStats({
     maskPaths: frames.map((frame) => frame.binaryMaskPath),
     componentFloor,

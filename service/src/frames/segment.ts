@@ -2,6 +2,7 @@ import path from 'node:path';
 import { LOCAL_DIR, REPO_ROOT } from '@framopia/core';
 import { runSidecar } from '../images/sidecar.js';
 import { SAMPLE_FPS } from './sample.js';
+import { videoDirName, type VideoIdentity } from '../video-identity.js';
 
 /** Normalized 0-1 against the frame, so the working size never leaks downstream. */
 export interface PersonBox {
@@ -55,19 +56,19 @@ export const SEGMENTATION_DEBUG_DIR = path.join(
 /**
  * Beside the frames, and outside .local/cache/ for the same reason they are.
  *
- * **The one place this path is decided.** It takes the video's own path — or,
- * from a corpus tool, the reel label, which is that video's basename — and
- * `path.basename` gives the same answer either way. Until session 32 the build
- * requirement and the builder each built the string themselves from the
+ * **The one place this path is decided.** It takes the video's identity — its
+ * path and its sha256 — and hands the naming to `videoDirName`, because two of
+ * his files are called `sora.mov` and a basename alone put one reel's masks and
+ * the other's frames in the same directory (session 51). Until session 32 the
+ * build requirement and the builder each built the string themselves from the
  * *plan's* filename, which agreed with this only while every plan sat beside
  * its video; a browsed video's plan does not, and a reel with 82 face masks on
  * disk was refused for having none. Pinned by a test in
  * `build/requirements.test.ts` that fails on any other module spelling
  * `masks-2fps` itself.
  */
-export function reelMasksDir(sourcePath: string): string {
-  const basename = path.basename(sourcePath, path.extname(sourcePath));
-  return path.join(LOCAL_DIR, 'cv', basename, `masks-${SAMPLE_FPS}fps`);
+export function reelMasksDir(video: VideoIdentity): string {
+  return path.join(LOCAL_DIR, 'cv', videoDirName(video), `masks-${SAMPLE_FPS}fps`);
 }
 
 export function segmentPerson(options: {

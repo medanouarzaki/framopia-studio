@@ -6,6 +6,7 @@ import path from 'node:path';
 import { promisify } from 'node:util';
 import { LOCAL_DIR, resolveFfmpegPath } from '@framopia/core';
 import { probeVideo } from '../transcription/media.js';
+import { videoDirName, type VideoIdentity } from '../video-identity.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -76,13 +77,12 @@ export class FramesExistError extends Error {
  * putting them under the cache root would put them within reach of the
  * eviction pass, which deletes children of a video's directory by age.
  */
-export function reelFramesDir(sourcePath: string): string {
-  const basename = path.basename(sourcePath, path.extname(sourcePath));
-  return path.join(LOCAL_DIR, 'cv', basename, `frames-${SAMPLE_FPS}fps`);
+export function reelFramesDir(video: VideoIdentity): string {
+  return path.join(LOCAL_DIR, 'cv', videoDirName(video), `frames-${SAMPLE_FPS}fps`);
 }
 
-export function framesManifestPath(sourcePath: string): string {
-  return path.join(reelFramesDir(sourcePath), 'frames.json');
+export function framesManifestPath(video: VideoIdentity): string {
+  return path.join(reelFramesDir(video), 'frames.json');
 }
 
 interface ShowinfoLine {
@@ -128,10 +128,11 @@ export interface SampleOptions {
  */
 export async function sampleFrames(
   reelLabel: string,
-  sourcePath: string,
+  video: VideoIdentity,
   options: SampleOptions = {},
 ): Promise<FramesManifest> {
-  const dir = reelFramesDir(sourcePath);
+  const sourcePath = video.path;
+  const dir = reelFramesDir(video);
   if (existsSync(dir) && readdirSync(dir).length > 0 && !options.force) {
     throw new FramesExistError(dir);
   }
@@ -209,7 +210,7 @@ export async function sampleFrames(
     frames,
   };
 
-  await writeFile(framesManifestPath(sourcePath), `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
+  await writeFile(framesManifestPath(video), `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
   return manifest;
 }
 
@@ -284,10 +285,10 @@ async function sampleFinalFrame(
  */
 export const FINAL_FRAME_NAME = 'frame-final.png';
 
-export function readFramesManifest(sourcePath: string): FramesManifest {
-  const manifestPath = framesManifestPath(sourcePath);
+export function readFramesManifest(video: VideoIdentity): FramesManifest {
+  const manifestPath = framesManifestPath(video);
   if (!existsSync(manifestPath)) {
-    throw new Error(`no frames sampled for ${sourcePath}; run npm run frames first`);
+    throw new Error(`no frames sampled for ${video.path}; run npm run frames first`);
   }
   return JSON.parse(readFileSync(manifestPath, 'utf8')) as FramesManifest;
 }
