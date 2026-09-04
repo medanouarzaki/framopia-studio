@@ -43,7 +43,9 @@ a saved `.aep` for a human to review. Full spec in `docs/PROJECT_SPEC.md`.
 - `.local/` — machine-local config, secrets, caches, run state. Gitignored.
   `videos.json` is every video opened through Browse; `plans/` holds the Edit
   Plan for each, because a client's own footage never gets a file written
-  beside it.
+  beside it. **Everything a video owns is filed under its content**, not its
+  name — `cv/sora-619b8eaecae4/`, `audio/sora-619b8eaecae4.wav` — because two
+  of the client's files are both called `sora.mov`.
 
 ## Everyday commands
 
@@ -111,8 +113,13 @@ out as a built `.aep` with subtitles, keywords, pictures, SFX and the
 watermark. **The whole of making a video is driven from the panel** and needs no
 terminal. `npm run golden` is green — **17,174 fields** across four reels, with
 the four text card comps at **2160x1300**. `npm run check` passed whole at
-sessions 39 through 45, panel included, but see the image-picker tests below before
-reading that as settled.
+sessions 39 through 45 and again at 52, panel included, but see the
+image-picker tests below before reading that as settled.
+
+Since session 52 **two videos of the same name can coexist**: frames, masks,
+zones, the loudness record and the extracted audio are all keyed on the video's
+sha256 through `videoDirName`, and `npm run migrate:cv-dirs` moved what was
+already on disk without recomputing any of it.
 
 What is open, in one line each: `ground-truth` cannot build until its six image
 slots are generated; a client's photograph is not checked by the build's
