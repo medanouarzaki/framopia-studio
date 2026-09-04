@@ -13,9 +13,7 @@ import {
   cardColours,
   dialogueAttenuationDb,
   loudestBoundOffsetDb,
-  clientPictureById,
   fitByLongEdge,
-  loadMode,
   loadSfxIndex,
   loadTemplateManifest,
   parseHexColour,
@@ -26,6 +24,7 @@ import {
 } from '@framopia/core';
 import { edgeLuminance, flattenCutout } from '../images/sidecar.js';
 import { reelMasksDir } from '../frames/segment.js';
+import { ClientPictureError, clientPictureFileFor } from './client-picture.js';
 import { videoOf } from '../video-identity.js';
 import { readEditPlan, writeEditPlan } from '../editplan/io.js';
 import { buildRecordFor } from './build-record.js';
@@ -102,26 +101,48 @@ const sfxFiles = new Map(loadSfxIndex().sfx.map((s) => [s.id, path.join(sfxDir, 
  * A `cutout` presentation uses the cut-out PNG; a `card` uses the generated
  * image itself.
  */
+/*
+ * Declared here rather than beside its first use in placement: pre-flight runs
+ * long before that and has to know whether the look is being overridden.
+ */
+const placementModeId = flag('mode') ?? plan.clientMode?.id;
+
+/**
+ * `clientPictureFileFor` with this CLI's way of stopping: it exits with the
+ * reason rather than throwing a stack at the user.
+ */
+function clientPictureFor(
+  slot: { id: string; chosenClientPictureId?: string },
+): { path: string; id: string } {
+  try {
+    const picture = clientPictureFileFor(plan, slot, { overrideModeId: placementModeId });
+    if (picture !== null) return picture;
+    throw new ClientPictureError(`${slot.id}: no client picture on this slot`);
+  } catch (error) {
+    console.error((error as Error).message);
+    process.exit(1);
+  }
+}
+
 const chosenIds: string[] = [];
 function candidateFileFor(slotId: string): { path: string; id: string } | null {
   const slot = plan.images.slots.find((s) => s.id === slotId);
   if (slot === undefined) return null;
 
   /*
-   * One of the client's own pictures wins over anything generated: he pointed
-   * at a photograph, and a square from a model is not what he asked for. The
-   * file is used where it sits — nothing copies it and nothing sends it.
+   * One of the client's own pictures wins over anything generated: it is either
+   * what he pointed at or what a word he spoke asked for, and a square from a
+   * model is not that. The file is used where it sits — nothing copies it and
+   * nothing sends it.
    */
-  if (slot.chosenClientPictureId !== undefined && placementModeId !== undefined) {
-    const picture = clientPictureById(loadMode(placementModeId), slot.chosenClientPictureId);
-    if (picture !== null) {
-      chosenIds.push(`${slotId}:${picture.id} (the client’s own picture)`);
-      return { path: picture.path, id: picture.id };
-    }
-    console.error(
-      `${slotId}: the client picture ${slot.chosenClientPictureId} is not on this client any more`,
-    );
-    process.exit(1);
+  if (slot.chosenClientPictureId !== undefined) {
+    const picture = clientPictureFor(slot);
+    const why =
+      slot.chosenClientPictureWord === undefined
+        ? 'the client’s own picture'
+        : `the client’s own picture, for the spoken word ${JSON.stringify(slot.chosenClientPictureWord)}`;
+    chosenIds.push(`${slotId}:${picture.id} (${why})`);
+    return { path: picture.path, id: picture.id };
   }
 
   const choice = buildChoiceFor(slot);
@@ -148,6 +169,18 @@ const refs: PathRef[] = [
   { elementId: 'templates', kind: 'aep', path: AEP_PATH },
 ];
 for (const slot of plan.images.slots) {
+  /*
+   * A client's own picture is a file this build is about to reference exactly
+   * as a generated one is, and it was the one kind that pre-flight never
+   * checked — session 27 reported it and session 43 confirmed it. A photograph
+   * he had moved or deleted failed inside After Effects instead of here, which
+   * is the silent-gap failure this whole check exists to stop.
+   */
+  if (slot.chosenClientPictureId !== undefined) {
+    const own = clientPictureFor(slot);
+    refs.push({ elementId: slot.id, kind: 'image (the client’s own)', path: own.path });
+    continue;
+  }
   const c = slot.candidates[0];
   if (c === undefined) continue;
   const file = slot.presentation === 'cutout' ? (c.cutoutPath ?? c.path) : c.path;
@@ -295,7 +328,6 @@ const imageScale = identity.snapshot?.imageScale ?? 1;
  * snapshot: they are paths to files on disk that a person chose by hand, and a
  * pinned path would break the moment one is moved or replaced.
  */
-const placementModeId = flag('mode') ?? plan.clientMode?.id;
 /**
  * The `--image-size` override, kept beside its flag rather than in the
  * placement module: it is a way of looking at a reel, not a rule a build
