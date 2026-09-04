@@ -76,6 +76,7 @@ export const MODE_SCHEMA_VERSION = 1;
  * `build-stamp` is its own subpath.
  */
 import { PALETTE_ROLES, type PaletteRole } from './palette-meaning.js';
+import { labelWords } from './client-pictures.js';
 
 export { PALETTE_ROLES, type PaletteRole };
 
@@ -292,6 +293,21 @@ export interface ClientPicture {
   path: string;
   /** "the clinic exterior" — what he would say if you asked him what it is. */
   description: string;
+  /**
+   * The words that, when one of them is spoken, mean this picture.
+   *
+   * **Schema addition, optional with a default.** Absent means the picture is
+   * never chosen automatically, which is every picture written before this and
+   * is exactly today's behaviour. It is separate from `description` on purpose:
+   * a description is prose for telling two pictures apart in a list — *"the
+   * clinic exterior"* — and matching on it would fire on *the* and *exterior*.
+   * A label is a deliberate list.
+   *
+   * Written as free text; whitespace and commas separate the words, and each
+   * one is matched on its own. A two-word product name is written as its two
+   * words, so either of them fires. See `matchClientPicture`.
+   */
+  label?: string;
 }
 
 export interface ModeValidationIssue {
@@ -837,6 +853,17 @@ function validateClientDetails(c: Checker, mode: Record<string, unknown>): void 
       if (description !== null && description.trim() === '') {
         // A picture nobody described is a picture nobody can choose between.
         c.fail(`pictures[${i}].description`, 'expected a description in the client’s own words');
+      }
+      if (picture.label !== undefined) {
+        const label = c.string(`pictures[${i}].label`, picture.label);
+        // An empty label is not "match nothing" — it is a field somebody meant
+        // to fill. Absent is how a picture says it is chosen by hand only.
+        if (label !== null && labelWords(label).length === 0) {
+          c.fail(
+            `pictures[${i}].label`,
+            'expected the words that mean this picture, or no label at all',
+          );
+        }
       }
     });
   }

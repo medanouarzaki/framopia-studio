@@ -21,6 +21,7 @@ import { analyseKeywordsCached, planSlotsCached, type CachedKeywordResult, type 
 import { ACTIVE_ANALYSIS_PROMPT_VERSION, parseKeywordResponse } from './keywords.js';
 import { selectTermSpans } from './terms.js';
 import { ACTIVE_SLOT_PROMPT_VERSION } from './slots.js';
+import { fillSlotsFromClientPictures } from './client-picture-slots.js';
 import type { AnalysisWord, KeywordMode } from './types.js';
 
 /** Mirrors transcriptionConfigLabel: the prompt version is the identity. */
@@ -384,8 +385,21 @@ export async function planImageSlotsForPlan(
     status: 'pending',
   }));
 
+  /*
+   * Before anything can be generated: the slots this client's own pictures
+   * already answer. Free, local, and the last point at which a picture can be
+   * kept from being bought.
+   */
+  const own = fillSlotsFromClientPictures({ slots, words: plan.transcript.words, mode });
+  for (const fill of own.filled) {
+    log(
+      `slots: ${fill.slotId} uses the client's own picture ${fill.pictureId} ` +
+        `— its label holds the spoken word ${JSON.stringify(fill.word)}`,
+    );
+  }
+
   const timestamp = now();
-  plan.images = { slots };
+  plan.images = { slots: own.slots };
 
   // Templates and sfx are re-derived on every run over the whole plan, not
   // just the slots this call produced: assignment depends on element order

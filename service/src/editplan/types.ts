@@ -379,6 +379,16 @@ export interface ImageSlot {
    */
   chosenClientPictureId?: string;
   /**
+   * The word that chose it, when the tool chose rather than a person.
+   *
+   * **Schema addition, optional with a default.** Absent means either no client
+   * picture or one he pointed at by hand. It exists so the choice is
+   * explicable: a picture appearing in a comp because the label `Botox` met the
+   * spoken word `Botox` should say so on the plan rather than look like a
+   * decision nobody made.
+   */
+  chosenClientPictureWord?: string;
+  /**
    * The gate failures a deliberate choice overrode.
    *
    * **Schema addition, optional with a default.** The gate advises and the user

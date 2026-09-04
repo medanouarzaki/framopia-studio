@@ -63,6 +63,9 @@ export { clientDefaults, STANDARD_FONTS, type ClientDefaults } from './client-de
 export {
   clientPictureById,
   clientPictures,
+  labelWords,
+  matchClientPicture,
+  type ClientPictureMatch,
   fitByLongEdge,
 } from './client-pictures.js';
 export { DOCS_DIR, LOCAL_DIR, REPO_ROOT, ROOT_PACKAGE_JSON } from './paths.js';

@@ -11,6 +11,7 @@ import { generateImages, type GeneratedCandidate } from './generate.js';
 import { imageLedgerTotalUsd } from './estimate.js';
 import { removeBackground, type SidecarGate } from './sidecar.js';
 import { cutoutQuality, slotPresentation } from './quality.js';
+import { slotsNeedingGeneration } from '../editplan/slot-fill.js';
 
 /**
  * A re-run would replace every slot's candidates. That is right for a plan
@@ -151,8 +152,21 @@ export async function generateImagesForPlan(
   const cutoutDir = cutoutDirFor(planPath);
   mkdirSync(cutoutDir, { recursive: true });
 
+  /*
+   * Only the slots that still need a picture made. A slot the client has
+   * already filled is not sent to the model — the whole point of the client's
+   * own pictures is that they are not bought. `slotNeedsGenerating` is the one
+   * declaration of that, and it lives outside this directory so nothing here
+   * can read what filled the slot.
+   */
+  const toGenerate = slotsNeedingGeneration(plan.images.slots);
+  const alreadyFilled = plan.images.slots.length - toGenerate.length;
+  if (alreadyFilled > 0) {
+    log(`images: ${alreadyFilled} slot(s) are already filled and are not generated`);
+  }
+
   const result = await generateImages({
-    slots: plan.images.slots,
+    slots: toGenerate,
     mode,
     config,
     client,

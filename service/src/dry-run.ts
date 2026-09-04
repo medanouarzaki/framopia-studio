@@ -12,6 +12,7 @@ import { cacheEntryDir, CACHE_ROOT } from './transcription/cache.js';
 import { DEFAULT_IMAGE_CONFIG } from './images/config.js';
 import { watermarkEnabled, watermarkSizeOf } from './placement/watermark.js';
 import { WATERMARK_SIZES, type WatermarkSize } from './editplan/types.js';
+import { slotNeedsGenerating, slotsNeedingGeneration } from './editplan/slot-fill.js';
 import { FRAME_WIDTH, watermarkWidthFraction } from './placement/constants.js';
 
 /**
@@ -131,6 +132,8 @@ interface PlanLikeSlot {
   negativePrompt: string;
   /** Empty on a slot that has been planned and never illustrated. */
   candidates?: unknown[];
+  /** Set on a slot one of the client's own pictures fills, which never bills. */
+  chosenClientPictureId?: string;
 }
 
 interface PlanLike {
@@ -361,7 +364,15 @@ export async function dryRun(reelLabel: string, modeId: string): Promise<DryRunP
   } else {
     let hit = 0;
     let total = 0;
-    for (const slot of slots) {
+    /*
+     * A slot the client's own picture already fills is never generated, so it
+     * cannot cost anything and must not be quoted for. The cost screen is the
+     * number he decides on; quoting money for a picture nobody will buy is the
+     * same defect as quoting nothing for a stage that will run.
+     */
+    const billable = slotsNeedingGeneration(slots);
+    const filled = slots.length - billable.length;
+    for (const slot of billable) {
       for (let index = 0; index < DEFAULT_IMAGE_CONFIG.candidatesPerSlot; index += 1) {
         total += 1;
         const fingerprint = imageFingerprintOf(
@@ -408,12 +419,16 @@ export async function dryRun(reelLabel: string, modeId: string): Promise<DryRunP
      * The double-write itself is untouched — that is a change to what the slot
      * stage records, and it is reported rather than made here.
      */
-    const illustrated = slots.every((slot) => (slot.candidates ?? []).length > 0);
+    const illustrated = slots.every(
+      (slot) => (slot.candidates ?? []).length > 0 || !slotNeedsGenerating(slot),
+    );
+    const ownPictures =
+      filled === 0 ? '' : `${filled} slot(s) use one of the client's own pictures and cost nothing. `;
     add(
       'images',
       hit === total ? 'exact' : 'none',
       null,
-      `${hit} of ${total} candidate images are cached` +
+      `${ownPictures}${hit} of ${total} candidate images are cached` +
         (hit === total
           ? '; a run would bill nothing'
           : `; a run would generate ${missing}, budgeted at most $${imagesCeilingUsd.toFixed(2)}`),

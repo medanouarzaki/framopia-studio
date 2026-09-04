@@ -440,6 +440,9 @@ function checkImages(c: Checker, value: unknown, words: Map<string, Rec>): void 
       }
     });
     c.nullableString(`${p}.chosenCandidateId`, slot.chosenCandidateId);
+    if (slot.chosenClientPictureWord !== undefined) {
+      c.string(`${p}.chosenClientPictureWord`, slot.chosenClientPictureWord);
+    }
     if (slot.chosenClientPictureId !== undefined) {
       c.string(`${p}.chosenClientPictureId`, slot.chosenClientPictureId);
     }
