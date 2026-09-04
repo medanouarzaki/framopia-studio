@@ -121,9 +121,13 @@ zones, the loudness record and the extracted audio are all keyed on the video's
 sha256 through `videoDirName`, and `npm run migrate:cv-dirs` moved what was
 already on disk without recomputing any of it.
 
+Since session 53 **a client's own picture is used instead of a generated one
+when a word she says is in that picture's label** — the user's strict ruling —
+decided when slots are planned so the slot is never bought, and a picture id is
+resolved against the client on the plan so two clients' pictures cannot meet.
+
 What is open, in one line each: `ground-truth` cannot build until its six image
-slots are generated; a client's photograph is not checked by the build's
-pre-flight and is not in the backup set; the image prompt's fidelity, darkness
+slots are generated; a client's photograph is not in the backup set; the image prompt's fidelity, darkness
 and literalness fixes are applied but two have never been seen in a generated
 picture; the panel's image-picker browser tests are flaky rather than fixed —
 their cutout fixtures name files that moved into per-reel subdirectories, and the

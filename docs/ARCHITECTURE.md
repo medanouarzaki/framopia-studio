@@ -418,6 +418,55 @@ prompt and negative-prompt strings stored across the five plans pass it**, and
 `generate.test.ts` proves it refuses before any request reaches the client —
 demonstrated failing by deleting the two calls.
 
+### A client's picture is chosen by a word, before anything can bill
+
+**The rule, and where it runs.** A client's picture carries an optional `label`
+— a list of words, written as free text — and **a slot uses that picture when a
+word spoken in the slot's own span is one of the label's words**. Absent means
+the picture is chosen by hand only, which is what every picture was until
+session 53 and is exactly the old behaviour.
+
+**It runs where slots are planned**, in `analysis/client-picture-slots.ts`, and
+that placement is the whole point: it is the last free moment before money can
+move. Deciding at build time would mean paying for a square and then not using
+it; deciding inside `service/src/images/` would mean that directory reading a
+client's photographs, which `clients/pictures.test.ts` forbids by scanning its
+source. So the image stage asks the general question instead —
+`editplan/slot-fill.ts`'s `slotNeedsGenerating` — and is told yes or no without
+being told why. The **cost screen quotes nothing** for a filled slot, for the
+same reason.
+
+**How it matches across scripts.** Through `normalizeToken`, the same rule this
+project already uses to decide whether two words are the same word: edge
+punctuation is stripped in both scripts and Latin is lowercased. **Nothing else
+is normalised** — no Arabic letter-form folding, no transliteration between
+scripts, no stemming, no synonyms, no edit distance, no model. Strict was the
+user's choice, so that it never surprises him and can be widened later on
+evidence; a near-miss generates.
+
+**Which picture, when two match.** The naming word is tried first, then the span
+in the order it is spoken; among pictures matching the same word, the **first in
+the client's own list**. There is no honest way to prefer one picture he
+labelled over another he labelled, so none is invented — and the plan records
+`chosenClientPictureWord`, so the comp can say why a photograph is there.
+
+**A picture id belongs to its client and to no other.** Every client numbers its
+pictures from `pic001`, so `build/client-picture.ts` resolves an id against the
+client **on the plan** and refuses when `--mode` names a different one: a reel's
+look may be rebuilt as somebody else's, whose photograph it shows may not. That
+is the collision class sessions 50 to 52 closed in four other places. The same
+module is what pre-flight asks, so **a photograph he moved or deleted is now
+refused before After Effects** rather than failing inside it.
+
+**A client's picture is not cut out and is not resized to a square.** Cutouts
+are made from generated candidates in the image stage, which never sees these
+files; a client's picture is placed as a card, fitted by its **long edge**
+(`fitByLongEdge`), with the card's frame colour derived from the picture's own
+edge luminance exactly as for a generated one. Measured on a built comp: a
+3000x1000 picture draws 1000x333 inside the 1000 px solid, and a 200x200 one is
+**scaled up 500%** to 1000x1000 — nothing refuses a picture for being small, and
+a small one will be soft.
+
 **A client's photographs are not in the backup set, and that is a finding rather
 than a fix.** Measured against `surveyGroups` this session: 126 files across nine
 groups, none of them a photograph, and **no still under the footage directory is
