@@ -101,16 +101,25 @@ export function ClientPictures({
               <span className="what">{picture.description}</span>
               {picture.onThisMachine === false ? (
                 /*
-                 * **Said with the picture, not at build time.** A client file
-                 * made on one Mac can name a drive another Mac has never seen,
-                 * and until Block 11 session 61 the only thing that noticed was
-                 * pre-flight, refusing after everything else had been done. It
-                 * does not refuse and it does not forget the picture: it says
-                 * what is true and leaves the choice alone.
+                 * **Said with the picture, not at build time.** Until Block 11
+                 * session 61 the only thing that noticed a photograph was not
+                 * there was pre-flight, refusing after everything else had been
+                 * done.
+                 *
+                 * **It names no cause, because it cannot know one.** Session 61
+                 * said "on a drive this Mac cannot see", which is true of an
+                 * external disk and false of `/Users/someone/Desktop/logo.png`,
+                 * missing because the home folder differs. What is knowable is
+                 * that the file is not here.
+                 *
+                 * It does not refuse and it does not forget the picture: it says
+                 * what is true and leaves the choice alone. Adding it again is
+                 * now a real fix rather than advice — since session 62 the bytes
+                 * are copied into the project and travel with it.
                  */
                 <span className="cannot" role="status">
-                  This photo is on a drive this Mac cannot see, so it cannot be used here yet.
-                  Plug that drive in, or add the photo again from where it is now.
+                  This photo is not on this Mac, so it cannot be used yet. Add it again from
+                  wherever it is now and it will be kept with the client.
                 </span>
               ) : null}
               {onLabel === undefined ? (

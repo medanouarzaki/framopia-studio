@@ -79,13 +79,17 @@ describe('resolveStoredPath', () => {
     ['assets/watermark/intro.mov'],
     ['.local/cache/99df/images-699c/image.jpg'],
     ['my files/test videos/cutouts/vitasilk/img001-c1.cutout.png'],
+    // Since session 62 a client's photograph is one of these.
+    ['assets/client-pictures/dr-loubna-kfafi/pic001.png'],
   ])('re-roots %s from another repository onto this one', (tail) => {
     expect(resolveStoredPath(at(OLD, tail), { repoRoot: NEW })).toBe(at(NEW, tail));
   });
 
   /*
-   * A client's own photograph lives where its owner put it. It is never copied
-   * into a cache and it is not the repo's to move.
+   * **A photograph attached before session 62 still lives where its owner put
+   * it**, and is left alone: nothing re-roots it and nothing moves it. Only
+   * newly attached ones are copied in, and there is no migration — a path
+   * written the old way has to keep working.
    */
   it('leaves a path outside any repository alone', () => {
     const outside = '/Users/someone/Pictures/the clinic exterior.jpg';

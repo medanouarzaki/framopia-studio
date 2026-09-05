@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, rmSync } from 'node:fs';
+import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadMode, modePathFor, validateMode } from '@framopia/core';
+import { REPO_ROOT, isInClientPictureStore, loadMode, modePathFor, validateMode } from '@framopia/core';
 import { buildClient, clientIdFor, ClientWriteError, createClient } from './create.js';
 
 /*
@@ -118,10 +119,26 @@ describe('a client’s own photographs, given at setup', () => {
       ],
     });
     expect(validateMode(client)).toEqual([]);
-    expect(client.pictures).toEqual([
-      { id: 'pic001', path: here, description: 'the clinic exterior' },
-      { id: 'pic002', path: here, description: 'the waiting room' },
+    expect(client.pictures?.map((p) => `${p.id} ${p.description}`)).toEqual([
+      'pic001 the clinic exterior',
+      'pic002 the waiting room',
     ]);
+    /*
+     * **The stored path is the copy, not the file he chose.** Mohamed's ruling
+     * of 2026-09-05: attaching a photograph copies it into the project so a
+     * client travels with the repository and works on any machine. This used to
+     * assert the path came back unchanged, which is the behaviour the ruling
+     * retired.
+     */
+    for (const picture of client.pictures ?? []) {
+      expect(`${picture.id}: ${isInClientPictureStore(REPO_ROOT, picture.path)}`).toBe(
+        `${picture.id}: true`,
+      );
+      expect(picture.path).not.toBe(here);
+    }
+    // And the original is untouched, which is the other half of the ruling.
+    expect(existsSync(here)).toBe(true);
+    rmSync(path.dirname(client.pictures?.[0]?.path as string), { recursive: true, force: true });
   });
 
   it('refuses a photograph that is not there, rather than writing a dead path', () => {

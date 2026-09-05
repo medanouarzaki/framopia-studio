@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { loadMode, modePathFor, validateMode } from '@framopia/core';
+import { CLIENT_PICTURE_STORE, REPO_ROOT, loadMode, modePathFor, validateMode } from '@framopia/core';
 import {
   addPicture,
   buildClient,
@@ -36,7 +36,12 @@ function still(name: string): string {
 }
 
 afterEach(() => {
+  const kept = [...made];
   for (const id of made.splice(0)) rmSync(modePathFor(id), { force: true });
+  // A client's photographs are copied into the project now, so the copies go
+  // with the mode file. Built from the one declaration, never spelled out.
+  for (const id of kept.splice(0))
+    rmSync(path.join(REPO_ROOT, ...CLIENT_PICTURE_STORE, id), { recursive: true, force: true });
   if (scratch !== null) rmSync(scratch, { recursive: true, force: true });
   scratch = null;
 });

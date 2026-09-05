@@ -2,8 +2,15 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { matchClientPicture, type ClientPicture } from '@framopia/core';
+import {
+  CLIENT_PICTURE_STORE,
+  REPO_ROOT,
+  isInClientPictureStore,
+  matchClientPicture,
+  type ClientPicture,
+} from '@framopia/core';
 import { readEditPlan } from './editplan/io.js';
+import { videoDirName, videoOf } from './video-identity.js';
 import { clientPictureFileFor } from './build/client-picture.js';
 import { fillSlotsFromClientPictures } from './analysis/client-picture-slots.js';
 import {
@@ -22,20 +29,35 @@ function scratch(): string {
   return dir;
 }
 
+const CORPUS_PLAN = path.join(
+  process.cwd().replace(/\/service$/, ''),
+  'my files',
+  'test videos',
+  'vitasilk.editplan.json',
+);
+
 function still(name: string): string {
   const file = path.join(scratch(), `${name}.png`);
   writeFileSync(file, 'not really a picture');
   return file;
 }
 
+/**
+ * The store directory the fixture reel owns. Derived the way the code under
+ * test derives it, rather than spelled out, so a change to how a video is filed
+ * cannot leave copies behind in the project.
+ */
+function fixtureStoreDir(): string {
+  const source = JSON.parse(readFileSync(CORPUS_PLAN, 'utf8')).source as {
+    videoPath: string;
+    sha256: string;
+  };
+  return path.join(REPO_ROOT, ...CLIENT_PICTURE_STORE, videoDirName(videoOf(source)));
+}
+
 /** A real plan, copied from the corpus so it validates on read exactly as one. */
 function planCopy(): string {
-  const source = path.join(
-    process.cwd().replace(/\/service$/, ''),
-    'my files',
-    'test videos',
-    'vitasilk.editplan.json',
-  );
+  const source = CORPUS_PLAN;
   const copy = path.join(scratch(), 'a scratch reel.editplan.json');
   writeFileSync(copy, readFileSync(source, 'utf8'));
   return copy;
@@ -44,6 +66,12 @@ function planCopy(): string {
 afterEach(() => {
   if (dir !== null) rmSync(dir, { recursive: true, force: true });
   dir = null;
+  /*
+   * A picture attached to a video is copied into the project now, so the copies
+   * go the way the scratch plan goes. Every test here works on a copy of the
+   * one fixture reel, so the store directory it owns is the only one to clear.
+   */
+  rmSync(fixtureStoreDir(), { recursive: true, force: true });
 });
 
 describe('pictures attached to one video', () => {
@@ -53,7 +81,13 @@ describe('pictures attached to one video', () => {
     expect(nextOwnPictureId([{ id: 'own001' } as ClientPicture])).toBe('own002');
   });
 
-  it('goes onto the plan with its label, and the file is not copied', async () => {
+  /*
+   * **It used to assert the file was not copied.** Mohamed's ruling of
+   * 2026-09-05 retires that: a picture attached to a video is copied into the
+   * project like a client's, so the reel travels with the repository. What has
+   * not changed is that his own file is left exactly where it is.
+   */
+  it('goes onto the plan with its label, and is copied into the project', async () => {
     const planPath = planCopy();
     const file = still('bottle');
     const picture = await addVideoPicture(planPath, {
@@ -63,15 +97,22 @@ describe('pictures attached to one video', () => {
     });
     expect(picture.id).toBe('own001');
     const plan = await readEditPlan(planPath);
-    expect(plan.pictures?.[0]).toEqual({
+    const kept = plan.pictures?.[0];
+    expect({ ...kept, path: '<the copy>' }).toEqual({
       id: 'own001',
-      path: file,
+      path: '<the copy>',
       description: 'the bottle for this reel',
       label: 'Zephyrine',
     });
-    // The path on the plan is the file where he put it; nothing copied it.
-    expect(plan.pictures?.[0]?.path).toBe(file);
+
+    // The path on the plan is the copy inside the project, not where he put it.
+    expect(isInClientPictureStore(REPO_ROOT, kept?.path as string)).toBe(true);
+    expect(kept?.path).not.toBe(file);
+    // Filed under the video's own sha256, so two reels called sora.mov cannot meet.
+    expect(path.basename(path.dirname(kept?.path as string))).toMatch(/-[0-9a-f]{12}$/);
+    // Copied, never moved: his file is still there and still says what it said.
     expect(readFileSync(file, 'utf8')).toBe('not really a picture');
+    expect(readFileSync(kept?.path as string, 'utf8')).toBe('not really a picture');
   });
 
   it('refuses a file that is not there, and a picture nobody described', async () => {

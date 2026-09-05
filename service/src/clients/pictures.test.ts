@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
-import { REPO_ROOT, SOFT_ENLARGEMENT_PERCENT, fitByLongEdge } from '@framopia/core';
+import {
+  REPO_ROOT,
+  SOFT_ENLARGEMENT_PERCENT,
+  clientPictureStorePath,
+  fitByLongEdge,
+  isInClientPictureStore,
+} from '@framopia/core';
 
 /*
  * **A client's picture is never sent anywhere.**
@@ -27,9 +33,11 @@ describe('a client’s own picture never leaves the machine', () => {
   });
 
   /*
-   * It stays where he put it. `.local/cache/` is for things the tool made and
-   * can make again; a photograph is neither. Comments are stripped first — the
-   * rule is about what the code does, not about what it says it does.
+   * It is never put in a cache. `.local/cache/` is for things the tool made and
+   * can make again; a photograph is neither, and the eviction pass that deletes
+   * children of a video's directory by age would be deleting the client's own
+   * material. Comments are stripped first — the rule is about what the code
+   * does, not about what it says it does.
    */
   it('is not copied anywhere: the module that owns it writes nothing', () => {
     const raw = readFileSync(path.join(REPO_ROOT, 'core', 'src', 'client-pictures.ts'), 'utf8');
@@ -37,6 +45,97 @@ describe('a client’s own picture never leaves the machine', () => {
     for (const forbidden of ['copyFile', 'writeFile', 'node:fs', 'cacheEntryDir', '.local']) {
       expect(`${forbidden}: ${String(code.includes(forbidden))}`).toBe(`${forbidden}: false`);
     }
+  });
+});
+
+/**
+ * **The third rule, and it is an allow-list rather than a missing prohibition.**
+ *
+ * Mohamed ruled on 2026-09-05 that attaching a photograph copies it into the
+ * project, so a client travels with the repository and works on any machine.
+ * That is a copy, and the two rules above are about copying — so the way it is
+ * kept safe is to name the one destination and assert nothing writes anywhere
+ * else, not to delete an assertion until the new behaviour fits through.
+ */
+describe('a client’s own picture is copied to one place and no other', () => {
+  const repo = '/somewhere/framopia-studio';
+
+  it('always lands inside the store, whatever it is given', () => {
+    const odd = [
+      { owner: 'a-client', pictureId: 'pic001', extension: '.png' },
+      { owner: 'sora-619b8eaecae4', pictureId: 'own001', extension: '.jpg' },
+      { owner: 'a client with spaces', pictureId: 'pic012-9f3a2b8c7d6e', extension: '.psd' },
+    ];
+    for (const one of odd) {
+      const where = clientPictureStorePath({ repoRoot: repo, ...one });
+      expect(`${one.owner}/${one.pictureId}: ${isInClientPictureStore(repo, where)}`).toBe(
+        `${one.owner}/${one.pictureId}: true`,
+      );
+      expect(where.startsWith(path.join(repo, 'assets', 'client-pictures'))).toBe(true);
+    }
+  });
+
+  /*
+   * Two clients numbering from `pic001` is the ordinary case, and four filename
+   * collisions across sessions 50 to 53 cost three sessions and $1.01. The
+   * owner segment is what makes it impossible.
+   */
+  it('cannot put two owners’ pictures in the same file', () => {
+    const hers = clientPictureStorePath({ repoRoot: repo, owner: 'hers', pictureId: 'pic001', extension: '.png' });
+    const his = clientPictureStorePath({ repoRoot: repo, owner: 'his', pictureId: 'pic001', extension: '.png' });
+    expect(hers).not.toBe(his);
+    // And a video's, whose owner carries the video's own sha256.
+    const reel = clientPictureStorePath({
+      repoRoot: repo, owner: 'sora-619b8eaecae4', pictureId: 'own001', extension: '.png',
+    });
+    const other = clientPictureStorePath({
+      repoRoot: repo, owner: 'sora-344265a03251', pictureId: 'own001', extension: '.png',
+    });
+    expect(reel).not.toBe(other);
+  });
+
+  it('refuses an owner or an id that says nothing', () => {
+    expect(() =>
+      clientPictureStorePath({ repoRoot: repo, owner: '  ', pictureId: 'pic001', extension: '.png' }),
+    ).toThrow(/owner and an id/);
+    expect(() =>
+      clientPictureStorePath({ repoRoot: repo, owner: 'x', pictureId: '', extension: '.png' }),
+    ).toThrow(/owner and an id/);
+  });
+
+  /* One module copies a photograph, and it is the one that owns the store. */
+  it('is copied by exactly one module in the whole service', () => {
+    const copiers: string[] = [];
+    const walk = (dir: string): void => {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+          walk(full);
+          continue;
+        }
+        if (!entry.name.endsWith('.ts') || entry.name.includes('.test.')) continue;
+        const code = readFileSync(full, 'utf8')
+          .replace(/\/\*[\s\S]*?\*\//g, '')
+          .replace(/^\s*\/\/.*$/gm, '');
+        if (/copyFileSync|copyFile\(/.test(code) && /picture|photo/i.test(code)) {
+          copiers.push(path.relative(REPO_ROOT, full));
+        }
+      }
+    };
+    walk(path.join(REPO_ROOT, 'service', 'src'));
+    expect(copiers).toEqual(['service/src/clients/picture-store.ts']);
+  });
+
+  /* And it takes its destination from the one declaration, never its own. */
+  it('takes its destination from the one declaration', () => {
+    const code = readFileSync(
+      path.join(REPO_ROOT, 'service', 'src', 'clients', 'picture-store.ts'),
+      'utf8',
+    );
+    expect(code).toContain('clientPictureStorePath');
+    // Nothing in it builds a destination out of anything else.
+    expect(code).not.toContain("join(repoRoot, 'assets'");
+    expect(code.includes('.local')).toBe(false);
   });
 });
 

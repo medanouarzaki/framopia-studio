@@ -2,6 +2,8 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { labelWords, type ClientPicture } from '@framopia/core';
 import { readEditPlan, writeEditPlan } from './editplan/io.js';
+import { keepPicture } from './clients/picture-store.js';
+import { videoDirName, videoOf } from './video-identity.js';
 
 export class VideoPictureError extends Error {
   constructor(message: string) {
@@ -60,9 +62,15 @@ export async function addVideoPicture(
   check(picture);
   const plan = await readEditPlan(planPath);
   const pictures = plan.pictures ?? [];
+  const id = nextOwnPictureId(pictures);
   const entry: ClientPicture = {
-    id: nextOwnPictureId(pictures),
-    path: picture.path,
+    id,
+    /*
+     * Under the video's own directory name, which carries its sha256 — two of
+     * the client's files are both called `sora.mov`, and a picture filed under
+     * the name alone would put one reel's shot on the other's.
+     */
+    path: keepPicture({ owner: videoDirName(videoOf(plan.source)), pictureId: id, from: picture.path }),
     description: picture.description.trim(),
     ...labelField(picture.label),
   };

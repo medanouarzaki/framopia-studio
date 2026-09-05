@@ -289,16 +289,22 @@ describe.skipIf(!built)('a client already saved', () => {
    * path, drew nothing, and the only thing that ever said why was pre-flight,
    * refusing at build time. This is that answer arriving with the picture.
    */
-  it('says a photograph is on a drive this Mac cannot see', async () => {
+  it('says a photograph is not on this Mac, without guessing why', async () => {
     const away = JSON.parse(JSON.stringify(SAVED_CLIENT)) as typeof SAVED_CLIENT;
     (away.pictures[1] as Record<string, unknown>)['onThisMachine'] = false;
     const loaded = await open('card', [away]);
     if (loaded === null) return;
     try {
       const text = (await loaded.page.textContent('.ownphotos')) ?? '';
-      expect(text).toContain('on a drive this Mac cannot see');
+      expect(text).toContain('not on this Mac');
       // It names which photograph, in the words he described it in.
       expect(text).toContain('the clinic outside');
+      /*
+       * And it names no cause. Session 61 said "on a drive this Mac cannot
+       * see", which is false of a photograph missing because the home folder
+       * differs — a cause the panel has no way to tell apart.
+       */
+      expect(text).not.toContain('drive');
       // It does not refuse and it does not forget: both are still listed.
       expect(await loaded.page.locator('.photos li').count()).toBe(2);
       expect(text).toContain('the product box');
@@ -317,7 +323,7 @@ describe.skipIf(!built)('a client already saved', () => {
     if (loaded === null) return;
     try {
       const text = (await loaded.page.textContent('.ownphotos')) ?? '';
-      expect(text).not.toContain('on a drive this Mac cannot see');
+      expect(text).not.toContain('not on this Mac');
       expect(loaded.uncaught).toEqual([]);
     } finally {
       await loaded.page.close();

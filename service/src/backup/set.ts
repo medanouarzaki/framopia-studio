@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
-import { REPO_ROOT } from '@framopia/core';
+import { REPO_ROOT, isInClientPictureStore } from '@framopia/core';
 
 /**
  * What this project cannot get back.
@@ -175,9 +175,33 @@ export interface GroupSurvey extends BackupGroup {
   bytes: number;
 }
 
+/**
+ * What the backup will not carry, whatever a group happens to walk.
+ *
+ * **A client's own photographs.** `npm run backup` copies to Google Drive, and a
+ * doctor's patient results are not ours to put there — the same reason nothing
+ * sends one to an image model. Mohamed ruled on 2026-09-05 that a photograph is
+ * copied into the project so a client travels with the repository, and accepted
+ * that this makes **the private GitHub repository the only backup a photograph
+ * has**.
+ *
+ * **Stated as a rule rather than left to luck.** No group walks `assets/` today,
+ * so photographs would be absent by accident — and an accident is not a
+ * guarantee. This is applied to every group's answer, so a group that later
+ * grows to walk the repository cannot quietly start copying them.
+ *
+ * Exported because that is the only way to prove it. Nothing walks `assets/`
+ * today, so a test that only counts the real groups would pass with this rule
+ * deleted; `photographs.test.ts` hands it the file list such a group would
+ * produce and asserts the photograph is what comes out missing.
+ */
+export function withoutExcluded(files: string[]): string[] {
+  return files.filter((file) => !isInClientPictureStore(REPO_ROOT, file));
+}
+
 export function surveyGroups(): GroupSurvey[] {
   return BACKUP_GROUPS.map((group) => {
-    const paths = group.files();
+    const paths = withoutExcluded(group.files());
     let bytes = 0;
     for (const p of paths) bytes += statSync(p).size;
     return { ...group, paths, bytes };

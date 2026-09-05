@@ -1,5 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { keepPicture } from './picture-store.js';
 import {
   PALETTE_ROLES,
   CLIENT_LANGUAGES,
@@ -121,9 +122,11 @@ export function buildClient(input: NewClient): ClientMode {
     const pictures: ClientPicture[] = [];
     for (const picture of input.pictures) {
       checkPicture(picture);
+      const id = nextPictureId(pictures);
       pictures.push({
-        id: nextPictureId(pictures),
-        path: picture.path,
+        id,
+        // Copied into the project, so the client travels with the repository.
+        path: keepPicture({ owner: clientIdFor(name), pictureId: id, from: picture.path }),
         description: picture.description.trim(),
         ...labelField(picture.label),
       });
@@ -204,9 +207,10 @@ export function addPicture(
   checkPicture(picture);
   const raw = JSON.parse(readFileSync(modePath, 'utf8')) as ClientMode;
   const pictures = raw.pictures ?? [];
+  const id = nextPictureId(pictures);
   const entry: ClientPicture = {
-    id: nextPictureId(pictures),
-    path: picture.path,
+    id,
+    path: keepPicture({ owner: modeId, pictureId: id, from: picture.path }),
     description: picture.description.trim(),
     ...labelField(picture.label),
   };

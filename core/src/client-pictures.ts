@@ -1,17 +1,37 @@
 import type { ClientMode, ClientPicture } from './mode.js';
+import path from 'node:path';
 import { normalizeToken } from './normalize.js';
 
 /**
- * The client's own pictures, and the two properties that are not negotiable.
+ * The client's own pictures, and the three properties that are not negotiable.
  *
  * **1. A client's picture is never sent anywhere.** Generated images pass
  * through Gemini; a client's photograph — a doctor's patient results above all
  * — must not. Nothing in `service/src/images/` reads this module, and a test
- * asserts that the image-generation graph never imports it.
+ * asserts that the image-generation graph never imports it. **This is the
+ * strongest of the three and nothing below relaxes it.**
  *
- * **2. It is not copied into a cache.** It stays where he put it and is
- * referenced by path. `.local/cache/` is for things the tool made and can make
- * again; a photograph is neither.
+ * **2. It is never put in a cache.** `.local/cache/` is for things the tool made
+ * and can make again; a photograph is neither, and an eviction pass that deleted
+ * one would be deleting the client's own material.
+ *
+ * **3. It is copied into this project, and into exactly one place inside it.**
+ * Mohamed's ruling of 2026-09-05. Until then a photograph was referenced where
+ * its owner left it, which made a client file portable to one machine only:
+ * session 61 gave the paths read-time re-rooting, and that carries a picture
+ * already inside the project and can do nothing for one on a Desktop or a
+ * shared drive. So attaching a photograph now copies it to
+ * `assets/client-pictures/`, where git carries it and a clone has it.
+ *
+ * He was told, and accepted, that this makes **the private GitHub repository the
+ * only backup a photograph has**: they are deliberately excluded from
+ * `npm run backup`, because that copies to Google Drive and a client's
+ * photographs are not ours to put there.
+ *
+ * **The third is an allow-list of one destination, not the removal of the
+ * second.** `clientPictureStorePath` is the only answer to where a photograph
+ * may be written, and `service/src/clients/pictures.test.ts` asserts that
+ * nothing copies one anywhere else.
  *
  * **Matching is by a label he writes, and by nothing else.** Deciding that
  * "the clinic exterior" is what a moment wants is a judgement, and this makes
@@ -19,6 +39,45 @@ import { normalizeToken } from './normalize.js';
  * listed against it. Anything less generates. A picture with no label is
  * chosen by hand from the picture editor, exactly as before.
  */
+/**
+ * The one place inside the project a client's photograph may be written.
+ *
+ * Under `assets/`, which `REPO_ANCHORS` already knows, so session 61's
+ * re-rooting carries it to any machine with nothing further to do.
+ *
+ * **Two clients' pictures cannot collide, and neither can two videos'.** The
+ * owner is a client's id — the mode filename stem, which `createClient` refuses
+ * to duplicate — or a video's `videoDirName`, which carries the video's own
+ * sha256 because two of the client's files are both called `sora.mov`. The
+ * picture id is unique within its owner. So the pair is unique by construction
+ * rather than by hoping, which is what four filename collisions across sessions
+ * 50 to 53 cost.
+ */
+export const CLIENT_PICTURE_STORE = ['assets', 'client-pictures'] as const;
+
+export function clientPictureStorePath(options: {
+  repoRoot: string;
+  /** A client's id, or a video's directory name. */
+  owner: string;
+  /** `pic001` on a client, `own001` on a video. */
+  pictureId: string;
+  /** With its dot, as the original had it: `.png`. */
+  extension: string;
+}): string {
+  const { repoRoot, owner, pictureId, extension } = options;
+  if (owner.trim() === '' || pictureId.trim() === '') {
+    throw new Error('a stored picture needs an owner and an id');
+  }
+  return path.join(repoRoot, ...CLIENT_PICTURE_STORE, owner, `${pictureId}${extension}`);
+}
+
+/** Whether a path is inside the store, by segments rather than by prefix. */
+export function isInClientPictureStore(repoRoot: string, file: string): boolean {
+  const store = path.join(repoRoot, ...CLIENT_PICTURE_STORE);
+  const rel = path.relative(store, file);
+  return rel !== '' && !rel.startsWith('..') && !path.isAbsolute(rel);
+}
+
 export function clientPictures(mode: Pick<ClientMode, 'pictures'>): ClientPicture[] {
   return mode.pictures ?? [];
 }
