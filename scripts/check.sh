@@ -17,6 +17,11 @@ npm run lint --workspaces --if-present
 # `--run` is not appended here: every workspace's own `test` script carries it,
 # and vitest refuses the flag twice. `test:watch` is the watching one.
 npm run test --workspaces --if-present
+# A client's photograph is copied into assets/client-pictures/, which is
+# tracked, so every test that attaches one writes into the repository. Runs
+# after the suites, because it is their leavings it is looking for.
+node scripts/check-store-empty.mjs
+
 npm run validate:modes --workspace @framopia/core
 
 # Every .jsx, parsed before it can reach After Effects. ExtendScript's reserved
