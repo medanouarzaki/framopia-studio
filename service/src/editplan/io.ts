@@ -104,6 +104,17 @@ function resolvePlanPaths(plan: EditPlan): EditPlan {
   if (plan.build.aepPath !== null) {
     plan.build.aepPath = at(plan.build.aepPath, 'build.aepPath');
   }
+  /*
+   * Pictures attached to this reel alone, which Block 11 session 60 found this
+   * function did not cover. Same rule as a client's: a photograph inside a
+   * repository is re-rooted onto the one running now, and one genuinely
+   * elsewhere is left exactly where its owner put it.
+   */
+  if (plan.pictures !== undefined) {
+    for (const picture of plan.pictures) {
+      picture.path = at(picture.path, `pictures/${picture.id}.path`);
+    }
+  }
   for (const slot of plan.images.slots) {
     for (const candidate of slot.candidates) {
       candidate.path = at(candidate.path, `${slot.id}/${candidate.id}.path`);

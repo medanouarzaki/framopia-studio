@@ -76,6 +76,7 @@ export const MODE_SCHEMA_VERSION = 1;
  * `build-stamp` is its own subpath.
  */
 import { PALETTE_ROLES, type PaletteRole } from './palette-meaning.js';
+import { resolveStoredPath } from './stored-path.js';
 import { labelWords } from './client-pictures.js';
 
 export { PALETTE_ROLES, type PaletteRole };
@@ -891,6 +892,42 @@ export function parseMode(raw: string, modePath: string): ClientMode {
     throw new ModeValidationError(modePath, [
       { path: 'id', message: `must equal the filename stem ${JSON.stringify(stem)}` },
     ]);
+  }
+  return resolveModePaths(mode);
+}
+
+/**
+ * The paths a client file holds, resolved against the repository running now.
+ *
+ * **A client file was portable to one machine only.** Block 11 session 60
+ * measured it: `resolvePlanPaths` re-roots the footage, the plans and every
+ * generated candidate, and it does not touch `modes/*.json` at all — so a
+ * photograph or a logo written on the T7 Shield stayed written on the T7
+ * Shield, and on the partner's Mac it named a drive that is not there while
+ * `loadMode` and `validateMode` both said the client was fine.
+ *
+ * This is `resolveStoredPath`, the same resolver the plans already use, and not
+ * a second mechanism. It re-roots a path that sits **inside some repository** —
+ * a photograph the user keeps under `my files/`, for instance — onto this one,
+ * and **returns a path genuinely outside any repository unchanged**, because a
+ * client's own photograph lives where its owner put it and it is not this
+ * project's to move. Nothing is copied and nothing is sent: the file is not
+ * touched, only the string that names it.
+ *
+ * **At read time, and the stored value is left alone.** The file on disk goes
+ * on saying what it says — that is provenance — and every reader gets a path
+ * that works here, which is exactly what `readTranscriptionCache` does with its
+ * manifest. So a client written before this change needs no migration and
+ * nobody re-attaches a photograph.
+ */
+export function resolveModePaths(mode: ClientMode): ClientMode {
+  const at = (value: string, field: string): string =>
+    resolveStoredPath(value, { field: `${mode.id} ${field}` });
+  if (mode.logoPath !== undefined) mode.logoPath = at(mode.logoPath, 'logoPath');
+  if (mode.pictures !== undefined) {
+    for (const picture of mode.pictures) {
+      picture.path = at(picture.path, `${picture.id}.path`);
+    }
   }
   return mode;
 }
