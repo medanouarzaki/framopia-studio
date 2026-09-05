@@ -467,6 +467,77 @@ edge luminance exactly as for a generated one. Measured on a built comp: a
 **scaled up 500%** to 1000x1000 — nothing refuses a picture for being small, and
 a small one will be soft.
 
+### Writing a label, editing a client, and taking one off the list
+
+**The label is written beside the picture, on both client screens.** Session 53
+built the matching rule and nothing in the panel could write a label, so the
+whole feature was reachable only by editing a client's JSON by hand.
+`ClientPictures.tsx` is the one component both screens use — the setup form,
+where the list is sent with the client, and the client card, where each change
+goes straight to the service — and it now carries the label field and a sentence
+saying what it does in words rather than in the language of matching. An empty
+box **writes no label at all**: absent is what makes a picture hand-chosen, and
+the mode validator refuses a label holding no words.
+
+**Changing a label afterwards is its own route.** `POST /clients/picture-label`,
+because a label is corrected far more often than a photograph is replaced and
+re-adding the file to change one word would renumber it and orphan every plan
+that names it. **It does not bump the client's version**: a label decides which
+picture answers a word the next time slots are planned, and is not part of the
+look a reel pins, so offering to move every reel forward because a label was
+corrected would be noise.
+
+**A video's own pictures live on the plan.** `plan.pictures`, the same shape as
+a client's, numbered `own001` upward against a client's `pic001` because a slot
+records one id and both lists are searched from it. They are **searched first**,
+and that is the whole of the preference — `matchClientPicture` takes the first
+picture whose label holds the word, so putting the reel's list in front is one
+declaration rather than a second copy of the rule. Forgetting one **frees any
+slot that had chosen it**, because a slot naming a picture nothing can resolve
+is a build that refuses at pre-flight.
+
+**Everything about a client is editable, and only what is sent is touched.**
+`POST /clients/details` on the `setPalette` precedent: re-read, edit, write back,
+so a note anyone typed into the file by hand survives. `null` clears a field and
+an absent key leaves it alone, which is what keeps a blank meaning *standard*
+rather than becoming a choice nobody made. **The version moves only when the
+look does** — the snapshot carries the name, the faces and the subtitle
+baseline; the folder, the logo, the language and the shape are about the client
+and not about a comp. **The id never changes**, whatever the name becomes.
+
+**A client is taken off the list, not destroyed.** `DELETE /clients` moves the
+file to `.local/deleted-clients/` with the moment it went and says where. A reel
+already made **builds to exactly the same thing afterwards** — asserted field for
+field in `clients/delete-is-safe.test.ts`, comparing the whole built reel and the
+resolved identity before and after — because every reel rebuilds from its pinned
+snapshot and `resolveClientIdentity` already treats a missing client file as
+*nothing to compare against*. What a removal does break is a reel using one of
+that client's **own photographs**, and the confirmation says so.
+
+**A client has three faces**, chosen from the list After Effects itself reported.
+`createClient` took two until session 54, which is why Dr Loubna Kfafi's emphasis
+face had to be written into her file by hand. The chosen name is recorded **as
+both** the name a person reads and the `postScriptNames` entry a build writes,
+because After Effects rejects any font name containing a space and the name from
+that list is the one it accepts.
+
+### The run screen is two buttons
+
+**`Run pipeline` was the name of a mechanism and it did everything at once.** On
+a 41-second reel the words are about $0.35 and the pictures about $3.98, so the
+only way to read a transcript was to buy the pictures first — and reading it is
+the only way to know whether the words are any good.
+
+It is now **Make the subtitles** and **Make the pictures**, both on screen at
+once with what each will cost. Session 31 built both halves and showed one at a
+time; showing both always is what teaches the order they go in. The second is
+refused until the subtitles exist and says why with no stage name in it. Whether
+they exist is `wordsDone`, computed in the dry run beside `wordsUsd` for the same
+reason: which stages are "the words" is `WORDS_STAGE_IDS`, and a second copy of
+that in a React bundle is a second place for it to drift. **A price of zero is
+not the same answer** — the words can be free because they are cached and still
+never have been written onto this plan.
+
 **A client's photographs are not in the backup set, and that is a finding rather
 than a fix.** Measured against `surveyGroups` this session: 126 files across nine
 groups, none of them a photograph, and **no still under the footage directory is

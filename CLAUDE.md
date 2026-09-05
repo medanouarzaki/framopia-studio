@@ -125,6 +125,13 @@ Since session 53 **a client's own picture is used instead of a generated one
 when a word she says is in that picture's label** — the user's strict ruling —
 decided when slots are planned so the slot is never bought, and a picture id is
 resolved against the client on the plan so two clients' pictures cannot meet.
+Since session 54 **that label is written in the panel**, beside the photograph
+on both client screens; **a video can have pictures of its own**, searched
+before the client's; **every field of a client can be corrected and a client can
+be taken off the list** (their file is moved to `.local/deleted-clients/`, and a
+reel already made builds to exactly the same thing); a client has **three
+faces**; and the run screen is **Make the subtitles** then **Make the
+pictures**, both priced, the second refused until the subtitles exist.
 
 What is open, in one line each: `ground-truth` cannot build until its six image
 slots are generated; a client's photograph is not in the backup set; the image prompt's fidelity, darkness
@@ -139,10 +146,11 @@ reel holds one picture motionless for a long time** — `test-1` for 6.8 s,
 because the hold is exactly the gap the planner left; **a client saved without setting any
 colours still inherits K2's four**, because `createClient` copies the template
 client's palette and the templates themselves carry K2's Rouge as their authored
-shadow; **a client's fonts, name, folder and logo still cannot be edited after
-creation** — only the palette and the photographs can; **a client's video shape
+shadow; **a client's video shape
 and language are recorded and read by nothing that builds a reel**, and the
-client card says so rather than claiming otherwise. Since 2026-09-03 a client's **four brand colours can be typed or pasted as
+client card says so rather than claiming otherwise; **taking a client off the
+list leaves any slot that had chosen one of their photographs unresolvable**,
+and the build refuses at pre-flight until the choice is cleared by hand. Since 2026-09-03 a client's **four brand colours can be typed or pasted as
 codes** — the fields were a swatch and a `<code>` label, so a colour could only
 be set by dragging inside the OS picker — and they **reach the built comp** — they
 were collected and never sent — and **a saved client's colours can be corrected**
