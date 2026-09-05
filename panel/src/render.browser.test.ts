@@ -1,3 +1,4 @@
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { chromium, type Browser, type ConsoleMessage, type Page } from 'playwright';
@@ -542,12 +543,110 @@ const VITASILK_DRY_STAGES = [
  * that exist, so the error never fires and the ready branch is what is under
  * test. The path has spaces in it, which is also the real case.
  */
-const CUTOUTS = path.join(REPO, 'my files', 'test videos', 'cutouts');
-const REAL_C1 = path.join(CUTOUTS, 'img001-c1.cutout.png');
-const REAL_C2 = path.join(CUTOUTS, 'img001-c2.cutout.png');
-const REAL_CUT = path.join(CUTOUTS, 'img002-c1.cutout.png');
+/**
+ * The pictures come off `vitasilk`'s own Edit Plan, and are not written down
+ * here at all.
+ *
+ * **Three fixture paths were hard-coded and none of them existed.** They named
+ * `cutouts/img001-c1.cutout.png`, and Block 10 session 35 moved every cutout
+ * into a per-reel folder — `cutouts/vitasilk/…` — so every one of them had been
+ * missing for months. The comment above them said *"These are files that exist,
+ * so the error never fires"*, which had stopped being true.
+ *
+ * Reading the plan removes the whole class: the plan is what the pipeline
+ * writes, its candidate paths are what the builder places, and a generated
+ * picture lives under the **video's sha256** the way `video-identity.ts`
+ * decides. If those move again, this follows them, and if the plan is missing a
+ * file the tests say so instead of racing an error handler.
+ */
+const CORPUS_PLAN = path.join(REPO, 'my files', 'test videos', 'vitasilk.editplan.json');
+
+interface PlanCandidate {
+  id: string;
+  path: string;
+  cutoutPath?: string | null;
+}
+
+function planSlots(): { id: string; presentation: string | null; candidates: PlanCandidate[] }[] {
+  const plan = JSON.parse(readFileSync(CORPUS_PLAN, 'utf8')) as {
+    images: { slots: { id: string; presentation: string | null; candidates: PlanCandidate[] }[] };
+  };
+  return plan.images.slots;
+}
+
+/**
+ * A picture the plan names and the disk really holds.
+ *
+ * A fixture that names a file which is not there is the defect this replaces,
+ * so it is refused loudly here rather than discovered as a flake later.
+ */
+function realFile(what: string, file: string | null | undefined): string {
+  if (typeof file !== 'string' || file === '' || !existsSync(file)) {
+    throw new Error(`${what}: the corpus plan names ${String(file)}, which is not on disk`);
+  }
+  return file;
+}
+
+const CARD_SLOT = planSlots()[0] as { id: string; candidates: PlanCandidate[] };
+const CUTOUT_SLOT = planSlots()[1] as { id: string; candidates: PlanCandidate[] };
+
+/** The generated picture, under the video's own sha256. Not a cutout. */
+const REAL_C1 = realFile('img001-c1 generated', CARD_SLOT.candidates[0]?.path);
+const REAL_C2 = realFile('img001-c2 generated', CARD_SLOT.candidates[1]?.path);
+/** The cut-out of it, in this reel's own cutout folder. A different file. */
+const REAL_C1_CUTOUT = realFile('img001-c1 cutout', CARD_SLOT.candidates[0]?.cutoutPath);
+const REAL_CUT = realFile('img002-c1 cutout', CUTOUT_SLOT.candidates[0]?.cutoutPath);
+const REAL_CUT_SOURCE = realFile('img002-c1 generated', CUTOUT_SLOT.candidates[0]?.path);
+
 const urlOf = (p: string): string =>
   `file://${p.split('/').map(encodeURIComponent).join('/')}`;
+
+/**
+ * Every picture on screen has finished trying to load.
+ *
+ * **This is what removes the race, and it is a condition rather than a wait.**
+ * The panel renders `<img class="shot built">` immediately and replaces it with
+ * a sentence if the file will not load — so a test that read the DOM before the
+ * browser had finished trying saw the image, and one that read after saw the
+ * sentence. Both happened: the picker tests failed intermittently through
+ * sessions 54 and 55, and the outcome could be flipped either way by pausing
+ * before the read.
+ *
+ * Waiting for `complete` on every picture makes the answer the same whichever
+ * side would have won.
+ */
+async function picturesSettled(page: Page): Promise<void> {
+  await page.waitForFunction(
+    () =>
+      [...document.querySelectorAll('img.shot')].every((el) => (el as HTMLImageElement).complete),
+    undefined,
+    { timeout: 15_000 },
+  );
+}
+
+/**
+ * What is on screen, as values.
+ *
+ * `loaded` is the thing that matters and the thing the old assertions could not
+ * see: they compared `src` against a string built from the same constant, so
+ * they passed whatever the file did — proved by pointing the fixtures at a
+ * folder that does not exist and watching all fifteen stay green.
+ *
+ * Extracted rather than handed back as handles: session 54 lost a run to
+ * vitest serialising a live Playwright `ElementHandle` into a failure diff and
+ * exhausting the heap.
+ */
+async function shotsOnScreen(page: Page): Promise<{ src: string; loaded: boolean }[]> {
+  return await page.$$eval('img.shot.built', (els) =>
+    els.map((el) => {
+      const img = el as HTMLImageElement;
+      return {
+        src: img.getAttribute('src') ?? '',
+        loaded: img.complete && img.naturalWidth > 0,
+      };
+    }),
+  );
+}
 
 const IMAGES = {
   reel: 'vitasilk',
@@ -583,9 +682,15 @@ const IMAGES = {
       candidates: [
         {
           id: 'img001-c1',
+          /*
+           * Three roles, three different files, which is how the plan really
+           * holds them. They were all the same `.cutout.png` before, so the
+           * test named "shows the picture the build will place, not the cut-out
+           * of it" could not tell the two apart at all.
+           */
           imagePath: REAL_C1,
           imageExists: true,
-          cutoutPath: REAL_C1,
+          cutoutPath: REAL_C1_CUTOUT,
           cutoutExists: true,
           renderedPath: REAL_C1,
           renderedExists: true,
@@ -644,7 +749,9 @@ const IMAGES = {
       candidates: [
         {
           id: 'img002-c1',
-          imagePath: REAL_CUT,
+          // A cutout slot: the build places the cut-out, and the picture it was
+          // cut from is offered beside it. Two files, as on the plan.
+          imagePath: REAL_CUT_SOURCE,
           imageExists: true,
           cutoutPath: REAL_CUT,
           cutoutExists: true,
@@ -1740,15 +1847,21 @@ describe('the image candidate picker', () => {
   it('shows the picture the build will place, not the cut-out of it', async () => {
     const loaded = await loadImages();
     if (loaded === null) return;
-    await loaded.page.waitForSelector('img.shot.built', { timeout: 5000 });
-    const built = await loaded.page.$$eval('img.shot.built', (els) =>
-      els.map((e) => (e as HTMLImageElement).getAttribute('src')),
-    );
-    // The card slot's own picture, and the cutout slot's cut-out.
-    expect(built).toContain(urlOf(REAL_C1));
-    expect(built).toContain(urlOf(REAL_CUT));
-    // A card slot shows one picture, not the same file twice.
-    expect(built.filter((s) => s === urlOf(REAL_C1))).toHaveLength(1);
+    await picturesSettled(loaded.page);
+    const built = await shotsOnScreen(loaded.page);
+
+    // Every one of them drew. This is what the old assertion could not see.
+    expect(built.filter((shot) => !shot.loaded).map((shot) => shot.src)).toEqual([]);
+    expect(built).toHaveLength(3);
+
+    const src = built.map((shot) => shot.src);
+    // The card slot places the generated picture; the cutout slot the cut-out.
+    expect(src).toContain(urlOf(REAL_C1));
+    expect(src).toContain(urlOf(REAL_CUT));
+    // And not the cut-out of the card slot's picture, which is a different
+    // file and is the thing this test exists to tell apart.
+    expect(src).not.toContain(urlOf(REAL_C1_CUTOUT));
+    expect(src.filter((one) => one === urlOf(REAL_C1))).toHaveLength(1);
     await loaded.page.close();
   }, 30_000);
 
@@ -1766,9 +1879,22 @@ describe('the image candidate picker', () => {
   it('offers the picture before the background was removed, on a cutout slot only', async () => {
     const loaded = await loadImages();
     if (loaded === null) return;
-    await loaded.page.waitForSelector('img.shot.built', { timeout: 5000 });
-    const raws = await loaded.page.$$('figure.rawshot');
-    expect(raws).toHaveLength(1);
+    await picturesSettled(loaded.page);
+    /*
+     * Counted, and confirmed to have drawn — and the count is read as a number
+     * rather than as a list of handles: session 54 lost a run to vitest
+     * serialising a live `ElementHandle` into a failure diff.
+     */
+    const raw = await loaded.page.$$eval('figure.rawshot img.shot', (els) =>
+      els.map((el) => {
+        const img = el as HTMLImageElement;
+        return { src: img.getAttribute('src') ?? '', loaded: img.complete && img.naturalWidth > 0 };
+      }),
+    );
+    expect(raw).toHaveLength(1);
+    expect(raw[0]?.loaded).toBe(true);
+    // It is the picture the cut-out was made from, not the cut-out.
+    expect(raw[0]?.src).toBe(urlOf(REAL_CUT_SOURCE));
     const text = (await loaded.page.textContent('ol.slots')) ?? '';
     expect(text).toContain('before the background was removed');
     await loaded.page.close();
@@ -1794,17 +1920,18 @@ describe('the image candidate picker', () => {
     }
     const loaded = await loadImages(older);
     if (loaded === null) return;
-    await loaded.page.waitForSelector('ol.slots li', { timeout: 5000 });
+    await picturesSettled(loaded.page);
     const text = (await loaded.page.textContent('ol.slots')) ?? '';
     expect(text).not.toContain('no longer on the disk');
     expect(text).not.toContain('could not work out which picture');
-    const shown = await loaded.page.$$eval('img.shot.built', (els) =>
-      els.map((e) => (e as HTMLImageElement).getAttribute('src')),
-    );
-    // Three candidates, each falling back to the rule the builder uses.
+    const shown = await shotsOnScreen(loaded.page);
+    // Three candidates, each falling back to the rule the builder uses, and
+    // each actually drawing rather than merely being named.
     expect(shown).toHaveLength(3);
-    expect(shown).toContain(urlOf(REAL_C1));
-    expect(shown).toContain(urlOf(REAL_CUT));
+    expect(shown.filter((shot) => !shot.loaded).map((shot) => shot.src)).toEqual([]);
+    const src = shown.map((shot) => shot.src);
+    expect(src).toContain(urlOf(REAL_C1));
+    expect(src).toContain(urlOf(REAL_CUT));
     await loaded.page.close();
   }, 30_000);
 
@@ -1815,10 +1942,14 @@ describe('the image candidate picker', () => {
     (gone.slots[0]?.candidates[0] as Record<string, unknown>)['renderedExists'] = false;
     const loaded = await loadImages(gone);
     if (loaded === null) return;
-    await loaded.page.waitForSelector('img.shot.built', { timeout: 5000 });
+    await picturesSettled(loaded.page);
     const text = (await loaded.page.textContent('ol.slots')) ?? '';
     expect(text).toContain('no longer on the disk');
-    expect(await loaded.page.$$('img.shot.built')).toHaveLength(2);
+    const shown = await shotsOnScreen(loaded.page);
+    // The other two are still there and still draw; only the one the service
+    // called gone is replaced by the sentence.
+    expect(shown).toHaveLength(2);
+    expect(shown.filter((shot) => !shot.loaded).map((shot) => shot.src)).toEqual([]);
     await loaded.page.close();
   }, 30_000);
 
@@ -1848,13 +1979,18 @@ describe('the image candidate picker', () => {
   it('encodes the spaces in a real path', async () => {
     const loaded = await loadImages();
     if (loaded === null) return;
-    await loaded.page.waitForSelector('img.shot.built', { timeout: 5000 });
-    const shown = await loaded.page.$$eval('img.shot.built', (els) =>
-      els.map((e) => (e as HTMLImageElement).getAttribute('src')),
-    );
-    expect(REAL_C1).toContain(' ');
-    expect(shown).toContain(urlOf(REAL_C1));
-    expect(shown.some((s) => (s ?? '').includes('%20'))).toBe(true);
+    await picturesSettled(loaded.page);
+    const shown = await shotsOnScreen(loaded.page);
+    // A space in the path is the normal case here, not an edge one.
+    expect(REAL_CUT).toContain(' ');
+    // Named first, so a failure says the picture is not on screen rather than
+    // that `undefined` does not contain a substring.
+    expect(shown.map((shot) => shot.src)).toContain(urlOf(REAL_CUT));
+    const spaced = shown.find((shot) => shot.src === urlOf(REAL_CUT));
+    expect(spaced?.src).toContain('%20');
+    // Encoded *and* loaded — an escaping mistake shows up as a picture that
+    // does not draw, which is the failure a string comparison cannot see.
+    expect(spaced?.loaded).toBe(true);
     await loaded.page.close();
   }, 30_000);
 
