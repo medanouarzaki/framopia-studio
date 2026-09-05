@@ -115,7 +115,19 @@ cloned into*.
 
 ## 1. The repository
 
-Choose a folder and clone into it:
+> **Before you start: the copy on GitHub is out of date.**
+>
+> Rehearsed on 2026-09-05. `github.com/medanouarzaki/framopia-studio` is at
+> **`d53a70b`, 29 August**, which is **271 commits behind** the working copy —
+> and it does not contain this document. Cloning it gives you a version of the
+> tool without the panel's client screens, without the picture labels, and
+> without most of what the rest of this describes.
+>
+> **So ask Mohamed for the repository before you clone anything.** Either he
+> pushes the current code to GitHub, or he gives you the folder on a drive.
+> Until one of those has happened, nothing below will match what you see.
+
+Once you have the current code, choose a folder and clone into it:
 
 ```
 git clone <the repository URL> framopia-studio
@@ -129,8 +141,11 @@ that is `<repo>` for the rest of this document.
 If someone has already put the folder on a drive for you, plug the drive in and
 `cd` into it instead.
 
-The download is small — about 254 KB — because the videos and the caches are
-deliberately not in it. They come in §10 and §11.
+**How big it is**, measured on the rehearsal clone: about **67 MB** of history
+and **104 MB** on disk once checked out. The videos and the caches are
+deliberately not in it — they come in §11 and §12. (An earlier version of this
+document said 254 KB. That was the size of the tracked text alone and it was
+wrong.)
 
 ---
 
@@ -190,8 +205,12 @@ cd "<repo>"
 npm install
 ```
 
-**You should see:** a few lines ending in something like `added 400 packages`.
-It takes a minute or two. About 164 MB.
+**You should see:** a few lines about packages, possibly followed by a block of
+`npm audit` warnings. **The warnings are expected and are not your problem** —
+they are about packages the project only uses while it is being developed.
+
+Measured on the rehearsal: **165 entries in `node_modules`, 168 MB**, in about a
+minute.
 
 ---
 
@@ -234,6 +253,12 @@ tools/cv/verify-models.sh
 ```
 
 **You should see:** both models reported as ok.
+
+**Rehearsed on 2026-09-05 from a fresh clone and it worked as written**, with no
+step missing: the script made the environment, fetched both models and finished
+with `sidecar: ready`, and `verify-models.sh` then reported
+`birefnet-general ok` and `selfie-multiclass-256x256 ok`. This is the longest
+step — most of the 930 MB is one file.
 
 ---
 
@@ -358,6 +383,24 @@ That opens it in TextEdit. Replace the two placeholder values with your own
 keys, and set `machineLabel` to something that identifies this Mac. Save and
 close.
 
+> **Do not skip the editing, and do not trust the check here.**
+>
+> Measured on 2026-09-05: if you copy the example across and run `npm run
+> doctor` **without editing it**, the doctor reports
+>
+> ```
+>   ok    the API keys, by presence
+>         googleApiKey present (value not shown), elevenLabsApiKey present (value not shown)
+> ```
+>
+> It is looking for keys *being there*, not for them being real — the file it
+> found contains `AIzaYourGoogleKey` and `sk_your_elevenlabs_key`. So a green
+> line here does not mean your keys work. You find that out at the first paid
+> call, which fails as not authorised.
+>
+> The example also ships `machineLabel` set to `mohameds-macbook`. Change it, or
+> your machine's reports will be filed under his name.
+
 The file is `.local/config.json` and it never leaves the machine: it is excluded
 from the repository, and `npm run backup` refuses to copy it into cloud storage.
 
@@ -434,6 +477,28 @@ says which.
 
 Open After Effects first and run it again, because five of the checks need it.
 
+**What a fresh clone actually reports**, measured on 2026-09-05 after §1 to §10
+and with After Effects open: **19 present, 5 absent, 0 could not be determined**.
+The five are the ones nothing can supply yet, and every one of them is expected
+at this point:
+
+| what it says is missing | why, and what fixes it |
+|---|---|
+| the panel bundle | §9's `npm run panel:build` has not run yet |
+| the watermark measurement | §13 — taken on the first video you run |
+| the dialogue loudness records | §13 — the same |
+| the API cache | §12 — copy it, or let it fill as stages run |
+| the cost ledger | it is written by the first billable call; a new Mac starts its own at zero |
+
+Only one thing is ever listed under *"this machine cannot run the pipeline until
+these are fixed"* on a fresh clone, and it is the API keys.
+
+**One check cannot be seen failing at all.** *The installed workspace
+dependencies* is checked by `npm run doctor`, and `npm run doctor` cannot start
+without those dependencies — so on the machine that has the problem, the check
+that describes it never runs. What you see instead is npm's own error, ending
+`command sh -c tsc`. That means §4 has not been done.
+
 Run it as many times as you like. **When it stops printing "this machine cannot
 run the pipeline until these are fixed", the setup is done.**
 
@@ -505,6 +570,66 @@ explanations, none of which is anything you did wrong:
 pictures were never bought, so it cannot be built at all — see *What you are
 receiving* at the top. Four videos is a stronger test than one, and adding the
 fifth would only add a failure we already know about.
+
+---
+
+## What is not in the repository, and where each thing comes from
+
+Measured on 2026-09-05 by cloning the project into a folder that had never held
+it and listing what was missing. Git carries the code, the documents, the
+**template library**, the **client files**, the **sound effects**, the
+**watermark video** and the **brand logo** — all of that arrives with the clone
+and none of it needs fetching. What does not:
+
+| what | how big | where you get it |
+|---|---|---|
+| **the five source videos** — `my files/test videos/*.mov` | 11.9 GB | Mohamed, by hand or on a drive. `benchmarks/footage.json` lists each one with its fingerprint. |
+| **your API keys** — `.local/config.json` | tiny | **Accounts of your own**, at Google and ElevenLabs. Never copy anyone else's. §10. |
+| **the saved answers** — `.local/cache/` | 53 MB | Mohamed. Without it every stage is bought again. §12. |
+| **the cut-out pictures** — `my files/test videos/cutouts/` | 53 MB | Mohamed. §12. |
+| **the five video plans** — `my files/test videos/*.editplan.json` | 308 KB | Mohamed. §12. |
+| **the installed packages** — `node_modules/` | 168 MB | `npm install`, §4. |
+| **the picture tools and their two models** — `tools/cv/.venv/`, `~/.rembg/` | ~1 GB | `tools/cv/setup.sh`, §6. Downloads them itself. |
+| **the panel bundle** — `panel/dist/panel.js` | 237 KB | `npm run panel:build`, §9. |
+| **the three typefaces** | small | Font files, installed on the Mac itself. §7. |
+| **the watermark measurement and the loudness records** | tiny | **Nothing to fetch** — this Mac measures its own copies. §13. |
+| **the cost ledger** — `.local/costs.jsonl` | tiny | **Nothing to fetch** — yours starts at zero. |
+| **any client photograph** | — | **Never copied.** A client's own picture stays where they put it and is never sent anywhere. |
+
+## The steps nobody can do for you
+
+Everything else in this document is a command. These are not:
+
+| step | why it needs you |
+|---|---|
+| **§1, getting the current code** | Someone has to push it or hand it over. The GitHub copy is 271 commits behind. |
+| **§2, Homebrew** | Its installer asks for your Mac password. |
+| **§7, the three fonts** | Font files are installed by double-clicking, and After Effects has to be restarted afterwards to notice. |
+| **§8, the scripting preference** | It is a checkbox inside After Effects' Preferences, off on every fresh install. Nothing outside the application may set it. |
+| **§9, restarting After Effects** | It reads the extensions folder only when it starts. |
+| **§10, the API keys** | They come from accounts in your name, and the doctor cannot tell a real key from the placeholder. |
+| **§11 and §12, the videos and the saved work** | About 12 GB that only Mohamed has. |
+| **§15, `npm run golden`** | After Effects has to be open, and only a person can open it. |
+
+## How much of this has been rehearsed, and how much has not
+
+Rehearsed on 2026-09-05 by cloning into a folder on the internal disk that had
+never held the project, and following this document from the top.
+
+**Run, and worked as written:** §1 the clone, §3 Node and `.nvmrc`, §4
+`npm install`, §6 the picture tools and both models, §10 making the settings
+file, §14 `npm run doctor`.
+
+**Not run, and why:** §2 Homebrew and §5 ffmpeg were already installed on the
+rehearsal Mac, so a fresh install of either is still unrehearsed. §7 the fonts
+and §8 the scripting preference were already set. §9 `npm run panel:install`
+was **deliberately not run**, because it rewrites the one folder After Effects
+reads and would have pointed the working panel at the rehearsal copy. §11 and
+§12 were not run — 12 GB nobody needed to move twice. §15 needs the videos from
+§11, so it could not be reached.
+
+**So the steps most likely still to surprise you are §2, §5, §7, §8 and §9** —
+they are the ones written from the code rather than from watching them happen.
 
 ---
 
