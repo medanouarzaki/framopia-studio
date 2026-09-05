@@ -25,6 +25,7 @@ import {
 import { edgeLuminance, flattenCutout } from '../images/sidecar.js';
 import { reelMasksDir } from '../frames/segment.js';
 import { ClientPictureError, clientPictureFileFor } from './client-picture.js';
+import { softPictureWarning } from './soft-picture.js';
 import { videoOf } from '../video-identity.js';
 import { readEditPlan, writeEditPlan } from '../editplan/io.js';
 import { buildRecordFor } from './build-record.js';
@@ -610,9 +611,13 @@ for (const e of built.elements) {
    */
   if (fit.tooEnlarged) {
     console.log(
-      `warning [${e.id}]: this picture is ${src.width}x${src.height}px and is being drawn at ` +
-        `${solid.width}px, so it is enlarged ${fit.enlargementPercent.toFixed(0)}% and will look ` +
-        'soft. It is still placed; a larger copy of the same picture would look sharper.',
+      softPictureWarning({
+        elementId: e.id,
+        sourceWidth: src.width,
+        sourceHeight: src.height,
+        boxPx: solid.width,
+        enlargementPercent: fit.enlargementPercent,
+      }),
     );
   }
 }
