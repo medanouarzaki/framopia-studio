@@ -136,9 +136,7 @@ pictures**, both priced, the second refused until the subtitles exist.
 What is open, in one line each: `ground-truth` cannot build until its six image
 slots are generated; a client's photograph is not in the backup set; the image prompt's fidelity, darkness
 and literalness fixes are applied but two have never been seen in a generated
-picture; the panel's image-picker browser tests are flaky rather than fixed —
-their cutout fixtures name files that moved into per-reel subdirectories, and the
-`onError` race that causes goes either way from run to run; **a reel's opening
+picture; **a reel's opening
 still gets a picture whether or not it earns one**; **only `sora` has been
 through slot prompt v3** — the corpus plans still start every picture at the
 first word of its span, and moving them means one billable call each; **a sparse
