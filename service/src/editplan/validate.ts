@@ -688,7 +688,33 @@ function checkContainers(c: Checker, plan: Rec): void {
     if (costs.spentByStage !== undefined) c.object('costs.spentByStage', costs.spentByStage);
   }
 
-  const build = c.object('build', plan.build);
+  /*
+   * Pictures attached to this reel alone. Optional with a default, so every
+   * plan written before Block 10 session 54 stays readable; the shape is a
+   * client's picture exactly, because it is one.
+   */
+  if (plan.pictures !== undefined) {
+    const own = c.array('pictures', plan.pictures);
+    if (own !== null) {
+      const ids = new Set<string>();
+      own.forEach((raw, i) => {
+        const picture = c.object(`pictures[${i}]`, raw);
+        if (picture === null) return;
+        c.string(`pictures[${i}].id`, picture.id);
+        if (typeof picture.id === 'string') {
+          if (ids.has(picture.id)) {
+            c.fail(`pictures[${i}].id`, `duplicate id ${JSON.stringify(picture.id)}`);
+          }
+          ids.add(picture.id);
+        }
+        c.string(`pictures[${i}].path`, picture.path);
+        c.string(`pictures[${i}].description`, picture.description);
+        if (picture.label !== undefined) c.string(`pictures[${i}].label`, picture.label);
+      });
+    }
+  }
+
+    const build = c.object('build', plan.build);
   if (build !== null) {
     c.oneOf('build.status', build.status, new Set(['none', 'built', 'stale']));
     c.nullableString('build.aepPath', build.aepPath);

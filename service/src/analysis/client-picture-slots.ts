@@ -1,4 +1,9 @@
-import { clientPictures, matchClientPicture, type ClientMode } from '@framopia/core';
+import {
+  clientPictures,
+  matchClientPicture,
+  type ClientMode,
+  type ClientPicture,
+} from '@framopia/core';
 import type { ImageSlot, PlanWord } from '../editplan/types.js';
 
 export interface ClientPictureFill {
@@ -24,14 +29,25 @@ export interface ClientPictureFill {
  *
  * Nothing here knows anything about a client's name, language or domain. It
  * asks `matchClientPicture`, which compares words.
+ *
+ * **A picture attached to this reel beats one on the client, and it beats it by
+ * being first in the list rather than by a rule of its own.** `matchClientPicture`
+ * already takes the first picture whose label holds the word, so putting the
+ * reel's own pictures in front of the client's is the whole of the preference —
+ * one declaration, not a second copy of the matching rule. It is the right way
+ * round because the reel's list is the more specific statement: a picture put on
+ * one video was chosen for that video, while a client's applies to everything
+ * they will ever make.
  */
 export function fillSlotsFromClientPictures(options: {
   slots: ImageSlot[];
   words: readonly PlanWord[];
   mode: Pick<ClientMode, 'pictures'>;
+  /** Pictures attached to this reel alone. Searched before the client's. */
+  ownPictures?: readonly ClientPicture[];
 }): { slots: ImageSlot[]; filled: ClientPictureFill[] } {
   const { slots, words, mode } = options;
-  const pictures = clientPictures(mode);
+  const pictures = [...(options.ownPictures ?? []), ...clientPictures(mode)];
   if (pictures.length === 0) return { slots, filled: [] };
 
   const byId = new Map(words.map((word) => [word.id, word]));

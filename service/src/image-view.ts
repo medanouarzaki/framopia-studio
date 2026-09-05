@@ -144,7 +144,15 @@ export interface ImagesView {
    * is what a slot wants is the judgement the image-prompt defect is about, and
    * that is Block 9 — he chooses, from pictures he described himself.
    */
-  clientPictures: { id: string; path: string; description: string }[];
+  clientPictures: { id: string; path: string; description: string; label?: string }[];
+  /**
+   * Pictures attached to this reel alone.
+   *
+   * Offered beside the client's in the picker, and **listed first**, because
+   * that is the order the matcher searches: a picture put on one video is the
+   * more specific statement.
+   */
+  videoPictures: { id: string; path: string; description: string; label?: string }[];
   /** Every image is drawn in a card frame, whatever the gate said. */
   cardFrameForced: boolean;
 }
@@ -273,6 +281,7 @@ async function viewOf(plan: EditPlan, planPath: string, reelLabel: string): Prom
     generationNote,
     reelSpentUsd: plan.costs.spentByStage?.['images'] ?? null,
     clientPictures: pictures,
+    videoPictures: (plan.pictures ?? []).map((p) => ({ ...p })),
     source: {
       clientMode: plan.clientMode?.id ?? null,
       clientModeVersion: plan.clientMode?.version ?? null,

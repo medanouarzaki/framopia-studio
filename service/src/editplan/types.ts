@@ -1,4 +1,4 @@
-import type { ClientSnapshot } from '@framopia/core';
+import type { ClientPicture, ClientSnapshot } from '@framopia/core';
 export const EDIT_PLAN_SCHEMA_VERSION = 1;
 
 export type StageStatus = 'pending' | 'running' | 'done' | 'error';
@@ -585,6 +585,19 @@ export interface EditPlan {
    * under it. See `snapshotOfMode` in `@framopia/core`.
    */
   clientSnapshot?: ClientSnapshot | null;
+  /**
+   * Pictures the user attached to **this reel alone**.
+   *
+   * Same shape as a client's, same label rule, same never-sent and never-copied
+   * guarantees — a shot that belongs to one video and not to the client, which
+   * a client-level list has no way to express. Their ids are `own001` upward so
+   * they can never be confused with a client's `pic001`, because a slot records
+   * one id and both lists are searched.
+   *
+   * **Schema addition, optional with a default**: absent means the reel has
+   * none, which is every plan written before Block 10 session 54.
+   */
+  pictures?: ClientPicture[];
   pipeline: Pipeline;
   transcript: Transcript;
   subtitles: Subtitles;

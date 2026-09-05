@@ -1,5 +1,14 @@
 import { useEffect, useState } from 'react';
-import { chooseImage, fetchImages, type Connection } from './service.js';
+import {
+  addVideoPicture,
+  chooseImage,
+  fetchImages,
+  removeVideoPicture,
+  setVideoPictureLabel,
+  type Connection,
+} from './service.js';
+import { ClientPictures as ClientPicturesEditor } from './ClientPictures.js';
+import { fileDialogSupport } from './file-dialog.js';
 import { fileUrl, pictureFor } from './picture.js';
 import type { CandidateView, ImageSlotView, ImagesView } from './types.js';
 
@@ -104,6 +113,22 @@ export function Images({
         </p>
       ) : null}
 
+      {/*
+        Absent means a service older than this panel, which cannot store a
+        picture on a reel — the same reason the client card hides its editor.
+      */}
+      {view.videoPictures === undefined || connection === null ? null : (
+        <VideoPictures
+          connection={connection}
+          planPath={view.planPath}
+          pictures={view.videoPictures}
+          onChanged={() => {
+            if (reel === null) return;
+            void fetchImages(connection, reel).then(setView, (f: Error) => setError(f.message));
+          }}
+        />
+      )}
+
       <ol className="slots">
         {view.slots.map((slot) => (
           <li key={slot.id}>
@@ -197,9 +222,11 @@ function Slot({
 /**
  * The client's own pictures, offered beside the generated ones.
  *
- * **Nothing works out which one belongs here.** Deciding that "the clinic
- * exterior" is what this moment wants is the same judgement as knowing a clock
- * reads quarter past — the tool cannot do it yet, so he picks.
+ * **A picture with words on it has already been offered by the time this is
+ * read.** Block 10 session 53 made a labelled picture answer a spoken word when
+ * the slots were planned, so what is left here is the pictures nobody labelled,
+ * and disagreeing with one that was. Both lists are shown — the ones on this
+ * video first, then the client's, which is the order the matcher searches.
  */
 function ClientPictures({
   slot,
@@ -210,12 +237,16 @@ function ClientPictures({
   view: ImagesView;
   onChoose: (slotId: string, candidateId: string | null, pictureId?: string | null) => void;
 }): JSX.Element | null {
-  const pictures = view.clientPictures ?? [];
+  /*
+   * This video's own pictures first, then the client's — the order the matcher
+   * searches, so what he sees at the top is what would have been chosen for him.
+   */
+  const pictures = [...(view.videoPictures ?? []), ...(view.clientPictures ?? [])];
   if (pictures.length === 0) return null;
   const chosen = slot.chosenClientPictureId ?? null;
   return (
     <div className="ownpics">
-      <p className="reason">Or use one of the client’s own pictures:</p>
+      <p className="reason">Or use one of your own pictures:</p>
       <ul className="owned">
         {pictures.map((picture) => (
           <li key={picture.id} className={picture.id === chosen ? 'chosen' : ''}>
@@ -347,4 +378,77 @@ export function sourceLine(view: ImagesView): string {
       ? ''
       : ` $${view.reelSpentUsd.toFixed(2)} spent making pictures for this video so far.`;
   return `${client}${spent}`;
+}
+
+/**
+ * Pictures that belong to this video and to no other.
+ *
+ * **A client's pictures are the things they always have** — a product, a logo,
+ * the clinic. A reel often needs one shot that belongs to it alone: the thing
+ * this particular video is about, which putting on the client would offer to
+ * every video they ever make.
+ *
+ * Everything else is the client's rule exactly, and deliberately: the same
+ * chooser, the same description, the same label, and the same matcher. When a
+ * word is on a label here and on one of the client's, **this one wins** — it is
+ * searched first, because a picture put on one video is the more specific
+ * statement.
+ */
+function VideoPictures({
+  connection,
+  planPath,
+  pictures,
+  onChanged,
+}: {
+  connection: Connection;
+  planPath: string;
+  pictures: NonNullable<ImagesView['videoPictures']>;
+  onChanged: () => void;
+}): JSX.Element {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const dialog = fileDialogSupport();
+
+  const change = (make: () => Promise<void>): void => {
+    setBusy(true);
+    setError(null);
+    void make().then(
+      () => {
+        setBusy(false);
+        onChanged();
+      },
+      (f: Error) => {
+        setBusy(false);
+        setError(f.message);
+      },
+    );
+  };
+
+  return (
+    <div className="card">
+      <span className="colourhead">Pictures for this video</span>
+      <p className="hint">
+        Pictures for this one video, not for the client. Give one the words that mean it and it
+        is used whenever they are spoken here — before any of the client’s own.
+      </p>
+      <ClientPicturesEditor
+        pictures={pictures.map((picture) => ({
+          key: picture.id,
+          path: picture.path,
+          description: picture.description,
+          ...(picture.label === undefined ? {} : { label: picture.label }),
+        }))}
+        dialog={dialog.available}
+        busy={busy}
+        error={error}
+        onAdd={(photo) => change(() => addVideoPicture(connection, { planPath, ...photo }))}
+        onRemove={(key) =>
+          change(() => removeVideoPicture(connection, { planPath, picture: key }))
+        }
+        onLabel={(key, label) =>
+          change(() => setVideoPictureLabel(connection, { planPath, picture: key, label }))
+        }
+      />
+    </div>
+  );
 }

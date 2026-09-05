@@ -390,7 +390,12 @@ export async function planImageSlotsForPlan(
    * already answer. Free, local, and the last point at which a picture can be
    * kept from being bought.
    */
-  const own = fillSlotsFromClientPictures({ slots, words: plan.transcript.words, mode });
+  const own = fillSlotsFromClientPictures({
+    slots,
+    words: plan.transcript.words,
+    mode,
+    ownPictures: plan.pictures ?? [],
+  });
   for (const fill of own.filled) {
     log(
       `slots: ${fill.slotId} uses the client's own picture ${fill.pictureId} ` +

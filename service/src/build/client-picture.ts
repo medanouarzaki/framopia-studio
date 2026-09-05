@@ -24,14 +24,26 @@ export class ClientPictureError extends Error {
  * never the `--mode` override: the look of a reel may be rebuilt as somebody
  * else's, but whose photograph it is may not. That is the collision sessions 50
  * to 52 closed in four other places.
+ *
+ * **A picture attached to the reel itself is looked for first**, and it belongs
+ * to no client, so it survives the client being taken off the list.
  */
 export function clientPictureFileFor(
-  plan: Pick<EditPlan, 'clientMode'>,
+  plan: Pick<EditPlan, 'clientMode' | 'pictures'>,
   slot: Pick<ImageSlot, 'id' | 'chosenClientPictureId'>,
   options: { overrideModeId?: string; load?: (id: string) => Pick<ClientMode, 'pictures'> } = {},
 ): { path: string; id: string } | null {
   const pictureId = slot.chosenClientPictureId;
   if (pictureId === undefined) return null;
+
+  /*
+   * A picture attached to this reel is on the plan itself, so it resolves
+   * without a client at all — which is also why its ids are `own001` upward and
+   * a client's are `pic001`: one field records the choice and both lists have
+   * to be searchable from it without ambiguity.
+   */
+  const own = (plan.pictures ?? []).find((p) => p.id === pictureId);
+  if (own !== undefined) return { path: own.path, id: own.id };
 
   const owner = plan.clientMode?.id;
   if (owner === undefined) {
