@@ -245,7 +245,8 @@ describe.skipIf(!built)('the built panel in a real browser', () => {
     if (loaded === null) return;
     const { page } = loaded;
     try {
-      const run = page.getByRole('button', { name: 'Run pipeline' });
+      // The first of the two run buttons, whatever it is called this month.
+      const run = page.locator('button.run').first();
       expect(await run.isDisabled()).toBe(true);
       const reason = await page.locator('section.do p.say').first().textContent();
       expect(reason ?? '').not.toBe('');
@@ -1673,7 +1674,7 @@ describe.skipIf(!built)('a pipeline run', () => {
       return { disabled: el.disabled, label: el.textContent };
     });
     expect(state.disabled).toBe(true);
-    expect(state.label).toBe('Running…');
+    expect(state.label).toBe('Working…');
     expect((await loaded.page.textContent('main')) ?? '').toContain('continues if you leave');
     await loaded.page.close();
   });
@@ -2352,7 +2353,10 @@ describe.skipIf(!built)('the client’s own pictures', () => {
       const text = (await loaded.page.textContent('.ownpics')) ?? '';
       expect(text).toContain('the clinic exterior');
       expect(text).toContain('the product bottle');
-      expect(text).toContain('the client’s own pictures');
+      // Both lists are offered here now — this video's own first, then the
+      // client's — so the sentence says "your own pictures" rather than naming
+      // one of the two.
+      expect(text).toContain('your own pictures');
       // A field name is not a label.
       expect(text).not.toContain('pic001');
       expect(loaded.uncaught).toEqual([]);
@@ -3225,9 +3229,17 @@ describe('running the words without the pictures', () => {
       const page = loaded.page;
       await page.waitForSelector('.partrun button', { timeout: 5000 });
       const label = (await page.textContent('.partrun button')) ?? '';
-      expect(label).toContain('Just the words');
+      expect(label).toContain('Make the subtitles');
       expect(label).toContain('$0.35');
+      // Both halves are on screen at once, each with its own price.
       expect((await page.textContent('.partrun')) ?? '').toContain('$3.98');
+      expect(await page.locator('.partrun button').count()).toBe(2);
+      // The pictures are made from the subtitles, so they are refused until
+      // those exist — and the reason is on screen without a stage name in it.
+      expect(await page.locator('.partrun button').nth(1).isDisabled()).toBe(true);
+      expect((await page.textContent('.partrun')) ?? '').toContain(
+        'drawn from the subtitles',
+      );
       await page.click('.partrun button');
       const posted = (await page.evaluate('window.__posted')) as {
         params: { only?: string[]; redo?: string[] };
@@ -3252,8 +3264,11 @@ describe('running the words without the pictures', () => {
     try {
       const page = loaded.page;
       await page.waitForSelector('.partrun button', { timeout: 5000 });
-      expect((await page.textContent('.partrun button')) ?? '').toContain('Make the pictures');
-      await page.click('.partrun button');
+      const pictures = page.locator('.partrun button').nth(1);
+      expect((await pictures.textContent()) ?? '').toContain('Make the pictures');
+      expect(await pictures.isDisabled()).toBe(false);
+      expect((await page.textContent('.partrun')) ?? '').toContain('not charged for again');
+      await pictures.click();
       const posted = (await page.evaluate('window.__posted')) as {
         params: { only?: string[]; redo?: string[] };
       }[];
@@ -3265,12 +3280,23 @@ describe('running the words without the pictures', () => {
     }
   }, 30_000);
 
-  it('offers nothing when there is nothing left to pay for', async () => {
+  /*
+   * Both halves stay on screen when there is nothing left to pay for, priced at
+   * nothing. Session 31 showed one control at a time and only when it would
+   * bill; session 54 shows both always, because two controls that appear and
+   * disappear teach nothing about the order they go in — and re-running either
+   * half is a thing he does.
+   */
+  it('still offers both halves, at nothing, when everything is paid for', async () => {
     const loaded = await loadFlow('build', 'build', 420, priced(0, 0));
     if (loaded === null) return;
     try {
-      await loaded.page.waitForSelector('button.run', { timeout: 5000 });
-      expect(await loaded.page.$('.partrun')).toBeNull();
+      const page = loaded.page;
+      await page.waitForSelector('button.run', { timeout: 5000 });
+      expect(await page.locator('.partrun button').count()).toBe(2);
+      const said = (await page.textContent('.partrun')) ?? '';
+      expect(said).toContain('Make the subtitles again — about $0.00');
+      expect(said).toContain('Make the pictures — about $0.00');
       expect(loaded.uncaught).toEqual([]);
     } finally {
       await loaded.page.close();
@@ -3287,7 +3313,9 @@ describe('running the words without the pictures', () => {
     if (loaded === null) return;
     try {
       await loaded.page.waitForSelector('button.run', { timeout: 5000 });
-      expect(await loaded.page.$('.partrun')).toBeNull();
+      // One control that does everything, rather than two guessed ones.
+      expect(await loaded.page.locator('.partrun').count()).toBe(0);
+      expect((await loaded.page.textContent('button.run')) ?? '').toContain('Make this video');
       expect(loaded.uncaught).toEqual([]);
     } finally {
       await loaded.page.close();
