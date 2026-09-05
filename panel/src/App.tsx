@@ -570,10 +570,7 @@ function Panel({
         </section>
 
         <section className="do">
-          <button className="run" type="button" disabled={!gate.enabled} onClick={() => onRun()}>
-            {running ? 'Running…' : 'Run pipeline'}
-          </button>
-          <PartRun dry={dry} enabled={gate.enabled} onRun={onRun} />
+          <RunActions dry={dry} enabled={gate.enabled} running={running} onRun={onRun} />
           {gate.reason === null ? null : (
             <p className="say" role="status">
               {gate.reason}
@@ -913,80 +910,101 @@ function stageTone(stage: DryRunStage): string {
  * computes none of them.
  */
 /**
- * The half of the run he can afford to be wrong about.
+ * The two things a run does, as two things.
  *
- * On a 41-second reel the words are about $0.35 and the pictures about $3.98,
- * so running everything is the only way to read a transcript — and reading it
+ * **There used to be one button called *Run pipeline*.** It is the name of a
+ * mechanism rather than of a job, and it did everything at once: on a
+ * 41-second reel the words are about $0.35 and the pictures about $3.98, so the
+ * only way to read a transcript was to buy the pictures first — and reading it
  * is the only way to know whether the words are any good. Session 29 reversed
- * the orthography rules and **no transcript has ever been produced under the
- * new ones**; the four hand-written references are in the old style and cannot
- * score one. There is no judge but his eye, and until now seeing the words cost
- * the price of the pictures.
+ * the orthography rules and no transcript has ever been scored under the new
+ * ones; there is no judge but his eye.
  *
- * One control at a time, and only when it would do something: the words while
- * they are unpaid, the pictures once they are the only thing left. A service
- * older than this panel sends neither figure, and then there is no second
- * control rather than a guessed one.
+ * So the work is named the way he names it: **make the subtitles, look at them,
+ * fix what is wrong, then make the pictures.** Session 31 built both halves and
+ * showed one at a time; this shows both always, because two controls that
+ * appear and disappear teach nothing about the order they go in.
+ *
+ * **The pictures come from the subtitles**, so the second is refused until the
+ * first has run and says why in a sentence with no stage name in it. What it
+ * would cost is on the button before it is pressed, and running the words does
+ * not make them cost again — the second half asks for the image stage alone.
+ *
+ * A service older than this panel sends neither figure, and then there is one
+ * control that does everything rather than two guessed ones.
  */
-function PartRun({
+function RunActions({
   dry,
   enabled,
+  running,
   onRun,
 }: {
   dry: DryRunPlan | null;
   enabled: boolean;
+  running: boolean;
   onRun: (part?: { only?: string[]; redo?: string[] }) => void;
-}): JSX.Element | null {
-  if (dry === null) return null;
-  const words = dry.wordsUsd;
-  const pictures = dry.picturesUsd;
-  const wordStages = dry.wordsStages;
-  if (words === undefined || pictures === undefined || wordStages === undefined) return null;
-
-  if (words > 0) {
+}): JSX.Element {
+  const words = dry?.wordsUsd;
+  const pictures = dry?.picturesUsd;
+  const wordStages = dry?.wordsStages;
+  if (dry === null || words === undefined || pictures === undefined || wordStages === undefined) {
     return (
-      <div className="partrun">
-        <button
-          className="ghost"
-          type="button"
-          disabled={!enabled}
-          onClick={() => onRun({ only: wordStages })}
-        >
-          Just the words — about ${words.toFixed(2)}
-        </button>
-        <p className="faint">
-          The subtitles, the words to emphasise and the ideas for the pictures. Read them, then
-          make the pictures — about ${pictures.toFixed(2)} — without paying for the words again.
-        </p>
-      </div>
+      <button className="run" type="button" disabled={!enabled} onClick={() => onRun()}>
+        {running ? 'Working…' : 'Make this video'}
+      </button>
     );
   }
 
-  if (pictures > 0) {
-    return (
-      <div className="partrun">
-        {/*
-          `redo` is not optional here. The **slot** stage writes
-          `pipeline.images.status = 'done'` when it plans the slots, so a plan
-          that has never held a picture still records the image stage as done
-          and `only: ['images']` alone would skip it — Block 10 session 8 found
-          that and it is still open. Every candidate already on disk comes back
-          from the cache, so redoing the stage re-bills nothing that exists.
-        */}
-        <button
-          className="ghost"
-          type="button"
-          disabled={!enabled}
-          onClick={() => onRun({ only: ['images'], redo: ['images'] })}
-        >
-          Make the pictures — about ${pictures.toFixed(2)}
-        </button>
-        <p className="faint">The words are done and are not charged for again.</p>
-      </div>
-    );
-  }
+  /*
+   * Costing nothing is not the same as being done: the words can be free
+   * because they are cached and still never have been written onto this plan.
+   * A service older than this panel does not say, and then the price is the
+   * only signal there is.
+   */
+  const subtitlesDone = dry.wordsDone ?? words === 0;
 
-  return null;
+  return (
+    <div className="partrun">
+      <button
+        className="run"
+        type="button"
+        disabled={!enabled}
+        onClick={() => onRun({ only: wordStages })}
+      >
+        {running
+          ? 'Working…'
+          : subtitlesDone
+            ? `Make the subtitles again — about $${words.toFixed(2)}`
+            : `Make the subtitles — about $${words.toFixed(2)}`}
+      </button>
+      <p className="faint">
+        The subtitles, the words to emphasise, and the ideas for the pictures. Read them and fix
+        anything wrong before you make the pictures.
+      </p>
+
+      {/*
+        `redo` is not optional. The **slot** stage writes
+        `pipeline.images.status = 'done'` when it plans the slots, so a plan that
+        has never held a picture still records the image stage as done and
+        `only: ['images']` alone would skip it — Block 10 session 8 found that
+        and it is still open. Every candidate already on disk comes back from
+        the cache, so redoing the stage re-bills nothing that exists.
+      */}
+      <button
+        className="run"
+        type="button"
+        disabled={!enabled || !subtitlesDone}
+        onClick={() => onRun({ only: ['images'], redo: ['images'] })}
+      >
+        {running ? 'Working…' : `Make the pictures — about $${pictures.toFixed(2)}`}
+      </button>
+      <p className="faint">
+        {subtitlesDone
+          ? 'The subtitles are done and are not charged for again.'
+          : 'The pictures are drawn from the subtitles, so make those first.'}
+      </p>
+    </div>
+  );
 }
 
 function DryRun({ plan }: { plan: DryRunPlan }): JSX.Element {

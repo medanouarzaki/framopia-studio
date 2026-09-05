@@ -109,6 +109,20 @@ export interface DryRunPlan {
    * rather than holding its own copy of what "the words" means.
    */
   wordsStages: string[];
+  /**
+   * Whether the subtitles exist yet.
+   *
+   * **The pictures are made from the subtitles**, so the second of the two run
+   * buttons cannot do anything until this is true, and the panel has to be able
+   * to say so rather than offering a control that would fail. It is computed
+   * here for the reason `wordsUsd` is: which stages are "the words" is
+   * `WORDS_STAGE_IDS`, and a second copy of that in a React bundle is a second
+   * place for it to drift.
+   *
+   * A cost of zero is not the same answer: the words can cost nothing because
+   * they are cached and still never have been written onto this plan.
+   */
+  wordsDone: boolean;
   /** True when any stage resolves `compatible`; the panel says so plainly. */
   reusesOlderGuide: boolean;
 }
@@ -471,6 +485,9 @@ export async function dryRun(reelLabel: string, modeId: string): Promise<DryRunP
       .filter((s) => s.id === 'images')
       .reduce((sum, s) => sum + (s.estimateUsd ?? 0), 0),
     wordsStages: [...WORDS_STAGE_IDS],
+    wordsDone: stages
+      .filter((s) => WORDS_STAGE_IDS.includes(s.id as PipelineStageId))
+      .every((s) => s.status === 'done'),
     reusesOlderGuide: stages.some((s) => s.provenance === 'compatible'),
   };
 }

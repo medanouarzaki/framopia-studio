@@ -96,8 +96,16 @@ function serviceFetch(
 }
 
 const text = (): string => container.textContent ?? '';
+/*
+ * The first of the two run buttons. Block 10 session 54 replaced the single
+ * *Run pipeline* with *Make the subtitles* and *Make the pictures*, and before
+ * a dry run has answered there is neither figure to name, so the one control
+ * says *Make this video*. Selected by class rather than by wording: what these
+ * assert is that the run control is refused and says why, not what it is called
+ * this month.
+ */
 const runButton = (): HTMLButtonElement =>
-  [...container.querySelectorAll('button')].find((b) => b.textContent === 'Run pipeline') as HTMLButtonElement;
+  container.querySelector('button.run') as HTMLButtonElement;
 const select = (label: string): HTMLSelectElement =>
   container.querySelector(`select[aria-label="${label}"]`) as HTMLSelectElement;
 
@@ -245,6 +253,18 @@ describe('the Run control', () => {
 
     expect(runButton().disabled).toBe(true);
     expect(text()).toContain('Pick a video.');
+  });
+
+  /*
+   * The names, which are the point of the change: he asked for two buttons a
+   * motion designer would use, and *Run pipeline* is the name of a mechanism.
+   */
+  it('names the two halves of the work rather than the pipeline', async () => {
+    vi.stubGlobal('fetch', serviceFetch());
+    await render(hostThatAnswers());
+
+    expect(text()).not.toContain('Run pipeline');
+    expect(runButton().textContent).toContain('Make');
   });
 
   it('asks for a mode once a video is picked', async () => {
