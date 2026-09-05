@@ -134,7 +134,10 @@ faces**; and the run screen is **Make the subtitles** then **Make the
 pictures**, both priced, the second refused until the subtitles exist.
 
 What is open, in one line each: `ground-truth` cannot build until its six image
-slots are generated; a client's photograph is not in the backup set; the image prompt's fidelity, darkness
+slots are generated; a client's photograph is not in the backup set — since 2026-09-05 its
+**path travels between machines** (`resolveStoredPath` in `parseMode` and on
+`plan.pictures`) and a photograph on a drive this Mac cannot see **says so on the
+client card**, but the bytes themselves are still nobody's to carry; the image prompt's fidelity, darkness
 and literalness fixes are applied but two have never been seen in a generated
 picture; **a reel's opening
 still gets a picture whether or not it earns one**; since 2026-09-05 **a picture
