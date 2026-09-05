@@ -1999,6 +1999,59 @@ describe('the image candidate picker', () => {
    * choose. What the picker can honestly say is how big the picture is and what
    * limits it — the number behind "make them bigger".
    */
+  /**
+   * **Mohamed's ruling of 2026-09-05**, made by eye on Block 11 session 58's
+   * contact sheets: a picture enlarged past 200% is warned about, and at or
+   * under 200% nothing is said. It warns and continues — refusing would throw
+   * away a client's only copy of their own logo.
+   */
+  it('says a small picture will look soft, and still shows it', async () => {
+    const small = JSON.parse(JSON.stringify(IMAGES)) as typeof IMAGES;
+    (small.slots[0] as Record<string, unknown>)['enlargement'] = {
+      percent: 500,
+      tooEnlarged: true,
+    };
+    const loaded = await loadImages(small);
+    if (loaded === null) return;
+    try {
+      await picturesSettled(loaded.page);
+      const text = (await loaded.page.textContent('ol.slots')) ?? '';
+      expect(text).toContain('small for the space it fills');
+      expect(text).toContain('It is still placed');
+
+      // The warning never replaces the slot: its pictures are still there and
+      // still drew. Read as values, never as live handles.
+      const shown = await shotsOnScreen(loaded.page);
+      expect(shown).toHaveLength(3);
+      expect(shown.filter((shot) => !shot.loaded)).toEqual([]);
+
+      // And it sends nobody anywhere. `leave-the-panel.test.ts` governs the
+      // product; this is the same rule at the one place it was added.
+      for (const word of ['terminal', 'npm run', 'restart', 'command']) {
+        expect(`${word}: ${text.toLowerCase().includes(word)}`).toBe(`${word}: false`);
+      }
+      expect(loaded.uncaught).toEqual([]);
+    } finally {
+      await loaded.page.close();
+    }
+  }, 30_000);
+
+  it('says nothing about a picture that is big enough', async () => {
+    const loaded = await loadImages();
+    if (loaded === null) return;
+    try {
+      await picturesSettled(loaded.page);
+      const text = (await loaded.page.textContent('ol.slots')) ?? '';
+      // The fixture's pictures are 2048px in a 1000px box — a reduction, which
+      // is what every generated picture is and must never be remarked on.
+      expect(text).not.toContain('small for the space it fills');
+      expect(await loaded.page.locator('p.reason.soft').count()).toBe(0);
+      expect(loaded.uncaught).toEqual([]);
+    } finally {
+      await loaded.page.close();
+    }
+  }, 30_000);
+
   it('says how big the picture is and what limits it', async () => {
     const loaded = await loadImages();
     if (loaded === null) return;

@@ -168,6 +168,7 @@ function Slot({
       </p>
 
       <Where slot={slot} />
+      <TooSmall slot={slot} />
 
       <ClientPictures slot={slot} view={view} onChoose={onChoose} />
 
@@ -269,6 +270,33 @@ function ClientPictures({
         <p className="reason">This picture goes in the comp instead of a made one.</p>
       )}
     </div>
+  );
+}
+
+/**
+ * The picture is small for the space, said before anything is built.
+ *
+ * **Mohamed's ruling of 2026-09-05**, made by eye on Block 11 session 58's
+ * contact sheets: past 200% he wants to be told, at or under it he does not.
+ * **It warns and continues** — a client's logo may exist at one size and no
+ * other, and refusing would throw away the only picture they have.
+ *
+ * It sits beside the slot it is about rather than at the top of the screen, so
+ * the sentence is next to the picture that caused it. It never replaces
+ * anything: the slot still shows its picture and still works, and the build
+ * says it again in its own output so a warning is not lost when a build runs
+ * with nobody watching.
+ *
+ * No percentage on screen — a number here would invite him to tune it, and the
+ * thing he can act on is whether to use a bigger file.
+ */
+function TooSmall({ slot }: { slot: ImageSlotView }): JSX.Element | null {
+  if (slot.enlargement?.tooEnlarged !== true) return null;
+  return (
+    <p className="reason soft" role="status">
+      This picture is small for the space it fills, so it will look soft. It is still placed —
+      a bigger version of the same picture would look sharper.
+    </p>
   );
 }
 

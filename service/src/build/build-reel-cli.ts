@@ -602,6 +602,19 @@ for (const e of built.elements) {
       `${fit.drawnWidth.toFixed(0)}x${fit.drawnHeight.toFixed(0)}px ` +
       `inside a ${solid.width}px solid and an 1080px frame`,
   );
+  /*
+   * Said out loud when it matters, so a warning is not lost on a build run with
+   * nobody watching the panel. Mohamed's ruling of 2026-09-05: past 200% he is
+   * told, and it is placed anyway — refusing would throw away a client's only
+   * copy of their own picture.
+   */
+  if (fit.tooEnlarged) {
+    console.log(
+      `warning [${e.id}]: this picture is ${src.width}x${src.height}px and is being drawn at ` +
+        `${solid.width}px, so it is enlarged ${fit.enlargementPercent.toFixed(0)}% and will look ` +
+        'soft. It is still placed; a larger copy of the same picture would look sharper.',
+    );
+  }
 }
 
 /*

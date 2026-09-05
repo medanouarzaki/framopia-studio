@@ -1,9 +1,13 @@
-import { existsSync } from 'node:fs';
-import { REPO_ROOT } from '@framopia/core';
+import { existsSync, readFileSync } from 'node:fs';
+import path from 'node:path';
+import { REPO_ROOT, fitByLongEdge, type AuditComp } from '@framopia/core';
 import { listReels } from './catalogue.js';
 import { readEditPlan, writeEditPlan } from './editplan/io.js';
 import { dryRun } from './dry-run.js';
 import { buildChoiceFor } from './build/choose-candidate.js';
+import { auditedSolid } from './build/reel-plan.js';
+import { clientPictureFileFor } from './build/client-picture.js';
+import { imageSize } from './build/image-size.js';
 import { reelPlacements, type ReelSlotPlacement } from './placement/top-left.js';
 import { clientPictures, loadMode } from '@framopia/core';
 import { FRAME_WIDTH } from './placement/constants.js';
@@ -115,6 +119,23 @@ export interface ImageSlotView {
    */
   buildsWith: string | null;
   buildsWithReason: 'chosen' | 'first candidate, nothing chosen' | 'no candidates';
+  /**
+   * How far the picture this slot will build with has to be stretched, and
+   * whether that is past what Mohamed ruled acceptable.
+   *
+   * **Here rather than at build time because it costs nothing to know early.**
+   * The size is knowable the moment a picture is attached, and this view
+   * already works out what each slot will cost and how large it draws — so the
+   * sentence can sit beside the picture that caused it, before any button that
+   * spends money. The build still says it too, so a warning is not lost when a
+   * build runs without the panel in front of anyone.
+   *
+   * **Optional with a default.** Null when there is no picture yet, when the
+   * file is not on disk, or when its bytes cannot be measured — none of which
+   * is a fault this view should report, and all of which pre-flight already
+   * catches in the one place that should refuse.
+   */
+  enlargement: { percent: number; tooEnlarged: boolean } | null;
 }
 
 export interface ImagesView {
@@ -199,7 +220,83 @@ function candidateViewOf(candidate: ImageCandidate, slot: ImageSlot): CandidateV
   };
 }
 
-function slotViewOf(slot: ImageSlot, placement: ReelSlotPlacement): ImageSlotView {
+/**
+ * The one picture this slot would actually place.
+ *
+ * The same order the builder uses: one of the client's own pictures wins over
+ * anything generated, and otherwise it is the chosen candidate or the first.
+ * Read through `clientPictureFileFor` so there is not a second copy of that
+ * rule — session 4 lost four of five images to exactly that.
+ */
+function pictureSlotWillPlace(plan: EditPlan, slot: ImageSlot): string | null {
+  try {
+    const own = clientPictureFileFor(plan, slot);
+    if (own !== null) return own.path;
+  } catch {
+    // A picture the client no longer has. The build refuses on it and says so;
+    // this view has nothing useful to add and must not fail because of it.
+    return null;
+  }
+  const choice = buildChoiceFor(slot);
+  const candidate = slot.candidates.find((c) => c.id === choice.candidateId);
+  if (candidate === undefined) return null;
+  return slot.presentation === 'cutout' ? (candidate.cutoutPath ?? candidate.path) : candidate.path;
+}
+
+/**
+ * How far that picture is stretched, or null when it cannot be said.
+ *
+ * The box is the audited `IMG_MAIN` solid of the card template, which is what
+ * `build-reel-cli` fits every picture into — asked of the audit rather than
+ * written down here, so the two cannot drift.
+ */
+function enlargementOf(file: string | null): ImageSlotView['enlargement'] {
+  if (file === null || !existsSync(file)) return null;
+  const solid = cardSolid();
+  if (solid === null) return null;
+  try {
+    const src = imageSize(file);
+    const fit = fitByLongEdge({
+      boxPx: solid.width,
+      templateScalePercent: solid.scalePercent,
+      sourceWidth: src.width,
+      sourceHeight: src.height,
+    });
+    return { percent: fit.enlargementPercent, tooEnlarged: fit.tooEnlarged };
+  } catch {
+    // Bytes this project's own reader cannot measure. Saying nothing is right:
+    // it is not evidence the picture is small.
+    return null;
+  }
+}
+
+/** Read once; the audit does not change while the service is up. */
+let cardSolidCache: { width: number; scalePercent: number } | null | undefined;
+function cardSolid(): { width: number; scalePercent: number } | null {
+  if (cardSolidCache !== undefined) return cardSolidCache;
+  try {
+    const audit = JSON.parse(
+      readFileSync(path.join(REPO_ROOT, 'templates', 'library.audit.json'), 'utf8'),
+    ) as { comps: AuditComp[] };
+    const comp = audit.comps.find((c) => c.name === CARD_TEMPLATE);
+    cardSolidCache = comp === undefined ? null : auditedSolid(comp, 'IMG_MAIN');
+  } catch {
+    cardSolidCache = null;
+  }
+  return cardSolidCache;
+}
+
+/*
+ * Block 7 session 9: every image is a card, so `img_float` is the box every
+ * picture is fitted into whatever the plan's `templateId` says.
+ */
+const CARD_TEMPLATE = 'img_float';
+
+function slotViewOf(
+  plan: EditPlan,
+  slot: ImageSlot,
+  placement: ReelSlotPlacement,
+): ImageSlotView {
   const choice = buildChoiceFor(slot);
   return {
     id: slot.id,
@@ -218,6 +315,7 @@ function slotViewOf(slot: ImageSlot, placement: ReelSlotPlacement): ImageSlotVie
     placementLimit: placement.boundBy,
     buildsWith: choice.candidateId,
     buildsWithReason: choice.reason,
+    enlargement: enlargementOf(pictureSlotWillPlace(plan, slot)),
   };
 }
 
@@ -234,7 +332,7 @@ async function viewOf(plan: EditPlan, planPath: string, reelLabel: string): Prom
   );
   const slots = plan.images.slots.flatMap((slot) => {
     const placement = placed.get(slot.id);
-    return placement === undefined ? [] : [slotViewOf(slot, placement)];
+    return placement === undefined ? [] : [slotViewOf(plan, slot, placement)];
   });
   const noCandidates = slots.length > 0 && slots.every((s) => s.candidates.length === 0);
   /*

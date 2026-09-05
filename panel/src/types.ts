@@ -535,6 +535,11 @@ export interface ImageSlotView {
   placedSidePx?: number | null;
   placementLimit?: string | null;
   buildsWith: string | null;
+  /**
+   * How far this slot's picture is stretched. Absent means a service older than
+   * this panel, or a picture whose size could not be read.
+   */
+  enlargement?: { percent: number; tooEnlarged: boolean } | null;
   buildsWithReason: string;
 }
 
