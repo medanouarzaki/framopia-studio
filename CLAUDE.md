@@ -137,7 +137,10 @@ What is open, in one line each: `ground-truth` cannot build until its six image
 slots are generated; a client's photograph is not in the backup set; the image prompt's fidelity, darkness
 and literalness fixes are applied but two have never been seen in a generated
 picture; **a reel's opening
-still gets a picture whether or not it earns one**; **only `sora` has been
+still gets a picture whether or not it earns one**; since 2026-09-05 **a picture
+enlarged past 200% says so** — Mohamed's ruling by eye on session 58's contact
+sheets, warned about in the picker before anything is built and in the build's
+own output, never refused; **only `sora` has been
 through slot prompt v3** — the corpus plans still start every picture at the
 first word of its span, and moving them means one billable call each; **a sparse
 reel holds one picture motionless for a long time** — `test-1` for 6.8 s,
