@@ -45,6 +45,34 @@ export function clientPictureById(
  * cropping a photograph a doctor chose is the tool deciding which half of her
  * results matter.
  */
+/**
+ * How far a picture may be enlarged before anyone is told about it.
+ *
+ * **200%, and it is a taste ruling — not a measured constant.** Mohamed chose it
+ * by eye on 2026-09-05, looking at the two contact sheets Block 11 session 58
+ * produced:
+ *
+ * ```
+ * .local/evidence/session-58-upscale/upscale-fine-detail.png
+ * .local/evidence/session-58-upscale/upscale-flatter.png
+ * ```
+ *
+ * Each sheet shows the same picture drawn at 925 px — the median size a picture
+ * really gets in a reel — from sources of 2048, 1000, 800, 667, 500, 333, 250
+ * and 200 px, labelled with the percentage each represents. His reasons were
+ * that a picture is small on screen and softness does not read at that size,
+ * and that the topmost rung was too far.
+ *
+ * **Nothing on this disk implies this number.** Every one of the 122 pictures
+ * the project holds is 2048 x 2048 and draws at 48.83%, so the corpus contains
+ * no evidence about softness at all — which is why the sheets were made. Do not
+ * re-derive it from anything here; it changes when he looks again and says so.
+ *
+ * It is compared against **the picture and its box**, never against a pixel
+ * size, so a video the tool has never seen gets the same answer as this one.
+ */
+export const SOFT_ENLARGEMENT_PERCENT = 200;
+
 export function fitByLongEdge(options: {
   /** The placeholder's box in the template, in pixels. */
   boxPx: number;
@@ -52,7 +80,33 @@ export function fitByLongEdge(options: {
   templateScalePercent: number;
   sourceWidth: number;
   sourceHeight: number;
-}): { scalePercent: number; drawnWidth: number; drawnHeight: number } {
+}): {
+  scalePercent: number;
+  drawnWidth: number;
+  drawnHeight: number;
+  /**
+   * How far the picture's own pixels are stretched to fill the box.
+   *
+   * 100 is one source pixel per drawn pixel; below 100 the picture is being
+   * reduced, which is what every generated 2048 px square does. It is
+   * `boxPx / long` and **not** `scalePercent`: the two are equal only while a
+   * template's own scale is 100, and what matters here is the picture, not the
+   * layer.
+   *
+   * **A schema addition to the return, optional by construction** — every
+   * existing caller destructures the three fields above and is unaffected.
+   */
+  enlargementPercent: number;
+  /**
+   * True when the picture is enlarged past what Mohamed ruled acceptable.
+   *
+   * **It computes, it does not decide.** Nothing in `core` prints, throws or
+   * refuses on it — his ruling is warn and continue, never refuse, because a
+   * client's logo may exist at one size and no other and refusing would throw
+   * away the only picture they have.
+   */
+  tooEnlarged: boolean;
+} {
   const { boxPx, templateScalePercent, sourceWidth, sourceHeight } = options;
   if (sourceWidth <= 0 || sourceHeight <= 0) {
     throw new Error('a picture needs a width and a height');
@@ -60,10 +114,14 @@ export function fitByLongEdge(options: {
   const long = Math.max(sourceWidth, sourceHeight);
   const scalePercent = (boxPx / long) * templateScalePercent;
   const factor = scalePercent / templateScalePercent;
+  const enlargementPercent = (boxPx / long) * 100;
   return {
     scalePercent,
     drawnWidth: sourceWidth * factor,
     drawnHeight: sourceHeight * factor,
+    enlargementPercent,
+    // Strictly past: at exactly 200% nothing is said, which is the ruling.
+    tooEnlarged: enlargementPercent > SOFT_ENLARGEMENT_PERCENT,
   };
 }
 

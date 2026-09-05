@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
-import { REPO_ROOT, fitByLongEdge } from '@framopia/core';
+import { REPO_ROOT, SOFT_ENLARGEMENT_PERCENT, fitByLongEdge } from '@framopia/core';
 
 /*
  * **A client's picture is never sent anywhere.**
@@ -80,5 +80,99 @@ describe('a picture of any shape inside the comp', () => {
 
   it('refuses a picture with no size rather than dividing by zero', () => {
     expect(() => fitByLongEdge({ ...box, sourceWidth: 0, sourceHeight: 100 })).toThrow();
+  });
+});
+
+/**
+ * **Mohamed's ruling of 2026-09-05: a picture enlarged past 200% is warned
+ * about; at or under 200%, nothing is said.**
+ *
+ * He made it by eye on Block 11 session 58's contact sheets — the same picture
+ * drawn at 925 px from sources of 2048 down to 200 px — on the grounds that a
+ * picture is small on screen and softness does not read at that size, and that
+ * the topmost rung was too far.
+ *
+ * Session 58 measured the ground this sits on: every one of the 122 pictures
+ * the project holds is 2048 x 2048 and draws at 48.83%, so **nothing here has
+ * ever been enlarged**. A generated picture cannot be — 2048 px is larger than
+ * the 2030 px the frame's own margins allow at the extreme — so the rule is
+ * reachable only through a client's own photograph or a picture attached to one
+ * video, neither of which is resized on the way in.
+ */
+describe('a picture too small for the space it is given', () => {
+  const box = { boxPx: 1000, templateScalePercent: 100 };
+  const square = (side: number): number =>
+    fitByLongEdge({ ...box, sourceWidth: side, sourceHeight: side }).enlargementPercent;
+
+  it('is measured against the box, never against a pixel size', () => {
+    // The same picture is fine in a small box and stretched in a large one, so
+    // a video the tool has never seen gets the same answer as this one.
+    expect(square(500)).toBeCloseTo(200, 9);
+    expect(
+      fitByLongEdge({ boxPx: 400, templateScalePercent: 100, sourceWidth: 500, sourceHeight: 500 })
+        .enlargementPercent,
+    ).toBeCloseTo(80, 9);
+    expect(
+      fitByLongEdge({ boxPx: 2000, templateScalePercent: 100, sourceWidth: 500, sourceHeight: 500 })
+        .enlargementPercent,
+    ).toBeCloseTo(400, 9);
+  });
+
+  /* The ruling is "past 200", so 200 itself is silent. */
+  it('says nothing at exactly 200%', () => {
+    expect(square(500)).toBeCloseTo(SOFT_ENLARGEMENT_PERCENT, 9);
+    expect(fitByLongEdge({ ...box, sourceWidth: 500, sourceHeight: 500 }).tooEnlarged).toBe(false);
+  });
+
+  it('warns a hair past 200%', () => {
+    const fit = fitByLongEdge({ ...box, sourceWidth: 499, sourceHeight: 499 });
+    expect(fit.enlargementPercent).toBeGreaterThan(SOFT_ENLARGEMENT_PERCENT);
+    expect(fit.tooEnlarged).toBe(true);
+  });
+
+  it('says nothing about a picture drawn at its own size', () => {
+    const fit = fitByLongEdge({ ...box, sourceWidth: 1000, sourceHeight: 1000 });
+    expect(fit.enlargementPercent).toBeCloseTo(100, 9);
+    expect(fit.tooEnlarged).toBe(false);
+  });
+
+  /*
+   * A generated picture is 2048 x 2048, and the largest box the frame can ever
+   * hold is 2030 px — 2160 wide less the 0.03 margin on each side, beyond which
+   * `placementIsSafe` refuses. So the rule can never fire on one.
+   */
+  it('says nothing about a generated picture, even in the largest box the frame allows', () => {
+    const widest = fitByLongEdge({
+      boxPx: 2030,
+      templateScalePercent: 100,
+      sourceWidth: 2048,
+      sourceHeight: 2048,
+    });
+    expect(widest.enlargementPercent).toBeLessThan(100);
+    expect(widest.tooEnlarged).toBe(false);
+  });
+
+  it('says nothing about a picture larger than its box', () => {
+    const fit = fitByLongEdge({ ...box, sourceWidth: 3024, sourceHeight: 4032 });
+    expect(fit.enlargementPercent).toBeCloseTo((1000 / 4032) * 100, 9);
+    expect(fit.tooEnlarged).toBe(false);
+  });
+
+  /* A photograph is not square, and the long edge is what fills the box. */
+  it('measures the long edge, whichever it is', () => {
+    const wide = fitByLongEdge({ ...box, sourceWidth: 400, sourceHeight: 100 });
+    const tall = fitByLongEdge({ ...box, sourceWidth: 100, sourceHeight: 400 });
+    expect(wide.enlargementPercent).toBeCloseTo(250, 9);
+    expect(tall.enlargementPercent).toBeCloseTo(250, 9);
+    expect(wide.tooEnlarged).toBe(true);
+    expect(tall.tooEnlarged).toBe(true);
+  });
+
+  /* The 500% case session 53 built, which is what opened this. */
+  it('warns about the 200 px picture that started this', () => {
+    const fit = fitByLongEdge({ ...box, sourceWidth: 200, sourceHeight: 200 });
+    expect(fit.enlargementPercent).toBeCloseTo(500, 9);
+    expect(fit.scalePercent).toBeCloseTo(500, 9);
+    expect(fit.tooEnlarged).toBe(true);
   });
 });
