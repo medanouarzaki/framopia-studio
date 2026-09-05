@@ -512,6 +512,67 @@ function checkDebugMode(): CheckResult {
   };
 }
 
+/**
+ * What a key must not be.
+ *
+ * **A key being present is not the same as a key being real.** Block 11 session
+ * 55 rehearsed the setup document literally: it says to copy
+ * `config.example.json` to `.local/config.json` and edit it, and a partner who
+ * copies it and forgets to edit got
+ *
+ * ```
+ *   ok    the API keys, by presence
+ *         googleApiKey present (value not shown), elevenLabsApiKey present (value not shown)
+ * ```
+ *
+ * — a green tick over `AIzaYourGoogleKey`. The first thing that then goes wrong
+ * is a paid call failing as unauthorised, long after the doctor said the
+ * machine was ready.
+ *
+ * **The placeholders are read out of `config.example.json` itself**, never
+ * copied here, so this cannot drift from the file it compares against. If the
+ * example is reworded, this follows it.
+ *
+ * **There is no issuer prefix rule, and that is deliberate.** The obvious one —
+ * a Google key begins `AIza` — was written, run, and **refused a working key**:
+ * measured on 2026-09-05, the key this machine actually bills with is 53
+ * characters, does not begin `AIza`, and carries a character outside
+ * `[A-Za-z0-9_-]`. A check that refuses a key that works is worse than the one
+ * it replaced, so what is asserted is only what the evidence supports: it is
+ * not the example's value, it does not read like a placeholder, and it is long
+ * enough to be a credential at all.
+ *
+ * **Nothing here calls either service.** The only way to prove a key works is to
+ * spend money with it, and a check that bills is not a check anyone would run.
+ */
+const KEYS_WANTED = ['googleApiKey', 'elevenLabsApiKey'] as const;
+
+/** Every placeholder in `config.example.json` says "your". None of them is a key. */
+const READS_LIKE_A_PLACEHOLDER = /your/i;
+
+/** Short enough that nothing either service issues could be mistaken for it. */
+const SHORTEST_CREDIBLE_KEY = 20;
+
+/**
+ * The example's value for a key, or null when the example cannot be read.
+ *
+ * A missing or unreadable example makes the placeholder comparison silently
+ * pass, which is the right way round: the shape check still applies, and a
+ * doctor that refused because a documentation file was missing would be
+ * refusing for the wrong reason.
+ */
+function examplePlaceholder(name: string): string | null {
+  const example = path.join(REPO_ROOT, 'config.example.json');
+  if (!existsSync(example)) return null;
+  try {
+    const parsed = JSON.parse(readFileSync(example, 'utf8')) as Record<string, unknown>;
+    const value = parsed[name];
+    return typeof value === 'string' ? value : null;
+  } catch {
+    return null;
+  }
+}
+
 function checkConfigKeys(): CheckResult {
   const file = path.join(LOCAL(), 'config.json');
   if (!existsSync(file)) {
@@ -539,21 +600,44 @@ function checkConfigKeys(): CheckResult {
       remedyVerified: false,
     };
   }
-  const wanted = ['googleApiKey', 'elevenLabsApiKey'] as const;
-  const missing = wanted.filter((k) => typeof config[k] !== 'string' || config[k] === '');
+  const faults: string[] = [];
+  for (const name of KEYS_WANTED) {
+    const raw = config[name];
+    if (typeof raw !== 'string' || raw.trim() === '') {
+      faults.push(`${name} is missing`);
+      continue;
+    }
+    const value = raw.trim();
+    if (value === examplePlaceholder(name)) {
+      faults.push(`${name} is still the example's placeholder, not a key`);
+      continue;
+    }
+    if (READS_LIKE_A_PLACEHOLDER.test(value)) {
+      faults.push(`${name} still reads like an example rather than a key`);
+      continue;
+    }
+    if (value.length < SHORTEST_CREDIBLE_KEY) {
+      faults.push(`${name} is too short to be a key`);
+    }
+  }
   return {
     id: 'api-keys',
-    what: 'the API keys, by presence',
-    state: missing.length === 0 ? 'present' : 'absent',
+    what: 'the API keys, by presence and shape',
+    state: faults.length === 0 ? 'present' : 'absent',
     // The value never appears — not the first characters, not the length.
     detail:
-      missing.length === 0
+      faults.length === 0
         ? `googleApiKey ${redact()}, elevenLabsApiKey ${redact()}`
-        : `missing: ${missing.join(', ')}`,
+        : faults.join('; '),
     blocking: 'run',
-    ...(missing.length === 0
+    ...(faults.length === 0
       ? {}
-      : { remedy: 'add them to .local/config.json; the shape is in config.example.json', remedyVerified: false }),
+      : {
+          remedy:
+            'open .local/config.json and replace the two placeholder values with your own ' +
+            'keys — the ones from config.example.json are examples of the shape, not keys',
+          remedyVerified: false,
+        }),
   };
 }
 
