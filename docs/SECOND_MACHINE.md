@@ -115,19 +115,7 @@ cloned into*.
 
 ## 1. The repository
 
-> **Before you start: the copy on GitHub is out of date.**
->
-> Rehearsed on 2026-09-05. `github.com/medanouarzaki/framopia-studio` is at
-> **`d53a70b`, 29 August**, which is **271 commits behind** the working copy —
-> and it does not contain this document. Cloning it gives you a version of the
-> tool without the panel's client screens, without the picture labels, and
-> without most of what the rest of this describes.
->
-> **So ask Mohamed for the repository before you clone anything.** Either he
-> pushes the current code to GitHub, or he gives you the folder on a drive.
-> Until one of those has happened, nothing below will match what you see.
-
-Once you have the current code, choose a folder and clone into it:
+Choose a folder and clone into it:
 
 ```
 git clone <the repository URL> framopia-studio
@@ -141,11 +129,11 @@ that is `<repo>` for the rest of this document.
 If someone has already put the folder on a drive for you, plug the drive in and
 `cd` into it instead.
 
-**How big it is**, measured on the rehearsal clone: about **67 MB** of history
-and **104 MB** on disk once checked out. The videos and the caches are
-deliberately not in it — they come in §11 and §12. (An earlier version of this
-document said 254 KB. That was the size of the tracked text alone and it was
-wrong.)
+**How big it is**, measured by cloning it from GitHub on 2026-09-05: about
+**22 MB** to download, **53 MB** on disk once checked out. It grows to about
+**262 MB** after §4 and §6. The videos and the caches are deliberately not in it
+— they come in §11 and §12. (An earlier version of this document said 254 KB.
+That was the size of the tracked text alone and it was wrong.)
 
 ---
 
@@ -209,8 +197,13 @@ npm install
 `npm audit` warnings. **The warnings are expected and are not your problem** —
 they are about packages the project only uses while it is being developed.
 
-Measured on the rehearsal: **165 entries in `node_modules`, 168 MB**, in about a
-minute.
+Measured on the rehearsal, cloning from GitHub on 2026-09-05:
+
+```
+added 219 packages, and audited 224 packages in 3s
+```
+
+**165 entries in `node_modules`, 168 MB.**
 
 ---
 
@@ -477,27 +470,36 @@ says which.
 
 Open After Effects first and run it again, because five of the checks need it.
 
-**What a fresh clone actually reports**, measured on 2026-09-05 after §1 to §10
-and with After Effects open: **19 present, 5 absent, 0 could not be determined**.
-The five are the ones nothing can supply yet, and every one of them is expected
-at this point:
+**If you run this before §4, it tells you so.** `npm run doctor` checks a couple
+of things on plain Node before it needs anything installed, so running it on a
+clone you have just made says:
+
+```
+This project is not set up yet, so nothing else will run.
+
+  The project's packages have not been installed yet.
+  Run this, from this folder:
+
+      npm install
+
+Then try again. docs/SECOND_MACHINE.md has the whole setup in order.
+```
+
+**What a fresh clone actually reports**, measured on 2026-09-05 by cloning from
+GitHub and following §1 to §10 with After Effects open: **18 present, 6 absent,
+0 could not be determined**. Every one of the six is expected at this point:
 
 | what it says is missing | why, and what fixes it |
 |---|---|
+| the API keys | you copied the example in §10 and have not put your own keys in yet |
 | the panel bundle | §9's `npm run panel:build` has not run yet |
 | the watermark measurement | §13 — taken on the first video you run |
 | the dialogue loudness records | §13 — the same |
 | the API cache | §12 — copy it, or let it fill as stages run |
 | the cost ledger | it is written by the first billable call; a new Mac starts its own at zero |
 
-Only one thing is ever listed under *"this machine cannot run the pipeline until
-these are fixed"* on a fresh clone, and it is the API keys.
-
-**One check cannot be seen failing at all.** *The installed workspace
-dependencies* is checked by `npm run doctor`, and `npm run doctor` cannot start
-without those dependencies — so on the machine that has the problem, the check
-that describes it never runs. What you see instead is npm's own error, ending
-`command sh -c tsc`. That means §4 has not been done.
+Only one thing is listed under *"this machine cannot run the pipeline until these
+are fixed"* on a fresh clone, and it is the API keys.
 
 Run it as many times as you like. **When it stops printing "this machine cannot
 run the pipeline until these are fixed", the setup is done.**
@@ -575,8 +577,8 @@ fifth would only add a failure we already know about.
 
 ## What is not in the repository, and where each thing comes from
 
-Measured on 2026-09-05 by cloning the project into a folder that had never held
-it and listing what was missing. Git carries the code, the documents, the
+Measured on 2026-09-05 by cloning this repository from GitHub into a folder that
+had never held it and listing what was missing. Git carries the code, the documents, the
 **template library**, the **client files**, the **sound effects**, the
 **watermark video** and the **brand logo** — all of that arrives with the clone
 and none of it needs fetching. What does not:
@@ -602,7 +604,6 @@ Everything else in this document is a command. These are not:
 
 | step | why it needs you |
 |---|---|
-| **§1, getting the current code** | Someone has to push it or hand it over. The GitHub copy is 271 commits behind. |
 | **§2, Homebrew** | Its installer asks for your Mac password. |
 | **§7, the three fonts** | Font files are installed by double-clicking, and After Effects has to be restarted afterwards to notice. |
 | **§8, the scripting preference** | It is a checkbox inside After Effects' Preferences, off on every fresh install. Nothing outside the application may set it. |
@@ -613,12 +614,20 @@ Everything else in this document is a command. These are not:
 
 ## How much of this has been rehearsed, and how much has not
 
-Rehearsed on 2026-09-05 by cloning into a folder on the internal disk that had
-never held the project, and following this document from the top.
+Rehearsed twice on 2026-09-05, the second time **by cloning this repository from
+GitHub** into a folder that had never held it and following this document from
+the top. Everything below is what happened, not what was expected to happen.
 
-**Run, and worked as written:** §1 the clone, §3 Node and `.nvmrc`, §4
-`npm install`, §6 the picture tools and both models, §10 making the settings
-file, §14 `npm run doctor`.
+**Run, and worked as written:**
+
+| step | what was measured |
+|---|---|
+| §1 the clone | 22 MB downloaded, 53 MB checked out |
+| §3 Node | `.nvmrc` says `24`, `node --version` says `v24.14.1` |
+| §4 `npm install` | `added 219 packages, and audited 224 packages in 3s` — 165 entries, 168 MB |
+| §6 the picture tools | built the environment, fetched both models, ended `sidecar: ready`; `verify-models.sh` then reported both `ok` |
+| §10 the settings file | copied, and the doctor then **correctly refused it** until the keys were replaced |
+| §14 `npm run doctor` | 18 present, 6 absent, 0 could not be determined |
 
 **Not run, and why:** §2 Homebrew and §5 ffmpeg were already installed on the
 rehearsal Mac, so a fresh install of either is still unrehearsed. §7 the fonts
@@ -626,7 +635,8 @@ and §8 the scripting preference were already set. §9 `npm run panel:install`
 was **deliberately not run**, because it rewrites the one folder After Effects
 reads and would have pointed the working panel at the rehearsal copy. §11 and
 §12 were not run — 12 GB nobody needed to move twice. §15 needs the videos from
-§11, so it could not be reached.
+§11, so it could not be reached; **that is where the rehearsal stopped, and
+copying the five videos in §11 is what would have come next.**
 
 **So the steps most likely still to surprise you are §2, §5, §7, §8 and §9** —
 they are the ones written from the code rather than from watching them happen.
