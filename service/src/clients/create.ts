@@ -3,6 +3,8 @@ import path from 'node:path';
 import { keepPicture } from './picture-store.js';
 import {
   PALETTE_ROLES,
+  CLIENT_PICTURE_STORE,
+  REPO_ROOT,
   CLIENT_LANGUAGES,
   MODES_DIR,
   VIDEO_SHAPES,
@@ -475,6 +477,12 @@ export interface DeletedClient {
   name: string;
   /** Where the file went. It is not destroyed. */
   movedTo: string;
+  /**
+   * Where their own photographs went, absent when they had none inside the
+   * project. Optional with a default, like every other addition: a panel
+   * reading an older service finds it missing and says what it said before.
+   */
+  photographsMovedTo?: string;
 }
 
 /**
@@ -495,15 +503,52 @@ export interface DeletedClient {
  * id on this client, and with the client gone there is nothing to resolve it
  * against. The confirmation says both.
  */
+/**
+ * A name inside `.local/deleted-clients/` that nothing else holds.
+ *
+ * **The timestamp alone is not enough.** A client can be deleted, made again
+ * with the same id and deleted again, and two deletions inside the same
+ * millisecond would land on the same name — unlikely is not the same as
+ * impossible, and what would be lost is the earlier client's photographs. The
+ * stem is claimed for the pair, so the `.json` and the folder of photographs
+ * always belong to each other and can never be split across two deletions.
+ */
+function freeStem(base: string): string {
+  const taken = (stem: string): boolean => existsSync(`${stem}.json`) || existsSync(stem);
+  if (!taken(base)) return base;
+  for (let n = 2; ; n += 1) {
+    const candidate = `${base}-${n}`;
+    if (!taken(candidate)) return candidate;
+  }
+}
+
 export function deleteClient(modeId: string): DeletedClient {
   const modePath = modePathFor(modeId);
   if (!existsSync(modePath)) throw new ClientWriteError(`there is no client called ${modeId}`);
   const raw = JSON.parse(readFileSync(modePath, 'utf8')) as ClientMode;
   mkdirSync(DELETED_CLIENTS_DIR, { recursive: true });
   const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-  const movedTo = path.join(DELETED_CLIENTS_DIR, `${modeId}-${stamp}.json`);
+  const stem = freeStem(path.join(DELETED_CLIENTS_DIR, `${modeId}-${stamp}`));
+
+  /*
+   * **Their photographs go with them, into the same place.** Until Block 11
+   * session 63 the mode file moved and the copies stayed in
+   * `assets/client-pictures/`, orphaned in a tracked directory with nothing
+   * left naming them. They land beside the client's own file, under the same
+   * stem, so which photographs belonged to whom stays obvious.
+   *
+   * **Moved, never deleted** — the standing rule about a user's own material.
+   * Only the copies this project made are moved: a photograph attached before
+   * session 62 still lives where its owner put it, outside the store, and is
+   * not this project's to touch.
+   */
+  const store = path.join(REPO_ROOT, ...CLIENT_PICTURE_STORE, modeId);
+  const photographsMovedTo = existsSync(store) ? stem : undefined;
+  if (photographsMovedTo !== undefined) renameSync(store, stem);
+
+  const movedTo = `${stem}.json`;
   renameSync(modePath, movedTo);
-  return { id: modeId, name: raw.name, movedTo };
+  return { id: modeId, name: raw.name, movedTo, ...(photographsMovedTo !== undefined ? { photographsMovedTo } : {}) };
 }
 
 export { CLIENT_LANGUAGES, MODES_DIR, VIDEO_SHAPES };
