@@ -113,6 +113,8 @@ export interface DryRunPlan {
   picturesUsd?: number;
   /** Which stages `wordsUsd` covers. The panel asks for these, never its own list. */
   wordsStages?: string[];
+  /** Whether the subtitles exist yet. Absent means a service older than this panel. */
+  wordsDone?: boolean;
   /** True when a stage reuses a transcription made against an older guide. */
   reusesOlderGuide: boolean;
 }
@@ -166,7 +168,23 @@ export interface ClientMode {
    * is a different thing from a client having none — the screen says so rather
    * than offering an editor that would write into a route that is not there.
    */
-  pictures?: { id: string; path: string; description: string }[];
+  pictures?: { id: string; path: string; description: string; label?: string }[];
+  /**
+   * The values exactly as they stand on the client's file, for the card that
+   * edits them. Absent means a service older than this panel, and the card
+   * hides the editor rather than offering a control that would fail.
+   */
+  editable?: {
+    name: string;
+    about?: string;
+    videoFolder?: string;
+    logoPath?: string;
+    language?: string;
+    videoShape?: string;
+    subtitleBaselineY?: number;
+    watermarkByDefault?: boolean;
+    fonts?: { latin: string; arabic: string; emphasis?: string };
+  };
 }
 
 export type ServiceState =
@@ -532,7 +550,9 @@ export interface ImagesView {
    * absent list is not an empty one — the panel shows nothing rather than
    * saying the client has none.
    */
-  clientPictures?: { id: string; path: string; description: string }[];
+  clientPictures?: { id: string; path: string; description: string; label?: string }[];
+  /** Pictures attached to this reel alone. Absent means a service older than this panel. */
+  videoPictures?: { id: string; path: string; description: string; label?: string }[];
   source: {
     clientMode: string | null;
     clientModeVersion: number | null;

@@ -85,6 +85,14 @@ export function NewClient({
   const [videoFolder, setFolder] = useState('');
   const [latin, setLatin] = useState('');
   const [arabic, setArabic] = useState('');
+  /*
+   * The third face. A client has a Latin sans for ordinary words, a Latin serif
+   * for the emphasised ones and an Arabic — the user's ruling, and what K2
+   * Syndicalia has had since the templates were authored. This screen collected
+   * two until Block 10 session 54, so Dr Loubna Kfafi's third had to be written
+   * into her file by hand after she was created.
+   */
+  const [emphasis, setEmphasis] = useState('');
   const [logoPath, setLogo] = useState('');
   const [language, setLanguage] = useState('');
   const [shape, setShape] = useState('');
@@ -93,7 +101,9 @@ export function NewClient({
   // Only the roles the user has actually set. An untouched one is not a
   // choice and is never sent.
   const [palette, setPalette] = useState<Partial<Record<PaletteRole, string>>>({});
-  const [photos, setPhotos] = useState<{ path: string; description: string }[]>([]);
+  const [photos, setPhotos] = useState<
+    { path: string; description: string; label?: string }[]
+  >([]);
   const [fonts, setFonts] = useState<FontList>({
     available: false,
     names: [],
@@ -127,7 +137,14 @@ export function NewClient({
         if (baseline.trim() !== '') body['subtitleBaselineY'] = Number(baseline);
       }
       if (latin.trim() !== '' && arabic.trim() !== '') {
-        body['fonts'] = { latin: latin.trim(), arabic: arabic.trim() };
+        body['fonts'] = {
+          latin: latin.trim(),
+          arabic: arabic.trim(),
+          // Optional: a client with two faces sets emphasised words in the
+          // ordinary one, which is what every build did before the third
+          // existed.
+          ...(emphasis.trim() === '' ? {} : { emphasis: emphasis.trim() }),
+        };
       }
       if (language !== '') body['language'] = language;
       if (!watermark) body['watermarkByDefault'] = false;
@@ -208,6 +225,13 @@ export function NewClient({
           hint="Blank uses Inter Semi-Bold, the standard one."
           value={latin}
           onChange={setLatin}
+          fonts={fonts}
+        />
+        <FontField
+          label="Emphasis font"
+          hint="The face for the words you emphasise. Blank sets them in the Latin font."
+          value={emphasis}
+          onChange={setEmphasis}
           fonts={fonts}
         />
         <FontField
@@ -310,12 +334,22 @@ export function NewClient({
                 key: photo.path,
                 path: photo.path,
                 description: photo.description,
+                ...(photo.label === undefined ? {} : { label: photo.label }),
               }),
             )}
             dialog={dialog.available}
             busy={saving}
             error={null}
-            onAdd={(photo) => setPhotos((all) => [...all, photo])}
+            onAdd={(photo) =>
+              setPhotos((all) => [
+                ...all,
+                {
+                  path: photo.path,
+                  description: photo.description,
+                  ...(photo.label === '' ? {} : { label: photo.label }),
+                },
+              ])
+            }
             onRemove={(key) => setPhotos((all) => all.filter((photo) => photo.path !== key))}
           />
         ) : null}

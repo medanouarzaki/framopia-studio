@@ -40,7 +40,17 @@ describe('making a client', () => {
     expect(validateMode(client)).toEqual([]);
     expect(client.about).toBe('Dermatologist, Casablanca');
     expect(client.videoFolder).toBe('/Volumes/T7 Shield/clients/jenna');
-    expect(client.fonts).toEqual({ status: 'set', latin: 'Söhne', arabic: 'Cairo' });
+    /*
+     * The chosen names go in twice on purpose. They come from After Effects'
+     * own list, and After Effects rejects any font name containing a space —
+     * so the name a person reads and the name a build writes are the same
+     * string here, and recording only the first would leave the build to guess.
+     */
+    expect(client.fonts).toMatchObject({ status: 'set', latin: 'Söhne', arabic: 'Cairo' });
+    expect(client.fonts).toMatchObject({
+      postScriptNames: { latin: 'Söhne', arabic: 'Cairo' },
+    });
+    expect(client.fonts).not.toHaveProperty('emphasis');
     expect(client.language).toBe('french');
     expect(client.watermarkByDefault).toBe(false);
   });

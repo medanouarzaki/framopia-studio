@@ -422,7 +422,7 @@ export async function createClient(
  */
 export async function addClientPicture(
   connection: Connection,
-  edit: { client: string; path: string; description: string },
+  edit: { client: string; path: string; description: string; label?: string },
 ): Promise<void> {
   const res = await fetch(`http://127.0.0.1:${connection.port}/clients/pictures`, {
     method: 'POST',
@@ -474,6 +474,137 @@ export async function removeClientPicture(
   if (!res.ok) {
     const body = (await res.json().catch(() => ({}))) as { error?: string };
     throw new Error(body.error ?? 'that photo could not be removed');
+  }
+}
+
+/**
+ * The label on a picture a client already has.
+ *
+ * Its own call rather than a field on `addClientPicture`: a label is corrected
+ * far more often than a photograph is replaced, and re-adding the file to
+ * change one word would renumber it and lose every plan that already names it.
+ * An empty label clears it, which puts the picture back to being chosen by hand.
+ */
+export async function setClientPictureLabel(
+  connection: Connection,
+  edit: { client: string; picture: string; label: string },
+): Promise<ClientMode[]> {
+  const res = await fetch(`http://127.0.0.1:${connection.port}/clients/picture-label`, {
+    method: 'POST',
+    headers: { 'x-service-token': connection.token, 'content-type': 'application/json' },
+    body: JSON.stringify(edit),
+  });
+  const body = (await res.json().catch(() => ({}))) as { error?: string; modes?: ClientMode[] };
+  if (!res.ok) throw new Error(body.error ?? 'that label could not be saved');
+  return body.modes ?? [];
+}
+
+/** What a saved client's card can change. Only what is sent is touched. */
+export interface ClientDetailsEdit {
+  name?: string;
+  about?: string | null;
+  videoFolder?: string | null;
+  logoPath?: string | null;
+  language?: string | null;
+  subtitleBaselineY?: number | null;
+  videoShape?: string | null;
+  watermarkByDefault?: boolean | null;
+  fonts?: { latin: string; arabic: string; emphasis?: string } | null;
+}
+
+/**
+ * Everything about a saved client except their colours and their photographs.
+ *
+ * Until Block 10 session 54 only the palette could be corrected: a name typed
+ * wrong or a folder that moved was fixed for the life of the client.
+ */
+export async function setClientDetails(
+  connection: Connection,
+  edit: { client: string; details: ClientDetailsEdit },
+): Promise<ClientMode[]> {
+  const res = await fetch(`http://127.0.0.1:${connection.port}/clients/details`, {
+    method: 'POST',
+    headers: { 'x-service-token': connection.token, 'content-type': 'application/json' },
+    body: JSON.stringify(edit),
+  });
+  const body = (await res.json().catch(() => ({}))) as { error?: string; modes?: ClientMode[] };
+  if (!res.ok) throw new Error(body.error ?? 'that change could not be saved');
+  return body.modes ?? [];
+}
+
+/**
+ * A client, taken off the picker.
+ *
+ * The file is moved aside rather than destroyed, and the reply says where it
+ * went — nothing a person made is thrown away by this product.
+ */
+export async function deleteClient(
+  connection: Connection,
+  client: string,
+): Promise<{ modes: ClientMode[]; movedTo: string | null }> {
+  const res = await fetch(
+    `http://127.0.0.1:${connection.port}/clients?client=${encodeURIComponent(client)}`,
+    { method: 'DELETE', headers: { 'x-service-token': connection.token } },
+  );
+  const body = (await res.json().catch(() => ({}))) as {
+    error?: string;
+    modes?: ClientMode[];
+    removed?: { movedTo?: string };
+  };
+  if (!res.ok) throw new Error(body.error ?? 'that client could not be removed');
+  return { modes: body.modes ?? [], movedTo: body.removed?.movedTo ?? null };
+}
+
+/**
+ * A picture attached to one reel.
+ *
+ * The same rules as a client's: the file stays where he put it, nothing is
+ * copied, nothing is sent. It travels on the plan's path because the plan is
+ * the reel's own file — the same address `chooseImage` uses.
+ */
+export async function addVideoPicture(
+  connection: Connection,
+  edit: { planPath: string; path: string; description: string; label?: string },
+): Promise<void> {
+  const res = await fetch(`http://127.0.0.1:${connection.port}/video/pictures`, {
+    method: 'POST',
+    headers: { 'x-service-token': connection.token, 'content-type': 'application/json' },
+    body: JSON.stringify(edit),
+  });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(body.error ?? 'that picture could not be added');
+  }
+}
+
+export async function setVideoPictureLabel(
+  connection: Connection,
+  edit: { planPath: string; picture: string; label: string },
+): Promise<void> {
+  const res = await fetch(`http://127.0.0.1:${connection.port}/video/picture-label`, {
+    method: 'POST',
+    headers: { 'x-service-token': connection.token, 'content-type': 'application/json' },
+    body: JSON.stringify(edit),
+  });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(body.error ?? 'that label could not be saved');
+  }
+}
+
+/** Forgets it. The file on the disk is untouched. */
+export async function removeVideoPicture(
+  connection: Connection,
+  edit: { planPath: string; picture: string },
+): Promise<void> {
+  const query = `planPath=${encodeURIComponent(edit.planPath)}&picture=${encodeURIComponent(edit.picture)}`;
+  const res = await fetch(`http://127.0.0.1:${connection.port}/video/pictures?${query}`, {
+    method: 'DELETE',
+    headers: { 'x-service-token': connection.token },
+  });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(body.error ?? 'that picture could not be removed');
   }
 }
 

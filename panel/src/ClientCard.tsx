@@ -2,12 +2,16 @@ import { useState } from 'react';
 import { fileUrl } from './picture.js';
 import { ClientPictures, type ShownPicture } from './ClientPictures.js';
 import { ColourField } from './ColourField.js';
-import { fileDialogSupport } from './file-dialog.js';
+import { fileDialogSupport, pickFolder, pickImageFile } from './file-dialog.js';
 import {
   addClientPicture,
   fetchModes,
   removeClientPicture,
+  setClientPictureLabel,
+  deleteClient,
+  setClientDetails,
   setClientPalette,
+  type ClientDetailsEdit,
   type Connection,
 } from './service.js';
 import type { ClientMode } from './types.js';
@@ -70,6 +74,14 @@ export function ClientCard({
       {client.pictures === undefined ? null : (
         <Photographs client={client} connection={connection} onModes={onModes} />
       )}
+
+      {/*
+        Absent means a service older than this panel, which cannot be edited
+        through — the same reason the photographs hide themselves one field up.
+      */}
+      {client.editable === undefined || connection === null ? null : (
+        <Details client={client} connection={connection} onModes={onModes} />
+      )}
     </div>
   );
 }
@@ -108,6 +120,7 @@ function Photographs({
           key: picture.id,
           path: picture.path,
           description: picture.description,
+          ...(picture.label === undefined ? {} : { label: picture.label }),
         }),
       )}
       dialog={dialog.available}
@@ -118,6 +131,11 @@ function Photographs({
       }
       onRemove={(key) =>
         void change((c) => removeClientPicture(c, { client: client.id, picture: key }))
+      }
+      onLabel={(key, label) =>
+        void change(async (c) => {
+          await setClientPictureLabel(c, { client: client.id, picture: key, label });
+        })
       }
     />
   );
@@ -277,5 +295,356 @@ function Palette({
         </button>
       )}
     </div>
+  );
+}
+
+/**
+ * Everything about a client except their colours and their photographs, and the
+ * only way to change any of it.
+ *
+ * **Until Block 10 session 54 only the palette could be corrected.** A name
+ * typed wrong, a folder that moved, a face chosen before this client had one —
+ * all of it was fixed for the life of the client, and the only way out was to
+ * make a second client and abandon the first.
+ *
+ * It opens closed, like the palette editor beside it: the card is a thing to
+ * read, and editing is a thing you ask for. **Only what changed is sent**, so
+ * pressing save after touching one field leaves the other eight exactly as they
+ * are — including the ones the client never named, which is what keeps a blank
+ * meaning *standard* rather than becoming a choice nobody made.
+ */
+function Details({
+  client,
+  connection,
+  onModes,
+}: {
+  client: ClientMode;
+  connection: Connection;
+  onModes: (modes: ClientMode[]) => void;
+}): JSX.Element | null {
+  const stored = client.editable;
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState<ClientDetailsEdit>({});
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false);
+  const [gone, setGone] = useState<string | null>(null);
+  const dialog = fileDialogSupport();
+  if (stored === undefined) return null;
+
+  const set = (change: ClientDetailsEdit): void => setDraft((d) => ({ ...d, ...change }));
+  const text = (key: 'name' | 'about' | 'videoFolder' | 'logoPath'): string => {
+    const drafted = draft[key];
+    if (drafted !== undefined) return drafted ?? '';
+    return stored[key] ?? '';
+  };
+  const choice = (key: 'language' | 'videoShape'): string => {
+    const drafted = draft[key];
+    if (drafted !== undefined) return drafted ?? '';
+    return stored[key] ?? '';
+  };
+  const fonts = draft.fonts === undefined ? stored.fonts : (draft.fonts ?? undefined);
+  const face = (role: 'latin' | 'emphasis' | 'arabic'): string => fonts?.[role] ?? '';
+  const setFace = (role: 'latin' | 'emphasis' | 'arabic', value: string): void => {
+    const next = {
+      latin: face('latin'),
+      arabic: face('arabic'),
+      ...(face('emphasis') === '' ? {} : { emphasis: face('emphasis') }),
+      [role]: value,
+    } as { latin: string; arabic: string; emphasis?: string };
+    if (next.emphasis === '') delete next.emphasis;
+    set({ fonts: next.latin === '' && next.arabic === '' ? null : next });
+  };
+
+  const save = async (): Promise<void> => {
+    setSaving(true);
+    setError(null);
+    try {
+      onModes(await setClientDetails(connection, { client: client.id, details: draft }));
+      setDraft({});
+      setEditing(false);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const remove = async (): Promise<void> => {
+    setSaving(true);
+    setError(null);
+    try {
+      const answer = await deleteClient(connection, client.id);
+      setGone(answer.movedTo);
+      onModes(answer.modes);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (gone !== null) {
+    return (
+      <p className="hint" role="status">
+        {client.name} is off the list. Nothing was thrown away — their details were kept.
+      </p>
+    );
+  }
+
+  if (!editing) {
+    return (
+      <button type="button" className="ghost" onClick={() => { setDraft({}); setEditing(true); }}>
+        Change their details
+      </button>
+    );
+  }
+
+  return (
+    <div className="clientdetails">
+      <label className="field stacked">
+        <span>Their name</span>
+        <input
+          type="text"
+          aria-label="Their name"
+          value={text('name')}
+          onChange={(e) => set({ name: e.target.value })}
+        />
+      </label>
+
+      <label className="field stacked">
+        <span>About them</span>
+        <input
+          type="text"
+          aria-label="About them"
+          value={text('about')}
+          onChange={(e) => set({ about: e.target.value })}
+        />
+      </label>
+
+      {/*
+        No path is ever typed or pasted — the rule for the whole product since
+        session 16 — so both of these are the native chooser and nothing else.
+      */}
+      <PathRow
+        what="Their video folder"
+        value={text('videoFolder')}
+        dialog={dialog.available}
+        onChoose={() => {
+          const chosen = pickFolder('Choose their video folder', text('videoFolder'));
+          if (chosen !== null) set({ videoFolder: chosen });
+        }}
+        onClear={() => set({ videoFolder: null })}
+      />
+      <PathRow
+        what="Their logo"
+        value={text('logoPath')}
+        dialog={dialog.available}
+        onChoose={() => {
+          const chosen = pickImageFile('Choose their logo', text('logoPath'));
+          if (chosen !== null) set({ logoPath: chosen });
+        }}
+        onClear={() => set({ logoPath: null })}
+      />
+
+      <label className="field">
+        <span>Mostly spoken in</span>
+        <select
+          aria-label="Mostly spoken in"
+          value={choice('language')}
+          onChange={(e) => set({ language: e.target.value === '' ? null : e.target.value })}
+        >
+          <option value="">Not said</option>
+          {Object.entries(SPOKEN).map(([id, said]) => (
+            <option key={id} value={id}>{said}</option>
+          ))}
+        </select>
+      </label>
+
+      <label className="field">
+        <span>Video shape</span>
+        <select
+          aria-label="Video shape"
+          value={choice('videoShape')}
+          onChange={(e) => set({ videoShape: e.target.value === '' ? null : e.target.value })}
+        >
+          <option value="">Not said</option>
+          {Object.entries(SHAPE).map(([id, shape]) => (
+            <option key={id} value={id}>{shape}</option>
+          ))}
+        </select>
+      </label>
+
+      <label className="field">
+        <span>Their watermark</span>
+        <select
+          aria-label="Their watermark"
+          value={
+            draft.watermarkByDefault === undefined
+              ? stored.watermarkByDefault === undefined
+                ? ''
+                : String(stored.watermarkByDefault)
+              : draft.watermarkByDefault === null
+                ? ''
+                : String(draft.watermarkByDefault)
+          }
+          onChange={(e) =>
+            set({ watermarkByDefault: e.target.value === '' ? null : e.target.value === 'true' })
+          }
+        >
+          <option value="">Standard — their videos carry it</option>
+          <option value="true">On</option>
+          <option value="false">Off</option>
+        </select>
+      </label>
+
+      <label className="field">
+        <span>Subtitles from the top</span>
+        <input
+          type="text"
+          inputMode="numeric"
+          aria-label="Subtitles from the top"
+          value={
+            draft.subtitleBaselineY === undefined
+              ? (stored.subtitleBaselineY ?? '')
+              : (draft.subtitleBaselineY ?? '')
+          }
+          onChange={(e) =>
+            set({
+              subtitleBaselineY: e.target.value.trim() === '' ? null : Number(e.target.value),
+            })
+          }
+        />
+      </label>
+
+      {/*
+        Three faces, the user's ruling: a Latin sans, a Latin serif for the
+        words you emphasise, and an Arabic. Dr Loubna Kfafi's are borrowed from
+        K2 and pending her own, which is exactly what this is for.
+      */}
+      <FaceRow what="Latin font" value={face('latin')} onChange={(v) => setFace('latin', v)} />
+      <FaceRow
+        what="Emphasis font"
+        value={face('emphasis')}
+        onChange={(v) => setFace('emphasis', v)}
+      />
+      <FaceRow what="Arabic font" value={face('arabic')} onChange={(v) => setFace('arabic', v)} />
+
+      <p className="hint">
+        A new name or new fonts apply to videos you make from now on. Videos already made keep
+        the look they were made with, until you move them forward yourself.
+      </p>
+
+      {error === null ? null : <p className="trouble">{error}</p>}
+
+      <button type="button" className="ghost" disabled={saving} onClick={() => void save()}>
+        {saving ? 'Saving…' : 'Save their details'}
+      </button>
+      <button
+        type="button"
+        className="ghost"
+        disabled={saving}
+        onClick={() => { setDraft({}); setEditing(false); }}
+      >
+        Cancel
+      </button>
+
+      {confirming ? (
+        <div className="confirmremove">
+          {/*
+            What removal does, in full, before he presses it. A reel pins the
+            client's look when it is analysed and rebuilds from that pin, so the
+            videos already made are safe; what does break is a video using one of
+            this client's own photographs, because the photo is named by an id on
+            this client and there would be nothing to look it up in.
+          */}
+          <p className="hint">
+            Take {client.name} off the list? Videos already made keep the look they were made
+            with and can still be rebuilt. A video that uses one of their photographs would no
+            longer find it. Their details are kept, not thrown away.
+          </p>
+          <button type="button" className="ghost" disabled={saving} onClick={() => void remove()}>
+            {saving ? 'Removing…' : `Yes, take ${client.name} off the list`}
+          </button>
+          <button
+            type="button"
+            className="ghost"
+            disabled={saving}
+            onClick={() => setConfirming(false)}
+          >
+            Keep them
+          </button>
+        </div>
+      ) : (
+        <button type="button" className="ghost" onClick={() => setConfirming(true)}>
+          Take them off the list
+        </button>
+      )}
+    </div>
+  );
+}
+
+/** A path, chosen or cleared, never typed. */
+function PathRow({
+  what,
+  value,
+  dialog,
+  onChoose,
+  onClear,
+}: {
+  what: string;
+  value: string;
+  dialog: boolean;
+  onChoose: () => void;
+  onClear: () => void;
+}): JSX.Element {
+  return (
+    <div className="field stacked">
+      <span>{what}</span>
+      <p className="chosenpath">{value === '' ? 'Not set' : value}</p>
+      {dialog ? (
+        <button type="button" className="ghost choose" aria-label={`Choose ${what}`} onClick={onChoose}>
+          Choose…
+        </button>
+      ) : (
+        <em className="hint">This copy of After Effects offers no file chooser.</em>
+      )}
+      {value === '' ? null : (
+        <button type="button" className="chip" aria-label={`Clear ${what}`} onClick={onClear}>
+          Clear
+        </button>
+      )}
+    </div>
+  );
+}
+
+/**
+ * One face, set in itself.
+ *
+ * A plain box rather than the setup screen's searchable list: this card sits
+ * inside a scrolling panel beside four other controls, and the name it holds
+ * came from that list in the first place. It is drawn in the face it names so a
+ * wrong one is visible rather than described.
+ */
+function FaceRow({
+  what,
+  value,
+  onChange,
+}: {
+  what: string;
+  value: string;
+  onChange: (value: string) => void;
+}): JSX.Element {
+  return (
+    <label className="field stacked">
+      <span>{what}</span>
+      <input
+        type="text"
+        aria-label={what}
+        value={value}
+        style={value === '' ? undefined : { fontFamily: `"${value}", sans-serif` }}
+        onChange={(e) => onChange(e.target.value)}
+      />
+    </label>
   );
 }

@@ -25,12 +25,22 @@ import { pickImageFile } from './file-dialog.js';
  * **A description is required**, by the service and here. It is the only thing
  * that will tell him which photograph is which when he is choosing one for a
  * moment in a video a month from now.
+ *
+ * **A label is optional and is what makes a picture happen by itself.** Block 10
+ * session 53 built the rule — a picture is used when one of the words on its
+ * label is actually spoken — and nothing in the panel could write one, so the
+ * whole feature was reachable only by editing the client's file by hand. The
+ * field is here, beside the description, with a sentence saying what it does in
+ * words rather than in the language of matching. Left empty the picture behaves
+ * as it always has: it waits to be chosen.
  */
 export interface ShownPicture {
   /** The id on a saved client; the path on one being set up. */
   key: string;
   path: string;
   description: string;
+  /** Absent or empty means this picture is chosen by hand only. */
+  label?: string;
 }
 
 export function ClientPictures({
@@ -40,17 +50,24 @@ export function ClientPictures({
   error,
   onAdd,
   onRemove,
+  onLabel,
 }: {
   pictures: ShownPicture[];
   /** Whether this host really has a file chooser. Never assumed. */
   dialog: boolean;
   busy: boolean;
   error: string | null;
-  onAdd: (picture: { path: string; description: string }) => void;
+  onAdd: (picture: { path: string; description: string; label: string }) => void;
   onRemove: (key: string) => void;
+  /**
+   * Change the label on a picture already saved. Absent on the setup screen,
+   * where a picture is not saved yet and the list is re-sent whole.
+   */
+  onLabel?: (key: string, label: string) => void;
 }): JSX.Element {
   const [picked, setPicked] = useState('');
   const [description, setDescription] = useState('');
+  const [label, setLabel] = useState('');
 
   const verdict = judgeStill(picked);
   const usable = verdict.kind === 'ok' || verdict.kind === 'not-previewable';
@@ -60,9 +77,13 @@ export function ClientPictures({
     <div className="ownphotos">
       <span className="colourhead">Their own photographs</span>
       <p className="hint">
-        Photographs they gave you — the clinic, their products, their team. You pick one by hand
-        for a moment in a video; nothing works out which one belongs where. They stay where they
+        Photographs they gave you — the clinic, their products, their team. They stay where they
         are on this disk and are never sent anywhere.
+      </p>
+      <p className="hint">
+        Give a photo the words that mean it — a product name, say — and it is used automatically
+        whenever one of those words is spoken in a video. Leave that empty and the photo waits
+        for you to pick it by hand.
       </p>
 
       {pictures.length === 0 ? (
@@ -73,6 +94,20 @@ export function ClientPictures({
             <li key={picture.key}>
               <Thumbnail path={picture.path} description={picture.description} />
               <span className="what">{picture.description}</span>
+              {onLabel === undefined ? (
+                <span className="saidwhen">
+                  {picture.label === undefined || picture.label === ''
+                    ? 'Chosen by hand.'
+                    : `Used when someone says: ${picture.label}`}
+                </span>
+              ) : (
+                <SavedLabel
+                  description={picture.description}
+                  label={picture.label ?? ''}
+                  busy={busy}
+                  onSave={(next) => onLabel(picture.key, next)}
+                />
+              )}
               <button
                 type="button"
                 className="chip"
@@ -128,14 +163,28 @@ export function ClientPictures({
               The clinic exterior. In your words — it is how you will find it again.
             </em>
           </label>
+          <label className="field stacked">
+            <span>Use it when someone says…</span>
+            <input
+              type="text"
+              aria-label="Use it when someone says…"
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+            />
+            <em className="hint">
+              The words that mean this photo — a product name, say. Separate them however you
+              like. Leave it empty to pick this photo by hand instead.
+            </em>
+          </label>
           <button
             className="ghost"
             type="button"
             disabled={!ready}
             onClick={() => {
-              onAdd({ path: picked, description: description.trim() });
+              onAdd({ path: picked, description: description.trim(), label: label.trim() });
               setPicked('');
               setDescription('');
+              setLabel('');
             }}
           >
             {busy ? 'Adding…' : 'Add this photo'}
@@ -179,5 +228,59 @@ function Thumbnail({ path, description }: { path: string; description: string })
       alt={description}
       onError={() => setUnreadable(true)}
     />
+  );
+}
+
+/**
+ * The label on a photograph already saved, edited in place.
+ *
+ * It keeps its own draft and saves on demand rather than on every keystroke:
+ * each save is a write to the client's file, and a label is typed a word at a
+ * time. The button appears only once the draft differs from what is stored, so
+ * there is nothing to press when there is nothing to save.
+ */
+function SavedLabel({
+  description,
+  label,
+  busy,
+  onSave,
+}: {
+  description: string;
+  label: string;
+  busy: boolean;
+  onSave: (label: string) => void;
+}): JSX.Element {
+  const [draft, setDraft] = useState(label);
+  const changed = draft.trim() !== label.trim();
+  return (
+    <span className="saidwhen">
+      <label className="field stacked">
+        <span>Use it when someone says…</span>
+        <input
+          type="text"
+          aria-label={`Use ${description} when someone says…`}
+          value={draft}
+          disabled={busy}
+          onChange={(e) => setDraft(e.target.value)}
+        />
+      </label>
+      {changed ? (
+        <button
+          type="button"
+          className="chip"
+          disabled={busy}
+          aria-label={`Save the words for ${description}`}
+          onClick={() => onSave(draft.trim())}
+        >
+          {busy ? 'Saving…' : 'Save these words'}
+        </button>
+      ) : (
+        <em className="hint">
+          {label.trim() === ''
+            ? 'No words yet, so this photo is chosen by hand.'
+            : 'Used whenever one of these is spoken.'}
+        </em>
+      )}
+    </span>
   );
 }

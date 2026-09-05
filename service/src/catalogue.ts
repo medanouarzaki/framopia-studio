@@ -68,7 +68,33 @@ export interface CatalogueMode {
    * The path travels to the panel because the panel draws the thumbnail from
    * the file where it sits; nothing copies it and nothing sends it onward.
    */
-  pictures: { id: string; path: string; description: string }[];
+  pictures: { id: string; path: string; description: string; label?: string }[];
+  /**
+   * The values as they actually stand on the file, for the card that edits
+   * them.
+   *
+   * **`look` and `standards` are for reading and this is for writing**, and the
+   * two are not the same: `standards` resolves every blank to the value in
+   * force, so a client who set nothing reads as `mixed` and `vertical` — and an
+   * editor built on that would save those as choices the moment anything else
+   * was touched. Absent here means the client never named one.
+   *
+   * **Schema addition, optional with a default**: a panel reading an older
+   * service finds it missing and hides the editor rather than offering a
+   * control that would fail on the first press, which is what
+   * `pictures === undefined` already does one field above.
+   */
+  editable: {
+    name: string;
+    about?: string;
+    videoFolder?: string;
+    logoPath?: string;
+    language?: string;
+    videoShape?: string;
+    subtitleBaselineY?: number;
+    watermarkByDefault?: boolean;
+    fonts?: { latin: string; arabic: string; emphasis?: string };
+  };
 }
 
 /**
@@ -89,6 +115,31 @@ export interface VideoListing {
 }
 
 
+
+/**
+ * What is on the file, exactly, with nothing resolved.
+ *
+ * A field the client never named is absent here and stays absent: that is what
+ * makes the card able to say *standard* and to leave it standard.
+ */
+function editableOf(mode: ClientMode): CatalogueMode['editable'] {
+  const out: CatalogueMode['editable'] = { name: mode.name };
+  if (mode.about !== undefined) out.about = mode.about;
+  if (mode.videoFolder !== undefined) out.videoFolder = mode.videoFolder;
+  if (mode.logoPath !== undefined) out.logoPath = mode.logoPath;
+  if (mode.language !== undefined) out.language = mode.language;
+  if (mode.videoShape !== undefined) out.videoShape = mode.videoShape;
+  if (mode.subtitleBaselineY !== undefined) out.subtitleBaselineY = mode.subtitleBaselineY;
+  if (mode.watermarkByDefault !== undefined) out.watermarkByDefault = mode.watermarkByDefault;
+  if (mode.fonts.status === 'set') {
+    out.fonts = {
+      latin: mode.fonts.latin,
+      arabic: mode.fonts.arabic,
+      ...(mode.fonts.emphasis === undefined ? {} : { emphasis: mode.fonts.emphasis }),
+    };
+  }
+  return out;
+}
 
 function standardsOf(mode: ClientMode): CatalogueMode['standards'] {
   const d = clientDefaults(mode);
@@ -247,6 +298,7 @@ export function listModes(): CatalogueMode[] {
           },
           standards: standardsOf(mode),
           pictures: (mode.pictures ?? []).map((p) => ({ ...p })),
+          editable: editableOf(mode),
         };
         if (mode.fonts.status === 'set') {
           entry.fonts = { latin: mode.fonts.latin, arabic: mode.fonts.arabic };

@@ -19,10 +19,19 @@ import { fontListView } from './fonts.js';
 import { subtitlePreview } from './subtitle-preview.js';
 import { dryRun, DryRunError } from './dry-run.js';
 import {
+  addVideoPicture,
+  removeVideoPicture,
+  setVideoPictureLabel,
+} from './video-pictures.js';
+import {
   addPicture,
+  deleteClient,
   createClient,
   removePicture,
+  setDetails,
   setPalette,
+  setPictureLabel,
+  type ClientDetails,
   type NewClient,
 } from './clients/create.js';
 import { stepsFor, StepsError } from './steps.js';
@@ -191,7 +200,7 @@ export function createApp(token: string): http.Server {
       }
 
       if (req.method === 'POST' && url.pathname === '/clients/pictures') {
-        let body: { client?: unknown; path?: unknown; description?: unknown };
+        let body: { client?: unknown; path?: unknown; description?: unknown; label?: unknown };
         try {
           body = JSON.parse((await readBody(req)) || '{}') as typeof body;
         } catch {
@@ -206,6 +215,7 @@ export function createApp(token: string): http.Server {
           const picture = addPicture(body.client, {
             path: body.path,
             description: typeof body.description === 'string' ? body.description : '',
+            ...(typeof body.label === 'string' ? { label: body.label } : {}),
           });
           sendJson(res, 200, { picture });
         } catch (error) {
@@ -243,6 +253,86 @@ export function createApp(token: string): http.Server {
         try {
           setPalette(body.client, body.palette as Record<string, string>);
           sendJson(res, 200, { modes: listModes() });
+        } catch (error) {
+          sendJson(res, 400, { error: (error as Error).message });
+        }
+        return;
+      }
+
+      /*
+       * The label on a picture a client already has. Its own route rather than
+       * a field on the add route: a label is corrected far more often than a
+       * picture is replaced, and re-adding the file to change one word would
+       * renumber it and lose every plan that already names it.
+       */
+      if (req.method === 'POST' && url.pathname === '/clients/picture-label') {
+        let body: { client?: unknown; picture?: unknown; label?: unknown };
+        try {
+          body = JSON.parse((await readBody(req)) || '{}') as typeof body;
+        } catch {
+          sendJson(res, 400, { error: 'invalid JSON body' });
+          return;
+        }
+        if (typeof body.client !== 'string' || typeof body.picture !== 'string') {
+          sendJson(res, 400, { error: 'name the client and the picture' });
+          return;
+        }
+        try {
+          const picture = setPictureLabel(
+            body.client,
+            body.picture,
+            typeof body.label === 'string' ? body.label : '',
+          );
+          sendJson(res, 200, { picture, modes: listModes() });
+        } catch (error) {
+          sendJson(res, 400, { error: (error as Error).message });
+        }
+        return;
+      }
+
+      /*
+       * Everything about a saved client except the colours, which have their own
+       * route, and the photographs, which have theirs. Only the fields that are
+       * sent are touched, so one control edits one thing.
+       */
+      if (req.method === 'POST' && url.pathname === '/clients/details') {
+        let body: { client?: unknown; details?: unknown };
+        try {
+          body = JSON.parse((await readBody(req)) || '{}') as typeof body;
+        } catch {
+          sendJson(res, 400, { error: 'invalid JSON body' });
+          return;
+        }
+        if (typeof body.client !== 'string' || body.client === '') {
+          sendJson(res, 400, { error: 'name the client this is about' });
+          return;
+        }
+        if (typeof body.details !== 'object' || body.details === null) {
+          sendJson(res, 400, { error: 'send what to change as "details"' });
+          return;
+        }
+        try {
+          setDetails(body.client, body.details as ClientDetails);
+          sendJson(res, 200, { modes: listModes() });
+        } catch (error) {
+          sendJson(res, 400, { error: (error as Error).message });
+        }
+        return;
+      }
+
+      /*
+       * A client, taken off the picker. The file is moved aside rather than
+       * destroyed, and the reply says where it went.
+       */
+      if (req.method === 'DELETE' && url.pathname === '/clients') {
+        const client = url.searchParams.get('client');
+        if (client === null || client === '') {
+          sendJson(res, 400, { error: 'name the client to remove' });
+          return;
+        }
+        try {
+          const removed = deleteClient(client);
+          sendJson(res, 200, { removed, modes: listModes() });
         } catch (error) {
           sendJson(res, 400, { error: (error as Error).message });
         }
@@ -531,6 +621,76 @@ export function createApp(token: string): http.Server {
       }
 
       // Step 4, the image candidate picker.
+      /*
+       * Pictures attached to one reel. The plan is the reel's own file, so
+       * these travel on `planPath` exactly as an image choice does, and a
+       * picture put here belongs to this video and to nothing else.
+       */
+      if (req.method === 'POST' && url.pathname === '/video/pictures') {
+        let body: { planPath?: unknown; path?: unknown; description?: unknown; label?: unknown };
+        try {
+          body = JSON.parse((await readBody(req)) || '{}') as typeof body;
+        } catch {
+          sendJson(res, 400, { error: 'invalid JSON body' });
+          return;
+        }
+        if (typeof body.planPath !== 'string' || typeof body.path !== 'string') {
+          sendJson(res, 400, { error: 'name the video and the picture' });
+          return;
+        }
+        try {
+          const picture = await addVideoPicture(body.planPath, {
+            path: body.path,
+            description: typeof body.description === 'string' ? body.description : '',
+            ...(typeof body.label === 'string' ? { label: body.label } : {}),
+          });
+          sendJson(res, 200, { picture });
+        } catch (error) {
+          sendJson(res, 400, { error: (error as Error).message });
+        }
+        return;
+      }
+
+      if (req.method === 'POST' && url.pathname === '/video/picture-label') {
+        let body: { planPath?: unknown; picture?: unknown; label?: unknown };
+        try {
+          body = JSON.parse((await readBody(req)) || '{}') as typeof body;
+        } catch {
+          sendJson(res, 400, { error: 'invalid JSON body' });
+          return;
+        }
+        if (typeof body.planPath !== 'string' || typeof body.picture !== 'string') {
+          sendJson(res, 400, { error: 'name the video and the picture' });
+          return;
+        }
+        try {
+          const picture = await setVideoPictureLabel(
+            body.planPath,
+            body.picture,
+            typeof body.label === 'string' ? body.label : '',
+          );
+          sendJson(res, 200, { picture });
+        } catch (error) {
+          sendJson(res, 400, { error: (error as Error).message });
+        }
+        return;
+      }
+
+      if (req.method === 'DELETE' && url.pathname === '/video/pictures') {
+        const planPath = url.searchParams.get('planPath');
+        const picture = url.searchParams.get('picture');
+        if (planPath === null || picture === null) {
+          sendJson(res, 400, { error: 'name the video and the picture' });
+          return;
+        }
+        try {
+          sendJson(res, 200, await removeVideoPicture(planPath, picture));
+        } catch (error) {
+          sendJson(res, 400, { error: (error as Error).message });
+        }
+        return;
+      }
+
       if (req.method === 'GET' && url.pathname === '/images') {
         const reel = url.searchParams.get('reel');
         if (reel === null) {
