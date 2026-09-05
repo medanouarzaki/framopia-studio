@@ -41,6 +41,11 @@ export interface ShownPicture {
   description: string;
   /** Absent or empty means this picture is chosen by hand only. */
   label?: string;
+  /**
+   * Whether the file is on this machine. Absent means a service older than this
+   * panel, which cannot say — and then nothing is claimed either way.
+   */
+  onThisMachine?: boolean;
 }
 
 export function ClientPictures({
@@ -94,6 +99,20 @@ export function ClientPictures({
             <li key={picture.key}>
               <Thumbnail path={picture.path} description={picture.description} />
               <span className="what">{picture.description}</span>
+              {picture.onThisMachine === false ? (
+                /*
+                 * **Said with the picture, not at build time.** A client file
+                 * made on one Mac can name a drive another Mac has never seen,
+                 * and until Block 11 session 61 the only thing that noticed was
+                 * pre-flight, refusing after everything else had been done. It
+                 * does not refuse and it does not forget the picture: it says
+                 * what is true and leaves the choice alone.
+                 */
+                <span className="cannot" role="status">
+                  This photo is on a drive this Mac cannot see, so it cannot be used here yet.
+                  Plug that drive in, or add the photo again from where it is now.
+                </span>
+              ) : null}
               {onLabel === undefined ? (
                 <span className="saidwhen">
                   {picture.label === undefined || picture.label === ''

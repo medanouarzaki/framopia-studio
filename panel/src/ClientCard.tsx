@@ -121,6 +121,7 @@ function Photographs({
           path: picture.path,
           description: picture.description,
           ...(picture.label === undefined ? {} : { label: picture.label }),
+          ...(picture.onThisMachine === undefined ? {} : { onThisMachine: picture.onThisMachine }),
         }),
       )}
       dialog={dialog.available}

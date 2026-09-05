@@ -68,7 +68,27 @@ export interface CatalogueMode {
    * The path travels to the panel because the panel draws the thumbnail from
    * the file where it sits; nothing copies it and nothing sends it onward.
    */
-  pictures: { id: string; path: string; description: string; label?: string }[];
+  pictures: {
+    id: string;
+    path: string;
+    description: string;
+    label?: string;
+    /**
+     * Whether the file is actually on this machine.
+     *
+     * **A photograph lives where its owner put it**, so a client file made on
+     * one Mac can name a drive another Mac has never seen. Block 11 session 60
+     * measured what happened then: `loadMode` said ok, `validateMode` said `[]`,
+     * the panel was handed the dead path and drew nothing, and the only thing
+     * that ever said why was pre-flight, refusing at build time. Asked here so
+     * the answer arrives with the picture and before any button that spends
+     * money.
+     *
+     * **Schema addition, optional with a default**: a panel reading an older
+     * service finds it absent and says nothing, which is what it did before.
+     */
+    onThisMachine: boolean;
+  }[];
   /**
    * The values as they actually stand on the file, for the card that edits
    * them.
@@ -297,7 +317,10 @@ export function listModes(): CatalogueMode[] {
             logoPath: mode.logoPath ?? null,
           },
           standards: standardsOf(mode),
-          pictures: (mode.pictures ?? []).map((p) => ({ ...p })),
+          pictures: (mode.pictures ?? []).map((p) => ({
+            ...p,
+            onThisMachine: existsSync(p.path),
+          })),
           editable: editableOf(mode),
         };
         if (mode.fonts.status === 'set') {

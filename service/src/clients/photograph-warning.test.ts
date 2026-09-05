@@ -2,7 +2,8 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { REPO_ROOT, modePathFor } from '@framopia/core';
+import { REPO_ROOT, loadMode, modePathFor } from '@framopia/core';
+import { listModes } from '../catalogue.js';
 import { addPicture, createClient } from './create.js';
 import { imagesViewForPlan } from '../image-view.js';
 
@@ -120,5 +121,56 @@ describe('a client’s own photograph, too small for the space', () => {
     const id = clientWithPhotographs('Photograph Warning Gone');
     const view = await imagesViewForPlan(planChoosing(id, { 0: 'pic404' }));
     expect(view.slots[0]?.enlargement).toBeNull();
+  });
+});
+
+/**
+ * **A photograph on a drive this Mac cannot see.**
+ *
+ * Block 11 session 60 measured what happened: `loadMode` ok, `validateMode`
+ * `[]`, the panel handed the dead path, and only pre-flight refusing at build
+ * time. The catalogue now answers the question with the picture, so the panel
+ * can say it before any button that spends money.
+ */
+describe('whether a photograph is on this machine', () => {
+  it('says so for one that is, and for one that is not', () => {
+    const { id } = createClient({ name: 'Photograph Reachable Test' });
+    made.push(id);
+    addPicture(id, { path: SMALL, description: 'the one that is here' });
+
+    // Written straight onto the file: `addPicture` refuses a path that is not
+    // on disk, which is right for attaching and is exactly why a client made on
+    // another machine is the case that has to be constructed rather than added.
+    const modePath = modePathFor(id);
+    const raw = JSON.parse(readFileSync(modePath, 'utf8')) as {
+      pictures: { id: string; path: string; description: string }[];
+    };
+    raw.pictures.push({
+      id: 'pic002',
+      path: '/Volumes/Some Other Drive/clients/k2/clinic.png',
+      description: 'the one on the other drive',
+    });
+    writeFileSync(modePath, `${JSON.stringify(raw, null, 2)}\n`, 'utf8');
+
+    const shown = listModes().find((m) => m.id === id)?.pictures ?? [];
+    expect(shown.map((p) => `${p.id}: ${p.onThisMachine}`)).toEqual([
+      'pic001: true',
+      'pic002: false',
+    ]);
+  });
+
+  /* It does not refuse and it does not forget: the picture stays on the client. */
+  it('keeps the picture on the client either way', () => {
+    const { id } = createClient({ name: 'Photograph Reachable Kept' });
+    made.push(id);
+    const modePath = modePathFor(id);
+    const raw = JSON.parse(readFileSync(modePath, 'utf8')) as Record<string, unknown>;
+    raw['pictures'] = [
+      { id: 'pic001', path: '/Volumes/Some Other Drive/x.png', description: 'gone for now' },
+    ];
+    writeFileSync(modePath, `${JSON.stringify(raw, null, 2)}\n`, 'utf8');
+
+    expect(loadMode(id).pictures).toHaveLength(1);
+    expect(listModes().find((m) => m.id === id)?.pictures).toHaveLength(1);
   });
 });

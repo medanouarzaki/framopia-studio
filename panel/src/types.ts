@@ -168,7 +168,14 @@ export interface ClientMode {
    * is a different thing from a client having none — the screen says so rather
    * than offering an editor that would write into a route that is not there.
    */
-  pictures?: { id: string; path: string; description: string; label?: string }[];
+  pictures?: {
+    id: string;
+    path: string;
+    description: string;
+    label?: string;
+    /** Whether the file is on this machine. Absent means the service cannot say. */
+    onThisMachine?: boolean;
+  }[];
   /**
    * The values exactly as they stand on the client's file, for the card that
    * edits them. Absent means a service older than this panel, and the card

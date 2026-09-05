@@ -63,8 +63,19 @@ const SAVED_CLIENT = {
     subtitleBaselineY: 2480.4, chosen: ['language'],
   },
   pictures: [
-    { id: 'pic001', path: '/scratch/box.png', description: 'the product box', label: 'Zephyrine' },
-    { id: 'pic002', path: '/scratch/clinic.png', description: 'the clinic outside' },
+    {
+      id: 'pic001',
+      path: '/scratch/box.png',
+      description: 'the product box',
+      label: 'Zephyrine',
+      onThisMachine: true,
+    },
+    {
+      id: 'pic002',
+      path: '/scratch/clinic.png',
+      description: 'the clinic outside',
+      onThisMachine: true,
+    },
   ],
   editable: {
     name: 'A Scratch Client',
@@ -123,7 +134,10 @@ function recorder(extra = ''): string {
   `;
 }
 
-async function open(where: 'setup' | 'card'): Promise<Loaded | null> {
+async function open(
+  where: 'setup' | 'card',
+  modes: unknown[] = [SAVED_CLIENT],
+): Promise<Loaded | null> {
   if (browser === undefined) return null;
   const page = await browser.newPage({ viewport: { width: 420, height: 1400 } });
   const uncaught: string[] = [];
@@ -134,7 +148,7 @@ async function open(where: 'setup' | 'card'): Promise<Loaded | null> {
     window.__picked = '/scratch/chosen.png';
     window.cep = { fs: { showOpenDialogEx: () => ({ err: 0, data: [window.__picked] }) } };
   `);
-  await page.addInitScript(recorder());
+  await page.addInitScript(recorder(`window.__modes = ${JSON.stringify(modes)};`));
   await page.goto(`file://${INDEX}`);
   await page.waitForSelector('section.video', { timeout: 10_000 });
   if (where === 'setup') {
@@ -267,6 +281,49 @@ describe.skipIf(!built)('setting up a client', () => {
 });
 
 describe.skipIf(!built)('a client already saved', () => {
+  /**
+   * **A photograph on a drive this Mac cannot see.**
+   *
+   * A client file made on one machine can name a drive another has never seen.
+   * Block 11 session 60 measured what happened: the panel was handed the dead
+   * path, drew nothing, and the only thing that ever said why was pre-flight,
+   * refusing at build time. This is that answer arriving with the picture.
+   */
+  it('says a photograph is on a drive this Mac cannot see', async () => {
+    const away = JSON.parse(JSON.stringify(SAVED_CLIENT)) as typeof SAVED_CLIENT;
+    (away.pictures[1] as Record<string, unknown>)['onThisMachine'] = false;
+    const loaded = await open('card', [away]);
+    if (loaded === null) return;
+    try {
+      const text = (await loaded.page.textContent('.ownphotos')) ?? '';
+      expect(text).toContain('on a drive this Mac cannot see');
+      // It names which photograph, in the words he described it in.
+      expect(text).toContain('the clinic outside');
+      // It does not refuse and it does not forget: both are still listed.
+      expect(await loaded.page.locator('.photos li').count()).toBe(2);
+      expect(text).toContain('the product box');
+      // And it sends nobody anywhere.
+      for (const word of ['terminal', 'npm run', 'restart', 'command']) {
+        expect(`${word}: ${text.toLowerCase().includes(word)}`).toBe(`${word}: false`);
+      }
+      expect(loaded.uncaught).toEqual([]);
+    } finally {
+      await loaded.page.close();
+    }
+  }, 30_000);
+
+  it('says nothing about photographs that are all here', async () => {
+    const loaded = await open('card');
+    if (loaded === null) return;
+    try {
+      const text = (await loaded.page.textContent('.ownphotos')) ?? '';
+      expect(text).not.toContain('on a drive this Mac cannot see');
+      expect(loaded.uncaught).toEqual([]);
+    } finally {
+      await loaded.page.close();
+    }
+  }, 30_000);
+
   it('writes a label onto a picture that is already there', async () => {
     const loaded = await open('card');
     if (loaded === null) return;
