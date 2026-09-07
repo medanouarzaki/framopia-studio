@@ -6,7 +6,6 @@ import {
   OutgoingPathError,
   RETRY_MAX_ATTEMPTS,
   withTransientRetry,
-  COSTS_PATH,
   GEMINI_IMAGE_MODEL_FLASH,
   GEMINI_IMAGE_MODEL_PRO,
   loadMode,
@@ -238,12 +237,24 @@ describe('generateImages', () => {
 });
 
 describe('the ledger', () => {
+  /*
+   * **Its own ledger, never the machine's.** This wrote to `COSTS_PATH` and put
+   * it back afterwards — but only `if (before !== '')`, so on a machine whose
+   * ledger did not exist yet the restore was skipped and a fabricated
+   * $0.134 image charge stayed there for good. Block 11 session 65 reproduced
+   * it in the rehearsal clone: the first line in a fresh machine's append-only
+   * ledger was a call nobody made, and `npm run doctor` then reported the
+   * ledger present and healthy on the strength of it.
+   *
+   * A ledger is evidence. Nothing in a test may write to the real one, and
+   * restoring it afterwards is not good enough — a run killed midway leaves the
+   * line behind.
+   */
   let before: string;
+  let costsPath: string;
   beforeEach(() => {
-    before = existsSync(COSTS_PATH) ? readFileSync(COSTS_PATH, 'utf8') : '';
-  });
-  afterEach(() => {
-    if (before !== '') writeFileSync(COSTS_PATH, before, 'utf8');
+    costsPath = path.join(cacheRoot, 'costs.jsonl');
+    before = existsSync(costsPath) ? readFileSync(costsPath, 'utf8') : '';
   });
 
   /**
@@ -257,7 +268,7 @@ describe('the ledger', () => {
       client: new FakeClient(), videoSha256: VIDEO, cacheRoot,
     });
     expect(result.billedImages).toBe(8);
-    const after = existsSync(COSTS_PATH) ? readFileSync(COSTS_PATH, 'utf8') : '';
+    const after = existsSync(costsPath) ? readFileSync(costsPath, 'utf8') : '';
     expect(after).toBe(before);
   });
 
@@ -266,23 +277,23 @@ describe('the ledger', () => {
     await generateImages({
       slots: SLOTS, mode, config, client: new FakeClient(), videoSha256: VIDEO, cacheRoot,
     });
-    const snapshot = existsSync(COSTS_PATH) ? readFileSync(COSTS_PATH, 'utf8') : '';
+    const snapshot = existsSync(costsPath) ? readFileSync(costsPath, 'utf8') : '';
     const result = await generateImages({
       slots: SLOTS, mode, config, client: new FakeClient(), videoSha256: VIDEO, cacheRoot,
-      bill: true,
+      bill: true, costsPath,
     });
     expect(result.cachedImages).toBe(4);
-    expect(existsSync(COSTS_PATH) ? readFileSync(COSTS_PATH, 'utf8') : '').toBe(snapshot);
+    expect(existsSync(costsPath) ? readFileSync(costsPath, 'utf8') : '').toBe(snapshot);
   });
 
   it('is untouched when the ceiling aborts the run', async () => {
     await expect(
       generateImages({
         slots: SLOTS, mode, config: parseImageConfig({ ceilingUsd: 0.001 }),
-        client: new FakeClient(), videoSha256: VIDEO, cacheRoot, bill: true,
+        client: new FakeClient(), videoSha256: VIDEO, cacheRoot, bill: true, costsPath,
       }),
     ).rejects.toThrow(ImageBudgetExceededError);
-    expect(existsSync(COSTS_PATH) ? readFileSync(COSTS_PATH, 'utf8') : '').toBe(before);
+    expect(existsSync(costsPath) ? readFileSync(costsPath, 'utf8') : '').toBe(before);
   });
 });
 
@@ -320,12 +331,24 @@ describe('a request that had to be retried', () => {
     }
   }
 
+  /*
+   * **Its own ledger, never the machine's.** This wrote to `COSTS_PATH` and put
+   * it back afterwards — but only `if (before !== '')`, so on a machine whose
+   * ledger did not exist yet the restore was skipped and a fabricated
+   * $0.134 image charge stayed there for good. Block 11 session 65 reproduced
+   * it in the rehearsal clone: the first line in a fresh machine's append-only
+   * ledger was a call nobody made, and `npm run doctor` then reported the
+   * ledger present and healthy on the strength of it.
+   *
+   * A ledger is evidence. Nothing in a test may write to the real one, and
+   * restoring it afterwards is not good enough — a run killed midway leaves the
+   * line behind.
+   */
   let before: string;
+  let costsPath: string;
   beforeEach(() => {
-    before = existsSync(COSTS_PATH) ? readFileSync(COSTS_PATH, 'utf8') : '';
-  });
-  afterEach(() => {
-    if (before !== '') writeFileSync(COSTS_PATH, before, 'utf8');
+    costsPath = path.join(cacheRoot, 'costs.jsonl');
+    before = existsSync(costsPath) ? readFileSync(costsPath, 'utf8') : '';
   });
 
   it('counts one image, not one per attempt', async () => {
@@ -343,9 +366,9 @@ describe('a request that had to be retried', () => {
     const client = new FlakyClient(2);
     await generateImages({
       slots: [SLOTS[0] as ImageSlot], mode, config: parseImageConfig({ candidatesPerSlot: 2 }),
-      client, videoSha256: VIDEO, cacheRoot, bill: true, limit: 1,
+      client, videoSha256: VIDEO, cacheRoot, bill: true, limit: 1, costsPath,
     });
-    const after = existsSync(COSTS_PATH) ? readFileSync(COSTS_PATH, 'utf8') : '';
+    const after = existsSync(costsPath) ? readFileSync(costsPath, 'utf8') : '';
     const added = after.slice(before.length).trim().split('\n').filter((l) => l.length > 0);
     expect(client.attempts).toBe(3);
     expect(added).toHaveLength(1);
@@ -356,15 +379,21 @@ describe('a request that had to be retried', () => {
     await expect(
       generateImages({
         slots: [SLOTS[0] as ImageSlot], mode, config: parseImageConfig({ candidatesPerSlot: 2 }),
-        client, videoSha256: VIDEO, cacheRoot, bill: true, limit: 1,
+        client, videoSha256: VIDEO, cacheRoot, bill: true, limit: 1, costsPath,
       }),
     ).rejects.toThrow();
     expect(client.attempts).toBe(RETRY_MAX_ATTEMPTS);
-    expect(existsSync(COSTS_PATH) ? readFileSync(COSTS_PATH, 'utf8') : '').toBe(before);
+    expect(existsSync(costsPath) ? readFileSync(costsPath, 'utf8') : '').toBe(before);
   });
 });
 
 describe('dimension checking', () => {
+  // Its own ledger too, for the same reason: the wrong-shape test bills.
+  let costsPath: string;
+  beforeEach(() => {
+    costsPath = path.join(cacheRoot, 'costs.jsonl');
+  });
+
   /**
    * The session-2 defect, as a test. 2752x1536 came back for a 2K 1:1
    * request; nothing in the code could see it, so a human measured it with
@@ -393,16 +422,16 @@ describe('dimension checking', () => {
   // A wrong-shaped image is an unpriced request, so it must not become a
   // cache entry the next run serves as a candidate.
   it('caches nothing and writes no ledger line when the shape is wrong', async () => {
-    const before = existsSync(COSTS_PATH) ? readFileSync(COSTS_PATH, 'utf8') : '';
+    const before = existsSync(costsPath) ? readFileSync(costsPath, 'utf8') : '';
     await expect(
       generateImages({
         slots: [SLOTS[0]], mode, config: parseImageConfig({ resolution: '2K' }),
         client: new FakeClient('image/jpeg', { width: 2752, height: 1536 }),
-        videoSha256: VIDEO, cacheRoot, bill: true,
+        videoSha256: VIDEO, cacheRoot, bill: true, costsPath,
       }),
     ).rejects.toThrow(ImageDimensionMismatchError);
     expect(readdirSync(cacheRoot)).toEqual([]);
-    expect(existsSync(COSTS_PATH) ? readFileSync(COSTS_PATH, 'utf8') : '').toBe(before);
+    expect(existsSync(costsPath) ? readFileSync(costsPath, 'utf8') : '').toBe(before);
   });
 
   it('accepts the requested shape', async () => {
