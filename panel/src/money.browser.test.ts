@@ -140,6 +140,84 @@ describe.skipIf(!built)('the money screen', () => {
     }
   }, 30_000);
 
+  /*
+   * **The defect Mohamed actually saw.** Session 69 rendered
+   * `Spent since the beginning$18.83165 charges, from 2026-08-24` — the label,
+   * the amount and the count with nothing between them, because they were
+   * inline elements in one flow.
+   *
+   * This measures it the way an eye does: for every pair of adjacent pieces of
+   * text in the banner, either they are on different lines or there is real
+   * space between them. A string test could not have caught it — the text was
+   * always correct, and it was the boxes that ran together.
+   */
+  it('never runs two pieces of text together', async () => {
+    const loaded = await open();
+    if (loaded === null) return;
+    try {
+      const touching = await loaded.page.$$eval('.moneybanner .figure', (figures) => {
+        const bad: string[] = [];
+        for (const figure of figures) {
+          const kids = [...figure.children] as HTMLElement[];
+          for (let i = 1; i < kids.length; i += 1) {
+            const a = (kids[i - 1] as HTMLElement).getBoundingClientRect();
+            const b = (kids[i] as HTMLElement).getBoundingClientRect();
+            const sameLine = b.top < a.bottom - 1;
+            const gap = b.left - a.right;
+            if (sameLine && gap < 4) {
+              bad.push(
+                `${(kids[i - 1] as HTMLElement).textContent ?? ''} | ${(kids[i] as HTMLElement).textContent ?? ''}`,
+              );
+            }
+          }
+        }
+        return bad;
+      });
+      expect(touching).toEqual([]);
+      expect(loaded.uncaught).toEqual([]);
+    } finally {
+      await loaded.page.close();
+    }
+  }, 30_000);
+
+  /*
+   * Amounts are read down a column, so they must actually share a right edge.
+   */
+  it('lines the amounts up in a column', async () => {
+    const loaded = await open();
+    if (loaded === null) return;
+    try {
+      const rights = await loaded.page.$$eval('.moneygroups .amount', (tds) =>
+        tds.map((td) => Math.round(td.getBoundingClientRect().right)),
+      );
+      expect(rights.length).toBeGreaterThan(1);
+      expect(new Set(rights).size).toBe(1);
+      expect(loaded.uncaught).toEqual([]);
+    } finally {
+      await loaded.page.close();
+    }
+  }, 30_000);
+
+  /* Nothing may push the numbers off the panel's edge. */
+  it('keeps every row inside the panel', async () => {
+    const loaded = await open();
+    if (loaded === null) return;
+    try {
+      const overflow = await loaded.page.evaluate(() => {
+        const root = document.querySelector('.money') as HTMLElement | null;
+        if (root === null) return ['no money screen'];
+        const limit = Math.round(root.getBoundingClientRect().right);
+        return [...root.querySelectorAll('.amount, .rate, .total')]
+          .filter((el) => Math.round(el.getBoundingClientRect().right) > limit)
+          .map((el) => el.textContent ?? '');
+      });
+      expect(overflow).toEqual([]);
+      expect(loaded.uncaught).toEqual([]);
+    } finally {
+      await loaded.page.close();
+    }
+  }, 30_000);
+
   it('offers a cap and says it only warns', async () => {
     const loaded = await open();
     if (loaded === null) return;

@@ -458,9 +458,11 @@ function Panel({
     return (
       <div className="app">
         <Brand logoSrc={logoSrc} service={service} />
-        <button type="button" className="ghost" onClick={() => setShowMoney(false)}>
-          Back
-        </button>
+        <div className="moneyback">
+          <button type="button" className="ghost" onClick={() => setShowMoney(false)}>
+            Back
+          </button>
+        </div>
         <Money connection={connection} />
       </div>
     );

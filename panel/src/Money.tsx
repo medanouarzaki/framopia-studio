@@ -86,67 +86,76 @@ export function Money({ connection }: { connection: Connection }): JSX.Element {
       <div className="moneybanner">
         <div className="figure">
           <span className="what">Spent since the beginning</span>
-          <strong className="total">{usd(data.totalUsd)}</strong>
-          <span className="faint">
+          <strong className="total">{usdExact(data.totalUsd)}</strong>
+          <span className="since">
             {data.lines} {data.lines === 1 ? 'charge' : 'charges'}
-            {data.firstAt === null ? '' : `, from ${data.firstAt.slice(0, 10)}`}
           </span>
+          {data.firstAt === null ? null : (
+            <span className="since">since {data.firstAt.slice(0, 10)}</span>
+          )}
         </div>
 
-        <div className="figure">
+        <div className="figure credit">
           <span className="what">Credit left</span>
           {data.credit === null ? (
             <>
-              <strong className="total faint">not entered</strong>
-              <span className="faint">
-                Framopia cannot see your account. Type what your billing page says.
-              </span>
+              <strong className="total none">not entered</strong>
+              <span className="since">Framopia cannot see your account.</span>
             </>
           ) : (
             <>
               <strong className="total">{usd(data.credit.impliedRemainingUsd)}</strong>
               {/*
-               * **Never presented as a reading.** Block 10 session 46 carried a
-               * balance forward by subtracting ledger spend and got $2.91 where
-               * a later report said $2.71 — a $0.20 gap nothing could explain.
-               * So the sentence says whose figure it is, when it was taken, and
-               * that the number above it is arithmetic from those two.
+               * **Three separate things, because they are three.** Session 69
+               * rendered his figure, its date, what has been spent and the
+               * caveat as one run of text, and Mohamed could not read it.
+               *
+               * The caveat itself is ruled and survives the rewrite: session 46
+               * carried a balance forward by subtracting ledger spend and got
+               * $2.91 where a later report said $2.71, a $0.20 gap the
+               * repository could not explain.
                */}
-              <span className="faint">
+              <span className="since">
                 You entered {usd(data.credit.enteredUsd)} on{' '}
-                {data.credit.enteredAt.slice(0, 10)}, and{' '}
-                {usd(data.credit.spentSinceUsd)} has been spent since. This is that
-                subtraction, not a reading of your account.
+                {data.credit.enteredAt.slice(0, 10)}
               </span>
+              <span className="since">
+                {usd(data.credit.spentSinceUsd)} spent since then
+              </span>
+              <span className="caveat">Subtraction, not a reading of your account</span>
             </>
           )}
-          <label className="creditentry">
-            <span>What your billing page says now</span>
-            <input
-              type="text"
-              inputMode="decimal"
-              value={creditDraft}
-              placeholder="0.00"
-              onChange={(e) => setCreditDraft(e.target.value)}
-            />
-            <button
-              type="button"
-              className="ghost"
-              disabled={Number.isNaN(Number(creditDraft)) || creditDraft.trim() === ''}
-              onClick={() => {
-                void (async () => {
-                  try {
-                    setData(await saveCredit(connection, Number(creditDraft)));
-                    setCreditDraft('');
-                  } catch (error) {
-                    setTrouble((error as Error).message);
-                  }
-                })();
-              }}
-            >
-              Save
-            </button>
-          </label>
+        </div>
+      </div>
+
+      <div className="creditset">
+        <label htmlFor="creditnow">What your billing page says now</label>
+        <div className="row">
+          <input
+            id="creditnow"
+            type="text"
+            inputMode="decimal"
+            value={creditDraft}
+            placeholder="0.00"
+            onChange={(e) => setCreditDraft(e.target.value)}
+          />
+          <button
+            type="button"
+            className="ghost"
+            disabled={Number.isNaN(Number(creditDraft)) || creditDraft.trim() === ''}
+            onClick={() => {
+              void (async () => {
+                try {
+                  setData(await saveCredit(connection, Number(creditDraft)));
+                  setCreditDraft('');
+                } catch (error) {
+                  setTrouble((error as Error).message);
+                }
+              })();
+            }}
+          >
+            Save
+          </button>
         </div>
       </div>
 
@@ -176,9 +185,7 @@ export function Money({ connection }: { connection: Connection }): JSX.Element {
           {groups.map((g) => (
             <tr key={g.key} className={g.key === BEFORE_LABEL ? 'unattributed' : ''}>
               <th scope="row">{g.key}</th>
-              <td className="count">
-                {g.lines} {g.lines === 1 ? 'charge' : 'charges'}
-              </td>
+              <td className="count">{g.lines}</td>
               <td className="amount">{usd(g.usd)}</td>
             </tr>
           ))}
@@ -192,23 +199,31 @@ export function Money({ connection }: { connection: Connection }): JSX.Element {
             <tbody>
               {data.perReel.map((r) => (
                 <tr key={r.reel}>
-                  <th scope="row">{r.reel}</th>
+                  <th scope="row" title={r.reel}>
+                    {r.reel}
+                  </th>
                   <td className="amount">{usd(r.spentUsd)}</td>
-                  <td className="faint">
-                    {r.usdPerSecond === null
-                      ? 'length not recorded'
-                      : `${usd(r.usdPerSecond)} a second`}
+                  <td className="rate">
+                    {r.usdPerSecond === null ? '—' : `${usd(r.usdPerSecond)}/s`}
                   </td>
-                  {/*
-                   * Which stages actually billed, so a video that only ever had
-                   * its pictures made is not read as a whole one. Measured on
-                   * 2026-09-08: four of the six reels are partial runs.
-                   */}
-                  <td className="faint">{r.stages.join(', ')}</td>
                 </tr>
               ))}
             </tbody>
           </table>
+          {/*
+           * Which stages actually paid, under the row rather than beside it: on
+           * a panel this narrow a fourth column pushed the numbers off the edge.
+           * Measured on 2026-09-08 — four of the six reels are partial runs, so
+           * a reel that only ever had its pictures made must not read as whole.
+           */}
+          <ul className="reelstages">
+            {data.perReel.map((r) => (
+              <li key={r.reel}>
+                <span className="name">{r.reel}</span>
+                <span className="paid">{r.stages.length === 0 ? 'nothing yet' : r.stages.join(', ')}</span>
+              </li>
+            ))}
+          </ul>
         </>
       ) : null}
 

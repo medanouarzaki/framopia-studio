@@ -693,3 +693,110 @@ section.client .say, section.video .say { margin: 8px 0 0; color: var(--muted); 
 .colours .colour input.hex.refused { border-color: var(--bad, #c0392b); }
 .colours .colour .trouble { flex-basis: 100%; font-size: 0.72em; color: var(--bad, #c0392b); }
 .palette .swatches input.hex { width: 7em; }
+
+/*
+ * The money screen. Mohamed looked at the first one and rejected it: labels and
+ * numbers ran together — `Spent since the beginning$18.83165 charges` — and six
+ * full-width buttons pushed every real figure below the fold.
+ *
+ * Nothing new is invented here. The cards, the borders, the radius, the muted
+ * and faint greys and the tabular numerals are the panel's own, taken from the
+ * rules above rather than written again.
+ */
+.money { display: grid; gap: 14px; padding: 0 20px 20px; min-width: 0; }
+
+.moneybanner { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.moneybanner .figure {
+  display: flex; flex-direction: column; gap: 3px; min-width: 0;
+  background: var(--panel); border: 1px solid var(--line);
+  border-radius: 9px; padding: 12px 13px;
+}
+.moneybanner .what {
+  color: var(--muted); font-size: 0.7em; text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.moneybanner .total {
+  font-size: 1.5em; font-weight: 600; letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums; overflow-wrap: anywhere;
+}
+.moneybanner .total.none { font-size: 1em; color: var(--faint); font-weight: 500; }
+.moneybanner .since { color: var(--faint); font-size: 0.72em; }
+.moneybanner .caveat { color: var(--warn); font-size: 0.7em; margin-top: 2px; }
+
+.creditset { display: grid; gap: 6px; }
+.creditset label { color: var(--muted); font-size: 0.75em; }
+.creditset .row { display: flex; gap: 8px; align-items: center; }
+.creditset input {
+  flex: 1 1 0; min-width: 0; padding: 7px 10px;
+  background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px;
+  color: var(--text); font: inherit; font-variant-numeric: tabular-nums;
+}
+.creditset .ghost { margin-top: 0; flex: 0 0 auto; }
+
+/* A row of choices, not six pages of navigation. */
+.moneyfilters { display: flex; flex-wrap: wrap; gap: 6px; }
+.moneyfilters button {
+  width: auto; padding: 5px 11px;
+  background: var(--panel-2); border: 1px solid var(--line); border-radius: 999px;
+  color: var(--muted); font: inherit; font-size: 0.78em; cursor: pointer;
+}
+.moneyfilters button:hover { color: var(--text); border-color: #3a4049; }
+.moneyfilters button.chosen {
+  background: var(--panel); border-color: var(--accent); color: var(--text);
+}
+
+.money .partial {
+  margin: 0; color: var(--muted); font-size: 0.75em; line-height: 1.55;
+  border-left: 2px solid var(--line); padding-left: 10px;
+}
+
+/* Amounts in a column, read down. Names may shrink; numbers never do. */
+.money table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.money table th[scope='row'] {
+  text-align: left; font-weight: 400; color: var(--text);
+  padding: 6px 8px 6px 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.money table td { padding: 6px 0; color: var(--muted); font-size: 0.85em; }
+.money table .count { width: 3.4em; text-align: right; color: var(--faint); }
+.money table .amount {
+  width: 5.6em; text-align: right; color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.money table .rate {
+  width: 5.4em; text-align: right; color: var(--faint);
+  font-variant-numeric: tabular-nums;
+}
+.money tr + tr th[scope='row'], .money tr + tr td { border-top: 1px solid var(--line); }
+.money tr.unattributed th[scope='row'] { color: var(--muted); font-style: italic; }
+
+.money h3 {
+  margin: 4px 0 0; font-size: 0.8em; font-weight: 600;
+  color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em;
+}
+
+.reelstages { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; }
+.reelstages li { display: flex; gap: 8px; font-size: 0.7em; color: var(--faint); }
+.reelstages .name {
+  flex: 0 0 8.5em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.reelstages .paid { flex: 1 1 0; min-width: 0; overflow-wrap: anywhere; }
+
+.moneycap { display: grid; gap: 6px; }
+.moneycap p { margin: 0; color: var(--muted); font-size: 0.75em; line-height: 1.55; }
+.capentry { display: flex; gap: 8px; align-items: center; }
+.capentry span { color: var(--muted); font-size: 0.75em; flex: 0 0 auto; }
+.capentry input {
+  flex: 1 1 0; min-width: 0; padding: 7px 10px;
+  background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px;
+  color: var(--text); font: inherit; font-variant-numeric: tabular-nums;
+}
+.capentry .ghost { margin-top: 0; flex: 0 0 auto; }
+
+/* Back is a step, not a band. */
+.moneyback { padding: 14px 20px 0; }
+.moneyback .ghost { margin-top: 0; }
+
+.capwarning {
+  margin: 6px 0 0; color: var(--warn); font-size: 0.75em; line-height: 1.5;
+}
