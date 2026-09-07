@@ -17,14 +17,23 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const PANEL = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const EXTENSIONS = path.join(
-  homedir(),
-  'Library',
-  'Application Support',
-  'Adobe',
-  'CEP',
-  'extensions',
-);
+
+/**
+ * **Overridable so it can be watched working.** The real folder is the one
+ * After Effects reads, and there is exactly one of it per Mac: driving a test
+ * against it would repoint the panel the person is using. This is the same
+ * reason `tools/doctor/checks.ts` makes every path overridable — a step that
+ * has only ever been run once, by hand, on the machine that wrote it, is not a
+ * step anybody has tested.
+ *
+ * Setting it also skips the `defaults write` below. `PlayerDebugMode` is a
+ * per-machine preference that only means anything for the real folder, so a run
+ * pointed somewhere else has no business changing it.
+ */
+const STANDIN = process.env['FRAMOPIA_CEP_EXTENSIONS_DIR'];
+const EXTENSIONS =
+  STANDIN ??
+  path.join(homedir(), 'Library', 'Application Support', 'Adobe', 'CEP', 'extensions');
 const LINK = path.join(EXTENSIONS, 'com.framopia.studio');
 
 /**
@@ -38,7 +47,12 @@ const CSXS_DOMAINS = [10, 11, 12, 13];
 
 const did = [];
 
-for (const version of CSXS_DOMAINS) {
+if (STANDIN !== undefined) {
+  console.log(`install: pointed at a stand-in folder, ${STANDIN}`);
+  console.log('install: PlayerDebugMode left alone — it only means anything for the real folder');
+}
+
+for (const version of STANDIN === undefined ? CSXS_DOMAINS : []) {
   const domain = `com.adobe.CSXS.${version}`;
   let current = null;
   try {
@@ -59,14 +73,50 @@ for (const version of CSXS_DOMAINS) {
 
 mkdirSync(EXTENSIONS, { recursive: true });
 
+/*
+ * **Said before anything is changed, every time.** There is one extensions
+ * folder per Mac and it can only point at one checkout. A second checkout — a
+ * partner with two clones, or a rehearsal copy on this machine — pointed the
+ * same folder somewhere new without a word, and the panel the person was
+ * actually using quietly became a different one.
+ */
+const pointsAtNow = (() => {
+  const stat = lstatSync(LINK, { throwIfNoEntry: false });
+  if (stat === undefined) return null;
+  return stat.isSymbolicLink() ? readlinkSync(LINK) : '(a real directory, not a link)';
+})();
+console.log(`install: the extensions folder is ${EXTENSIONS}`);
+console.log(`install: it points at    ${pointsAtNow ?? '(nothing yet)'}`);
+console.log(`install: it would point at ${PANEL}`);
+
 if (existsSync(LINK) || lstatSync(LINK, { throwIfNoEntry: false })) {
   const stat = lstatSync(LINK);
   if (stat.isSymbolicLink() && readlinkSync(LINK) === PANEL) {
     did.push(`${LINK} -> already points at ${PANEL}`);
   } else if (stat.isSymbolicLink()) {
+    /*
+     * **A flag rather than a question.** This is run by copy-paste from
+     * `docs/SECOND_MACHINE.md`, sometimes with no terminal attached to answer a
+     * prompt, and a prompt cannot be rehearsed or tested — which is what got
+     * this step to session 66 unexercised. A flag is written down, is the same
+     * every time, and shows up in whatever the person pastes back.
+     */
+    if (!process.argv.includes('--repoint')) {
+      console.error('');
+      console.error('install: REFUSED — this folder already points somewhere else.');
+      console.error(`install:   it points at    ${readlinkSync(LINK)}`);
+      console.error(`install:   you are asking for ${PANEL}`);
+      console.error('');
+      console.error('install: After Effects can only load the panel from one of them, and');
+      console.error('install: repointing takes the panel away from the other copy. If that is');
+      console.error('install: what you want, run the same command again with --repoint on the');
+      console.error('install: end. If it is not, nothing here has been changed.');
+      process.exit(1);
+    }
+    const was = readlinkSync(LINK);
     rmSync(LINK);
     symlinkSync(PANEL, LINK);
-    did.push(`${LINK} -> repointed to ${PANEL}`);
+    did.push(`${LINK} -> repointed to ${PANEL} (was ${was}, and --repoint was given)`);
   } else {
     console.error(
       `install: ${LINK} exists and is not a symlink. Move it aside by hand — ` +
