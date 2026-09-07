@@ -266,9 +266,31 @@ Aug 27 19:06.
 **`.local/` directories at the end:** `audio` 27 · `bench-audio` 5 · `build` 70 ·
 `cache` 159 · `cv` 1759 · `deleted-clients` 0 · `doctor` 1 · `evidence` 3 ·
 `ground-truth` 10 · `plans` 49 · `quarantine-session51` 363 ·
-`quarantine-session53` 139 · `quarantine-session54` 1 · `transcripts` 1 —
-unchanged from the start. **No `credit.json` or `cap.json` was written**: neither
-was set, and the defaults are none.
+`quarantine-session53` 139 · `quarantine-session54` 1 · **`quarantine-session69`
+3** · `transcripts` 1. **No `credit.json` or `cap.json` was written**: neither was
+set, and the defaults are none.
+
+### The one new quarantine, and it is mine
+
+After the gate had passed, I ran the suites again to capture test names for the
+arithmetic and let a service run hit a ten-minute timeout. **Killing it skipped
+its `afterAll`**, and `service/src/new-video.test.ts` left three scratch clients
+in `modes/`:
+
+```
+?? modes/a-client-with-its-own-pictures-test.json
+?? modes/a-client-with-no-pictures-test.json
+?? modes/a-second-client-for-the-new-video-test.json
+```
+
+All three carry `note: "written by new-video.test.ts and deleted when it
+finishes"`, and the suite does delete them when it is allowed to finish — this
+was my doing, not a defect in the test. They are **moved to
+`.local/quarantine-session69/`, not deleted**, and `modes/` holds exactly
+`.gitkeep`, `dr-loubna-kfafi.json` and `k2-syndicalia.json` again.
+
+The gate itself ran before this happened and was clean; the strays existed only
+between that run and the quarantine.
 
 After Effects was driven only by `npm run golden`, through `DoScript` into the
 already-running instance. It was never launched and never quit. No `.aep` was
