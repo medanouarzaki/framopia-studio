@@ -2,7 +2,7 @@ import { mkdtempSync, readFileSync, readdirSync, rmSync, existsSync } from 'node
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { appendCost, readCosts } from './costs.js';
+import { appendCost, readCosts, spendPurposeFor } from './costs.js';
 import { REPO_ROOT } from './paths.js';
 
 describe('cost ledger', () => {
@@ -135,7 +135,17 @@ describe('the ledger a test writes to', () => {
       const root = path.join(REPO_ROOT, dir, 'src');
       if (!existsSync(root)) continue;
       for (const file of testFiles(root)) {
-        for (const call of billingCalls(readFileSync(file, 'utf8'))) {
+        /*
+         * Comments stripped first, like the sibling test below and like
+         * `service/src/clients/pictures.test.ts`: the rule is about what the
+         * code does, not about what it says it does. Session 68 wrote a doc
+         * comment naming `appendCost` with its bracket and was reported as a
+         * billing call.
+         */
+        const code = readFileSync(file, 'utf8')
+          .replace(/\/\*[\s\S]*?\*\//g, '')
+          .replace(/^\s*\/\/.*$/gm, '');
+        for (const call of billingCalls(code)) {
           const bills = call.includes('bill: true') || call.startsWith('appendCost' + '(');
           if (bills && !call.includes('costsPath')) {
             offenders.push(path.relative(REPO_ROOT, file));
@@ -162,5 +172,107 @@ describe('the ledger a test writes to', () => {
       }
     }
     expect(offenders).toEqual([]);
+  });
+});
+
+/**
+ * **What a ledger line says about where the money went.**
+ *
+ * Block 12 session 68 read the 165 lines already on disk: they carry stage,
+ * model, unit, amount and timestamp, and **nothing that says which client or
+ * which video**. Session 46 rebuilt a per-reel table from `.local/cache/`, and
+ * session 68 measured that the same reconstruction now recovers only 54.9% of
+ * the total, because the caches evict. These fields stop that share falling.
+ */
+describe('a ledger line that says where the money went', () => {
+  let dir: string;
+  let costsPath: string;
+  beforeEach(() => {
+    dir = mkdtempSync(path.join(tmpdir(), 'framopia-where-'));
+    costsPath = path.join(dir, 'costs.jsonl');
+  });
+  afterEach(() => rmSync(dir, { recursive: true, force: true }));
+
+  const read = (): Record<string, unknown>[] =>
+    readFileSync(costsPath, 'utf8')
+      .split('\n')
+      .filter(Boolean)
+      .map((l) => JSON.parse(l) as Record<string, unknown>);
+
+  it('carries the client, the video and what the spend was for', () => {
+    appendCost(
+      {
+        stage: 'images-generate',
+        model: 'gemini-3-pro-image',
+        unit: 'image',
+        usd: 0.13,
+        client: 'dr-loubna-kfafi',
+        video: 'a'.repeat(64),
+        purpose: 'client-work',
+      },
+      costsPath,
+    );
+    const [line] = read();
+    expect(line?.['client']).toBe('dr-loubna-kfafi');
+    expect(line?.['video']).toBe('a'.repeat(64));
+    expect(line?.['purpose']).toBe('client-work');
+  });
+
+  /*
+   * The 165 lines already on disk have none of these. Absent must stay absent:
+   * a reader shows such a line as *before this was recorded*, and a default
+   * written in here would turn "unknown" into a claim.
+   */
+  it('writes no field that was not given, so an old line stays an old line', () => {
+    appendCost({ stage: 'transcribe-scribe', model: 'scribe_v2', unit: 'run', usd: 0.001 }, costsPath);
+    const [line] = read();
+    expect(Object.keys(line ?? {}).sort()).toEqual(
+      ['model', 'stage', 'timestamp', 'unit', 'usd'].sort(),
+    );
+  });
+});
+
+/**
+ * **Building the tool, or doing a client's work.**
+ *
+ * Derived from the video the money was spent on, never set by hand: a figure a
+ * person types is a figure a person can be wrong about, and this one decides
+ * how the agency reads its own costs.
+ */
+describe('what a spend was for', () => {
+  const catalogue = JSON.parse(
+    readFileSync(path.join(REPO_ROOT, 'benchmarks', 'footage.json'), 'utf8'),
+  ) as { reels: { label: string; sha256?: string }[] };
+
+  it('calls every reel in the corpus building the tool', () => {
+    for (const reel of catalogue.reels) {
+      expect(`${reel.label}: ${spendPurposeFor(reel.sha256)}`).toBe(`${reel.label}: building`);
+    }
+  });
+
+  it('calls anything else a client’s work', () => {
+    // sora, the one real client video, measured by session 46.
+    expect(
+      spendPurposeFor('619b8eaecae46b0da6f3c8cc9f9b08636a348a1d2ecef40bcdaa7e8cac2c4b67'),
+    ).toBe('client-work');
+  });
+
+  /*
+   * Benchmarks and prompt experiments name no video and are building by
+   * definition — session 68 measured $4.502282 of exactly that in the existing
+   * lines, which is 23.9% of everything spent.
+   */
+  it('calls a spend with no video at all building the tool', () => {
+    expect(spendPurposeFor(null)).toBe('building');
+    expect(spendPurposeFor(undefined)).toBe('building');
+    expect(spendPurposeFor('')).toBe('building');
+  });
+
+  /* Read from the catalogue, so the corpus is the one place it is written down. */
+  it('reads the corpus from the catalogue the doctor checks', () => {
+    const source = readFileSync(path.join(REPO_ROOT, 'core', 'src', 'costs.ts'), 'utf8');
+    expect(source).toContain("'benchmarks', 'footage.json'");
+    // Not a list of sha256s typed into the source, which would drift.
+    expect(source).not.toMatch(/'[0-9a-f]{64}'/);
   });
 });

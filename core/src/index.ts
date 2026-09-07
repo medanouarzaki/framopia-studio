@@ -1,5 +1,12 @@
 export { ConfigError, CONFIG_PATH, loadConfig, type FramopiaConfig } from './config.js';
-export { appendCost, readCosts, COSTS_PATH, type CostEntry } from './costs.js';
+export {
+  appendCost,
+  readCosts,
+  spendPurposeFor,
+  COSTS_PATH,
+  type CostEntry,
+  type SpendPurpose,
+} from './costs.js';
 export { appVersion } from './app-version.js';
 export {
   align,
