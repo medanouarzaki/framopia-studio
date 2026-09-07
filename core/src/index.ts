@@ -1,3 +1,20 @@
+export {
+  readLedger,
+  sumUsd,
+  byStage,
+  byModel,
+  byDay,
+  byMonth,
+  byClient,
+  byVideo,
+  byPurpose,
+  unattributed,
+  BEFORE_THIS_WAS_RECORDED,
+  type Ledger,
+  type LedgerLine,
+  type UnreadableLine,
+  type Group,
+} from './ledger-read.js';
 export { ConfigError, CONFIG_PATH, loadConfig, type FramopiaConfig } from './config.js';
 export {
   appendCost,
