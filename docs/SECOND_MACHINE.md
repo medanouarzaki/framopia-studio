@@ -21,31 +21,36 @@ until these are fixed"*, you are done.
 Written from measurement on the first Mac, not from optimism. Read it before
 the steps, so nothing below surprises you.
 
-**What works today.** Four of the five test videos — `test-1`, `test-2`,
-`test-3` and `vitasilk` — build all the way to a saved After Effects project,
-in two to six seconds each, and **cost nothing**, because every paid answer they
-need is already saved and travels with the project. **Those four are the set
-`npm run golden` checks** (§15): your Mac builds them, and about 17,000 details
-of the result are compared against what the first Mac produced. That is what a good run
-looks like: four videos built, `$0.00` spent. The repository can live in any
-folder on your Mac; it used to have to sit at one exact path and no longer does.
+**You do not need the videos.** The five test videos are 11.93 GB and they are
+**not part of this setup**. What you need instead is five small files — the Edit
+Plans, 297 KB in total, §11 — which are small enough to send in a message.
+Everything below was measured on 2026-09-07 on a fresh copy with **no video on
+disk at all**.
 
-**What does not, and is not your fault.** The fifth video, `ground-truth`,
-**will refuse to build**, and that is expected. Its six pictures were never
-bought: the image service has been answering with a capacity error
+**What you will have when you finish.** A working panel in After Effects, and
+with it: creating a client, correcting any of their details, giving them a
+photograph, giving them their brand colours, removing a client, and attaching
+pictures to one video. All of it measured on a copy holding no video, no saved
+API answers and no cost ledger. The panel's own test suite — 244 checks — passes
+in full in that state.
+
+**What you cannot do until you have your own key.** Anything that costs money:
+transcribing a video, working out its keywords, and generating pictures. §10 is
+where your key goes. **Nothing else in this document is blocked by it.**
+
+**One thing to know about the key.** If you forget to replace the example values
+in §10, the tool will not notice at startup — it starts normally and fails at
+the first paid call. `npm run doctor` does notice, and says so plainly, which is
+why §14 asks you to run it before you begin work.
+
+**What does not build, and is not your fault.** The fifth video, `ground-truth`,
+**will refuse to build** if you ever get as far as trying. Its six pictures were
+never bought: the image service has been answering with a capacity error
 (`503 … currently experiencing high demand`) for three sessions running, so the
-pictures do not exist and there is nothing to place. What you will see is:
-
-```
-build refused at pre-flight: 6 element(s) have no placement; refusing to build a comp with gaps:
-  image img001: …
-  image img002: …
-```
-
-**That is the tool being careful, not your setup being wrong.** It would rather
-refuse than hand you a composition with holes in it. Do not try to fix it, and
-do not spend anything trying: buying those six pictures costs about $2.17 and is
-a decision for us, not a setup step.
+pictures do not exist and there is nothing to place. **That is the tool being
+careful, not your setup being wrong.** It would rather refuse than hand you a
+composition with holes in it. Do not spend anything trying to fix it: buying
+those six pictures costs about $2.17 and is a decision for us.
 
 **What is unverified, and what your run is for.** Every fix-it instruction in
 this document is a first attempt written from the code — see *Read this first*
@@ -67,15 +72,13 @@ and neither should ever be put there.
 
 ### Do this first, and send this back
 
-**First:** work through §1 to §11, then run `npm run doctor` until it stops
-printing blockers. That one command is the whole test of your setup. Then run
-`npm run golden` (§15), which is the whole test of whether your Mac builds what
-ours builds — four videos, about 17,000 details compared, and it should end in
-`golden: PASS`.
+**First:** work through §1 to §11, then run `npm run doctor`. It will report the
+source reels missing: that is expected and you can ignore it — nothing else
+should be listed. **Do not run `npm run golden`**, and do not copy any video
+across; that is the optional section at the very end and only when we ask.
 
 **Send back:** the table in §12, filled in — especially any line where what you
-saw differs from what this document says — and, if `npm run golden` did not end
-in `PASS`, everything it printed. Those are the only things we need.
+saw differs from what this document says. That is the only thing we need.
 
 ---
 
@@ -101,7 +104,7 @@ a projects folder — anywhere this account can read and write.
 
 It did have to be at one exact path, and that is worth knowing because you may
 see the old rule quoted somewhere: the tool stores full paths inside the files
-it writes, 52 of them across the five videos, and every one was written on
+it writes, 52 of them across the five video plans, and every one was written on
 another Mac. **They are re-rooted when they are read**, onto whatever copy of
 the repository is running, so a path written on the other machine resolves to
 the matching file on yours. Proven by running the whole set of videos from a
@@ -132,7 +135,8 @@ If someone has already put the folder on a drive for you, plug the drive in and
 **How big it is**, measured by cloning it from GitHub on 2026-09-05: about
 **22 MB** to download, **53 MB** on disk once checked out. It grows to about
 **262 MB** after §4 and §6. The videos and the caches are deliberately not in it
-— they come in §11 and §12. (An earlier version of this document said 254 KB.
+— the Edit Plans come in §11 and the saved answers in §12. (An earlier version
+of this document said 254 KB.
 That was the size of the tracked text alone and it was wrong.)
 
 ---
@@ -399,21 +403,43 @@ from the repository, and `npm run backup` refuses to copy it into cloud storage.
 
 ---
 
-## 11. The videos
+## 11. The Edit Plans — 297 KB, and this is all you need
 
-The five test reels are the agency's own footage. They are not in the repository
-— together they are about **11.9 GB**.
+Copy these five files into `<repo>/my files/test videos/`:
 
-Copy all five `.mov` files into:
+| file | size |
+|---|---|
+| `ground truth.editplan.json` | 59 KB |
+| `test 1.editplan.json` | 64 KB |
+| `test 2.editplan.json` | 50 KB |
+| `test 3.editplan.json` | 39 KB |
+| `vitasilk.editplan.json` | 85 KB |
+| **total** | **297 KB** |
+
+They are small enough to send in a message. Put them here:
 
 ```
-<repo>/my files/test videos/
+mkdir -p "<repo>/my files/test videos"
 ```
 
-`benchmarks/footage.json` lists them, with the exact size and fingerprint of
-each, and a note saying where they come from. `npm run doctor -- --hash-footage`
-checks each file against its fingerprint — worth doing once, because a slightly
-different copy of a video looks identical and behaves completely differently.
+Then copy the five files into that folder, and check they arrived:
+
+```
+ls -la "<repo>/my files/test videos/"
+```
+
+**You should see:** five files ending `.editplan.json`, and nothing else.
+
+**The videos themselves are not needed for any of this**, and are not part of
+this setup. Together they are 11.93 GB, and the only thing that wants them is
+the optional last section at the end of this document. Skip them for now.
+
+**Why these five matter.** An Edit Plan is everything the tool worked out about
+a video — every word, every timing, every picture and where it goes. The test
+suites read them, and without them a great deal is not exercised: measured on
+2026-09-07 on a fresh copy, the panel's own test suite runs 122 tests without
+them and **244 with them**, because one test file cannot even start without
+`vitasilk.editplan.json`.
 
 ---
 
@@ -504,15 +530,12 @@ are fixed"* on a fresh clone, and it is the API keys.
 Run it as many times as you like. **When it stops printing "this machine cannot
 run the pipeline until these are fixed", the setup is done.**
 
-To also check the videos are byte-for-byte the right ones:
+**The doctor will say the source reels are missing.** That is correct and
+expected: you do not have them and you do not need them. It is the one blocker
+you can ignore, and the only thing it stops is the optional section at the very
+end of this document.
 
-```
-npm run doctor -- --hash-footage
-```
-
-That takes about twenty seconds.
-
-And to confirm the code itself is healthy:
+To confirm the code itself is healthy:
 
 ```
 npm run check
@@ -522,7 +545,38 @@ npm run check
 
 ---
 
-## 15. The last step: does your Mac build the same thing ours does
+## Optional, and only when we ask: does your Mac build the same thing ours does
+
+**You do not need this to work.** Everything above gives you a working panel and
+everything a day's work needs. This section is the one thing that needs the
+videos, and it exists to answer a single question: *does your Mac build
+byte-for-byte what ours builds?* Until someone asks you that question, skip it.
+
+**What it costs to be able to run it.** Four of the five videos, **9.51 GB**:
+
+| video | size | needed here |
+|---|---|---|
+| `test 1.mov` | 2.29 GB | yes |
+| `test 2.mov` | 2.31 GB | yes |
+| `test 3.mov` | 2.24 GB | yes |
+| `vitasilk.mov` | 2.68 GB | yes |
+| `ground truth.mov` | 2.42 GB | **no — never needed** |
+
+`ground truth.mov` is not in the set this checks and nothing else asks for it,
+so there is no reason to copy it at all. The four go in the same folder as the
+Edit Plans, `<repo>/my files/test videos/`, and `benchmarks/footage.json` records
+the exact size and fingerprint of each.
+
+Once they are there, check they are the right copies — a slightly different cut
+of a video looks identical and behaves completely differently:
+
+```
+npm run doctor -- --hash-footage
+```
+
+That takes about twenty seconds.
+
+Then:
 
 Once `npm run doctor` has stopped printing blockers, this is the step that
 answers the question the whole exercise is for.
@@ -585,11 +639,11 @@ and none of it needs fetching. What does not:
 
 | what | how big | where you get it |
 |---|---|---|
-| **the five source videos** — `my files/test videos/*.mov` | 11.9 GB | Mohamed, by hand or on a drive. `benchmarks/footage.json` lists each one with its fingerprint. |
+| **the five video plans** — `my files/test videos/*.editplan.json` | **297 KB** | Mohamed. **§11 — this is the one you need.** |
+| **the four source videos** — `my files/test videos/*.mov` | 9.51 GB | Mohamed, on a drive. **Only for the optional last section**, and `ground truth.mov` (2.42 GB) is never needed at all. |
 | **your API keys** — `.local/config.json` | tiny | **Accounts of your own**, at Google and ElevenLabs. Never copy anyone else's. §10. |
 | **the saved answers** — `.local/cache/` | 53 MB | Mohamed. Without it every stage is bought again. §12. |
 | **the cut-out pictures** — `my files/test videos/cutouts/` | 53 MB | Mohamed. §12. |
-| **the five video plans** — `my files/test videos/*.editplan.json` | 308 KB | Mohamed. §12. |
 | **the installed packages** — `node_modules/` | 168 MB | `npm install`, §4. |
 | **the picture tools and their two models** — `tools/cv/.venv/`, `~/.rembg/` | ~1 GB | `tools/cv/setup.sh`, §6. Downloads them itself. |
 | **the panel bundle** — `panel/dist/panel.js` | 237 KB | `npm run panel:build`, §9. |
@@ -609,8 +663,9 @@ Everything else in this document is a command. These are not:
 | **§8, the scripting preference** | It is a checkbox inside After Effects' Preferences, off on every fresh install. Nothing outside the application may set it. |
 | **§9, restarting After Effects** | It reads the extensions folder only when it starts. |
 | **§10, the API keys** | They come from accounts in your name, and the doctor cannot tell a real key from the placeholder. |
-| **§11 and §12, the videos and the saved work** | About 12 GB that only Mohamed has. |
-| **§15, `npm run golden`** | After Effects has to be open, and only a person can open it. |
+| **§11, the five Edit Plans** | 297 KB that only Mohamed has. Small enough to send in a message. |
+| **§12, the saved answers** | About 106 MB that only Mohamed has, and only saves money. |
+| **the optional last section** | The four videos, 9.51 GB, and After Effects open — only a person can open it. Skip until asked. |
 
 ## How much of this has been rehearsed, and how much has not
 
@@ -633,13 +688,35 @@ the top. Everything below is what happened, not what was expected to happen.
 rehearsal Mac, so a fresh install of either is still unrehearsed. §7 the fonts
 and §8 the scripting preference were already set. §9 `npm run panel:install`
 was **deliberately not run**, because it rewrites the one folder After Effects
-reads and would have pointed the working panel at the rehearsal copy. §11 and
-§12 were not run — 12 GB nobody needed to move twice. §15 needs the videos from
-§11, so it could not be reached; **that is where the rehearsal stopped, and
-copying the five videos in §11 is what would have come next.**
+reads and would have pointed the working panel at the rehearsal copy.
 
-**So the steps most likely still to surprise you are §2, §5, §7, §8 and §9** —
-they are the ones written from the code rather than from watching them happen.
+### Rehearsed again on 2026-09-07, this time without any video
+
+The document was rewritten around a measurement, and then followed again on the
+same clone with **no video on disk at all**.
+
+| step | what was measured |
+|---|---|
+| §9 `npm run panel:build` | built in 97 ms, 232 KB |
+| §11 the five Edit Plans | 297 KB copied in; nothing else |
+| §14 `npm run doctor` | 18 present, 6 absent — the two blockers being the API keys, which are still the example's, and the source reels, which are correctly reported missing |
+| the panel's own test suite | **242 passed, 2 skipped, 244 in total, exit 0** |
+| creating, correcting, photographing and removing a client | all worked, on a copy with no video, no saved answers and no ledger |
+
+**Where it stopped, and what would have come next.** At §14. The next step is
+§10 — putting a real API key in — which cannot be rehearsed, because the only
+key available is Mohamed's and it must never be copied into a second checkout.
+Everything after that point needs money to exercise.
+
+**One thing worth knowing that the rehearsal found.** If you pull new code, run
+`npm run panel:build` again before anything else. The panel bundle records which
+build of the service it was made from, and a bundle made before a code change
+will make the panel say the service is a different build. Rebuilding takes under
+a second and fixes it.
+
+**So the steps most likely still to surprise you are §2, §5, §7, §8, §9's
+`panel:install` and §10** — they are the ones written from the code rather than
+from watching them happen.
 
 ---
 
