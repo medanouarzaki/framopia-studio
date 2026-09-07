@@ -183,14 +183,47 @@ export function whichIsBehind(
 /**
  * What the panel says when it is the stale half.
  *
- * **It says what is true and stops there.** The remedy — rebuilding the bundle
- * and loading it — cannot be stated in this panel: every way of saying it names
- * a command or tells the user to reopen something, and `leave-the-panel.test.ts`
- * forbids both. That is a real conflict between two of Mohamed's rules and it is
- * recorded in `reports/block-11-session-66.md` for him to settle, not worked
- * around here. Saying nothing at all was the worse option: until session 66 this
- * case wore the *service* is out of date banner and repaired the wrong thing.
+ * **It names a command, and that is a ruling rather than an oversight.** No
+ * message in this panel sends the user out of it — session 26 made the panel
+ * start, prepare and restart the service by itself so that none would need to,
+ * and `panel/src/leave-the-panel.test.ts` holds every message to it.
+ *
+ * **This one case cannot be repaired from inside.** The stale artefact is the
+ * running code: the bundle has to be built on disk and then loaded, and the
+ * thing that would do the loading is the bundle. Session 66 shipped a sentence
+ * that said something was wrong and stopped there, because every complete
+ * sentence broke the rule — which is the failure the rule exists to prevent,
+ * reached from the other side. **Mohamed ruled on 2026-09-07** that this message,
+ * and no other, may name the one command that fixes it.
+ *
+ * The exemption is an allow-list of this exact string in
+ * `leave-the-panel.test.ts`, imported rather than retyped, so a second message
+ * that names a command still fails and so does a drifted copy of this one.
+ *
+ * **The route that would end the exemption, and what it would take.**
+ * The service is an ordinary Node process with the repository in front of it,
+ * so it could run the panel's own build itself — the panel already asks it to
+ * rebuild the *service* through `host.rebuildService`, and this would sit beside
+ * that as the same shape of request. The bundle on disk would then be current,
+ * and the last step is the one nobody has measured: whether a CEP panel can
+ * reload itself into the new bundle, by `location.reload()` or otherwise, and
+ * come back with its host connection intact. If it can, no one is sent anywhere
+ * and this constant goes back to naming nothing.
+ *
+ * What would have to be proved, in order: that the service can run the panel
+ * build without disturbing the panel that asked for it; that a reload picks up
+ * the new bundle rather than a cached one, CEP having its own cache; and that
+ * the reloaded panel still has `cep_node` and its handshake, since a panel that
+ * reloads into a broken state is worse than a sentence. What could go wrong is
+ * that the reload happens while the bundle is half-written, or that CEP serves
+ * the old file, or that reloading drops the extension entirely and the only way
+ * back is restarting After Effects — the very thing this whole rule is about.
+ *
+ * **None of it can be measured without driving After Effects**, so it waits for
+ * the partner's first real run rather than being guessed at here.
  */
 export const PANEL_IS_BEHIND =
-  'This panel is showing older code than the rest of the tool, so what you see ' +
-  'here may not match what it does. Nothing you have made is affected.';
+  'This panel is showing older code than the rest of the tool, so what you see here may ' +
+  'not match what it does. Nothing you have made is affected. To put it right, run ' +
+  '`npm run panel:build` in a terminal, then close this panel and open it again from ' +
+  'Window → Extensions.';
