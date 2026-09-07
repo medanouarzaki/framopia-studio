@@ -1,4 +1,5 @@
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync, mkdirSync, realpathSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import {
   BEFORE_THIS_WAS_RECORDED,
@@ -126,6 +127,59 @@ export function setCap(monthlyUsd: number | null): void {
   writeFileSync(CAP_PATH, `${JSON.stringify({ monthlyUsd }, null, 2)}\n`, 'utf8');
 }
 
+/**
+ * **A plan for a video the operating system owns is nobody's work.**
+ *
+ * Mohamed opened the money screen and found nine reels from the test suite in
+ * his books — *"a video this tool has never seen"*, *"a video whose client has
+ * no pictures at all"*. They are there because the suites write real Edit Plans
+ * into `.local/plans/`, which is also where a client's plans live.
+ *
+ * **Decided by what the video is, not by what it is called.** Every one of those
+ * plans names a video inside the OS temporary directory — a place the operating
+ * system owns and deletes, where nothing anybody paid for lives. A client's
+ * footage is in their folder or on the drive; it is never there. So the name
+ * plays no part, and a reel called *"a video this tool has never seen"* whose
+ * footage sits somewhere real is listed like any other.
+ *
+ * **Spend is not the test.** Four of the nine carry a figure — $0.000488 and
+ * $0.000244 — written by the suites, so "no spend" would have hidden one of nine
+ * and left eight. And a real reel can legitimately have spent nothing yet.
+ *
+ * **What this gives up, said plainly:** a video someone genuinely kept in the
+ * temporary directory would not be listed. A folder the operating system deletes
+ * without warning is not somewhere a person keeps work they paid for, so that is
+ * the right way round — but it is a limit and not an absence of one.
+ */
+export function isOsTemporary(videoPath: string): boolean {
+  if (videoPath === '') return false;
+  /*
+   * The **directory** is resolved, not the file. On macOS `tmpdir()` is
+   * `/var/folders/…`, which is a symlink to `/private/var/folders/…`, and a
+   * video the tests have already cleaned up cannot be resolved at all — so
+   * resolving the file gave `/var/…` against a `/private/var/…` root and every
+   * comparison failed. Walking up to the nearest directory that does exist
+   * resolves the symlink whether or not the file is still there.
+   */
+  const real = (p: string): string => {
+    let at = path.resolve(p);
+    const parts: string[] = [];
+    for (;;) {
+      try {
+        return path.join(realpathSync(at), ...parts.reverse());
+      } catch {
+        const up = path.dirname(at);
+        if (up === at) return path.resolve(p);
+        parts.push(path.basename(at));
+        at = up;
+      }
+    }
+  };
+  const temp = real(tmpdir());
+  const rel = path.relative(temp, real(videoPath));
+  return rel !== '' && !rel.startsWith('..') && !path.isAbsolute(rel);
+}
+
 /** Every reel's spend, from its own plan. The plan is the only thing that knows. */
 export function reelCosts(planPaths: readonly string[]): ReelCost[] {
   const out: ReelCost[] = [];
@@ -141,6 +195,8 @@ export function reelCosts(planPaths: readonly string[]): ReelCost[] {
     const spent = costs['spentUsd'];
     if (typeof spent !== 'number') continue;
     const source = (plan['source'] ?? {}) as Record<string, unknown>;
+    const videoPath = typeof source['videoPath'] === 'string' ? source['videoPath'] : '';
+    if (isOsTemporary(videoPath)) continue;
     const durationS = typeof source['durationS'] === 'number' ? source['durationS'] : null;
     out.push({
       reel: path.basename(p).replace(/\.editplan\.json$/, ''),
