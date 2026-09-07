@@ -51,6 +51,8 @@ import {
 import './pipeline.js';
 import './build/job.js';
 import { health } from './health.js';
+import { moneyView, setCap, setCredit } from './money.js';
+import { planPathsForMoney } from './money-plans.js';
 import { clearHandshake, inspectLock, SERVICE_JSON_PATH, writeHandshake } from './lock.js';
 
 const packageJsonPath = path.join(
@@ -164,6 +166,60 @@ export function createApp(token: string): http.Server {
        */
       if (req.method === 'GET' && url.pathname === '/reels') {
         sendJson(res, 200, listVideosFor(url.searchParams.get('client')));
+        return;
+      }
+
+      /*
+       * **The money screen's whole back end.** The ledger is read and never
+       * written: `core/src/ledger-read.ts` cannot open a file at all, and
+       * `money.ts` opens this one read-only. Reading 165 lines whole is instant
+       * and would be at a hundred times the size, so there is no index to
+       * disagree with the money.
+       */
+      if (req.method === 'GET' && url.pathname === '/money') {
+        sendJson(res, 200, moneyView({ planPaths: planPathsForMoney() }));
+        return;
+      }
+
+      /*
+       * What he read off his billing page, and when. Kept in its own file: a
+       * credit balance is not a payment and has no business in an append-only
+       * record of what was spent.
+       */
+      if (req.method === 'POST' && url.pathname === '/money/credit') {
+        let body: Record<string, unknown>;
+        try {
+          body = JSON.parse((await readBody(req)) || '{}') as Record<string, unknown>;
+        } catch {
+          sendJson(res, 400, { error: 'invalid JSON body' });
+          return;
+        }
+        const usd = body['usd'];
+        if (typeof usd !== 'number' || !Number.isFinite(usd) || usd < 0) {
+          sendJson(res, 400, { error: 'a credit figure is a number, not less than zero' });
+          return;
+        }
+        setCredit(usd);
+        sendJson(res, 200, moneyView({ planPaths: planPathsForMoney() }));
+        return;
+      }
+
+      /* The cap he sets. Null clears it, and none is the default. */
+      if (req.method === 'POST' && url.pathname === '/money/cap') {
+        let body: Record<string, unknown>;
+        try {
+          body = JSON.parse((await readBody(req)) || '{}') as Record<string, unknown>;
+        } catch {
+          sendJson(res, 400, { error: 'invalid JSON body' });
+          return;
+        }
+        const usd = body['monthlyUsd'];
+        if (usd !== null && (typeof usd !== 'number' || !Number.isFinite(usd) || usd <= 0)) {
+          sendJson(res, 400, { error: 'a cap is a number above zero, or nothing at all' });
+          return;
+        }
+        setCap(usd as number | null);
+        sendJson(res, 200, moneyView({ planPaths: planPathsForMoney() }));
         return;
       }
 
