@@ -159,7 +159,9 @@ export async function analyseKeywordsCached(
   }
 
   // runKeywordAnalysis appends the ledger line itself, at the point of spend.
-  const result = await runAnalysis({ apiKey, words, mode, candidateCount });
+  // The video is handed to it rather than recorded here, so the line that says
+  // which reel the money was for is written where the money is spent.
+  const result = await runAnalysis({ apiKey, words, mode, candidateCount, videoSha256 });
 
   const payload = await writeAnalysisCache(ref, {
     rawText: result.rawText,
@@ -301,7 +303,7 @@ export async function planSlotsCached(options: CachedSlotOptions): Promise<Cache
   }
 
   // runSlotAnalysis appends the ledger line itself, at the point of spend.
-  const result = await runAnalysis({ apiKey, words, mode, candidateCount, durationS });
+  const result = await runAnalysis({ apiKey, words, mode, candidateCount, durationS, videoSha256 });
 
   const payload = await writeSlotCache(ref, {
     rawText: result.rawText,

@@ -1,4 +1,9 @@
-import { appendCost, estimateGeminiCallCost, estimateScribeCost } from '@framopia/core';
+import {
+  appendCost,
+  estimateGeminiCallCost,
+  estimateScribeCost,
+  spendPurposeFor,
+} from '@framopia/core';
 import { alignCorrectedOntoDraft } from './align.js';
 import { computeHybridCost, type HybridCostBreakdown } from './cost.js';
 import { correctTranscript, type CorrectionResult, type PromptVersion } from './correction.js';
@@ -23,6 +28,13 @@ export interface HybridTranscribeOptions {
   version?: PromptVersion;
   /** Where the pre-flight estimate goes. Defaults to stdout. */
   log?: (message: string) => void;
+  /**
+   * Who and what the two calls below are for, so the ledger lines can say.
+   * Optional under the schema rule: a caller written before Block 12 session 68
+   * passes neither and both lines read *before this was recorded*.
+   */
+  clientId?: string;
+  videoSha256?: string;
 }
 
 export interface HybridTranscript {
@@ -67,6 +79,8 @@ export async function transcribeHybrid(
     guidePath,
     version,
     log = console.log,
+    clientId,
+    videoSha256,
   } = options;
 
   const scribeEstimate = estimateScribeCost(durationS, keyterms.length > 0);
@@ -95,12 +109,18 @@ export async function transcribeHybrid(
     model: 'scribe_v2',
     unit: 'run',
     usd: result.cost.scribeUsd,
+    ...(clientId === undefined ? {} : { client: clientId }),
+    ...(videoSha256 === undefined ? {} : { video: videoSha256 }),
+    purpose: spendPurposeFor(videoSha256),
   });
   appendCost({
     stage: CORRECTION_LEDGER_STAGE,
     model: result.model,
     unit: 'run',
     usd: result.cost.geminiUsd,
+    ...(clientId === undefined ? {} : { client: clientId }),
+    ...(videoSha256 === undefined ? {} : { video: videoSha256 }),
+    purpose: spendPurposeFor(videoSha256),
   });
 
   return result;

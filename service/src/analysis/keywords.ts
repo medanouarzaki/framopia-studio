@@ -2,6 +2,7 @@ import { createUserContent, GoogleGenAI } from '@google/genai';
 import {
   isTransientFailure,
   appendCost,
+  spendPurposeFor,
   computeGeminiCost,
   modelConfig,
   type ClientMode,
@@ -254,6 +255,12 @@ export interface KeywordAnalysisOptions {
   mode: ClientMode;
   candidateCount: number;
   version?: AnalysisPromptVersion;
+  /**
+   * The video this call is for, so the ledger line can say so. Optional under
+   * the schema rule: a caller written before Block 12 session 68 passes nothing
+   * and the line reads *before this was recorded*, which is what it is.
+   */
+  videoSha256?: string;
 }
 
 export interface KeywordAnalysisResult {
@@ -286,6 +293,7 @@ export async function runKeywordAnalysis(
     mode,
     candidateCount,
     version = ACTIVE_ANALYSIS_PROMPT_VERSION,
+    videoSha256,
   } = options;
 
   const ai = new GoogleGenAI({ apiKey });
@@ -325,7 +333,15 @@ export async function runKeywordAnalysis(
   // Recorded here, where the call is actually made, for the same reason
   // hybrid.ts records its two legs here: a caller that stubs this function
   // out must not be able to write a fabricated line to the ledger.
-  appendCost({ stage: KEYWORD_LEDGER_STAGE, model: modelConfig.geminiModel, unit: 'run', usd: costUsd });
+  appendCost({
+    stage: KEYWORD_LEDGER_STAGE,
+    model: modelConfig.geminiModel,
+    unit: 'run',
+    usd: costUsd,
+    client: mode.id,
+    ...(videoSha256 === undefined ? {} : { video: videoSha256 }),
+    purpose: spendPurposeFor(videoSha256),
+  });
 
   const parsed = parseKeywordResponse(rawText);
 

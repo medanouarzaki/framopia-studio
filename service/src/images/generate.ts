@@ -1,6 +1,7 @@
 import path from 'node:path';
 import {
   appendCost,
+  spendPurposeFor,
   assertSendsNoLocalPath,
   computeImageCost,
   computeImageCostFromUsage,
@@ -269,7 +270,15 @@ export async function generateImages(options: {
       const actualUsd = computeImageCostFromUsage(config.modelId, image.usage);
       if (bill) {
         appendCost(
-          { stage: IMAGE_LEDGER_STAGE, model: config.modelId, unit: 'image', usd: actualUsd },
+          {
+            stage: IMAGE_LEDGER_STAGE,
+            model: config.modelId,
+            unit: 'image',
+            usd: actualUsd,
+            client: mode.id,
+            video: videoSha256,
+            purpose: spendPurposeFor(videoSha256),
+          },
           costsPath,
         );
       }

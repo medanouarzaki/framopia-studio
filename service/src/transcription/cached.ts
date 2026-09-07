@@ -154,7 +154,9 @@ export async function transcribeHybridCached(
     }
   }
 
-  const transcript = await runHybrid({ ...hybridOptions, log });
+  // The video is handed down so the two ledger lines can say which reel they
+  // were for. Recorded at the point of spend inside transcribeHybrid, never here.
+  const transcript = await runHybrid({ ...hybridOptions, log, videoSha256 });
 
   await writeTranscriptionCache(ref, {
     audioPath: hybridOptions.audioPath,

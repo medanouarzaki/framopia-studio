@@ -2,6 +2,7 @@ import { createUserContent, GoogleGenAI } from '@google/genai';
 import {
   isTransientFailure,
   appendCost,
+  spendPurposeFor,
   computeGeminiCost,
   modelConfig,
   type ClientMode,
@@ -184,6 +185,12 @@ export interface SlotAnalysisOptions {
   candidateCount: number;
   durationS: number;
   version?: SlotPromptVersion;
+  /**
+   * The video this call is for, so the ledger line can say so. Optional under
+   * the schema rule: a caller written before Block 12 session 68 passes nothing
+   * and the line reads *before this was recorded*, which is what it is.
+   */
+  videoSha256?: string;
 }
 
 export interface SlotAnalysisResult {
@@ -211,6 +218,7 @@ export async function runSlotAnalysis(options: SlotAnalysisOptions): Promise<Slo
     candidateCount,
     durationS,
     version = ACTIVE_SLOT_PROMPT_VERSION,
+    videoSha256,
   } = options;
 
   const ai = new GoogleGenAI({ apiKey });
@@ -241,7 +249,15 @@ export async function runSlotAnalysis(options: SlotAnalysisOptions): Promise<Slo
   const costUsd = computeGeminiCost(usage);
 
   // Recorded here, at the point of spend, so a stubbed call cannot bill.
-  appendCost({ stage: SLOT_LEDGER_STAGE, model: modelConfig.geminiModel, unit: 'run', usd: costUsd });
+  appendCost({
+    stage: SLOT_LEDGER_STAGE,
+    model: modelConfig.geminiModel,
+    unit: 'run',
+    usd: costUsd,
+    client: mode.id,
+    ...(videoSha256 === undefined ? {} : { video: videoSha256 }),
+    purpose: spendPurposeFor(videoSha256),
+  });
 
   return {
     candidates: parseSlotResponse(rawText),
