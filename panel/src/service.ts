@@ -902,3 +902,65 @@ export async function repairService(
         : 'The background service was out of date. It has been restarted.',
   };
 }
+
+/**
+ * **What has been spent, read and never written.**
+ *
+ * The service reads the ledger; nothing in the panel touches it. Block 12
+ * session 68 measured what the 165 existing lines can answer — how much, when,
+ * which stage, which model — and what they cannot: which client, which video.
+ * Those are recorded from session 68 onward, and everything before is shown
+ * under one honest label rather than attributed by guesswork.
+ */
+export interface MoneyGroup {
+  key: string;
+  lines: number;
+  usd: number;
+}
+
+export interface MoneyCredit {
+  enteredUsd: number;
+  enteredAt: string;
+  spentSinceUsd: number;
+  impliedRemainingUsd: number;
+}
+
+export interface MoneyReel {
+  reel: string;
+  spentUsd: number;
+  durationS: number | null;
+  usdPerSecond: number | null;
+  stages: string[];
+}
+
+export interface Money {
+  totalUsd: number;
+  lines: number;
+  unreadable: number;
+  firstAt: string | null;
+  lastAt: string | null;
+  byDay: MoneyGroup[];
+  byMonth: MoneyGroup[];
+  byStage: MoneyGroup[];
+  byClient: MoneyGroup[];
+  byVideo: MoneyGroup[];
+  byPurpose: MoneyGroup[];
+  unattributedUsd: number;
+  credit: MoneyCredit | null;
+  perReel: MoneyReel[];
+  cap: { monthlyUsd: number | null; monthSoFarUsd: number };
+}
+
+export async function fetchMoney(connection: Connection): Promise<Money> {
+  const body = await getJson<Partial<Money>>(connection, '/money');
+  if (typeof body.totalUsd !== 'number') throw new Error('the spending came back unreadable');
+  return body as Money;
+}
+
+export async function saveCredit(connection: Connection, usd: number): Promise<Money> {
+  return await postJson<Money>(connection, '/money/credit', { usd });
+}
+
+export async function saveCap(connection: Connection, monthlyUsd: number | null): Promise<Money> {
+  return await postJson<Money>(connection, '/money/cap', { monthlyUsd });
+}

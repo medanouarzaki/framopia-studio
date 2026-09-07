@@ -20,6 +20,9 @@ import { NewClient } from './NewClient.js';
 import { Readiness } from './Readiness.js';
 import { panelBuildStamp, stalenessOf } from './staleness.js';
 import { whichIsBehind, PANEL_IS_BEHIND } from '@framopia/core/build-stamp';
+import { CapWarning } from './CapWarning.js';
+import { Money } from './Money.js';
+import { fetchMoney, type Money as MoneyData } from './service.js';
 import { fileDialogSupport, pickVideoFile } from './file-dialog.js';
 import { Transcript } from './Transcript.js';
 import { Images } from './Images.js';
@@ -131,6 +134,13 @@ function Panel({
   const [editor, setEditor] = useState<EditorId | null>(null);
   /** The client form, when it is open over the main screen. */
   const [newClient, setNewClient] = useState<'permanent' | 'one-off' | null>(null);
+  /*
+   * What has been spent. Read once when the service answers, and again whenever
+   * he opens the money screen — nothing polls, because the ledger only changes
+   * when this panel spends and it can ask again then.
+   */
+  const [showMoney, setShowMoney] = useState(false);
+  const [money, setMoney] = useState<MoneyData | null>(null);
   /** What the disk said about the client's folder, and what it would not offer. */
   const [videoNote, setVideoNote] = useState<{
     folder: string | null;
@@ -403,6 +413,22 @@ function Panel({
     }
   };
 
+  useEffect(() => {
+    if (connection === null) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const next = await fetchMoney(connection);
+        if (!cancelled) setMoney(next);
+      } catch {
+        // The money screen says so itself; the run buttons simply show no cap.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [connection, showMoney]);
+
   const buildStep = plan?.steps.find((x) => x.id === 'build') ?? null;
   /*
    * A service built from different code than this bundle is the normal way
@@ -427,6 +453,18 @@ function Panel({
       : repairing
         ? 'The background service was out of date. Bringing it up to date now — this takes a few seconds.'
         : (repaired ?? stale.detail);
+
+  if (showMoney && connection !== null) {
+    return (
+      <div className="app">
+        <Brand logoSrc={logoSrc} service={service} />
+        <button type="button" className="ghost" onClick={() => setShowMoney(false)}>
+          Back
+        </button>
+        <Money connection={connection} />
+      </div>
+    );
+  }
 
   if (newClient !== null) {
     return (
@@ -581,6 +619,15 @@ function Panel({
         {/* The only thing on this screen he cannot undo, so it stays prominent. */}
         <section className="cost">
           <h2>Cost</h2>
+          {/*
+           * The whole history is one press away from the screen where the money
+           * is spent, which is where the question gets asked.
+           */}
+          <button type="button" className="ghost seemoney" onClick={() => setShowMoney(true)}>
+            {money === null
+              ? 'See everything spent'
+              : `See everything spent — $${money.totalUsd.toFixed(2)} so far`}
+          </button>
           {reel === null ? null : <Spend reel={reel} />}
           {dry === null ? null : <DryRun plan={dry} />}
           {dryError === null ? null : (
@@ -591,7 +638,17 @@ function Panel({
         </section>
 
         <section className="do">
-          <RunActions dry={dry} enabled={gate.enabled} running={running} onRun={onRun} />
+          <RunActions
+            dry={dry}
+            enabled={gate.enabled}
+            running={running}
+            onRun={onRun}
+            money={
+              money === null
+                ? null
+                : { monthSoFarUsd: money.cap.monthSoFarUsd, capUsd: money.cap.monthlyUsd }
+            }
+          />
           {gate.reason === null ? null : (
             <p className="say" role="status">
               {gate.reason}
@@ -959,11 +1016,14 @@ function RunActions({
   enabled,
   running,
   onRun,
+  money,
 }: {
   dry: DryRunPlan | null;
   enabled: boolean;
   running: boolean;
   onRun: (part?: { only?: string[]; redo?: string[] }) => void;
+  /** What has been spent this month and the cap, when there is one. */
+  money: { monthSoFarUsd: number; capUsd: number | null } | null;
 }): JSX.Element {
   const words = dry?.wordsUsd;
   const pictures = dry?.picturesUsd;
@@ -1002,6 +1062,11 @@ function RunActions({
         The subtitles, the words to emphasise, and the ideas for the pictures. Read them and fix
         anything wrong before you make the pictures.
       </p>
+      <CapWarning
+        estimateUsd={words}
+        monthSoFarUsd={money?.monthSoFarUsd ?? 0}
+        capUsd={money?.capUsd ?? null}
+      />
 
       {/*
         `redo` is not optional. The **slot** stage writes
@@ -1019,6 +1084,11 @@ function RunActions({
       >
         {running ? 'Working…' : `Make the pictures — about $${pictures.toFixed(2)}`}
       </button>
+      <CapWarning
+        estimateUsd={pictures}
+        monthSoFarUsd={money?.monthSoFarUsd ?? 0}
+        capUsd={money?.capUsd ?? null}
+      />
       <p className="faint">
         {subtitlesDone
           ? 'The subtitles are done and are not charged for again.'

@@ -13,9 +13,19 @@
  * them lose it. A test that needs this harness now gets its own file and its
  * own browser rather than crowding theirs.
  */
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {
+  byClient,
+  byDay,
+  byMonth,
+  byPurpose,
+  byStage,
+  byVideo,
+  readLedger,
+  unattributed,
+} from '@framopia/core';
 
 export const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const DIST = path.resolve(HERE, '..', 'dist');
@@ -109,8 +119,41 @@ export function stubFetch(mode: 'healthy' | 'hang', health: unknown = HEALTHY_PA
     : `window.fetch = () => Promise.resolve({ ok: true, json: () => Promise.resolve(${JSON.stringify(health)}) });`;
 }
 
+/**
+ * **The money screen is shown the real ledger, never a fixture.**
+ *
+ * Mohamed rules by eye, so what the test renders has to be what he will see.
+ * These are the actual 165 lines read from `.local/costs.jsonl` — read-only, by
+ * `readLedger`, which cannot open a file and is handed the text.
+ *
+ * A machine without a ledger yet — the partner's — gets an empty one, which is
+ * what it will genuinely have.
+ */
+export function realMoney(): Record<string, unknown> {
+  const at = path.join(REPO, '.local', 'costs.jsonl');
+  const read = readLedger(existsSync(at) ? readFileSync(at, 'utf8') : '');
+  return {
+    totalUsd: read.totalUsd,
+    lines: read.lines.length,
+    unreadable: read.unreadable.length,
+    firstAt: read.firstAt,
+    lastAt: read.lastAt,
+    byDay: byDay(read.lines),
+    byMonth: byMonth(read.lines),
+    byStage: byStage(read.lines),
+    byClient: byClient(read.lines),
+    byVideo: byVideo(read.lines),
+    byPurpose: byPurpose(read.lines),
+    unattributedUsd: unattributed(byClient(read.lines))?.usd ?? 0,
+    credit: null,
+    perReel: [],
+    cap: { monthlyUsd: null, monthSoFarUsd: 0 },
+  };
+}
+
 export function stubRoutes(steps: unknown, resumeAt: string): string {
   const payload = {
+    money: realMoney(),
     health: HEALTHY_PAYLOAD,
     reels: { reels: [{ label: 'vitasilk', present: true, durationS: 25.7, planPath: '/v/p.json', spentUsd: 1.550444 }] },
     modes: {
@@ -228,6 +271,7 @@ export function stubRoutes(steps: unknown, resumeAt: string): string {
       : u.indexOf('/modes') !== -1 ? p.modes
       : u.indexOf('/keywords') !== -1 ? p.keywords
       : u.indexOf('/transcript') !== -1 ? p.transcript
+      : u.indexOf('/money') !== -1 ? p.money
       : u.indexOf('/steps') !== -1 ? p.steps
       : p.dry;
     return Promise.resolve({ ok: true, json: () => Promise.resolve(body) });
