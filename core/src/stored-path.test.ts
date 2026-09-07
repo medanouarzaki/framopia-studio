@@ -1,4 +1,4 @@
-import { readdirSync, existsSync } from 'node:fs';
+import { readdirSync, existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REPO_ROOT } from './paths.js';
@@ -158,5 +158,50 @@ describe('the five Edit Plans', () => {
       walk(plan);
     }
     expect(checked).toBeGreaterThan(50);
+  });
+});
+
+/**
+ * **The doctor's footage check, which reported a green nobody had earned.**
+ *
+ * `benchmarks/footage.json` records absolute paths written on the T7 Shield, and
+ * `tools/doctor/checks.ts` read them as they stood. So a clone on any machine
+ * that could *see* that drive found the five reels on it and reported "5 of 5
+ * present" while holding none — Block 11 session 64 measured exactly that, in
+ * the rehearsal clone, and every rehearsal on record ran on such a machine.
+ *
+ * `tools/` has no test suite of its own, which is how a check nobody had
+ * watched fail stayed wrong. These two assert the property from core, where the
+ * resolver lives.
+ */
+describe('the footage catalogue', () => {
+  const catalogue = JSON.parse(
+    readFileSync(path.join(REPO_ROOT, 'benchmarks', 'footage.json'), 'utf8'),
+  ) as { reels: { label: string; path: string }[] };
+
+  it('asks about the repository running now, not the one it was written on', () => {
+    const elsewhere = path.join(path.sep, 'Volumes', 'Another Drive', 'framopia-studio');
+    for (const reel of catalogue.reels) {
+      const resolved = resolveStoredPath(reel.path, { repoRoot: elsewhere });
+      // Re-rooted, not returned as it stood: `my files` is a REPO_ANCHOR.
+      expect(`${reel.label}: ${resolved.startsWith(elsewhere + path.sep)}`).toBe(
+        `${reel.label}: true`,
+      );
+      expect(`${reel.label}: ${path.basename(resolved)}`).toBe(
+        `${reel.label}: ${path.basename(reel.path)}`,
+      );
+    }
+  });
+
+  /*
+   * The guard on the check itself. Reading the stored path raw is the defect,
+   * and the only thing that ever caught it was a person running the doctor on a
+   * machine that happened not to have the drive.
+   */
+  it('is read through the resolver by the doctor, not as it stands', () => {
+    const checks = readFileSync(path.join(REPO_ROOT, 'tools', 'doctor', 'checks.ts'), 'utf8');
+    expect(checks).toContain('resolveStoredPath');
+    const code = checks.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    expect(code).not.toContain('dir === undefined ? reel.path');
   });
 });

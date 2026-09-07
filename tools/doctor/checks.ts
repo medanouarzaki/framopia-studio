@@ -30,6 +30,8 @@ import {
   resolveFfmpegPath,
   scriptingVerdict,
   resolveNodePath,
+  resolveStoredPath,
+  StoredPathError,
   type CheckResult,
 } from '@framopia/core';
 
@@ -709,13 +711,39 @@ function checkFootage(options: { hash: boolean }): CheckResult {
     readFileSync(path.join(REPO_ROOT, 'benchmarks', 'footage.json'), 'utf8'),
   ) as { reels: Reel[] };
   const dir = env(OVERRIDES.footageDir);
+  /*
+   * **The catalogue's paths are absolute, and they were written on one Mac.**
+   * `benchmarks/footage.json` records
+   * `/Volumes/T7 Shield/.../my files/test videos/test 1.mov`, and this read it
+   * as it stood — so a clone on any machine that can *see* the T7 Shield found
+   * the reels on the drive and reported 5 of 5 present while holding none of
+   * them. Block 11 session 64 measured that: every rehearsal on record ran on
+   * such a machine, so no rehearsal has ever shown what the partner will see.
+   *
+   * `resolveStoredPath` is the same read-time resolution sessions 61 and 62
+   * gave a client's photographs, not a second mechanism. `my files` is a
+   * `REPO_ANCHOR`, so a path inside any checkout re-roots onto this one: the
+   * catalogue keeps saying what it says, nothing is rewritten, and the answer is
+   * about the repository actually running.
+   */
+  const at = (reel: Reel): string => {
+    if (dir !== undefined) return path.join(dir, path.basename(reel.path));
+    try {
+      return resolveStoredPath(reel.path, { field: `footage.json ${reel.label}` });
+    } catch (error) {
+      // A catalogue entry that cannot be resolved is not a present reel. Say
+      // which, rather than letting the whole check throw.
+      if (error instanceof StoredPathError) return reel.path;
+      throw error;
+    }
+  };
   const missing: string[] = [];
   const wrong: string[] = [];
   let hashed = 0;
   let unhashed = 0;
   let unchecked = 0;
   for (const reel of catalogue.reels) {
-    const file = dir === undefined ? reel.path : path.join(dir, path.basename(reel.path));
+    const file = at(reel);
     if (!existsSync(file)) {
       missing.push(reel.label);
       continue;
