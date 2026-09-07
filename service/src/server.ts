@@ -51,7 +51,7 @@ import {
 import './pipeline.js';
 import './build/job.js';
 import { health } from './health.js';
-import { moneyView, setCap, setCredit } from './money.js';
+import { addPayment, correctPayment, moneyView, removePayment, setCap, setCredit } from './money.js';
 import { planPathsForMoney } from './money-plans.js';
 import { clearHandshake, inspectLock, SERVICE_JSON_PATH, writeHandshake } from './lock.js';
 
@@ -201,6 +201,59 @@ export function createApp(token: string): http.Server {
         }
         setCredit(usd);
         sendJson(res, 200, moneyView({ planPaths: planPathsForMoney() }));
+        return;
+      }
+
+      /*
+       * **Money going in, which the ledger never sees.** It records what the
+       * tool spent through the APIs; what he paid into those accounts is a fact
+       * about a bank that nothing here can verify. Kept in its own file for the
+       * same reason credit is: entered by him, and corrigible, which an
+       * append-only record is not.
+       */
+      if (req.method === 'POST' && url.pathname === '/money/paid-in') {
+        let body: Record<string, unknown>;
+        try {
+          body = JSON.parse((await readBody(req)) || '{}') as Record<string, unknown>;
+        } catch {
+          sendJson(res, 400, { error: 'invalid JSON body' });
+          return;
+        }
+        const usd = body['usd'];
+        const on = body['on'];
+        const account = body['account'];
+        if (typeof usd !== 'number' || typeof on !== 'string' || typeof account !== 'string') {
+          sendJson(res, 400, { error: 'a payment is an amount, a day and an account' });
+          return;
+        }
+        try {
+          const id = body['id'];
+          if (typeof id === 'string' && id !== '') correctPayment(id, usd, on, account);
+          else addPayment(usd, on, account);
+        } catch (error) {
+          sendJson(res, 400, { error: (error as Error).message });
+          return;
+        }
+        sendJson(res, 200, moneyView({ planPaths: planPathsForMoney() }));
+        return;
+      }
+
+      /* One payment removed. It is his own typing, and the reply names it. */
+      if (req.method === 'DELETE' && url.pathname === '/money/paid-in') {
+        const id = url.searchParams.get('id');
+        if (id === null || id === '') {
+          sendJson(res, 400, { error: 'name the payment to remove' });
+          return;
+        }
+        try {
+          const { removed } = removePayment(id);
+          sendJson(res, 200, {
+            removed,
+            money: moneyView({ planPaths: planPathsForMoney() }),
+          });
+        } catch (error) {
+          sendJson(res, 400, { error: (error as Error).message });
+        }
         return;
       }
 

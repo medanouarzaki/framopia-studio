@@ -44,6 +44,8 @@ export interface MoneyView {
   credit: CreditView | null;
   perReel: ReelCost[];
   cap: CapView;
+  paidIn: PaymentsView;
+  reconciliation: Reconciliation;
 }
 
 export interface ReelCost {
@@ -73,6 +75,72 @@ export interface CreditView {
   impliedRemainingUsd: number;
 }
 
+/**
+ * **Money that went in, which the ledger never sees.**
+ *
+ * The ledger is what the tool spent through the APIs. Mohamed also *pays into*
+ * those accounts — roughly $23.40 to ElevenLabs and $20 elsewhere — and none of
+ * it is anywhere in this repository, so the money screen showed what went out
+ * and nothing about what went in.
+ *
+ * **A payment is not a spend, so it is not a ledger line.** The ledger is
+ * append-only evidence of calls this tool made; a payment is a fact about a bank
+ * and nothing here can verify it. It lives in `.local/payments.json`, beside
+ * `credit.json`, for the same reason: entered by him, about his accounts, and
+ * corrigible — which an append-only record is not.
+ *
+ * **A payment is not credit either.** Credit is what an account has left *today*;
+ * a payment is money that went in *on a date*. Two payments add up; two credit
+ * readings do not. The screen keeps them in separate blocks with separate words
+ * and never adds one to the other.
+ */
+export interface Payment {
+  /** Given by the tool so a correction names one payment and not another. */
+  id: string;
+  usd: number;
+  /** The day the money went in, as he read it: YYYY-MM-DD. */
+  on: string;
+  /** Which account it went to, in his words. */
+  account: string;
+}
+
+export interface PaymentsView {
+  payments: Payment[];
+  totalInUsd: number;
+  /** Paid in, minus everything the ledger records. Arithmetic, not a reading. */
+  impliedLeftUsd: number;
+}
+
+/**
+ * **What the ledger says against what the videos account for.**
+ *
+ * Two sources sat on one screen and were never checked against each other: the
+ * grand total is read from the ledger, and the per-video figures from each
+ * plan's own `spentUsd`. Session 71 measured the difference at **$10.098150**,
+ * of which $4.502282 is benchmarks and prompt experiments that belong to no
+ * video by their nature, leaving **$5.594404 of production spend no plan claims**.
+ *
+ * **A gap in that direction is expected. The other direction is a defect.** The
+ * ledger cannot record less than was spent on a reel — it is written at the
+ * point of spend — so a plan claiming more than the ledger holds means a plan
+ * is asserting money that was never billed, and that is shown rather than
+ * averaged away.
+ */
+export interface Reconciliation {
+  ledgerTotalUsd: number;
+  /** The ledger minus benchmarks and prompt experiments. */
+  ledgerProductionUsd: number;
+  /** What the per-video table adds up to. */
+  videosAccountForUsd: number;
+  /** Benchmarks and experiments: real spend belonging to no video. */
+  outsideAnyVideoUsd: number;
+  /** Production the ledger holds and no plan claims. Expected to be positive. */
+  unaccountedUsd: number;
+  /** Plans claiming more than the ledger ever recorded. Must be zero. */
+  overclaimedUsd: number;
+  agrees: boolean;
+}
+
 export interface CapView {
   /** Null means no cap: the default, until he sets one. */
   monthlyUsd: number | null;
@@ -80,6 +148,7 @@ export interface CapView {
 }
 
 const CREDIT_PATH = path.join(LOCAL_DIR, 'credit.json');
+const PAYMENTS_PATH = path.join(LOCAL_DIR, 'payments.json');
 const CAP_PATH = path.join(LOCAL_DIR, 'cap.json');
 
 /** The ledger, read. Absent is empty, which is what a fresh machine has. */
@@ -109,6 +178,79 @@ export function setCredit(usd: number, at = new Date().toISOString()): void {
   if (!Number.isFinite(usd) || usd < 0) throw new Error('a credit figure is a number, not less than zero');
   mkdirSync(path.dirname(CREDIT_PATH), { recursive: true });
   writeFileSync(CREDIT_PATH, `${JSON.stringify({ usd, at }, null, 2)}\n`, 'utf8');
+}
+
+/**
+ * Everything he has recorded paying in. Absent is none, which is where a
+ * machine starts; an unreadable file is also none rather than an error, so a
+ * hand-edit that goes wrong loses the screen and not the ledger.
+ */
+export function readPayments(): Payment[] {
+  if (!existsSync(PAYMENTS_PATH)) return [];
+  try {
+    const parsed = JSON.parse(readFileSync(PAYMENTS_PATH, 'utf8')) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(
+      (p): p is Payment =>
+        typeof p === 'object' &&
+        p !== null &&
+        typeof (p as Payment).id === 'string' &&
+        typeof (p as Payment).usd === 'number' &&
+        Number.isFinite((p as Payment).usd) &&
+        typeof (p as Payment).on === 'string' &&
+        typeof (p as Payment).account === 'string',
+    );
+  } catch {
+    return [];
+  }
+}
+
+function writePayments(payments: readonly Payment[]): void {
+  mkdirSync(path.dirname(PAYMENTS_PATH), { recursive: true });
+  writeFileSync(PAYMENTS_PATH, `${JSON.stringify(payments, null, 2)}\n`, 'utf8');
+}
+
+function checkedPayment(usd: number, on: string, account: string): void {
+  if (!Number.isFinite(usd) || usd <= 0) throw new Error('a payment is an amount above zero');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(on)) throw new Error('a payment needs the day it went in');
+  if (account.trim() === '') throw new Error('a payment needs the account it went to');
+}
+
+export function addPayment(usd: number, on: string, account: string): Payment[] {
+  checkedPayment(usd, on, account);
+  const payments = readPayments();
+  const n = payments.length + 1;
+  const entry: Payment = { id: `pay${String(n).padStart(3, '0')}-${Date.now()}`, usd, on, account: account.trim() };
+  const next = [...payments, entry];
+  writePayments(next);
+  return next;
+}
+
+export function correctPayment(id: string, usd: number, on: string, account: string): Payment[] {
+  checkedPayment(usd, on, account);
+  const payments = readPayments();
+  if (!payments.some((p) => p.id === id)) throw new Error('there is no payment with that id');
+  const next = payments.map((p) => (p.id === id ? { ...p, usd, on, account: account.trim() } : p));
+  writePayments(next);
+  return next;
+}
+
+/**
+ * **A payment he typed may be removed, and the ledger's lines may not.**
+ *
+ * The difference is what each one is. A ledger line is evidence that a call was
+ * billed, written at the point of spend; a payment is his own typing about his
+ * own bank, and a typo he cannot take back is worse than useless. The removed
+ * payment is returned so the screen can name it, and the count is reported —
+ * nothing goes quietly.
+ */
+export function removePayment(id: string): { payments: Payment[]; removed: Payment } {
+  const payments = readPayments();
+  const removed = payments.find((p) => p.id === id);
+  if (removed === undefined) throw new Error('there is no payment with that id');
+  const next = payments.filter((p) => p.id !== id);
+  writePayments(next);
+  return { payments: next, removed };
 }
 
 export function readCap(): number | null {
@@ -212,6 +354,39 @@ export function reelCosts(planPaths: readonly string[]): ReelCost[] {
   return out.sort((a, b) => b.spentUsd - a.spentUsd);
 }
 
+/**
+ * Stages that are the tool being built rather than a video being made.
+ *
+ * Named by what they are: a benchmark compares engines, a langtagging or
+ * dial-rule or noise-floor run measures a prompt, and none of them is about one
+ * client's reel. Session 46 measured this set at $4.502282 and session 71
+ * measured the same figure from the same lines.
+ */
+const EXPERIMENT_STAGE = /^(benchmark|langtagging|dialrule|noisefloor|promptv2)/;
+
+export function reconcile(lines: readonly LedgerLine[], reels: readonly ReelCost[]): Reconciliation {
+  const stages = byStage(lines);
+  const outside = sumUsd(stages.filter((g) => EXPERIMENT_STAGE.test(g.key)).map((g) => g.usd));
+  const production = sumUsd(stages.filter((g) => !EXPERIMENT_STAGE.test(g.key)).map((g) => g.usd));
+  const videos = sumUsd(reels.map((r) => r.spentUsd));
+  const round = (n: number): number => Math.round(n * 1_000_000) / 1_000_000;
+  const difference = round(production - videos);
+  return {
+    ledgerTotalUsd: sumUsd(lines.map((l) => l.usd)),
+    ledgerProductionUsd: production,
+    videosAccountForUsd: videos,
+    outsideAnyVideoUsd: outside,
+    unaccountedUsd: difference > 0 ? difference : 0,
+    /*
+     * The ledger is written at the point of spend, so it cannot hold less than
+     * was really spent on a reel. A plan claiming more is a plan asserting money
+     * nothing ever billed, and that is a defect rather than a rounding gap.
+     */
+    overclaimedUsd: difference < 0 ? round(-difference) : 0,
+    agrees: difference >= 0,
+  };
+}
+
 export function moneyView(options: {
   costsPath?: string;
   planPaths?: readonly string[];
@@ -223,6 +398,9 @@ export function moneyView(options: {
   const month = now.toISOString().slice(0, 7);
 
   const credit = readCredit();
+  const reels = reelCosts(options.planPaths ?? []);
+  const payments = readPayments();
+  const paidIn = sumUsd(payments.map((p) => p.usd));
   const monthSoFar = sumUsd(
     read.lines.filter((l) => l.timestamp.slice(0, 7) === month).map((l) => l.usd),
   );
@@ -251,8 +429,14 @@ export function moneyView(options: {
               Math.round((credit.usd - spentSince(read.lines, credit.at)) * 1_000_000) /
               1_000_000,
           },
-    perReel: reelCosts(options.planPaths ?? []),
+    perReel: reels,
     cap: { monthlyUsd: readCap(), monthSoFarUsd: monthSoFar },
+    paidIn: {
+      payments,
+      totalInUsd: paidIn,
+      impliedLeftUsd: Math.round((paidIn - read.totalUsd) * 1_000_000) / 1_000_000,
+    },
+    reconciliation: reconcile(read.lines, reels),
   };
 }
 

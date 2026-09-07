@@ -3,8 +3,17 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { COSTS_PATH, REPO_ROOT } from '@framopia/core';
-import { isOsTemporary, moneyView, reelCosts } from './money.js';
+import { COSTS_PATH, REPO_ROOT, readLedger } from '@framopia/core';
+import {
+  addPayment,
+  correctPayment,
+  isOsTemporary,
+  moneyView,
+  reconcile,
+  reelCosts,
+  removePayment,
+  type ReelCost,
+} from './money.js';
 import { planPathsForMoney } from './money-plans.js';
 
 /**
@@ -19,13 +28,17 @@ const CODE = SOURCE.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, ''
 
 describe('the money view', () => {
   it('never writes to the ledger', () => {
-    // It writes two files of its own — the credit figure and the cap — and
-    // neither is the ledger. What it must never do is name COSTS_PATH beside a
-    // write, so the check is that every write names one of its own paths.
+    /*
+     * It writes three files of its own — the credit figure, the cap, and the
+     * payments session 71 added — and none of them is the ledger. What it must
+     * never do is name COSTS_PATH beside a write, so the check is that every
+     * write names one of its own paths. Adding a path here widens the list of
+     * its own files; it does not weaken the rule, which is about COSTS_PATH.
+     */
     for (const line of CODE.split('\n')) {
       if (line.trimStart().startsWith('import ')) continue;
       if (!/(write|append)FileSync\(/.test(line)) continue;
-      expect(`${line.trim()}`).toMatch(/CREDIT_PATH|CAP_PATH/);
+      expect(`${line.trim()}`).toMatch(/CREDIT_PATH|CAP_PATH|PAYMENTS_PATH/);
     }
     expect(CODE).not.toMatch(/(write|append)FileSync\([^)]*COSTS_PATH/);
   });
@@ -144,5 +157,101 @@ describe('which reels are his', () => {
     expect(reels.map((r) => r.reel).sort()).toEqual(
       ['ground truth', 'sora-6a60ced1', 'sora-995f2d27', 'test 1', 'test 2', 'vitasilk'].sort(),
     );
+  });
+});
+
+/**
+ * **Money going in, which the ledger never sees.**
+ *
+ * The ledger records what the tool spent through the APIs. Mohamed also pays
+ * into those accounts — roughly $23.40 to ElevenLabs and $20 elsewhere — and
+ * none of it was anywhere in this repository.
+ */
+describe('money paid in', () => {
+  it('is not a ledger line, and does not live in the ledger', () => {
+    const source = readFileSync(path.join(REPO_ROOT, 'service', 'src', 'money.ts'), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^\s*\/\/.*$/gm, '');
+    // Payments have their own file, and nothing writes them near COSTS_PATH.
+    expect(source).toContain("'payments.json'");
+    for (const line of source.split('\n')) {
+      if (line.trimStart().startsWith('import ')) continue;
+      if (!/(write|append)FileSync\(/.test(line)) continue;
+      expect(line.trim()).toMatch(/CREDIT_PATH|CAP_PATH|PAYMENTS_PATH/);
+    }
+  });
+
+  /*
+   * A payment is an amount, a day and an account. Anything less is not one, and
+   * a figure typed wrong is worse than a figure absent.
+   */
+  it('refuses what is not a payment', () => {
+    expect(() => addPayment(0, '2026-09-08', 'ElevenLabs')).toThrow(/above zero/);
+    expect(() => addPayment(-5, '2026-09-08', 'ElevenLabs')).toThrow(/above zero/);
+    expect(() => addPayment(10, 'yesterday', 'ElevenLabs')).toThrow(/the day it went in/);
+    expect(() => addPayment(10, '2026-09-08', '  ')).toThrow(/the account it went to/);
+  });
+
+  it('names a payment that could not be found rather than doing nothing', () => {
+    expect(() => correctPayment('nope', 10, '2026-09-08', 'ElevenLabs')).toThrow(/no payment/);
+    expect(() => removePayment('nope')).toThrow(/no payment/);
+  });
+});
+
+/**
+ * **Two sources on one screen, now checked against each other.**
+ *
+ * The grand total is read from the ledger; the per-video figures come from each
+ * plan's own `spentUsd`. Session 71 measured the difference at $10.098150 — of
+ * which $4.502282 is benchmarks and prompt experiments belonging to no video,
+ * leaving $5.594404 of production spend no plan claims.
+ */
+describe('the two sources', () => {
+  const ledgerLine = (stage: string, usd: number): string =>
+    JSON.stringify({ stage, model: 'm', unit: 'run', usd, timestamp: '2026-01-01T00:00:00.000Z' });
+
+  const reel = (name: string, spentUsd: number): ReelCost => ({
+    reel: name,
+    spentUsd,
+    durationS: 10,
+    usdPerSecond: spentUsd / 10,
+    stages: ['images'],
+  });
+
+  it('separates what belongs to no video from what no plan claims', () => {
+    const lines = readLedger(
+      [ledgerLine('images-generate', 10), ledgerLine('benchmark-gemini', 4)].join('\n'),
+    ).lines;
+    const r = reconcile(lines, [reel('a', 6)]);
+    expect(r.ledgerTotalUsd).toBe(14);
+    expect(r.outsideAnyVideoUsd).toBe(4);
+    expect(r.ledgerProductionUsd).toBe(10);
+    expect(r.videosAccountForUsd).toBe(6);
+    expect(r.unaccountedUsd).toBe(4);
+    expect(r.overclaimedUsd).toBe(0);
+    expect(r.agrees).toBe(true);
+  });
+
+  /*
+   * **The direction that is a defect.** The ledger is written at the point of
+   * spend, so it cannot hold less than was really spent on a reel. A plan
+   * claiming more is a plan asserting money nothing ever billed.
+   */
+  it('says so when a plan claims a spend the ledger never recorded', () => {
+    const lines = readLedger(ledgerLine('images-generate', 5)).lines;
+    const r = reconcile(lines, [reel('a', 9)]);
+    expect(r.agrees).toBe(false);
+    expect(r.overclaimedUsd).toBe(4);
+    expect(r.unaccountedUsd).toBe(0);
+  });
+
+  it('agrees on the real ledger and the real plans', () => {
+    const view = moneyView({ costsPath: COSTS_PATH, planPaths: planPathsForMoney() });
+    const r = view.reconciliation;
+    expect(r.agrees).toBe(true);
+    expect(r.overclaimedUsd).toBe(0);
+    // Measured on 2026-09-08 and unchanged by this session.
+    expect(r.ledgerTotalUsd).toBe(18.832129);
+    expect(r.outsideAnyVideoUsd).toBe(4.502282);
   });
 });
