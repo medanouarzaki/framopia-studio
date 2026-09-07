@@ -78,4 +78,9 @@ else
   echo "check: SKIPPING sidecar tests — tools/cv/.venv missing, run tools/cv/setup.sh"
 fi
 
+# What the counts above depended on. Said rather than left to be inferred: the
+# suite sizes move with what is on this disk, so a signature quoted from one
+# machine is not a property of the commit. See session 64's measurement.
+node scripts/check-what-counted.mjs
+
 echo "check: PASS"
