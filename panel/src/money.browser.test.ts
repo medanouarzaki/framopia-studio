@@ -218,6 +218,88 @@ describe.skipIf(!built)('the money screen', () => {
     }
   }, 30_000);
 
+  /*
+   * **A payment is not a credit reading, and the screen must not blur them.**
+   * Credit is what an account has left today; a payment is money that went in on
+   * a date. Two payments add up and two credit readings do not.
+   */
+  it('keeps money paid in apart from credit', async () => {
+    const loaded = await open();
+    if (loaded === null) return;
+    try {
+      const seen = await loaded.page.evaluate(() => {
+        const inBlock = (sel: string): string =>
+          (document.querySelector(sel) as HTMLElement | null)?.textContent ?? '';
+        return {
+          paidIn: inBlock('.paidin'),
+          banner: inBlock('.moneybanner'),
+          paidInIsItsOwnBlock: document.querySelectorAll('.paidin').length,
+        };
+      });
+      expect(seen.paidInIsItsOwnBlock).toBe(1);
+      expect(seen.paidIn).toContain('Money you have paid in');
+      expect(seen.paidIn).toContain('cannot see your accounts');
+      // The credit figure lives in the banner and nowhere else.
+      expect(seen.banner).toContain('Credit left');
+      expect(seen.paidIn).not.toContain('Credit left');
+      expect(loaded.uncaught).toEqual([]);
+    } finally {
+      await loaded.page.close();
+    }
+  }, 30_000);
+
+  /*
+   * Two sources sat on one screen and were never compared. Read out of the
+   * rows rather than the page text, for session 69's reason.
+   */
+  it('says where the total comes from, line by line', async () => {
+    const loaded = await open();
+    if (loaded === null) return;
+    try {
+      const rows = await loaded.page.$$eval('.reconcile .paidsum', (els) =>
+        els.map((el) => ({
+          what: el.querySelector('.what')?.textContent ?? '',
+          amount: el.querySelector('.amount')?.textContent ?? '',
+        })),
+      );
+      const labels = rows.map((r) => r.what);
+      expect(labels).toContain('In the ledger');
+      expect(labels).toContain('The videos above account for');
+      expect(labels).toContain('Trying things out, no video');
+      expect(labels).toContain('Spent on videos, not on their record');
+      for (const r of rows) expect(r.amount).toMatch(/^\$-?\d/);
+      expect(loaded.uncaught).toEqual([]);
+    } finally {
+      await loaded.page.close();
+    }
+  }, 30_000);
+
+  /* The edges of the record, said as edges rather than as an error. */
+  it('says what it cannot see, and names no command', async () => {
+    const loaded = await open();
+    if (loaded === null) return;
+    try {
+      const block = await loaded.page.evaluate(() => {
+        const el = document.querySelector('.cannotsee') as HTMLElement | null;
+        return {
+          text: el?.textContent ?? '',
+          items: [...(el?.querySelectorAll('li') ?? [])].map((li) => li.textContent ?? ''),
+        };
+      });
+      expect(block.items.length).toBe(3);
+      expect(block.text).toContain('outside Framopia');
+      expect(block.text).toContain('None of this is broken');
+      for (const forbidden of ['npm run', 'terminal', 'error', 'failed']) {
+        expect(`${forbidden}: ${block.text.toLowerCase().includes(forbidden)}`).toBe(
+          `${forbidden}: false`,
+        );
+      }
+      expect(loaded.uncaught).toEqual([]);
+    } finally {
+      await loaded.page.close();
+    }
+  }, 30_000);
+
   it('offers a cap and says it only warns', async () => {
     const loaded = await open();
     if (loaded === null) return;
