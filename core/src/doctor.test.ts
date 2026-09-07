@@ -1,4 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { existsSync, readFileSync } from 'node:fs';
+import path from 'node:path';
+import { REPO_ROOT } from './paths.js';
 import {
   compareFontNames,
   fontFamilyOf,
@@ -229,5 +232,34 @@ describe('comparing font names', () => {
   it('takes the family as the text before the first hyphen', () => {
     expect(fontFamilyOf('CormorantGaramondItalic-SemiBoldItalic')).toBe('CormorantGaramondItalic');
     expect(fontFamilyOf('AndaleMono')).toBe('AndaleMono');
+  });
+});
+
+/**
+ * **A diagnostic does not write into tracked files.**
+ *
+ * `tools/doctor/cli.ts` wrote its report into `reports/`, which git carries, so
+ * every run overwrote the committed record of whichever machine ran last. Block
+ * 11 session 65 clobbered a measurement taken on 2026-08-30 on another host
+ * simply by running the doctor, and restored it from HEAD. A report is a record
+ * of what one machine measured on one day; the next machine's run is not an
+ * edit of it.
+ *
+ * The records committed before the change are deliberately left where they are.
+ */
+describe('where the doctor writes', () => {
+  const cli = readFileSync(path.join(REPO_ROOT, 'tools', 'doctor', 'cli.ts'), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/^\s*\/\/.*$/gm, '');
+
+  it('is somewhere git does not carry', () => {
+    expect(cli).toContain('LOCAL_DIR');
+    // The defect exactly: the default output path built out of `reports/`.
+    expect(cli).not.toMatch(/outPath[\s\S]{0,200}'reports'/);
+  });
+
+  it('leaves the records already committed alone', () => {
+    // They are measurements that were taken. Nothing removed them.
+    expect(existsSync(path.join(REPO_ROOT, 'reports', 'doctor-anouar-mbp.json'))).toBe(true);
   });
 });

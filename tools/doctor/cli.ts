@@ -20,6 +20,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   DOCTOR_SCHEMA_VERSION,
+  LOCAL_DIR,
   REPO_ROOT,
   exitCodeFor,
   formatReport,
@@ -196,9 +197,26 @@ const report: DoctorReport = {
 
 console.log(formatReport(report));
 
+/*
+ * **A diagnostic does not write into tracked files.** This wrote to `reports/`,
+ * which git carries, so every run overwrote the committed record of whichever
+ * machine ran last — Block 11 session 65 clobbered a measurement taken on
+ * 2026-08-30 on another host simply by running the doctor, and had to restore it
+ * from HEAD. A report is a record of what one machine measured on one day, and
+ * the next machine's run is not an edit of it.
+ *
+ * `.local/` is gitignored and is already where everything machine-local lives.
+ * The records committed before this change are left exactly where they are:
+ * they are measurements that were taken, and deleting them would be deleting
+ * the evidence this rule exists to protect.
+ */
 const outPath =
   flag('out') ??
-  path.join(REPO_ROOT, 'reports', `doctor-${(machine.label ?? machine.hostname).replace(/\W+/gu, '-')}.json`);
+  path.join(
+    LOCAL_DIR,
+    'doctor',
+    `doctor-${(machine.label ?? machine.hostname).replace(/\W+/gu, '-')}.json`,
+  );
 mkdirSync(path.dirname(outPath), { recursive: true });
 writeFileSync(outPath, `${JSON.stringify(report, null, 2)}\n`);
 console.log(`\nwrote ${path.relative(REPO_ROOT, outPath)}`);
