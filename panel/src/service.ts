@@ -933,6 +933,29 @@ export interface MoneyReel {
   stages: string[];
 }
 
+export interface Payment {
+  id: string;
+  usd: number;
+  on: string;
+  account: string;
+}
+
+export interface PaidIn {
+  payments: Payment[];
+  totalInUsd: number;
+  impliedLeftUsd: number;
+}
+
+export interface Reconciliation {
+  ledgerTotalUsd: number;
+  ledgerProductionUsd: number;
+  videosAccountForUsd: number;
+  outsideAnyVideoUsd: number;
+  unaccountedUsd: number;
+  overclaimedUsd: number;
+  agrees: boolean;
+}
+
 export interface Money {
   totalUsd: number;
   lines: number;
@@ -949,6 +972,8 @@ export interface Money {
   credit: MoneyCredit | null;
   perReel: MoneyReel[];
   cap: { monthlyUsd: number | null; monthSoFarUsd: number };
+  paidIn: PaidIn;
+  reconciliation: Reconciliation;
 }
 
 export async function fetchMoney(connection: Connection): Promise<Money> {
@@ -963,4 +988,32 @@ export async function saveCredit(connection: Connection, usd: number): Promise<M
 
 export async function saveCap(connection: Connection, monthlyUsd: number | null): Promise<Money> {
   return await postJson<Money>(connection, '/money/cap', { monthlyUsd });
+}
+
+/** A payment in, or a correction to one when `id` is given. */
+export async function savePayment(
+  connection: Connection,
+  payment: { id?: string; usd: number; on: string; account: string },
+): Promise<Money> {
+  return await postJson<Money>(connection, '/money/paid-in', payment);
+}
+
+/** Removed, and the reply names what went, so nothing goes quietly. */
+export async function removePayment(
+  connection: Connection,
+  id: string,
+): Promise<{ removed: Payment; money: Money }> {
+  const res = await fetch(
+    `http://127.0.0.1:${connection.port}/money/paid-in?id=${encodeURIComponent(id)}`,
+    { method: 'DELETE', headers: { 'x-service-token': connection.token } },
+  );
+  const body = (await res.json().catch(() => ({}))) as {
+    error?: string;
+    removed?: Payment;
+    money?: Money;
+  };
+  if (!res.ok || body.removed === undefined || body.money === undefined) {
+    throw new Error(body.error ?? 'that payment could not be removed');
+  }
+  return { removed: body.removed, money: body.money };
 }

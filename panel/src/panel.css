@@ -800,3 +800,47 @@ section.client .say, section.video .say { margin: 8px 0 0; color: var(--muted); 
 .capwarning {
   margin: 6px 0 0; color: var(--warn); font-size: 0.75em; line-height: 1.5;
 }
+
+/* Money in, the two sources, and what the screen cannot reach. */
+.paidin, .reconcile, .cannotsee { display: grid; gap: 6px; }
+
+.paidintable .when {
+  width: 6.4em; text-align: right; color: var(--faint);
+  font-variant-numeric: tabular-nums;
+}
+.paidintable .drop { width: 4.6em; text-align: right; }
+.paidintable .drop .link { font-size: 0.85em; }
+
+.paidsum {
+  display: flex; align-items: baseline; gap: 8px;
+  font-size: 0.8em; color: var(--muted);
+}
+.paidsum .what { flex: 1 1 0; min-width: 0; }
+.paidsum .amount {
+  flex: 0 0 auto; color: var(--text); font-variant-numeric: tabular-nums;
+}
+.paidsum.strong { font-size: 0.95em; }
+.paidsum.strong .what { color: var(--text); }
+.paidsum.strong .amount { font-weight: 600; }
+
+.paidin .caveat { margin: 2px 0 0; color: var(--warn); font-size: 0.7em; }
+.paidin .removed { margin: 4px 0 0; font-size: 0.72em; }
+
+.payentry { display: grid; grid-template-columns: auto 1fr; gap: 6px 8px; align-items: center; }
+.payentry label { color: var(--muted); font-size: 0.75em; }
+.payentry input {
+  min-width: 0; padding: 6px 9px;
+  background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px;
+  color: var(--text); font: inherit; font-size: 0.9em;
+}
+.payentry .ghost { grid-column: 2; justify-self: start; margin-top: 2px; }
+
+.reconcile .disagree {
+  margin: 4px 0 0; color: var(--accent); font-size: 0.75em; line-height: 1.5;
+}
+
+.cannotsee ul {
+  margin: 0; padding-left: 18px; color: var(--muted);
+  font-size: 0.75em; line-height: 1.6;
+}
+.cannotsee .faint { margin: 2px 0 0; font-size: 0.7em; }

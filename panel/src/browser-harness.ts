@@ -148,6 +148,21 @@ export function realMoney(): Record<string, unknown> {
     credit: null,
     perReel: [],
     cap: { monthlyUsd: null, monthSoFarUsd: 0 },
+    /*
+     * No payments: none are recorded on this machine, which is what a real
+     * reading gives. Seeding one would make the screen show a figure nobody
+     * entered.
+     */
+    paidIn: { payments: [], totalInUsd: 0, impliedLeftUsd: -read.totalUsd },
+    reconciliation: {
+      ledgerTotalUsd: read.totalUsd,
+      ledgerProductionUsd: read.totalUsd,
+      videosAccountForUsd: 0,
+      outsideAnyVideoUsd: 0,
+      unaccountedUsd: read.totalUsd,
+      overclaimedUsd: 0,
+      agrees: true,
+    },
   };
 }
 

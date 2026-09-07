@@ -1,8 +1,10 @@
 import { useEffect, useState, type JSX } from 'react';
 import {
   fetchMoney,
+  removePayment,
   saveCap,
   saveCredit,
+  savePayment,
   type Connection,
   type Money as MoneyData,
   type MoneyGroup,
@@ -48,6 +50,11 @@ export function Money({ connection }: { connection: Connection }): JSX.Element {
   const [grouping, setGrouping] = useState<Grouping>('byMonth');
   const [creditDraft, setCreditDraft] = useState('');
   const [capDraft, setCapDraft] = useState('');
+  const [payUsd, setPayUsd] = useState('');
+  const [payOn, setPayOn] = useState('');
+  const [payAccount, setPayAccount] = useState('');
+  /* Named after it goes, so a removal is never silent. */
+  const [lastRemoved, setLastRemoved] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -226,6 +233,180 @@ export function Money({ connection }: { connection: Connection }): JSX.Element {
           </ul>
         </>
       ) : null}
+
+      <div className="paidin">
+        <h3>Money you have paid in</h3>
+        {/*
+          * **A payment is not a spend and not a credit reading.** The ledger is
+          * what this tool spent through the APIs; a payment is money that went
+          * into an account on a day, which nothing here can see. Credit, in the
+          * banner above, is what an account has left today — two credit readings
+          * do not add up, two payments do, and the screen never mixes them.
+          */}
+        {data.paidIn.payments.length === 0 ? (
+          <p className="faint">Nothing recorded yet. Framopia cannot see your accounts.</p>
+        ) : (
+          <>
+            <table className="paidintable">
+              <tbody>
+                {data.paidIn.payments.map((p) => (
+                  <tr key={p.id}>
+                    <th scope="row" title={p.account}>
+                      {p.account}
+                    </th>
+                    <td className="when">{p.on}</td>
+                    <td className="amount">{usd(p.usd)}</td>
+                    <td className="drop">
+                      <button
+                        type="button"
+                        className="link"
+                        onClick={() => {
+                          void (async () => {
+                            try {
+                              const gone = await removePayment(connection, p.id);
+                              setData(gone.money);
+                              setLastRemoved(
+                                `${usd(gone.removed.usd)} to ${gone.removed.account} on ${gone.removed.on}`,
+                              );
+                            } catch (error) {
+                              setTrouble((error as Error).message);
+                            }
+                          })();
+                        }}
+                      >
+                        Remove
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div className="paidsum">
+              <span className="what">Paid in</span>
+              <span className="amount">{usd(data.paidIn.totalInUsd)}</span>
+            </div>
+            <div className="paidsum">
+              <span className="what">Spent</span>
+              <span className="amount">{usd(data.totalUsd)}</span>
+            </div>
+            <div className="paidsum strong">
+              <span className="what">Difference</span>
+              <span className="amount">{usd(data.paidIn.impliedLeftUsd)}</span>
+            </div>
+            <p className="caveat">
+              Subtraction from what you typed, not a reading of any account.
+            </p>
+          </>
+        )}
+        {lastRemoved === null ? null : (
+          <p className="faint removed" role="status">
+            Removed {lastRemoved}. It was your own note, so nothing else changed.
+          </p>
+        )}
+        <div className="payentry">
+          <label htmlFor="payusd">Amount</label>
+          <input
+            id="payusd"
+            type="text"
+            inputMode="decimal"
+            value={payUsd}
+            placeholder="0.00"
+            onChange={(e) => setPayUsd(e.target.value)}
+          />
+          <label htmlFor="payon">Day</label>
+          <input
+            id="payon"
+            type="text"
+            value={payOn}
+            placeholder="2026-09-08"
+            onChange={(e) => setPayOn(e.target.value)}
+          />
+          <label htmlFor="payaccount">Account</label>
+          <input
+            id="payaccount"
+            type="text"
+            value={payAccount}
+            placeholder="ElevenLabs"
+            onChange={(e) => setPayAccount(e.target.value)}
+          />
+          <button
+            type="button"
+            className="ghost"
+            disabled={
+              payUsd.trim() === '' ||
+              Number.isNaN(Number(payUsd)) ||
+              payOn.trim() === '' ||
+              payAccount.trim() === ''
+            }
+            onClick={() => {
+              void (async () => {
+                try {
+                  setData(
+                    await savePayment(connection, {
+                      usd: Number(payUsd),
+                      on: payOn.trim(),
+                      account: payAccount.trim(),
+                    }),
+                  );
+                  setPayUsd('');
+                  setPayOn('');
+                  setPayAccount('');
+                  setLastRemoved(null);
+                } catch (error) {
+                  setTrouble((error as Error).message);
+                }
+              })();
+            }}
+          >
+            Add
+          </button>
+        </div>
+      </div>
+
+      <div className="reconcile">
+        <h3>Where the total comes from</h3>
+        {/*
+          * **Two sources, now checked against each other.** The grand total is
+          * read from the ledger; the per-video figures come from each video's
+          * own plan. They sat on one screen and were never compared. Session 71
+          * measured the difference at $10.098150.
+          */}
+        <div className="paidsum">
+          <span className="what">In the ledger</span>
+          <span className="amount">{usd(data.reconciliation.ledgerTotalUsd)}</span>
+        </div>
+        <div className="paidsum">
+          <span className="what">The videos above account for</span>
+          <span className="amount">{usd(data.reconciliation.videosAccountForUsd)}</span>
+        </div>
+        <div className="paidsum">
+          <span className="what">Trying things out, no video</span>
+          <span className="amount">{usd(data.reconciliation.outsideAnyVideoUsd)}</span>
+        </div>
+        <div className="paidsum">
+          <span className="what">Spent on videos, not on their record</span>
+          <span className="amount">{usd(data.reconciliation.unaccountedUsd)}</span>
+        </div>
+        {data.reconciliation.agrees ? null : (
+          <p className="disagree" role="status">
+            A video claims {usd(data.reconciliation.overclaimedUsd)} more than was ever
+            charged. One of the two records is wrong and nothing here has changed either.
+          </p>
+        )}
+      </div>
+
+      <div className="cannotsee">
+        <h3>What this cannot see</h3>
+        <ul>
+          <li>Anything spent outside Framopia — a subscription, a tool bought elsewhere.</li>
+          <li>Money you paid into an account, until you add it above.</li>
+          <li>What an account has left today, until you type it at the top.</li>
+        </ul>
+        <p className="faint">
+          None of this is broken. It is what a record of this tool&rsquo;s own spending
+          can and cannot reach.
+        </p>
+      </div>
 
       <div className="moneycap">
         <h3>A monthly cap</h3>
