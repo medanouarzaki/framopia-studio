@@ -341,24 +341,63 @@ installed and simply refuses to appear.
 **Then quit After Effects and open it again**, because it only reads that folder
 when it starts. The panel is under **Window → Extensions → Framopia Studio**.
 
-### If the panel says the service was built from different code
+### If something goes wrong, in the order to check it
 
-You may see a line like *"The background service was built from different code
-than this panel, so the two may not agree about what a video contains."* **This
-is the tool checking itself and it is doing its job** — it happened on the first
-Mac the first time the panel was used, and the fix worked exactly as the message
-said.
+Two things go wrong here more than anything else. Both have a first thing to
+check and a second thing to run, in that order.
 
-It means the two halves were built at different moments, which is easy to do
-while setting up. Do what the line tells you:
+#### The panel does not appear in After Effects
+
+Window → Extensions is empty, or Framopia Studio is not in the list.
+
+**First, check what the install actually did.** Run it again — it is safe to run
+as often as you like, and it says what it finds before it changes anything:
 
 ```
-npm run service -- --force
+cd "<repo>"
+npm run panel:install
 ```
 
-Then **close the panel and open it again** — Window → Extensions → Framopia
-Studio. The line should be gone. If it is still there after that, send us what
-it says rather than trying anything else.
+**You should see** three lines telling you where the extensions folder is, what
+it points at, and what it would point at. If the second and third are the same,
+the link is right and the problem is elsewhere — go to the next check.
+
+**If it says `REFUSED — this folder already points somewhere else`**, another
+copy of this project is installed and After Effects is loading that one. It will
+name both. If the one you want is this folder, run:
+
+```
+npm run panel:install -- --repoint
+```
+
+**Second, check After Effects has read the folder.** It only reads it when it
+starts, so if the link was made while After Effects was open, it has not seen it
+yet. Quit After Effects and open it again.
+
+**If it is still not there**, run `npm run doctor` and send us what it says about
+*the panel* and *PlayerDebugMode*. Those two are what make an unsigned panel
+appear at all.
+
+#### The panel says it is showing older code
+
+You may see: *"This panel is showing older code than the rest of the tool, so
+what you see here may not match what it does. Nothing you have made is
+affected."*
+
+**This is normal right after `git pull`** and nothing is broken. The panel is a
+file that gets built, and pulling new code does not rebuild it.
+
+```
+cd "<repo>"
+npm run panel:build
+```
+
+Then close the panel and open it again — Window → Extensions → Framopia Studio.
+The line should be gone.
+
+**If instead it mentions the background service**, the panel is already fixing
+that by itself; give it a few seconds. If the line is still there after that,
+send us what it says rather than trying anything else.
 
 ---
 
@@ -707,6 +746,32 @@ same clone with **no video on disk at all**.
 §10 — putting a real API key in — which cannot be rehearsed, because the only
 key available is Mohamed's and it must never be copied into a second checkout.
 Everything after that point needs money to exercise.
+
+### What the recovery steps above have and have not been run against
+
+**Run, on 2026-09-07:**
+
+| step | how it was exercised |
+|---|---|
+| `npm run panel:install`, first time | against a temporary folder standing in for the extensions folder — it made the link and reported all three lines |
+| `npm run panel:install`, run twice | reported *already points at* and changed nothing |
+| the `REFUSED` message | a link pointed at another checkout: it refused, exited non-zero, and left the link exactly as it was |
+| `npm run panel:install -- --repoint` | repointed, and said it was because `--repoint` was given |
+| `npm run panel:build` | run on a fresh clone, 97 ms |
+| the *older code* message | proved against a genuinely stale build stamp |
+
+**Not run, and why.** None of the install steps has ever been run against **the
+real extensions folder**, on any machine. There is one of it per Mac, and
+running it here would have taken the panel away from the copy Mohamed uses —
+which is the whole reason the step went unexercised for eleven sessions. So
+**the first time it touches a real extensions folder will be on your Mac.** The
+guard above exists exactly for that: if anything is already installed, it stops
+and tells you rather than replacing it.
+
+For the same reason, nobody has watched the panel appear in After Effects from a
+fresh install, or watched the *older code* line appear on screen — only the rule
+behind it has been tested. If either behaves differently from what is written
+here, that is the most useful thing you can send back.
 
 **One thing worth knowing that the rehearsal found.** If you pull new code, run
 `npm run panel:build` again before anything else. The panel bundle records which
