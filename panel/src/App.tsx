@@ -19,6 +19,7 @@ import { ClientCard } from './ClientCard.js';
 import { NewClient } from './NewClient.js';
 import { Readiness } from './Readiness.js';
 import { panelBuildStamp, stalenessOf } from './staleness.js';
+import { whichIsBehind, PANEL_IS_BEHIND } from '@framopia/core/build-stamp';
 import { fileDialogSupport, pickVideoFile } from './file-dialog.js';
 import { Transcript } from './Transcript.js';
 import { Images } from './Images.js';
@@ -101,6 +102,16 @@ function Panel({
   const [repairs, setRepairs] = useState(0);
   const [repairing, setRepairing] = useState(false);
   const [repaired, setRepaired] = useState<string | null>(null);
+  /*
+   * Which of the two is behind, not merely that they differ. The compiled
+   * service on disk is the third stamp that settles it, and the panel already
+   * reads it for the repair — see `whichIsBehind`.
+   */
+  const behindSide = whichIsBehind(
+    panelBuildStamp(),
+    service.kind === 'healthy' ? service.health.buildStamp : undefined,
+    host.serviceDistStamp?.() ?? null,
+  );
   const [reels, setReels] = useState<Reel[]>([]);
   const [modes, setModes] = useState<ClientMode[]>([]);
   const [reelLabel, setReelLabel] = useState<string>('');
@@ -166,6 +177,13 @@ function Panel({
     const mismatched =
       stalenessOf(panelBuildStamp(), service.health.buildStamp).verdict === 'different';
     if (!mismatched) return;
+    /*
+     * **Not when this panel is the stale half.** Restarting the service cannot
+     * change the stamp baked into this bundle, so the repair would succeed, the
+     * mismatch would remain, and it would run again to the bound. Session 65
+     * hit exactly that after a `git pull` and session 66 measured the loop.
+     */
+    if (behindSide === 'panel') return;
     if (repairs >= MAX_REPAIR_ATTEMPTS) return;
 
     let cancelled = false;
@@ -403,9 +421,12 @@ function Panel({
    * is nothing for them to do. Only an unrepaired mismatch shows the detection's
    * own words.
    */
-  const staleLine = repairing
-    ? 'The background service was out of date. Bringing it up to date now — this takes a few seconds.'
-    : (repaired ?? stale.detail);
+  const staleLine =
+    behindSide === 'panel'
+      ? PANEL_IS_BEHIND
+      : repairing
+        ? 'The background service was out of date. Bringing it up to date now — this takes a few seconds.'
+        : (repaired ?? stale.detail);
 
   if (newClient !== null) {
     return (

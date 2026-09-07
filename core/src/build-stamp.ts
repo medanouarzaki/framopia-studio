@@ -144,3 +144,53 @@ export function describeBuildStamps(
   }
   return 'this service does not say which build it is, so the two cannot be compared';
 }
+
+/**
+ * **Which of the two is behind**, which is not what `compareBuildStamps` answers.
+ *
+ * That one says only *they disagree*, and everything downstream then assumed the
+ * service was the stale half, because for a long time it always was: the panel
+ * was rebuilt by `npm run check` and the service was not. **After a `git pull`
+ * it is the other way round.** The service gets compiled, the panel bundle does
+ * not, and the panel then tells the user the service was built from different
+ * code and restarts it — which cannot change the panel's own stamp, so the
+ * banner comes back and the repair runs again. Block 11 session 65 hit this and
+ * lost a run to it; session 66 measured the loop.
+ *
+ * **The third stamp settles it, and it was already being read.** `distStamp` is
+ * the compiled service on disk. If the running service matches what is compiled,
+ * then the service is running the newest code there is and the panel is the odd
+ * one out. No new field, no schema change: `repairService` already reads all
+ * three.
+ */
+export type BehindSide = 'panel' | 'service' | 'unknown';
+
+export function whichIsBehind(
+  panelStamp: string | null,
+  serviceStamp: string | null | undefined,
+  distStamp: string | null | undefined,
+): BehindSide {
+  const known = (v: string | null | undefined): v is string =>
+    typeof v === 'string' && v.length > 0;
+  if (!known(panelStamp) || !known(serviceStamp)) return 'unknown';
+  if (sourceHalf(panelStamp) === sourceHalf(serviceStamp)) return 'unknown';
+  if (!known(distStamp)) return 'service';
+  // The service is running exactly what is compiled, so nothing about the
+  // service is out of date and the panel is what is behind.
+  return sourceHalf(serviceStamp) === sourceHalf(distStamp) ? 'panel' : 'service';
+}
+
+/**
+ * What the panel says when it is the stale half.
+ *
+ * **It says what is true and stops there.** The remedy — rebuilding the bundle
+ * and loading it — cannot be stated in this panel: every way of saying it names
+ * a command or tells the user to reopen something, and `leave-the-panel.test.ts`
+ * forbids both. That is a real conflict between two of Mohamed's rules and it is
+ * recorded in `reports/block-11-session-66.md` for him to settle, not worked
+ * around here. Saying nothing at all was the worse option: until session 66 this
+ * case wore the *service* is out of date banner and repaired the wrong thing.
+ */
+export const PANEL_IS_BEHIND =
+  'This panel is showing older code than the rest of the tool, so what you see ' +
+  'here may not match what it does. Nothing you have made is affected.';
