@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import {
-  MODES_DIR,
+  modesDir,
   PALETTE_MEANING,
   paletteRolesInDisplayOrder,
   REPO_ROOT,
@@ -290,12 +290,12 @@ function corpusReels(): CatalogueReel[] {
  * uses, so a mode the validator rejects does not silently appear in a picker.
  */
 export function listModes(): CatalogueMode[] {
-  if (!existsSync(MODES_DIR)) return [];
-  return readdirSync(MODES_DIR)
+  if (!existsSync(modesDir())) return [];
+  return readdirSync(modesDir())
     .filter((f) => f.endsWith('.json'))
     .sort()
     .flatMap((file) => {
-      const modePath = path.join(MODES_DIR, file);
+      const modePath = path.join(modesDir(), file);
       try {
         const mode = parseMode(readFileSync(modePath, 'utf8'), modePath);
         const entry: CatalogueMode = {

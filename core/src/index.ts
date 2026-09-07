@@ -53,7 +53,7 @@ export {
   MODE_SCHEMA_VERSION,
   ModeFontsUnresolvedError,
   ModeValidationError,
-  MODES_DIR,
+  modesDir,
   modePathFor,
   PALETTE_ROLES,
   parseMode,

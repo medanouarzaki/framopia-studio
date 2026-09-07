@@ -1,5 +1,15 @@
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
@@ -84,7 +94,20 @@ const ready = FFMPEG !== null && existsSync(SOURCE) && existsSync(SIDECAR_PYTHON
  * would have shown.
  */
 const SECOND_CLIENT = 'a-second-client-for-the-new-video-test';
-const SECOND_CLIENT_PATH = path.join(REPO_ROOT, 'modes', `${SECOND_CLIENT}.json`);
+/*
+ * **Its own modes directory, made and pointed at while this file loads.**
+ *
+ * These three clients used to be written straight into the repository's real
+ * `modes/`, and a run that is interrupted leaves them there — session 69 found
+ * three, and session 71 reproduced it by killing a run on purpose. The
+ * directory is made here rather than in `beforeAll` because these paths are
+ * module-level constants: by the time a hook runs they have already been
+ * computed, and production reads `FRAMOPIA_MODES_DIR` at call time, so the
+ * variable has to be set before anything can ask.
+ */
+const SCRATCH_MODES = mkdtempSync(path.join(tmpdir(), 'framopia-scratch-modes-'));
+process.env['FRAMOPIA_MODES_DIR'] = SCRATCH_MODES;
+const SECOND_CLIENT_PATH = path.join(SCRATCH_MODES, `${SECOND_CLIENT}.json`);
 
 /**
  * **Three clients, so the client's own pictures are proved general rather than
@@ -94,10 +117,19 @@ const SECOND_CLIENT_PATH = path.join(REPO_ROOT, 'modes', `${SECOND_CLIENT}.json`
  * nonsense words in both scripts and the reels are re-encoded corpus footage.
  */
 const PICTURE_CLIENT = 'a-client-with-its-own-pictures-test';
-const PICTURE_CLIENT_PATH = path.join(REPO_ROOT, 'modes', `${PICTURE_CLIENT}.json`);
+const PICTURE_CLIENT_PATH = path.join(SCRATCH_MODES, `${PICTURE_CLIENT}.json`);
 const NO_PICTURE_CLIENT = 'a-client-with-no-pictures-test';
-const NO_PICTURE_CLIENT_PATH = path.join(REPO_ROOT, 'modes', `${NO_PICTURE_CLIENT}.json`);
+const NO_PICTURE_CLIENT_PATH = path.join(SCRATCH_MODES, `${NO_PICTURE_CLIENT}.json`);
 const SCRATCH_CLIENTS = [SECOND_CLIENT_PATH, PICTURE_CLIENT_PATH, NO_PICTURE_CLIENT_PATH];
+
+/*
+ * The real clients are copied in, read-only, because this suite reads K2 as the
+ * shape a scratch client is built from. The originals are never opened for
+ * writing and never moved.
+ */
+for (const real of readdirSync(path.join(REPO_ROOT, 'modes')).filter((f) => f.endsWith('.json'))) {
+  copyFileSync(path.join(REPO_ROOT, 'modes', real), path.join(SCRATCH_MODES, real));
+}
 
 /** The word one of the picture client's labels holds, and its reel speaks. */
 const LABELLED_WORD = 'Zephyrine';
@@ -285,6 +317,18 @@ const SHAPES: Shape[] = [
 let dir: string;
 const videoPaths = new Map<string, string>();
 const saved = process.env['FRAMOPIA_VIDEO_REGISTRY'];
+/*
+ * **This suite writes real Edit Plans, and they must not land in the real
+ * directory.** A video outside the repository sends its plan to
+ * `.local/plans/`, which is where a client's own plans live, so a run that is
+ * interrupted leaves scratch reels there — it happened in sessions 69 and 70 and
+ * five of them reached Mohamed's money screen.
+ *
+ * Pointed somewhere of its own, the way the video registry above already is.
+ * Nothing in `editPlanPathFor` knows a test is running.
+ */
+const savedPlans = process.env['FRAMOPIA_PLANS_DIR'];
+const savedModes = process.env['FRAMOPIA_MODES_DIR'];
 
 /**
  * **No request may leave this machine, and that is checked rather than
@@ -403,6 +447,8 @@ beforeAll(() => {
     videoPaths.set(shape.label, videoPath);
   }
   process.env['FRAMOPIA_VIDEO_REGISTRY'] = path.join(dir, 'videos.json');
+  process.env['FRAMOPIA_PLANS_DIR'] = path.join(dir, 'plans');
+  mkdirSync(path.join(dir, 'plans'), { recursive: true });
 });
 
 afterAll(() => {
@@ -410,6 +456,11 @@ afterAll(() => {
   for (const scratch of SCRATCH_CLIENTS) rmSync(scratch, { force: true });
   if (saved === undefined) delete process.env['FRAMOPIA_VIDEO_REGISTRY'];
   else process.env['FRAMOPIA_VIDEO_REGISTRY'] = saved;
+  if (savedPlans === undefined) delete process.env['FRAMOPIA_PLANS_DIR'];
+  else process.env['FRAMOPIA_PLANS_DIR'] = savedPlans;
+  if (savedModes === undefined) delete process.env['FRAMOPIA_MODES_DIR'];
+  else process.env['FRAMOPIA_MODES_DIR'] = savedModes;
+  rmSync(SCRATCH_MODES, { recursive: true, force: true });
   /*
    * The video is outside the repository, so its plan, its frames and its
    * cutouts are not inside `dir`: they follow the rules that decide where each

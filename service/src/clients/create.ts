@@ -6,7 +6,7 @@ import {
   CLIENT_PICTURE_STORE,
   REPO_ROOT,
   CLIENT_LANGUAGES,
-  MODES_DIR,
+  modesDir,
   VIDEO_SHAPES,
   LOCAL_DIR,
   labelWords,
@@ -551,4 +551,4 @@ export function deleteClient(modeId: string): DeletedClient {
   return { id: modeId, name: raw.name, movedTo, ...(photographsMovedTo !== undefined ? { photographsMovedTo } : {}) };
 }
 
-export { CLIENT_LANGUAGES, MODES_DIR, VIDEO_SHAPES };
+export { CLIENT_LANGUAGES, modesDir, VIDEO_SHAPES };

@@ -11,7 +11,7 @@ import {
   type PlanSource,
 } from './types.js';
 import { assertValidEditPlan, EditPlanVersionError } from './validate.js';
-import { BROWSED_PLANS_DIR } from '../videos.js';
+import { browsedPlansDir } from '../videos.js';
 
 /**
  * Where a video's Edit Plan lives.
@@ -35,7 +35,7 @@ export function editPlanPathFor(videoPath: string): string {
   const stem = path.basename(videoPath, ext);
   if (classifyStoredPath(videoPath) === 'outside-the-repo') {
     const tag = crypto.createHash('sha256').update(videoPath).digest('hex').slice(0, 8);
-    return path.join(BROWSED_PLANS_DIR, `${stem}-${tag}.editplan.json`);
+    return path.join(browsedPlansDir(), `${stem}-${tag}.editplan.json`);
   }
   return path.join(path.dirname(videoPath), `${stem}.editplan.json`);
 }

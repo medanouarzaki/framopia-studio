@@ -870,10 +870,26 @@ function validateClientDetails(c: Checker, mode: Record<string, unknown>): void 
   }
 }
 
-export const MODES_DIR = path.join(REPO_ROOT, 'modes');
+/**
+ * Where the client files live.
+ *
+ * **A function rather than a constant, so it can be pointed elsewhere.** The
+ * suites create real clients through `createClient`, and a run that is
+ * interrupted leaves them in the real `modes/` — it happened in session 69 and
+ * again when session 71 killed a run on purpose to check. A constant computed at
+ * import time cannot be redirected, because ESM evaluates imports before a test
+ * file's own statements run; that is why `videoRegistryPath` in
+ * `service/src/videos.ts` is a function too.
+ *
+ * **The override is where a test points.** Nothing that calls this learns that
+ * tests exist, and with no variable set the answer is what it always was.
+ */
+export function modesDir(): string {
+  return process.env['FRAMOPIA_MODES_DIR'] ?? path.join(REPO_ROOT, 'modes');
+}
 
 export function modePathFor(modeId: string): string {
-  return path.join(MODES_DIR, `${modeId}.json`);
+  return path.join(modesDir(), `${modeId}.json`);
 }
 
 export function parseMode(raw: string, modePath: string): ClientMode {

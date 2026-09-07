@@ -41,8 +41,23 @@ export function videoRegistryPath(): string {
   return process.env['FRAMOPIA_VIDEO_REGISTRY'] ?? VIDEO_REGISTRY_PATH;
 }
 
-/** Where a browsed video's Edit Plan and build outputs go. */
-export const BROWSED_PLANS_DIR = path.join(LOCAL_DIR, 'plans');
+/**
+ * Where a browsed video's Edit Plan and build outputs go.
+ *
+ * **Overridable for the same reason `videoRegistryPath` is**, immediately above:
+ * the suites write real Edit Plans, and a video outside the repository sends
+ * them here — the very directory a client's own plans live in. A run that is
+ * interrupted leaves its plans behind in the real one, which happened twice
+ * (sessions 69 and 70) and put five scratch reels on Mohamed's money screen.
+ *
+ * **The override is where a test points, not a special case in the code that
+ * uses it.** `editPlanPathFor` asks this function and learns nothing about
+ * tests; production, with no variable set, behaves exactly as before.
+ */
+export function browsedPlansDir(): string {
+  return process.env['FRAMOPIA_PLANS_DIR'] ?? path.join(LOCAL_DIR, 'plans');
+}
+
 
 const execFileAsync = promisify(execFile);
 

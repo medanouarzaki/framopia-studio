@@ -1,6 +1,7 @@
 import { existsSync, readdirSync } from 'node:fs';
 import path from 'node:path';
-import { LOCAL_DIR, REPO_ROOT } from '@framopia/core';
+import { REPO_ROOT } from '@framopia/core';
+import { browsedPlansDir } from './videos.js';
 
 /**
  * Every Edit Plan on this machine, which is the only thing that knows what a
@@ -9,7 +10,7 @@ import { LOCAL_DIR, REPO_ROOT } from '@framopia/core';
  * gets a file written beside it.
  */
 export function planPathsForMoney(): string[] {
-  const dirs = [path.join(REPO_ROOT, 'my files', 'test videos'), path.join(LOCAL_DIR, 'plans')];
+  const dirs = [path.join(REPO_ROOT, 'my files', 'test videos'), browsedPlansDir()];
   const out: string[] = [];
   for (const dir of dirs) {
     if (!existsSync(dir)) continue;

@@ -1,5 +1,5 @@
 import { readdirSync } from 'node:fs';
-import { loadMode, MODES_DIR, ModeValidationError } from './mode.js';
+import { loadMode, modesDir, ModeValidationError } from './mode.js';
 import {
   loadTemplateManifest,
   TEMPLATE_MANIFEST_PATH,
@@ -12,9 +12,9 @@ import {
  * gate: a mode is data a build reads, so a broken one has to fail here rather
  * than at render time in front of a client.
  */
-const files = readdirSync(MODES_DIR).filter((f) => f.endsWith('.json'));
+const files = readdirSync(modesDir()).filter((f) => f.endsWith('.json'));
 if (files.length === 0) {
-  console.error(`no modes found in ${MODES_DIR}`);
+  console.error(`no modes found in ${modesDir()}`);
   process.exit(1);
 }
 
