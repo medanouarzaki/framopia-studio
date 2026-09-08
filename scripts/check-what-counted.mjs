@@ -16,7 +16,8 @@
  * Measured at run time, immediately after the suites, and never asserted: this
  * says what was true on this machine at this moment.
  */
-import { existsSync, readdirSync, statSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -34,4 +35,53 @@ console.log(
   `check: counted with ${plans.length}/5 corpus Edit Plans and ${reels.length}/5 reels ` +
     `(${gb} GB) on this disk — the suite sizes depend on both, so this signature ` +
     `belongs to this machine, not to the commit`,
+);
+
+/*
+ * **And what was skipped, by name.**
+ *
+ * A skipped test reads as a passing one in a total. Block 12 session 73 found
+ * two panel skips that had been in the signature since before Block 11 and that
+ * nobody had ever said the names of. A skip is often right — a test needing
+ * hardware this machine has not got should not fail — but it is never right for
+ * it to be invisible.
+ *
+ * Re-running the suites here would double the gate, so this asks git nothing and
+ * vitest nothing: it reads the skip conditions out of the source, which is what
+ * decides them.
+ */
+const SKIP = /\.skipIf\(|\bit\.skip\(|\bdescribe\.skip\(/;
+
+function skippingFiles(dir) {
+  const out = [];
+  const walk = (d) => {
+    let entries;
+    try {
+      entries = readdirSync(d, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const e of entries) {
+      if (e.name === 'node_modules' || e.name === 'dist') continue;
+      const full = path.join(d, e.name);
+      if (e.isDirectory()) walk(full);
+      else if (/\.test\.tsx?$/.test(e.name)) {
+        const text = readFileSync(full, 'utf8');
+        const n = (text.match(new RegExp(SKIP.source, 'g')) ?? []).length;
+        if (n > 0) out.push({ file: path.relative(root, full), n });
+      }
+    }
+  };
+  walk(dir);
+  return out;
+}
+
+const skipping = ['core', 'service', 'panel', 'benchmarks'].flatMap((w) =>
+  skippingFiles(path.join(root, w, 'src')),
+);
+const total = skipping.reduce((n, f) => n + f.n, 0);
+console.log(
+  `check: ${total} skip conditions across ${skipping.length} test files — a skip is a ` +
+    `test that did not run, and is counted here so a green total never hides one. ` +
+    `reports/block-12-session-73.md names every one and says which are correct.`,
 );

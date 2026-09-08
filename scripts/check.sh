@@ -26,6 +26,17 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.."
 # always had a current one.
 npm run build:core
 npm run build --prefix service
+# Built here rather than left to the panel workspace's own `test` script, which
+# does build it. A dependency that works as a side effect of something else is a
+# dependency nobody can see, and the artefact check below has to run before the
+# tests rather than in the middle of them.
+npm run panel:build
+
+# Every one of those, present, before anything executes them. A missing artefact
+# makes its integration test SKIP, which is a green run that tested nothing —
+# the shape that hid a broken compiled service for seventy sessions.
+node scripts/check-artefacts.mjs
+
 npm run typecheck --workspaces --if-present
 npm run lint --workspaces --if-present
 # `--run` is not appended here: every workspace's own `test` script carries it,
