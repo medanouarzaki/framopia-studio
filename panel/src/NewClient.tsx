@@ -123,6 +123,16 @@ export function NewClient({
     void loadSubtitlePreview(connection).then(setPreview);
   }, [connection]);
 
+  /*
+   * **What is still to set, named on screen before Save is pressed.** The
+   * service refuses a client without its four colours; discovering that from a
+   * failed save is finding out too late, so the screen says which are missing
+   * and the button does not pretend it would work.
+   */
+  const coloursMissing = PALETTE_FIELDS.filter((f) => palette[f.role] === undefined).map(
+    (f) => f.what.toLowerCase(),
+  );
+
   const save = async (): Promise<void> => {
     if (connection === null) return;
     setSaving(true);
@@ -161,12 +171,9 @@ export function NewClient({
        * `renderStylePrompt` substitutes every role into the image prompt, and an
        * undefined role would reach the model as the word "undefined".
        */
-      const chosen = paletteRolesInDisplayOrder().filter((r) => palette[r] !== undefined);
-      if (permanent && chosen.length === paletteRolesInDisplayOrder().length) {
-        body['palette'] = Object.fromEntries(
-          paletteRolesInDisplayOrder().map((r) => [r, palette[r]]),
-        );
-      }
+      body['palette'] = Object.fromEntries(
+        paletteRolesInDisplayOrder().map((r) => [r, palette[r]]),
+      );
       // The client does not exist yet, so there is no `/clients/pictures` to
       // call: the photographs travel with the client and the service numbers
       // them, by the same rule it uses when one is added to a saved client.
@@ -191,8 +198,8 @@ export function NewClient({
 
       <p className="promise">
         {permanent
-          ? 'Everything except the name can be left blank. Anything you skip uses what the tool already does, and you can fill it in later.'
-          : 'For a video you are doing once. It is not added to your client list.'}
+          ? 'Everything except the name and their four colours can be left blank. Anything you skip uses what the tool already does, and you can fill it in later.'
+          : 'For a video you are doing once. It is not added to your client list, but it still needs its own four colours.'}
       </p>
 
       <div className="card form">
@@ -296,8 +303,14 @@ export function NewClient({
           <span>Put your watermark on their videos</span>
         </label>
 
-        {permanent ? (
-          <div className="colours">
+        {/*
+          * **Asked for on both paths, because both write a client file.** A
+          * one-off goes through the same `createClient`, and until Mohamed's
+          * ruling of 2026-09-08 it inherited the template client's palette —
+          * so a video done once came out in K2 Syndicalia's colours. That is
+          * the mistake the ruling forbids, not a lesser version of it.
+          */}
+        <div className="colours">
             <span className="colourhead">Their colours</span>
             {PALETTE_FIELDS.map((f) => (
               <ColourField
@@ -319,13 +332,12 @@ export function NewClient({
                 }
               />
             ))}
-            <span className="hint">
-              {paletteRolesInDisplayOrder().every((r) => palette[r] !== undefined)
+            <span className={coloursMissing.length === 0 ? 'hint' : 'hint needed'}>
+              {coloursMissing.length === 0
                 ? 'These four style every word, the shadow behind it, the frame round a picture, and the pictures themselves.'
-                : 'Set all four to give them their own look. Left alone, this client is built in the standard one.'}
+                : `All four are needed before this can be saved — ${coloursMissing.join(', ')} still to set. No colour is ever borrowed from another client.`}
             </span>
           </div>
-        ) : null}
 
         {permanent ? (
           <ClientPictures
@@ -361,14 +373,26 @@ export function NewClient({
         </p>
       )}
 
+      {/*
+        * Disabled while a colour is missing, and the sentence above the button
+        * says which. A button that looks ready and then fails is how somebody
+        * learns the rule from an error message.
+        */}
       <button
         className="ghost"
         type="button"
-        disabled={name.trim() === '' || saving || connection === null}
+        disabled={
+          name.trim() === '' || saving || connection === null || coloursMissing.length > 0
+        }
         onClick={() => void save()}
       >
         {saving ? 'Saving…' : permanent ? 'Save this client' : 'Use for this video'}
       </button>
+      {coloursMissing.length === 0 ? null : (
+        <p className="say needed" role="status">
+          Their four colours are needed first — {coloursMissing.join(', ')} still to set.
+        </p>
+      )}
     </main>
   );
 }

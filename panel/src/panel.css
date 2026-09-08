@@ -844,3 +844,11 @@ section.client .say, section.video .say { margin: 8px 0 0; color: var(--muted); 
   font-size: 0.75em; line-height: 1.6;
 }
 .cannotsee .faint { margin: 2px 0 0; font-size: 0.7em; }
+
+/*
+ * A colour still to set. Mohamed's ruling of 2026-09-08: a client cannot be
+ * saved without their own four, so what is missing is said before Save is
+ * pressed rather than after it fails.
+ */
+.colours .hint.needed { color: var(--warn); }
+.say.needed { color: var(--warn); margin: 6px 0 0; font-size: 0.8em; }
