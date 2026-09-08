@@ -11,7 +11,21 @@ set -euo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
+# Everything the gate goes on to *run*, built first.
+#
+# `core/dist` is imported by every workspace's tests. `service/dist` is spawned
+# by `spawn.integration.test.ts` with a bare node binary — and until Block 12
+# session 72 nothing here built it, so the gate executed an artefact it had not
+# compiled. Session 71 renamed a symbol in `core` and the gate went green on
+# typecheck, lint and every unit test while the compiled service still imported
+# the old name; only those five integration tests saw it, and only because a
+# stale `dist` happened to exist. A missing one makes them skip instead.
+#
+# `panel/dist` needs no line here: the panel workspace's own `test` script
+# builds the bundle before vitest runs, which is why the browser tests have
+# always had a current one.
 npm run build:core
+npm run build --prefix service
 npm run typecheck --workspaces --if-present
 npm run lint --workspaces --if-present
 # `--run` is not appended here: every workspace's own `test` script carries it,
