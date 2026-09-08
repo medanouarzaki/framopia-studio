@@ -108,4 +108,14 @@ fi
 # machine is not a property of the commit. See session 64's measurement.
 node scripts/check-what-counted.mjs
 
+# **What did not run on this machine, and what was missing.** Last, immediately
+# above `check: PASS`, so it is the thing still on screen when the gate finishes
+# rather than something scrolled past thousands of lines earlier. Session 74
+# measured six conditions that can skip on a Mac that is not this one and found
+# only the sidecar announced — so the partner's first green could have skipped a
+# large part of the suite and looked identical to one that ran all of it.
+#
+# It never fails. A Mac without ffmpeg is not a broken Mac.
+node scripts/check-what-skipped.mjs
+
 echo "check: PASS"
