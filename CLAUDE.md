@@ -84,6 +84,10 @@ have cost this project a session each when broken.
 - **Never save the user's project**, and never discard unsaved work. A script
   that adds a temporary comp leaves the project modified; leave it that way and
   say so.
+- **Moving a user's file aside never hides its errors, and is verified after.**
+  Session 71 moved three files to a quarantine directory with `2>/dev/null`,
+  moved nothing, and reported that it had. List the destination afterwards and
+  say what is actually in it, or the claim is untested.
 - **`templates/library.aep` is never opened for writing** and never imported
   into itself.
 - **`appendCost` fires at the point of spend**, once per billable call, never
