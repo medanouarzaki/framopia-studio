@@ -86,10 +86,52 @@ export function clientIdFor(name: string): string {
   return id;
 }
 
+/**
+ * **A client is not saved without their own four colours.** Mohamed's ruling of
+ * 2026-09-08.
+ *
+ * **His reason.** Every client needs four colours to build anything, and silent
+ * inheritance means one client's brand appears on another's reel — a mistake
+ * only the eye would ever catch, and only after it had been sent.
+ *
+ * **Refused here rather than in `validateMode`**, which `parseMode` also runs on
+ * the way *in*. Making the palette required there would refuse to open a client
+ * or a plan snapshot written before this rule, which the schema-fragility rule
+ * forbids. Nothing already on disk becomes unreadable.
+ */
+function ownColours(
+  name: string,
+  given: Record<string, string> | undefined,
+): Record<'background' | 'primary' | 'accent' | 'light', string> {
+  const has = (given ?? {}) as Record<string, unknown>;
+  const missing = PALETTE_ROLES.filter(
+    (role) => typeof has[role] !== 'string' || (has[role] as string).trim() === '',
+  );
+  if (missing.length > 0) {
+    throw new ClientWriteError(
+      `${name} has no colours of their own yet. A client needs all four before ` +
+        `they can be saved, and ${missing.join(', ')} ${missing.length === 1 ? 'is' : 'are'} ` +
+        `still missing. Nothing is borrowed from another client: their colours are theirs.`,
+    );
+  }
+  return Object.fromEntries(PALETTE_ROLES.map((r) => [r, (has[r] as string).trim()])) as Record<
+    'background' | 'primary' | 'accent' | 'light',
+    string
+  >;
+}
+
 export function buildClient(input: NewClient): ClientMode {
   const name = input.name.trim();
   if (name === '') throw new ClientWriteError('a client needs a name');
   const base = loadMode(TEMPLATE_CLIENT);
+  /*
+   * **Their own, or none.** Until Mohamed's ruling of 2026-09-08 this line read
+   * `palette: base.palette`, and the template client is K2 Syndicalia — so a
+   * client saved without colours came out in K2's four exactly. Session 55
+   * measured it. Refused here, at the earliest point, so a client without
+   * colours is never even built, let alone written.
+   */
+  const palette = ownColours(name, input.palette);
 
   /*
    * Named fields, not a spread. Spreading the template carried its `note` — K2
@@ -102,14 +144,14 @@ export function buildClient(input: NewClient): ClientMode {
     id: clientIdFor(name),
     name,
     version: 1,
-    palette: base.palette,
     imageStyle: base.imageStyle,
     imageVariation: base.imageVariation,
     allowedTemplates: base.allowedTemplates,
     ...(base.imageScale === undefined ? {} : { imageScale: base.imageScale }),
     ...(base.imageCandidates === undefined ? {} : { imageCandidates: base.imageCandidates }),
     ...(base.imageSlotsPer30s === undefined ? {} : { imageSlotsPer30s: base.imageSlotsPer30s }),
-    ...(input.palette === undefined ? {} : { palette: input.palette }),
+    // Given, never inherited. See `ownColoursOrRefuse`.
+    palette,
     fonts: fontsFrom(input.fonts),
     vocabulary: [],
   };
@@ -152,13 +194,7 @@ export function createClient(input: NewClient): { id: string; modePath: string }
       `there is already a client called ${client.name}. Pick another name, or edit that one.`,
     );
   }
-  const issues = validateMode(client);
-  if (issues.length > 0) {
-    throw new ClientWriteError(
-      `that client would not be valid:\n${issues.map((i) => `  ${i.path}: ${i.message}`).join('\n')}`,
-    );
-  }
-  writeFileSync(modePath, `${JSON.stringify(client, null, 2)}\n`, 'utf8');
+  writeMode(modePath, client);
   return { id: client.id, modePath };
 }
 
@@ -344,7 +380,37 @@ function nextPictureId(pictures: ClientPicture[]): string {
   return `pic${String(n).padStart(3, '0')}`;
 }
 
+/**
+ * **A client is not saved without their own four colours.** Mohamed's ruling of
+ * 2026-09-08.
+ *
+ * Until it, `buildClient` copied the template client's palette onto every new
+ * client, and the template client is K2 Syndicalia — so a client saved without
+ * colours came out in K2's four exactly. Block 11 session 55 measured that, and
+ * `no-colours.test.ts` was kept skipped and failing ever since as the record of
+ * an open question.
+ *
+ * **His reason.** Every client needs four colours to build anything, and silent
+ * inheritance means one client's brand appears on another's reel — a mistake
+ * only the eye would ever catch, and only after it had been sent.
+ *
+ * **Checked here rather than in `validateMode`**, which `parseMode` also runs on
+ * the way *in*. Making the palette required there would refuse to open a client
+ * or a plan snapshot written before this rule, which the schema-fragility rule
+ * forbids. This is the write path and only the write path: nothing already on
+ * disk becomes unreadable.
+ */
+function ownColoursOrRefuse(client: ClientMode): void {
+  ownColours(client.name, client.palette as Record<string, string> | undefined);
+}
+
+/**
+ * **The only place a client file is written.** `createClient` goes through it
+ * too, so a route that forgets the colours check cannot exist — there is one
+ * route. `service/src/clients/one-writer.test.ts` holds the file to that.
+ */
 function writeMode(modePath: string, client: ClientMode): void {
+  ownColoursOrRefuse(client);
   const issues = validateMode(client);
   if (issues.length > 0) {
     throw new ClientWriteError(

@@ -1,9 +1,10 @@
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { loadMode, modePathFor } from '@framopia/core';
 import { startServer, type RunningService } from '../server.js';
+import { buildClient } from './create.js';
 
 /* Its own lock file, as `server.test.ts` does: sharing `.local/service.json`
    would clobber a service the developer is running. */
@@ -46,27 +47,57 @@ describe('a client saved with no colours of their own', () => {
   });
 
   /*
-   * **Skipped, and failing.** Measured in Block 11 session 55: a client created
-   * with no palette comes out `background #1A0000, primary #820000, accent
-   * #C9A96E, light #F8F6F2` — K2 Syndicalia's four, every one. That is open
-   * item 7, and closing it needs somebody to say what a client with no colours
-   * of their own should look like, which is a decision about taste and not one
-   * this code can make. The test stays so the day it is decided the answer is
-   * already written down.
+   * **Mohamed ruled on 2026-09-08: a client cannot be saved without their own
+   * four colours.** Until then `buildClient` copied the template client's
+   * palette, and the template client is K2 Syndicalia — so a client saved with
+   * no colours came out in K2's four exactly. Block 11 session 55 measured it,
+   * and this test was kept skipped and failing as the record of the open
+   * question. The question is answered, so it runs.
+   *
+   * **His reason.** Every client needs four colours to build anything, and
+   * silent inheritance means one client's brand appears on another's reel — a
+   * mistake only the eye would ever catch, and only after it had been sent.
    */
-  it.skip('does not come out in K2 Syndicalia’s four', async () => {
+  it('is refused, and nothing of K2 Syndicalia reaches it', async () => {
     const res = await fetch(`http://127.0.0.1:${running.port}/clients`, {
       method: 'POST',
       headers: { 'x-service-token': running.token, 'content-type': 'application/json' },
       body: JSON.stringify({ name: 'No Colours Scratch Client' }),
     });
-    expect(res.ok, `the route refused: ${res.status}`).toBe(true);
 
-    const saved = loadMode(ID);
-    const theirs = Object.entries(saved.palette).map(([role, hex]) => `${role}: ${hex}`);
-    const borrowed = Object.entries(saved.palette).filter(([, hex]) =>
+    expect(res.ok, 'a client with no colours was saved').toBe(false);
+    const body = (await res.json()) as { error?: string };
+    expect(body.error ?? '').toContain('no colours of their own');
+    expect(body.error ?? '').toContain('borrowed');
+
+    /*
+     * The other half, and it is not the same claim: the refusal could hold and
+     * a file still be written. Nothing may reach the store at all.
+     */
+    expect(existsSync(modePathFor(ID)), 'a file was written for a refused client').toBe(false);
+  });
+
+  /*
+   * **Separate from the refusal.** A client that somehow reaches the store
+   * without colours must still not come out wearing K2's — the refusal is one
+   * guard and this is the other, so removing either leaves the defect visible.
+   */
+  it('never lends K2 Syndicalia’s colours to anyone, whatever the route', () => {
+    const k2 = loadMode('k2-syndicalia');
+    const built = buildClient({
+      name: 'Their Own Colours Scratch',
+      palette: {
+        background: '#0B0B0B',
+        primary: '#123456',
+        accent: '#654321',
+        light: '#FAFAFA',
+      },
+    });
+    const borrowed = Object.entries(built.palette).filter(([, hex]) =>
       K2.includes(String(hex).toUpperCase()),
     );
-    expect(borrowed.map(([role, hex]) => `${role}: ${hex}`), theirs.join(', ')).toEqual([]);
+    expect(borrowed.map(([role, hex]) => `${role}: ${hex}`)).toEqual([]);
+    // And the source of the old inheritance is gone: nothing reads K2's palette.
+    expect(Object.values(built.palette)).not.toContain(k2.palette.background);
   });
 });
