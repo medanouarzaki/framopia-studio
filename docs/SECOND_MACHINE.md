@@ -582,6 +582,47 @@ npm run check
 
 **You should see:** a lot of test output ending in `check: PASS`.
 
+### A green run that skipped things is still a green run
+
+Just above `check: PASS` there is a short list of anything the check **could not
+look at on your Mac**. It looks like this:
+
+```
+check: 2 thing(s) could not be checked on this Mac.
+       This is not a failure. It is what was not looked at:
+
+  - the checks that run a whole video through, end to end
+      because the test videos, ffmpeg or the picture tools are not all here
+      Expected on a Mac set up without the test videos. Nothing is wrong.
+```
+
+**That list is normal and the run is still good.** It is there so a green run
+that looked at everything and a green run that skipped half of it do not look
+identical.
+
+**On a Mac set up by this document, expect to see one of them:**
+
+| what it says | why | anything to do |
+|---|---|---|
+| *the checks that run a whole video through, end to end* | you have the Edit Plans but not the videos, which is exactly what §11 asks for | **no** — this is the normal state |
+
+**These three should not appear, and are worth telling us about if they do:**
+
+| what it says | what it means |
+|---|---|
+| *the checks that pull the sound out of a video* | **ffmpeg is missing.** Framopia cannot transcribe anything without it, so this one matters. §5 installs it. |
+| *the checks that look at the real pictures* | the picture tools did not install. §6 sets them up. |
+| *the checks that open a real browser window* | `npm install` did not finish fetching the test browser. Running §4 again usually settles it. |
+
+**And one is harmless whenever it appears:**
+
+| what it says | why |
+|---|---|
+| *the check for a file kept only in the cloud* | it needs a Google Drive file that has not been downloaded to your Mac, to look at. Most Macs do not have one sitting there. Nothing is wrong. |
+
+**Measured on 2026-09-08**, by making each thing genuinely absent and watching
+the check name that one and no other. Nothing was uninstalled to find out.
+
 ---
 
 ## Optional, and only when we ask: does your Mac build the same thing ours does
