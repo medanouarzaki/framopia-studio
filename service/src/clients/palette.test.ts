@@ -3,6 +3,18 @@ import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { loadMode, modePathFor, snapshotOfMode, snapshotIsBehind, PALETTE_ROLES } from '@framopia/core';
 import { ClientWriteError, createClient, setPalette } from './create.js';
 
+/*
+ * Four colours for a scratch client. Mohamed ruled on 2026-09-08 that a client
+ * cannot be saved without their own, so a test that creates one has to give it
+ * some — these are deliberately nothing like K2 Syndicalia's.
+ */
+const SCRATCH_PALETTE = {
+  background: '#101014',
+  primary: '#2E4057',
+  accent: '#8AA29E',
+  light: '#F2F4F3',
+};
+
 /**
  * **A saved client's colours can be corrected.**
  *
@@ -26,7 +38,7 @@ afterEach(() => rmSync(modePathFor(ID), { force: true }));
 
 function make(): void {
   rmSync(modePathFor(ID), { force: true });
-  createClient({ name: 'Palette Test Scratch Client' });
+  createClient({ palette: SCRATCH_PALETTE, name: 'Palette Test Scratch Client' });
 }
 
 describe('correcting a client’s colours', () => {

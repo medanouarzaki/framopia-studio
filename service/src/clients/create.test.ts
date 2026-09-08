@@ -6,6 +6,18 @@ import { REPO_ROOT, isInClientPictureStore, loadMode, modePathFor, validateMode 
 import { buildClient, clientIdFor, ClientWriteError, createClient } from './create.js';
 
 /*
+ * Four colours for a scratch client. Mohamed ruled on 2026-09-08 that a client
+ * cannot be saved without their own, so a test that creates one has to give it
+ * some — these are deliberately nothing like K2 Syndicalia's.
+ */
+const SCRATCH_PALETTE = {
+  background: '#101014',
+  primary: '#2E4057',
+  accent: '#8AA29E',
+  light: '#F2F4F3',
+};
+
+/*
  * A client is a person the agency works for, not a palette. Everything except
  * the name is optional, and every blank has to take the value that was in force
  * before the field existed — or adding a field would change what an existing
@@ -13,7 +25,7 @@ import { buildClient, clientIdFor, ClientWriteError, createClient } from './crea
  */
 describe('making a client', () => {
   it('needs only a name, and the rest takes what the tool already did', () => {
-    const client = buildClient({ name: 'Dr Jenna' });
+    const client = buildClient({ palette: SCRATCH_PALETTE, name: 'Dr Jenna' });
     expect(validateMode(client)).toEqual([]);
     expect(client.id).toBe('dr-jenna');
     expect(client.version).toBe(1);
@@ -28,7 +40,7 @@ describe('making a client', () => {
   });
 
   it('keeps what he did fill in', () => {
-    const client = buildClient({
+    const client = buildClient({ palette: SCRATCH_PALETTE,
       name: 'Dr Jenna',
       about: 'Dermatologist, Casablanca',
       videoFolder: '/Volumes/T7 Shield/clients/jenna',
@@ -57,8 +69,8 @@ describe('making a client', () => {
   });
 
   it('writes an empty note as nothing at all, not as an empty string', () => {
-    expect(buildClient({ name: 'X', about: '   ', videoFolder: '' }).about).toBeUndefined();
-    expect(buildClient({ name: 'X', videoFolder: '' }).videoFolder).toBeUndefined();
+    expect(buildClient({ palette: SCRATCH_PALETTE, name: 'X', about: '   ', videoFolder: '' }).about).toBeUndefined();
+    expect(buildClient({ palette: SCRATCH_PALETTE, name: 'X', videoFolder: '' }).videoFolder).toBeUndefined();
   });
 
   it('makes a file name out of a person’s name, accents and all', () => {
@@ -68,12 +80,12 @@ describe('making a client', () => {
   });
 
   it('refuses a name that would overwrite a client that exists', () => {
-    expect(() => createClient({ name: 'K2 Syndicalia' })).toThrow(/already a client/);
+    expect(() => createClient({ palette: SCRATCH_PALETTE, name: 'K2 Syndicalia' })).toThrow(/already a client/);
     expect(existsSync(modePathFor('k2-syndicalia'))).toBe(true);
   });
 
   it('refuses a name with nothing in it', () => {
-    expect(() => createClient({ name: '   ' })).toThrow(/needs a name/);
+    expect(() => createClient({ palette: SCRATCH_PALETTE, name: '   ' })).toThrow(/needs a name/);
   });
 });
 
@@ -111,7 +123,7 @@ describe('a client’s own photographs, given at setup', () => {
   const here = fileURLToPath(import.meta.url);
 
   it('numbers them the way adding one to a saved client does', () => {
-    const client = buildClient({
+    const client = buildClient({ palette: SCRATCH_PALETTE,
       name: 'Dr Jenna Photos',
       pictures: [
         { path: here, description: 'the clinic exterior' },
@@ -143,7 +155,7 @@ describe('a client’s own photographs, given at setup', () => {
 
   it('refuses a photograph that is not there, rather than writing a dead path', () => {
     expect(() =>
-      buildClient({
+      buildClient({ palette: SCRATCH_PALETTE,
         name: 'Dr Jenna Photos',
         pictures: [{ path: '/nowhere/at/all.png', description: 'the clinic' }],
       }),
@@ -152,7 +164,7 @@ describe('a client’s own photographs, given at setup', () => {
 
   it('refuses a relative path', () => {
     expect(() =>
-      buildClient({
+      buildClient({ palette: SCRATCH_PALETTE,
         name: 'Dr Jenna Photos',
         pictures: [{ path: 'clinic.png', description: 'the clinic' }],
       }),
@@ -161,7 +173,7 @@ describe('a client’s own photographs, given at setup', () => {
 
   it('refuses one with no description, because nothing else tells them apart', () => {
     expect(() =>
-      buildClient({ name: 'Dr Jenna Photos', pictures: [{ path: here, description: '   ' }] }),
+      buildClient({ palette: SCRATCH_PALETTE, name: 'Dr Jenna Photos', pictures: [{ path: here, description: '   ' }] }),
     ).toThrow(ClientWriteError);
   });
 });

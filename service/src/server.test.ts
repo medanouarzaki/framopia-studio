@@ -8,6 +8,18 @@ import { REPO_ROOT, loadMode, modePathFor } from '@framopia/core';
 import { createClient } from './clients/create.js';
 
 /*
+ * Four colours for a scratch client. Mohamed ruled on 2026-09-08 that a client
+ * cannot be saved without their own, so a test that creates one has to give it
+ * some — these are deliberately nothing like K2 Syndicalia's.
+ */
+const SCRATCH_PALETTE = {
+  background: '#101014',
+  primary: '#2E4057',
+  accent: '#8AA29E',
+  light: '#F2F4F3',
+};
+
+/*
  * Every test drives its own lock file. Sharing `.local/service.json` would
  * make the suite refuse to start a second server the moment startServer began
  * honouring the lock, and would clobber a service the developer is running.
@@ -69,7 +81,7 @@ describe('server', () => {
 
     it('saves the four colours and hands the modes back', async () => {
       rmSync(modePathFor(ID), { force: true });
-      createClient({ name: 'Server Palette Test Scratch' });
+      createClient({ palette: SCRATCH_PALETTE, name: 'Server Palette Test Scratch' });
       const res = await post({ client: ID, palette: THEIRS });
       expect(res.status).toBe(200);
       const body = (await res.json()) as { modes: { id: string }[] };
@@ -79,7 +91,7 @@ describe('server', () => {
 
     it('refuses a palette with a colour missing, and writes nothing', async () => {
       rmSync(modePathFor(ID), { force: true });
-      createClient({ name: 'Server Palette Test Scratch' });
+      createClient({ palette: SCRATCH_PALETTE, name: 'Server Palette Test Scratch' });
       const before = loadMode(ID).palette;
       const res = await post({ client: ID, palette: { light: '#FFFFFF' } });
       expect(res.status).toBe(400);

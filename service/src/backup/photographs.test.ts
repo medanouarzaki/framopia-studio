@@ -6,6 +6,18 @@ import { isInClientPictureStore, modePathFor, REPO_ROOT } from '@framopia/core';
 import { addPicture, createClient } from '../clients/create.js';
 import { surveyGroups, withoutExcluded } from './set.js';
 
+/*
+ * Four colours for a scratch client. Mohamed ruled on 2026-09-08 that a client
+ * cannot be saved without their own, so a test that creates one has to give it
+ * some — these are deliberately nothing like K2 Syndicalia's.
+ */
+const SCRATCH_PALETTE = {
+  background: '#101014',
+  primary: '#2E4057',
+  accent: '#8AA29E',
+  light: '#F2F4F3',
+};
+
 /**
  * **The backup does not carry a client's photographs.**
  *
@@ -42,7 +54,7 @@ describe('what a backup would copy', () => {
   it('leaves a client’s photograph out, even though it is now in the project', () => {
     const before = everyFile();
 
-    const { id } = createClient({ name: 'Backup Photograph Test' });
+    const { id } = createClient({ palette: SCRATCH_PALETTE, name: 'Backup Photograph Test' });
     made.push(id);
     const picture = addPicture(id, { path: elsewhere('clinic.png'), description: 'the clinic' });
     stored.push(picture.path);
@@ -71,7 +83,7 @@ describe('what a backup would copy', () => {
    * repository would produce, so that deleting the rule turns this red.
    */
   it('is what keeps a photograph out when a group does walk the repository', () => {
-    const { id } = createClient({ name: 'Backup Rule Load Bearing' });
+    const { id } = createClient({ palette: SCRATCH_PALETTE, name: 'Backup Rule Load Bearing' });
     made.push(id);
     const picture = addPicture(id, { path: elsewhere('her-face.png'), description: 'her portrait' });
     stored.push(picture.path);

@@ -2836,6 +2836,20 @@ async function realStamp(): Promise<string> {
  * and which produced four rulings: nothing typed that can be chosen, fonts from
  * a list, subtitle height by eye, and the colours here rather than afterwards.
  */
+/*
+ * **Their four colours, before Save will press.** Mohamed ruled on 2026-09-08
+ * that a client cannot be saved without them, so a test that saves one has to
+ * set them — filled by the boxes' own labels rather than by role name, so a
+ * change to what the roles are called does not silently stop filling one.
+ */
+async function setTheirColours(page: Page): Promise<void> {
+  const boxes = await page.$$('.colours input[aria-label$="colour code"]');
+  const hexes = ['#101014', '#2E4057', '#8AA29E', '#F2F4F3'];
+  for (const [i, box] of boxes.entries()) {
+    await box.fill(hexes[i % hexes.length] as string);
+  }
+}
+
 describe.skipIf(!built)('setting up a client', () => {
   async function openSetup(amend?: string): Promise<Loaded | null> {
     if (browser === undefined) return null;
@@ -3165,7 +3179,15 @@ describe.skipIf(!built)('setting up a client', () => {
       expect(unset).toHaveLength(4);
       expect(unset.every((u) => u.value === '')).toBe(true);
       expect(unset.every((u) => u.placeholder === 'not set')).toBe(true);
-      expect(text).toContain('Left alone, this client is built in the standard one.');
+      /*
+       * **Retired 2026-09-08.** This read "Left alone, this client is built in
+       * the standard one", which was true and is what Mohamed's ruling ends: a
+       * client cannot be saved without their own four, so nothing is built in
+       * anybody else's. The sentence now says what is still to set and that no
+       * colour is borrowed.
+       */
+      expect(text).toContain('All four are needed before this can be saved');
+      expect(text).toContain('No colour is ever borrowed from another client');
       // The sentence that made this a two-visit screen is gone.
       const all = (await loaded.page.textContent('main.editor')) ?? '';
       expect(all).not.toContain('Colours and their own pictures are added afterwards');
@@ -3253,6 +3275,7 @@ describe.skipIf(!built)('setting up a client', () => {
       await page.fill('.ownphotos input[aria-label="What is it?"]', 'the clinic exterior');
       await page.click('.addphoto button.ghost:not(.choose)');
       await page.waitForSelector('.ownphotos ul.photos li', { timeout: 5000 });
+      await setTheirColours(page);
       await page.click('main.editor > button.ghost');
       await page.waitForSelector('section.client', { timeout: 5000 });
       const posted = (await page.evaluate('window.__posted')) as {

@@ -6,6 +6,18 @@ import { isInClientPictureStore, loadMode, modePathFor } from '@framopia/core';
 import { addPicture, createClient } from './create.js';
 import { keepPicture } from './picture-store.js';
 
+/*
+ * Four colours for a scratch client. Mohamed ruled on 2026-09-08 that a client
+ * cannot be saved without their own, so a test that creates one has to give it
+ * some — these are deliberately nothing like K2 Syndicalia's.
+ */
+const SCRATCH_PALETTE = {
+  background: '#101014',
+  primary: '#2E4057',
+  accent: '#8AA29E',
+  light: '#F2F4F3',
+};
+
 /**
  * **A photograph is copied into the project, and the original is not touched.**
  *
@@ -98,7 +110,7 @@ describe('keeping a photograph', () => {
 
 describe('attaching a photograph to a client', () => {
   it('stores the copy inside the project, not the path he chose', () => {
-    const { id } = createClient({ name: 'Picture Store Attach Test' });
+    const { id } = createClient({ palette: SCRATCH_PALETTE, name: 'Picture Store Attach Test' });
     made.push(id);
     const from = elsewhere('desktop-logo.png');
 
@@ -120,7 +132,7 @@ describe('attaching a photograph to a client', () => {
    * resolver returns it unchanged, so it goes on working exactly as it did.
    */
   it('leaves a photograph attached the old way exactly as it was', () => {
-    const { id } = createClient({ name: 'Picture Store Old Form Test' });
+    const { id } = createClient({ palette: SCRATCH_PALETTE, name: 'Picture Store Old Form Test' });
     made.push(id);
     const outside = elsewhere('attached-before.png');
 

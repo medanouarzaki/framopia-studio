@@ -5,6 +5,18 @@ import path from 'node:path';
 import { CLIENT_PICTURE_STORE, REPO_ROOT, modePathFor } from '@framopia/core';
 import { addPicture, createClient, deleteClient } from './create.js';
 
+/*
+ * Four colours for a scratch client. Mohamed ruled on 2026-09-08 that a client
+ * cannot be saved without their own, so a test that creates one has to give it
+ * some — these are deliberately nothing like K2 Syndicalia's.
+ */
+const SCRATCH_PALETTE = {
+  background: '#101014',
+  primary: '#2E4057',
+  accent: '#8AA29E',
+  light: '#F2F4F3',
+};
+
 /**
  * **Taking a client off the list takes their photographs with them.**
  *
@@ -43,7 +55,7 @@ function elsewhere(name: string, bytes: string): string {
 }
 
 function clientWithPhotograph(name: string, bytes: string): { id: string; stored: string } {
-  const { id } = createClient({ name });
+  const { id } = createClient({ palette: SCRATCH_PALETTE, name });
   made.push(id);
   const picture = addPicture(id, {
     path: elsewhere('her-face.png', bytes),
@@ -86,7 +98,7 @@ describe('a client taken off the list, with photographs of their own', () => {
   });
 
   it('leaves a client with no photographs exactly as it was', () => {
-    const { id } = createClient({ name: 'Deleted Photos None' });
+    const { id } = createClient({ palette: SCRATCH_PALETTE, name: 'Deleted Photos None' });
     made.push(id);
 
     const removed = deleteClient(id);

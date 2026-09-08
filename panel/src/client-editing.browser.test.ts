@@ -171,6 +171,20 @@ describe('a browser to run in', () => {
   });
 });
 
+/*
+ * **Their four colours, before Save will press.** Mohamed ruled on 2026-09-08
+ * that a client cannot be saved without them, so a test that saves one has to
+ * set them — filled by the boxes' own labels rather than by role name, so a
+ * change to what the roles are called does not silently stop filling one.
+ */
+async function setTheirColours(page: Page): Promise<void> {
+  const boxes = await page.$$('.colours input[aria-label$="colour code"]');
+  const hexes = ['#101014', '#2E4057', '#8AA29E', '#F2F4F3'];
+  for (const [i, box] of boxes.entries()) {
+    await box.fill(hexes[i % hexes.length] as string);
+  }
+}
+
 describe.skipIf(!built)('setting up a client', () => {
   /*
    * **The three faces.** The user's ruling: a Latin sans, a Latin serif for the
@@ -195,6 +209,7 @@ describe.skipIf(!built)('setting up a client', () => {
       ] as const) {
         await page.selectOption(`select[aria-label="${what}"]`, face);
       }
+      await setTheirColours(page);
       await page.click('button:has-text("Save this client")');
       await page.waitForFunction('window.__posted.length > 0', undefined, { timeout: 5000 });
       const posted = (await page.evaluate('window.__posted')) as { body: Record<string, unknown> }[];
@@ -225,6 +240,7 @@ describe.skipIf(!built)('setting up a client', () => {
       await page.fill('input[aria-label="What is it?"]', 'the product box');
       await page.fill('input[aria-label="Use it when someone says…"]', 'Zephyrine, Kalimba');
       await page.click('.addphoto button:not(.choose)');
+      await setTheirColours(page);
       await page.click('button:has-text("Save this client")');
       await page.waitForFunction('window.__posted.length > 0', undefined, { timeout: 5000 });
       const posted = (await page.evaluate('window.__posted')) as { body: Record<string, unknown> }[];
@@ -252,6 +268,7 @@ describe.skipIf(!built)('setting up a client', () => {
       await page.click('.ownphotos button.choose');
       await page.fill('input[aria-label="What is it?"]', 'the clinic outside');
       await page.click('.addphoto button:not(.choose)');
+      await setTheirColours(page);
       await page.click('button:has-text("Save this client")');
       await page.waitForFunction('window.__posted.length > 0', undefined, { timeout: 5000 });
       const posted = (await page.evaluate('window.__posted')) as { body: Record<string, unknown> }[];

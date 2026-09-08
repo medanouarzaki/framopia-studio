@@ -13,6 +13,18 @@ import {
 } from './create.js';
 
 /*
+ * Four colours for a scratch client. Mohamed ruled on 2026-09-08 that a client
+ * cannot be saved without their own, so a test that creates one has to give it
+ * some — these are deliberately nothing like K2 Syndicalia's.
+ */
+const SCRATCH_PALETTE = {
+  background: '#101014',
+  primary: '#2E4057',
+  accent: '#8AA29E',
+  light: '#F2F4F3',
+};
+
+/*
  * Scratch clients, written into the real modes directory because that is the
  * only place `modePathFor` looks, and removed after every test whatever
  * happened. Names nothing else could collide with.
@@ -22,7 +34,7 @@ const files: string[] = [];
 let scratch: string | null = null;
 
 function client(name: string, extra: Parameters<typeof buildClient>[0] = { name }): string {
-  const { id } = createClient({ ...extra, name });
+  const { id } = createClient({ palette: SCRATCH_PALETTE, ...extra, name });
   made.push(id);
   return id;
 }

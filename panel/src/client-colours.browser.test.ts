@@ -219,16 +219,27 @@ describe('setting up a client', () => {
   });
 
   /** Session 45's rule, which this must not undo: untouched is never sent. */
-  it('sends no palette at all when the codes were left alone', async () => {
+  /*
+   * **Rewritten by Block 12 session 74.** These two asserted that leaving the
+   * codes alone sent no palette, and that three of four sent none either —
+   * which was true, and is the behaviour Mohamed's ruling of 2026-09-08
+   * retires. A client cannot be saved without their own four colours, so what
+   * used to be an accepted save is now a button that will not press.
+   */
+  it('will not let a client be saved with no colours at all', async () => {
     const loaded = await openSetup(postCatcher());
     if (loaded === null) return;
     try {
       const page = loaded.page;
       await page.fill('input[aria-label="Name"]', 'Dr Jenna');
-      await page.click('main.editor > button.ghost');
-      await page.waitForSelector('section.client', { timeout: 5000 });
-      const posted = (await page.evaluate('window.__posted')) as { palette?: unknown };
-      expect(posted.palette).toBeUndefined();
+      const state = await page.$eval('main.editor > button.ghost', (b) => ({
+        disabled: (b as HTMLButtonElement).disabled,
+        label: b.textContent ?? '',
+      }));
+      expect(state.disabled).toBe(true);
+      // And it says which are missing rather than leaving him to guess.
+      const said = await page.$eval('main.editor .say.needed', (p) => p.textContent ?? '');
+      expect(said).toContain('four colours are needed first');
       expect(loaded.uncaught).toEqual([]);
     } finally {
       await loaded.page.close();
@@ -236,7 +247,7 @@ describe('setting up a client', () => {
   });
 
   /** Three of four is not a palette; the mode holds all four or none. */
-  it('sends no palette when only some of the four were entered', async () => {
+  it('will not let a client be saved with only some of the four', async () => {
     const loaded = await openSetup(postCatcher());
     if (loaded === null) return;
     try {
@@ -244,10 +255,38 @@ describe('setting up a client', () => {
       await page.fill('input[aria-label="Name"]', 'Dr Jenna');
       await page.fill(HEX_BOX(ROLE_LABEL['accent'] as string), BRAND.accent);
       await page.fill(HEX_BOX(ROLE_LABEL['light'] as string), BRAND.light);
+      const disabled = await page.$eval(
+        'main.editor > button.ghost',
+        (b) => (b as HTMLButtonElement).disabled,
+      );
+      expect(disabled).toBe(true);
+      expect(loaded.uncaught).toEqual([]);
+    } finally {
+      await loaded.page.close();
+    }
+  });
+
+  /* And with all four, it saves and sends them. */
+  it('sends all four once they are set', async () => {
+    const loaded = await openSetup(postCatcher());
+    if (loaded === null) return;
+    try {
+      const page = loaded.page;
+      await page.fill('input[aria-label="Name"]', 'Dr Jenna');
+      for (const role of ['background', 'primary', 'accent', 'light'] as const) {
+        await page.fill(HEX_BOX(ROLE_LABEL[role] as string), BRAND[role]);
+      }
       await page.click('main.editor > button.ghost');
       await page.waitForSelector('section.client', { timeout: 5000 });
-      const posted = (await page.evaluate('window.__posted')) as { palette?: unknown };
-      expect(posted.palette).toBeUndefined();
+      const posted = (await page.evaluate('window.__posted')) as {
+        palette?: Record<string, string>;
+      };
+      expect(posted.palette).toEqual({
+        background: BRAND.background,
+        primary: BRAND.primary,
+        accent: BRAND.accent,
+        light: BRAND.light,
+      });
       expect(loaded.uncaught).toEqual([]);
     } finally {
       await loaded.page.close();

@@ -7,6 +7,18 @@ import { listModes } from '../catalogue.js';
 import { addPicture, createClient } from './create.js';
 import { imagesViewForPlan } from '../image-view.js';
 
+/*
+ * Four colours for a scratch client. Mohamed ruled on 2026-09-08 that a client
+ * cannot be saved without their own, so a test that creates one has to give it
+ * some — these are deliberately nothing like K2 Syndicalia's.
+ */
+const SCRATCH_PALETTE = {
+  background: '#101014',
+  primary: '#2E4057',
+  accent: '#8AA29E',
+  light: '#F2F4F3',
+};
+
 /**
  * **The route the warning exists for, driven end to end.**
  *
@@ -47,7 +59,7 @@ afterEach(() => {
 
 /** A client with the two photographs on it, through the routes the panel uses. */
 function clientWithPhotographs(name: string): string {
-  const { id } = createClient({ name });
+  const { id } = createClient({ palette: SCRATCH_PALETTE, name });
   made.push(id);
   addPicture(id, { path: SMALL, description: 'the small one', label: 'Zephyrine' });
   addPicture(id, { path: LARGE, description: 'the big one', label: 'Kalimba' });
@@ -139,7 +151,7 @@ describe('a client’s own photograph, too small for the space', () => {
  */
 describe('whether a photograph is on this machine', () => {
   it('says so for one that is, and for one that is not', () => {
-    const { id } = createClient({ name: 'Photograph Reachable Test' });
+    const { id } = createClient({ palette: SCRATCH_PALETTE, name: 'Photograph Reachable Test' });
     made.push(id);
     addPicture(id, { path: SMALL, description: 'the one that is here' });
 
@@ -166,7 +178,7 @@ describe('whether a photograph is on this machine', () => {
 
   /* It does not refuse and it does not forget: the picture stays on the client. */
   it('keeps the picture on the client either way', () => {
-    const { id } = createClient({ name: 'Photograph Reachable Kept' });
+    const { id } = createClient({ palette: SCRATCH_PALETTE, name: 'Photograph Reachable Kept' });
     made.push(id);
     const modePath = modePathFor(id);
     const raw = JSON.parse(readFileSync(modePath, 'utf8')) as Record<string, unknown>;
