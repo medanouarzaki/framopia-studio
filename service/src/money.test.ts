@@ -255,3 +255,97 @@ describe('the two sources', () => {
     expect(r.outsideAnyVideoUsd).toBe(4.502282);
   });
 });
+
+/**
+ * **What a reel really cost, where the ledger knows.**
+ *
+ * A plan's `spentByStage` accumulates, and does so correctly — but it only ever
+ * accumulated what it saw. Spend billed before the field existed, or onto a plan
+ * later replaced, is in the ledger and in no plan: session 71 measured
+ * $5.595868 of it. The ledger is written at the point of spend and cannot hold
+ * less than was charged, so where it knows a reel it is the floor.
+ */
+describe('a reel’s real cost', () => {
+  const dirs: string[] = [];
+  afterEach(() => {
+    for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true });
+  });
+
+  const SHA = 'b'.repeat(64);
+
+  function planClaiming(spentUsd: number): string {
+    const dir = mkdtempSync(path.join(tmpdir(), 'framopia-realcost-'));
+    dirs.push(dir);
+    const file = path.join(dir, 'a client reel.editplan.json');
+    writeFileSync(
+      file,
+      JSON.stringify({
+        source: {
+          videoPath: path.join(REPO_ROOT, 'my files', 'test videos', 'vitasilk.mov'),
+          sha256: SHA,
+          durationS: 10,
+        },
+        costs: { totalUsd: spentUsd, byStage: {}, spentUsd, spentByStage: { images: spentUsd } },
+      }),
+      'utf8',
+    );
+    return file;
+  }
+
+  const charged = (usd: number): string =>
+    JSON.stringify({
+      stage: 'images-generate',
+      model: 'm',
+      unit: 'image',
+      usd,
+      timestamp: '2026-09-09T00:00:00.000Z',
+      video: SHA,
+    });
+
+  it('shows what was charged when the plan claims less', () => {
+    const lines = readLedger([charged(6), charged(3)].join('\n')).lines;
+    const [reel] = reelCosts([planClaiming(4)], lines);
+    expect(reel?.spentUsd).toBe(9);
+    expect(reel?.planUsd).toBe(4);
+    expect(reel?.ledgerUsd).toBe(9);
+    expect(reel?.basis).toBe('ledger');
+  });
+
+  /* And the per-second figure, which is the number he quotes from, moves too. */
+  it('moves the cost per second with it', () => {
+    const lines = readLedger(charged(9)).lines;
+    const [reel] = reelCosts([planClaiming(4)], lines);
+    // 10 seconds of footage.
+    expect(reel?.usdPerSecond).toBe(0.9);
+  });
+
+  it('keeps the plan’s figure when it is the larger', () => {
+    const lines = readLedger(charged(2)).lines;
+    const [reel] = reelCosts([planClaiming(5)], lines);
+    expect(reel?.spentUsd).toBe(5);
+    expect(reel?.basis).toBe('both');
+  });
+
+  /*
+   * The 165 lines written before session 68 carry no video, and are never
+   * attributed to one — not by the cache, not by their timestamp, not by what
+   * else was running.
+   */
+  it('falls back to the plan when the ledger knows no video', () => {
+    const lines = readLedger(
+      '{"stage":"images-generate","model":"m","unit":"image","usd":50,"timestamp":"2026-01-01T00:00:00.000Z"}',
+    ).lines;
+    const [reel] = reelCosts([planClaiming(4)], lines);
+    expect(reel?.spentUsd).toBe(4);
+    expect(reel?.ledgerUsd).toBe(0);
+    expect(reel?.basis).toBe('plan');
+  });
+
+  it('reads the real ledger, which knows no video yet', () => {
+    const view = moneyView({ costsPath: COSTS_PATH, planPaths: planPathsForMoney() });
+    for (const r of view.perReel) {
+      expect(`${r.reel}: ${r.basis}`).toBe(`${r.reel}: plan`);
+      expect(`${r.reel}: ${r.ledgerUsd}`).toBe(`${r.reel}: 0`);
+    }
+  });
+});

@@ -13,7 +13,7 @@
  * them lose it. A test that needs this harness now gets its own file and its
  * own browser rather than crowding theirs.
  */
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
@@ -129,6 +129,35 @@ export function stubFetch(mode: 'healthy' | 'hang', health: unknown = HEALTHY_PA
  * A machine without a ledger yet — the partner's — gets an empty one, which is
  * what it will genuinely have.
  */
+function realReels(): Record<string, unknown>[] {
+  const dir = path.join(REPO, 'my files', 'test videos');
+  if (!existsSync(dir)) return [];
+  const out: Record<string, unknown>[] = [];
+  for (const f of readdirSync(dir).filter((n) => n.endsWith('.editplan.json'))) {
+    const plan = JSON.parse(readFileSync(path.join(dir, f), 'utf8')) as {
+      costs?: { spentUsd?: number; spentByStage?: Record<string, number> };
+      source?: { durationS?: number };
+    };
+    const spent = plan.costs?.spentUsd;
+    if (typeof spent !== 'number') continue;
+    const durationS = plan.source?.durationS ?? null;
+    out.push({
+      reel: f.replace(/\.editplan\.json$/, ''),
+      spentUsd: spent,
+      durationS,
+      usdPerSecond: durationS !== null && durationS > 0 ? spent / durationS : null,
+      stages: Object.entries(plan.costs?.spentByStage ?? {})
+        .filter(([, v]) => v > 0)
+        .map(([k]) => k)
+        .sort(),
+      planUsd: spent,
+      ledgerUsd: 0,
+      basis: 'plan',
+    });
+  }
+  return out;
+}
+
 export function realMoney(): Record<string, unknown> {
   const at = path.join(REPO, '.local', 'costs.jsonl');
   const read = readLedger(existsSync(at) ? readFileSync(at, 'utf8') : '');
@@ -146,7 +175,11 @@ export function realMoney(): Record<string, unknown> {
     byPurpose: byPurpose(read.lines),
     unattributedUsd: unattributed(byClient(read.lines))?.usd ?? 0,
     credit: null,
-    perReel: [],
+    /*
+     * One reel, from the real plans on this disk, so the screen shows what it
+     * will really show. Its basis is whatever the real data gives.
+     */
+    perReel: realReels(),
     cap: { monthlyUsd: null, monthSoFarUsd: 0 },
     /*
      * No payments: none are recorded on this machine, which is what a real

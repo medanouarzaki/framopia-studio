@@ -30,6 +30,30 @@ export function usdExact(amount: number): string {
  */
 export const BEFORE_LABEL = 'before this was recorded';
 
+/**
+ * **What a reel's figure is made of, said rather than labelled.**
+ *
+ * A plan's own record and the ledger can disagree, and where they do the ledger
+ * is the floor — it is written at the point of spend and cannot hold less than
+ * was charged. Mohamed prices work off these numbers, so a figure that silently
+ * means two things is worse than either.
+ *
+ * Plain words, not `source: ledger`.
+ */
+export function madeOf(reel: {
+  basis: 'ledger' | 'plan' | 'both';
+  planUsd: number;
+  ledgerUsd: number;
+}): string {
+  if (reel.basis === 'ledger') {
+    return `from what was actually charged — this video's own record says only ${usd(reel.planUsd)}`;
+  }
+  if (reel.basis === 'both') {
+    return "from this video's own record, and every charge since agrees";
+  }
+  return "from this video's own record — no charge yet says which video it was for";
+}
+
 type Grouping = 'byDay' | 'byMonth' | 'byStage' | 'byClient' | 'byVideo' | 'byPurpose';
 
 const FILTERS: { id: Grouping; label: string }[] = [
@@ -227,7 +251,9 @@ export function Money({ connection }: { connection: Connection }): JSX.Element {
             {data.perReel.map((r) => (
               <li key={r.reel}>
                 <span className="name">{r.reel}</span>
-                <span className="paid">{r.stages.length === 0 ? 'nothing yet' : r.stages.join(', ')}</span>
+                <span className="paid">
+                  {r.stages.length === 0 ? 'nothing yet' : r.stages.join(', ')} · {madeOf(r)}
+                </span>
               </li>
             ))}
           </ul>

@@ -300,6 +300,35 @@ describe.skipIf(!built)('the money screen', () => {
     }
   }, 30_000);
 
+  /*
+   * **A figure that silently means two things is worse than either.** Mohamed
+   * prices work off these numbers, so each row says in plain words whether it
+   * came from what was charged or from the video's own record.
+   */
+  it("says what each video's figure is made of", async () => {
+    const loaded = await open();
+    if (loaded === null) return;
+    try {
+      const said = await loaded.page.$$eval('.reelstages li', (lis) =>
+        lis.map((li) => ({
+          name: li.querySelector('.name')?.textContent ?? '',
+          paid: li.querySelector('.paid')?.textContent ?? '',
+        })),
+      );
+      expect(said.length).toBeGreaterThan(0);
+      for (const row of said) {
+        // Plain words, never a label like "source: ledger".
+        expect(`${row.name}: ${row.paid.includes('source:')}`).toBe(`${row.name}: false`);
+        expect(`${row.name}: ${/own record|actually charged/.test(row.paid)}`).toBe(
+          `${row.name}: true`,
+        );
+      }
+      expect(loaded.uncaught).toEqual([]);
+    } finally {
+      await loaded.page.close();
+    }
+  }, 30_000);
+
   it('offers a cap and says it only warns', async () => {
     const loaded = await open();
     if (loaded === null) return;

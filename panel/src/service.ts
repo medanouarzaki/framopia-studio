@@ -931,6 +931,9 @@ export interface MoneyReel {
   durationS: number | null;
   usdPerSecond: number | null;
   stages: string[];
+  planUsd: number;
+  ledgerUsd: number;
+  basis: 'ledger' | 'plan' | 'both';
 }
 
 export interface Payment {

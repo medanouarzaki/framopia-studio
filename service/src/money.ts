@@ -48,6 +48,26 @@ export interface MoneyView {
   reconciliation: Reconciliation;
 }
 
+/**
+ * **What a reel really cost, which is not always what its plan claims.**
+ *
+ * Both figures are actuals — session 68 established that — and the plan's
+ * `spentByStage` genuinely accumulates. But it only ever accumulated what it
+ * saw: spend billed before the field existed, or on a plan later replaced, is
+ * in the ledger and in no plan. Session 71 measured $5.595868 of exactly that.
+ *
+ * **The ledger cannot undercount, because it is written at the point of spend.**
+ * So where the ledger knows a reel, the greater of the two is what the reel
+ * cost, and `basis` says which answered — a figure that silently means two
+ * things is worse than either.
+ *
+ * **The ledger knows a reel only from Block 12 session 68**, which is when a
+ * line began carrying the video it was for. All 165 lines written before that
+ * carry none, and they are never attributed by the cache, by their timestamp,
+ * or by anything else.
+ */
+export type CostBasis = 'ledger' | 'plan' | 'both';
+
 export interface ReelCost {
   reel: string;
   spentUsd: number;
@@ -55,6 +75,11 @@ export interface ReelCost {
   usdPerSecond: number | null;
   /** Which stages actually billed, so a partial run is not read as a whole one. */
   stages: string[];
+  /** What the plan claims, kept so the two can be compared on screen. */
+  planUsd: number;
+  /** What the ledger records against this video. Zero when it knows none. */
+  ledgerUsd: number;
+  basis: CostBasis;
 }
 
 /**
@@ -323,7 +348,15 @@ export function isOsTemporary(videoPath: string): boolean {
 }
 
 /** Every reel's spend, from its own plan. The plan is the only thing that knows. */
-export function reelCosts(planPaths: readonly string[]): ReelCost[] {
+export function reelCosts(
+  planPaths: readonly string[],
+  lines: readonly LedgerLine[] = [],
+): ReelCost[] {
+  const byVideo = new Map<string, number[]>();
+  for (const l of lines) {
+    if (l.video === undefined) continue;
+    byVideo.set(l.video, [...(byVideo.get(l.video) ?? []), l.usd]);
+  }
   const out: ReelCost[] = [];
   for (const p of planPaths) {
     if (!existsSync(p)) continue;
@@ -340,15 +373,25 @@ export function reelCosts(planPaths: readonly string[]): ReelCost[] {
     const videoPath = typeof source['videoPath'] === 'string' ? source['videoPath'] : '';
     if (isOsTemporary(videoPath)) continue;
     const durationS = typeof source['durationS'] === 'number' ? source['durationS'] : null;
+    const sha256 = typeof source['sha256'] === 'string' ? source['sha256'] : '';
+    const ledgerUsd = sumUsd(byVideo.get(sha256) ?? []);
+    /*
+     * The greater of the two. The ledger is written at the point of spend and
+     * cannot hold less than was charged; a plan can, and does.
+     */
+    const real = ledgerUsd > spent ? ledgerUsd : spent;
     out.push({
       reel: path.basename(p).replace(/\.editplan\.json$/, ''),
-      spentUsd: spent,
+      spentUsd: real,
       durationS,
-      usdPerSecond: durationS !== null && durationS > 0 ? spent / durationS : null,
+      usdPerSecond: durationS !== null && durationS > 0 ? real / durationS : null,
       stages: Object.entries((costs['spentByStage'] ?? {}) as Record<string, number>)
         .filter(([, v]) => v > 0)
         .map(([k]) => k)
         .sort(),
+      planUsd: spent,
+      ledgerUsd,
+      basis: ledgerUsd === 0 ? 'plan' : ledgerUsd > spent ? 'ledger' : 'both',
     });
   }
   return out.sort((a, b) => b.spentUsd - a.spentUsd);
@@ -398,7 +441,7 @@ export function moneyView(options: {
   const month = now.toISOString().slice(0, 7);
 
   const credit = readCredit();
-  const reels = reelCosts(options.planPaths ?? []);
+  const reels = reelCosts(options.planPaths ?? [], read.lines);
   const payments = readPayments();
   const paidIn = sumUsd(payments.map((p) => p.usd));
   const monthSoFar = sumUsd(
