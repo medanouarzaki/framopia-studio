@@ -17,6 +17,11 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
+  loadMode,
+  mismatchSentence,
+  mismatchedClient,
+  reattachSentence,
+  type ClientFolder,
   byClient,
   byDay,
   byMonth,
@@ -199,6 +204,53 @@ export function realMoney(): Record<string, unknown> {
   };
 }
 
+/**
+ * **A real mismatch, from a copy of the real clients.**
+ *
+ * Session 76 proved the rule and the wording; session 77 proves the sentence
+ * reaches the screen. It is computed by the same `mismatchedClient` the service
+ * calls, over the **real** clients as they are on disk — except that Dr Loubna
+ * is given, **in memory only**, the folder her footage actually sits in.
+ *
+ * **Nothing is written to a client file.** Neither has declared a folder, so the
+ * service would produce no mismatch today; a fixture sentence would prove only
+ * that the panel can draw a string it was handed. This proves the panel draws
+ * what the rule really produces.
+ */
+export function realMismatch(): Record<string, unknown> | null {
+  const clients: ClientFolder[] = [];
+  for (const id of ['k2-syndicalia', 'dr-loubna-kfafi']) {
+    try {
+      const m = loadMode(id);
+      clients.push({
+        id: m.id,
+        name: m.name,
+        videoFolder:
+          id === 'dr-loubna-kfafi'
+            ? '/Volumes/T7 Shield/Framopia/Clients/Dr Loubna Kfafi'
+            : (m as { videoFolder?: string }).videoFolder,
+      });
+    } catch {
+      return null;
+    }
+  }
+  const attached = clients.find((c) => c.id === 'k2-syndicalia');
+  if (attached === undefined) return null;
+  const m = mismatchedClient({
+    videoPath:
+      '/Volumes/T7 Shield/Framopia/Clients/Dr Loubna Kfafi/September Content/Exports/Work in Progress/sora.mov',
+    attachedTo: { id: attached.id, name: attached.name },
+    clients,
+  });
+  if (m === null) return null;
+  return {
+    attachedTo: m.attachedTo,
+    looksLike: m.looksLike,
+    says: mismatchSentence(m),
+    offer: reattachSentence(m),
+  };
+}
+
 export function stubRoutes(steps: unknown, resumeAt: string): string {
   const payload = {
     money: realMoney(),
@@ -234,6 +286,7 @@ export function stubRoutes(steps: unknown, resumeAt: string): string {
       wordsUsd: 0, picturesUsd: 0, wordsStages: ['transcription', 'analysis'],
       watermark: true, watermarkSize: 'medium',
       watermarkWidthsPx: { small: 216, medium: 324, large: 432 },
+      mismatch: realMismatch(),
     },
     steps: {
       reel: 'vitasilk', planPath: '/v/p.json', steps, resumeAt,
