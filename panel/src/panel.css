@@ -868,3 +868,14 @@ section.client .say, section.video .say { margin: 8px 0 0; color: var(--muted); 
 .wrongclient .ghost { margin-top: 4px; justify-self: start; }
 .wrongclient.done { border-color: var(--line); }
 .wrongclient.done .said { color: var(--muted); }
+
+.otherservice {
+  display: grid; gap: 6px;
+  background: var(--panel); border: 1px solid var(--warn); border-radius: 9px;
+  padding: 12px 13px;
+}
+.otherservice .said { margin: 0; color: var(--text); font-size: 0.85em; line-height: 1.5; }
+.otherservice .offer { margin: 0; color: var(--muted); font-size: 0.75em; line-height: 1.5; }
+.otherservice .ghost { margin-top: 4px; justify-self: start; }
+.otherservice.done { border-color: var(--line); }
+.otherservice.done .said { color: var(--muted); }

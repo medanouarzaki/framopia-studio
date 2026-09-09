@@ -22,6 +22,7 @@ import { panelBuildStamp, stalenessOf } from './staleness.js';
 import { whichIsBehind, PANEL_IS_BEHIND } from '@framopia/core/build-stamp';
 import { CapWarning } from './CapWarning.js';
 import { Money } from './Money.js';
+import { OtherService } from './OtherService.js';
 import { WrongClient } from './WrongClient.js';
 import { fetchMoney, type Money as MoneyData } from './service.js';
 import { fileDialogSupport, pickVideoFile } from './file-dialog.js';
@@ -222,8 +223,21 @@ function Panel({
     if (connection === null) return;
     const timer = setInterval(() => {
       void fetch(`http://127.0.0.1:${connection.port}/health`)
-        .then((res) => {
+        .then(async (res) => {
           if (!res.ok) throw new Error(`health returned HTTP ${res.status}`);
+          /*
+           * The heartbeat used to throw the body away. It carries whether a
+           * second service has appeared, which is a fact that changes while the
+           * panel is open, so it is read here rather than only at connect.
+           */
+          const fresh = (await res.json()) as {
+            otherService?: { pid: number; startedAt: string } | null;
+          };
+          setService((was) =>
+            was.kind === 'healthy'
+              ? { ...was, health: { ...was.health, otherService: fresh.otherService ?? null } }
+              : was,
+          );
         })
         .catch((error: Error) => {
           setService({
@@ -647,6 +661,11 @@ function Panel({
             * wrong brand is already in it, so the notice sits where the money
             * would be spent.
             */}
+          <OtherService
+            other={service.kind === 'healthy' ? service.health.otherService : null}
+            connection={connection}
+            onStopped={() => void check()}
+          />
           <WrongClient
             mismatch={dry?.mismatch}
             planPath={dry?.planPath ?? null}

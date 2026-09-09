@@ -518,6 +518,26 @@ export interface ClientDetailsEdit {
  * Until Block 10 session 54 only the palette could be corrected: a name typed
  * wrong or a folder that moved was fixed for the life of the client.
  */
+/**
+ * Stops the other background service, because he pressed the button.
+ *
+ * Returns the pid that was stopped, or null when there was nothing to stop —
+ * which is what a second panel pressing the same button a moment later sees.
+ */
+export async function stopOtherService(
+  connection: Connection,
+  pid: number,
+): Promise<number | null> {
+  const res = await fetch(`http://127.0.0.1:${connection.port}/service/stop-other`, {
+    method: 'POST',
+    headers: { 'x-service-token': connection.token, 'content-type': 'application/json' },
+    body: JSON.stringify({ pid }),
+  });
+  const body = (await res.json().catch(() => ({}))) as { error?: string; stopped?: number | null };
+  if (!res.ok) throw new Error(body.error ?? 'the other service could not be stopped');
+  return body.stopped ?? null;
+}
+
 export async function setClientDetails(
   connection: Connection,
   edit: { client: string; details: ClientDetailsEdit },

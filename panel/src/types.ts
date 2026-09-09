@@ -44,6 +44,8 @@ export interface HealthPayload {
    * behind. Those are different states and only one of them has a remedy.
    */
   buildStamp?: string | null;
+  /** Another Framopia service running beside this one, or null. */
+  otherService?: { pid: number; startedAt: string } | null;
   templates: { valid: boolean; issues: string[]; count: number };
   /** Where the repo really is, so the panel need not derive it twice. */
   repoRoot: string;

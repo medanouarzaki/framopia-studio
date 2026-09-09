@@ -86,6 +86,15 @@ export interface HealthPayload {
    * per request would report a rebuild the running process has not loaded.
    */
   buildStamp?: string | null;
+  /**
+   * Another Framopia service running beside this one, or null.
+   *
+   * **Never acted on by the service.** A process Mohamed started is his; this
+   * reports and the panel offers. Session 78 found one six days old.
+   */
+  otherService?: { pid: number; startedAt: string } | null;
+  /** How many, when there is more than one. */
+  otherServiceCount?: number;
   /** So the panel can locate footage, modes and brand assets without guessing. */
   repoRoot: string;
   /**

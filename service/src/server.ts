@@ -54,7 +54,15 @@ import { health } from './health.js';
 import { addPayment, correctPayment, moneyView, removePayment, setCap, setCredit } from './money.js';
 import { keepPreviousAttachment } from './clients/reattach.js';
 import { planPathsForMoney } from './money-plans.js';
-import { clearHandshake, inspectLock, SERVICE_JSON_PATH, writeHandshake } from './lock.js';
+import {
+  clearHandshake,
+  inspectLock,
+  takeTheOnlyPlace,
+  otherFramopiaServices,
+  whoHoldsTheOnlyPlace,
+  SERVICE_JSON_PATH,
+  writeHandshake,
+} from './lock.js';
 
 const packageJsonPath = path.join(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -153,7 +161,23 @@ export function createApp(token: string): http.Server {
        * token.
        */
       if (req.method === 'GET' && url.pathname === '/health') {
-        sendJson(res, 200, health(version));
+        /*
+         * **Whether anyone else is running.** Session 78 found a service that
+         * had been listening for six days beside a healthy one, and nothing had
+         * noticed, because nothing ever asked. Asked here rather than at
+         * startup so it stays true: the other service may have appeared, or
+         * gone, since this one came up.
+         *
+         * Unauthenticated, like the rest of `/health`, and it says only that
+         * another service exists and which pid — nothing about what it holds.
+         */
+        const others = await otherFramopiaServices();
+        const first = others[0];
+        sendJson(res, 200, {
+          ...health(version),
+          otherService: first === undefined ? null : first,
+          otherServiceCount: others.length,
+        });
         return;
       }
 
@@ -429,6 +453,55 @@ export function createApp(token: string): http.Server {
         } catch (error) {
           sendJson(res, 400, { error: (error as Error).message });
         }
+        return;
+      }
+
+      /*
+       * **The other service, stopped — only ever because he pressed.**
+       *
+       * Nothing reaps a service by itself. Session 78's orphan had been running
+       * six days and it was still not this product's to end without being
+       * asked; what was wrong was that nobody was ever told it was there.
+       *
+       * SIGTERM, not SIGKILL: a service clears its own handshake on the way
+       * out, and only if the file still names it.
+       */
+      if (req.method === 'POST' && url.pathname === '/service/stop-other') {
+        let asked: { pid?: unknown };
+        try {
+          asked = JSON.parse((await readBody(req)) || '{}') as typeof asked;
+        } catch {
+          sendJson(res, 400, { error: 'invalid JSON body' });
+          return;
+        }
+        if (typeof asked.pid !== 'number') {
+          sendJson(res, 400, { error: 'name the service to stop as \"pid\"' });
+          return;
+        }
+        /*
+         * **One named process, and only one this product recognises.**
+         *
+         * Stopping every other service at once looked tidier and was wrong: it
+         * reaches a service another panel is legitimately using, which session
+         * 79 did to a healthy one while proving this route. He is shown a pid
+         * and presses about that pid; nothing else is touched, and a pid that
+         * is not a Framopia service is refused rather than signalled.
+         */
+        const others = await otherFramopiaServices();
+        const target = others.find((o) => o.pid === asked.pid);
+        if (target === undefined) {
+          sendJson(res, 200, { stopped: null, said: 'that service is not running any more' });
+          return;
+        }
+        try {
+          process.kill(target.pid, 'SIGTERM');
+        } catch (error) {
+          sendJson(res, 400, {
+            error: `the other service could not be stopped: ${(error as Error).message}`,
+          });
+          return;
+        }
+        sendJson(res, 200, { stopped: target.pid });
         return;
       }
 
@@ -1034,6 +1107,21 @@ export interface RunningService {
   token: string;
 }
 
+/**
+ * A service is holding the only place, and nothing on disk says which one.
+ *
+ * The handshake was deleted, or was never written, while the process went on
+ * listening. Block 12 session 78 found one six days old.
+ */
+export class ServiceWithNoHandshakeError extends Error {
+  constructor() {
+    super(
+      'a service is already running, but the handshake naming it is gone, ' +
+        'so it cannot be reached or stopped by name',
+    );
+  }
+}
+
 export class ServiceAlreadyRunningError extends Error {
   constructor(readonly pid: number, readonly port: number) {
     super(`a service is already running as pid ${pid} on port ${port}`);
@@ -1048,21 +1136,54 @@ export class ServiceAlreadyRunningError extends Error {
  * write the file and the panel would talk to whichever wrote last while the
  * other went on holding a port.
  */
-export function startServer(
-  options: { force?: boolean; lockFile?: string } = {},
+export async function startServer(
+  options: { force?: boolean; lockFile?: string; onlyPlacePort?: number } = {},
 ): Promise<RunningService> {
   const lockFile = options.lockFile ?? SERVICE_JSON_PATH;
   const lock = inspectLock(lockFile);
   if (lock.state === 'held' && options.force !== true) {
-    return Promise.reject(
-      new ServiceAlreadyRunningError(lock.handshake.pid, lock.handshake.port),
-    );
+    throw new ServiceAlreadyRunningError(lock.handshake.pid, lock.handshake.port);
+  }
+
+  /*
+   * **The kernel's answer, after the file's.**
+   *
+   * The check above is the fast, friendly one: it can name the pid and the port
+   * of the service already running. This one is the true one — it survives a
+   * handshake that is stale, that names a recycled pid, or that has been
+   * deleted outright while a service is live, which is how session 78's
+   * six-day-old orphan came to exist beside a healthy service.
+   *
+   * **`--force` does not pass this.** It was only ever meant to take a lock
+   * from a service that had gone; taking the port from one that is answering
+   * is what left two of them running. A deliberate restart stops the incumbent
+   * first — the panel already does exactly that — and the port comes free on
+   * its own.
+   */
+  const place = await takeTheOnlyPlace(options.onlyPlacePort, lockFile);
+  if (place.taken === null) {
+    if (place.heldByUs) {
+      const held = inspectLock(lockFile);
+      /*
+       * A service is standing here with no handshake naming it. That is exactly
+       * session 78's orphan, and saying "pid 0 on port 0" would be a worse
+       * answer than saying plainly that we cannot name it.
+       */
+      if (held.state !== 'held') throw new ServiceWithNoHandshakeError();
+      throw new ServiceAlreadyRunningError(held.handshake.pid, held.handshake.port);
+    }
+    /*
+     * Bound by something that is not this product, or a machine that will not
+     * let us bind loopback at all. Refusing here would leave the panel with no
+     * service it could ever start, which is worse than the thing being guarded
+     * against. It starts, unguarded, rather than never starting.
+     */
   }
 
   const token = crypto.randomBytes(24).toString('hex');
   const server = createApp(token);
 
-  return new Promise((resolve) => {
+  return await new Promise((resolve) => {
     server.listen(0, '127.0.0.1', () => {
       const address = server.address();
       if (address === null || typeof address === 'string') {
@@ -1074,6 +1195,8 @@ export function startServer(
         { port, token, pid: process.pid, startedAt: new Date().toISOString() },
         lockFile,
       );
+      // Now that the data port is known, the place can say who is standing in it.
+      place.taken?.announce(process.pid, port);
 
       resolve({ server, port, token });
     });
