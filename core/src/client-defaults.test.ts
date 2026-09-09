@@ -51,7 +51,14 @@ describe('what a client who says nothing gets', () => {
       watermark: 'standard',
       subtitleBaselineY: 'standard',
     });
-    expect(mode.videoFolder).toBeUndefined();
-    expect(mode.pictures).toBeUndefined();
+    /*
+     * **This module answers for four fields, and those four are asserted above.**
+     * Until Block 12 session 80 this also pinned `videoFolder` and `pictures` as
+     * unset on the real client file. Neither is a client *default*, and neither
+     * is anything this module reads: they were pinning the state of Mohamed's own
+     * client, which he must be free to change. He set a video folder on
+     * 2026-09-09 and this test went red for it, which is a test failing for
+     * something that is not its subject.
+     */
   });
 });

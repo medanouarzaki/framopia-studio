@@ -56,6 +56,7 @@ import { keepPreviousAttachment } from './clients/reattach.js';
 import { planPathsForMoney } from './money-plans.js';
 import {
   clearHandshake,
+  DEFAULT_SERVICE_JSON_PATH,
   inspectLock,
   takeTheOnlyPlace,
   otherFramopiaServices,
@@ -1172,7 +1173,7 @@ export async function startServer(
    * twenty servers would refuse nineteen of them. A test that means to exercise
    * the guard says so by naming a port.
    */
-  const guarded = options.onlyPlacePort !== undefined || lockFile === SERVICE_JSON_PATH;
+  const guarded = options.onlyPlacePort !== undefined || lockFile === DEFAULT_SERVICE_JSON_PATH;
   const place = guarded
     ? await takeTheOnlyPlace(options.onlyPlacePort)
     : ({ taken: null, heldByUs: false } as const);

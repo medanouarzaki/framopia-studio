@@ -20,6 +20,21 @@ import { LOCAL_DIR, processAlive } from '@framopia/core';
 export const SERVICE_JSON_PATH =
   process.env['FRAMOPIA_SERVICE_JSON'] ?? path.join(LOCAL_DIR, 'service.json');
 
+/**
+ * Where the machine's one service publishes, with no override applied.
+ *
+ * **The guard keys on this, not on `SERVICE_JSON_PATH`.** A service told by
+ * `FRAMOPIA_SERVICE_JSON` to publish somewhere else is a test or a diagnostic
+ * run, and comparing against `SERVICE_JSON_PATH` cannot tell the two apart —
+ * inside such a process the override *is* `SERVICE_JSON_PATH`, so it looked
+ * exactly like the real one and claimed the only place.
+ *
+ * Session 79 shipped that and its gate passed, because no service happened to be
+ * running at the time. Session 80 ran the gate with Mohamed's service up and
+ * five integration tests timed out against his port.
+ */
+export const DEFAULT_SERVICE_JSON_PATH = path.join(LOCAL_DIR, 'service.json');
+
 export interface ServiceHandshake {
   port: number;
   token: string;

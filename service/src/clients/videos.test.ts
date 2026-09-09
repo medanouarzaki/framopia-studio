@@ -1,8 +1,9 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { listFolder, VIDEO_EXTENSIONS } from './videos.js';
+import { modePathFor } from '@framopia/core';
 import { listVideosFor } from '../catalogue.js';
 
 const folderWith = (files: Record<string, string>): string => {
@@ -61,17 +62,43 @@ describe('a client’s videos', () => {
  * a real client reel was browsed, which is a test depending on the tester.
  */
 describe('the videos a client without a folder gets', () => {
-  const saved = process.env['FRAMOPIA_VIDEO_REGISTRY'];
+  /*
+   * **A client of this test's own, with no folder.**
+   *
+   * These used to name `k2-syndicalia`, borrowing the real client as a stand-in
+   * for "has declared no folder". Mohamed declared one on 2026-09-09, through
+   * the panel, and both went red — for a premise about his data rather than for
+   * the behaviour under test, which is unchanged and still worth pinning.
+   */
+  const saved = {
+    registry: process.env['FRAMOPIA_VIDEO_REGISTRY'],
+    modes: process.env['FRAMOPIA_MODES_DIR'],
+  };
+  let scratch: string;
   beforeAll(() => {
     process.env['FRAMOPIA_VIDEO_REGISTRY'] = path.join(tmpdir(), 'framopia-no-such-registry.json');
+    scratch = mkdtempSync(path.join(tmpdir(), 'framopia-nofolder-'));
+    const raw = JSON.parse(
+      readFileSync(modePathFor('k2-syndicalia'), 'utf8'),
+    ) as Record<string, unknown>;
+    raw['id'] = 'a-client-with-no-folder';
+    delete raw['videoFolder'];
+    writeFileSync(
+      path.join(scratch, 'a-client-with-no-folder.json'),
+      JSON.stringify(raw, null, 2),
+    );
+    process.env['FRAMOPIA_MODES_DIR'] = scratch;
   });
   afterAll(() => {
-    if (saved === undefined) delete process.env['FRAMOPIA_VIDEO_REGISTRY'];
-    else process.env['FRAMOPIA_VIDEO_REGISTRY'] = saved;
+    if (saved.registry === undefined) delete process.env['FRAMOPIA_VIDEO_REGISTRY'];
+    else process.env['FRAMOPIA_VIDEO_REGISTRY'] = saved.registry;
+    if (saved.modes === undefined) delete process.env['FRAMOPIA_MODES_DIR'];
+    else process.env['FRAMOPIA_MODES_DIR'] = saved.modes;
+    rmSync(scratch, { recursive: true, force: true });
   });
 
   it('falls back to the hand-kept list, unchanged', () => {
-    const listing = listVideosFor('k2-syndicalia');
+    const listing = listVideosFor('a-client-with-no-folder');
     expect(listing.folder).toBeNull();
     expect(listing.reels.map((r) => r.label).sort()).toEqual([
       'ground-truth', 'test-1', 'test-2', 'test-3', 'vitasilk',
@@ -81,7 +108,7 @@ describe('the videos a client without a folder gets', () => {
 
   it('gives the same list when no client is chosen at all', () => {
     expect(listVideosFor(null).reels.map((r) => r.label)).toEqual(
-      listVideosFor('k2-syndicalia').reels.map((r) => r.label),
+      listVideosFor('a-client-with-no-folder').reels.map((r) => r.label),
     );
   });
 });

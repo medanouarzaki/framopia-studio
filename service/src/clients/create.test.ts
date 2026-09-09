@@ -95,18 +95,34 @@ describe('making a client', () => {
  * allowed to do that.
  */
 describe('the client that already exists', () => {
-  it('loads unchanged and carries none of the client-detail fields', () => {
+  /**
+   * **Reading a client invents nothing.**
+   *
+   * Until Block 12 session 80 this asserted that the real client file carried
+   * *none* of the client-detail fields, by name. That was pinning the state of
+   * Mohamed's own client rather than any behaviour of this code: he set a video
+   * folder on 2026-09-09, through the panel, exactly as intended, and the test
+   * went red for it.
+   *
+   * What it was protecting is the schema rule — every addition optional, with no
+   * default written into a file that never asked for one — and that is what it
+   * asserts now, for whichever of the fields he has left unset. It holds however
+   * many of them he goes on to set.
+   */
+  it('loads unchanged, and materialises no field the file does not carry', () => {
     const raw = readFileSync(modePathFor('k2-syndicalia'), 'utf8');
-    const mode = loadMode('k2-syndicalia');
-    expect(validateMode(mode)).toEqual([]);
-    // v12 at Block 9 session 13 — the framing axis loses its wide value. The
-    // fields listed below are a different set and are still absent.
-    expect(mode.version).toBe(12);
-    for (const field of [
+    const mode = loadMode('k2-syndicalia') as unknown as Record<string, unknown>;
+    expect(validateMode(mode as never)).toEqual([]);
+    // v12 at Block 9 session 13 — the framing axis loses its wide value. None of
+    // the fields below is a version-bearing one.
+    expect((mode as { version: number }).version).toBe(12);
+    const absentFromFile = [
       'videoFolder', 'logoPath', 'pictures', 'language',
       'subtitleBaselineY', 'videoShape', 'watermarkByDefault',
-    ]) {
-      expect(`${field}: ${String(raw.includes(`"${field}"`))}`).toBe(`${field}: false`);
+    ].filter((field) => !raw.includes(`"${field}"`));
+    expect(absentFromFile.length).toBeGreaterThan(0);
+    for (const field of absentFromFile) {
+      expect(`${field}: ${String(mode[field] !== undefined)}`).toBe(`${field}: false`);
     }
   });
 });
