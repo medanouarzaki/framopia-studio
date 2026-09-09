@@ -1163,8 +1163,20 @@ export async function startServer(
    * first — the panel already does exactly that — and the port comes free on
    * its own.
    */
-  const place = await takeTheOnlyPlace(options.onlyPlacePort);
-  if (place.taken === null) {
+  /*
+   * **The guard is about the one service the panel uses**, and that service is
+   * the one publishing to the default handshake. `FRAMOPIA_SERVICE_JSON` and
+   * `lockFile` exist so a test or a diagnostic run can drive the real entry
+   * point without touching what a developer has running; such an instance is
+   * not the machine's service and must not claim to be, or a suite that starts
+   * twenty servers would refuse nineteen of them. A test that means to exercise
+   * the guard says so by naming a port.
+   */
+  const guarded = options.onlyPlacePort !== undefined || lockFile === SERVICE_JSON_PATH;
+  const place = guarded
+    ? await takeTheOnlyPlace(options.onlyPlacePort)
+    : ({ taken: null, heldByUs: false } as const);
+  if (place.taken === null && guarded) {
     if (place.heldByUs) {
       const held = inspectLock(lockFile);
       /*
