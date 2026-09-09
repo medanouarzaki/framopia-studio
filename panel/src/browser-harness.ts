@@ -251,7 +251,12 @@ export function realMismatch(): Record<string, unknown> | null {
   };
 }
 
-export function stubRoutes(steps: unknown, resumeAt: string): string {
+export function stubRoutes(
+  steps: unknown,
+  resumeAt: string,
+  /** Overrides for one route's payload, so a test can vary a single fact. */
+  over: Record<string, unknown> = {},
+): string {
   const payload = {
     money: realMoney(),
     health: HEALTHY_PAYLOAD,
@@ -288,6 +293,7 @@ export function stubRoutes(steps: unknown, resumeAt: string): string {
       watermarkWidthsPx: { small: 216, medium: 324, large: 432 },
       mismatch: realMismatch(),
     },
+    ...over,
     steps: {
       reel: 'vitasilk', planPath: '/v/p.json', steps, resumeAt,
       build: {
