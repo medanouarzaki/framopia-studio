@@ -73,5 +73,91 @@
   },
   "vocabulary": [],
   "note": "Created 2026-09-04 for her first reel. The four colours are hers, read off her own footage. The three typefaces are borrowed from K2 Syndicalia and are pending the user’s choice — see fonts.note.",
-  "videoFolder": "/Volumes/T7 Shield/Framopia/Clients/Dr Loubna Kfafi"
+  "videoFolder": "/Volumes/T7 Shield/Framopia/Clients/Dr Loubna Kfafi",
+  "pictures": [
+    {
+      "id": "pic001",
+      "path": "/Volumes/T7 Shield/INSEA/Projects/framopia-studio/assets/client-pictures/dr-loubna-kfafi/pic001.jpeg",
+      "description": "ejal40",
+      "label": "ejal40"
+    },
+    {
+      "id": "pic002",
+      "path": "/Volumes/T7 Shield/INSEA/Projects/framopia-studio/assets/client-pictures/dr-loubna-kfafi/pic002.jpeg",
+      "description": "gana",
+      "label": "gana"
+    },
+    {
+      "id": "pic003",
+      "path": "/Volumes/T7 Shield/INSEA/Projects/framopia-studio/assets/client-pictures/dr-loubna-kfafi/pic003.jpeg",
+      "description": "gouri",
+      "label": "gouri"
+    },
+    {
+      "id": "pic004",
+      "path": "/Volumes/T7 Shield/INSEA/Projects/framopia-studio/assets/client-pictures/dr-loubna-kfafi/pic004.jpeg",
+      "description": "hyalift",
+      "label": "hyalift"
+    },
+    {
+      "id": "pic005",
+      "path": "/Volumes/T7 Shield/INSEA/Projects/framopia-studio/assets/client-pictures/dr-loubna-kfafi/pic005.jpeg",
+      "description": "lola",
+      "label": "lola"
+    },
+    {
+      "id": "pic006",
+      "path": "/Volumes/T7 Shield/INSEA/Projects/framopia-studio/assets/client-pictures/dr-loubna-kfafi/pic006.jpeg",
+      "description": "neauvia stimulate",
+      "label": "neauvia, stimulate"
+    },
+    {
+      "id": "pic007",
+      "path": "/Volumes/T7 Shield/INSEA/Projects/framopia-studio/assets/client-pictures/dr-loubna-kfafi/pic007.jpeg",
+      "description": "opera",
+      "label": "opera"
+    },
+    {
+      "id": "pic008",
+      "path": "/Volumes/T7 Shield/INSEA/Projects/framopia-studio/assets/client-pictures/dr-loubna-kfafi/pic008.jpeg",
+      "description": "planiti",
+      "label": "planiti"
+    },
+    {
+      "id": "pic009",
+      "path": "/Volumes/T7 Shield/INSEA/Projects/framopia-studio/assets/client-pictures/dr-loubna-kfafi/pic009.jpeg",
+      "description": "profhilo structura",
+      "label": "structura"
+    },
+    {
+      "id": "pic010",
+      "path": "/Volumes/T7 Shield/INSEA/Projects/framopia-studio/assets/client-pictures/dr-loubna-kfafi/pic010.jpeg",
+      "description": "profhilo",
+      "label": "profhilo"
+    },
+    {
+      "id": "pic011",
+      "path": "/Volumes/T7 Shield/INSEA/Projects/framopia-studio/assets/client-pictures/dr-loubna-kfafi/pic011.jpeg",
+      "description": "radiesse",
+      "label": "radiesse"
+    },
+    {
+      "id": "pic012",
+      "path": "/Volumes/T7 Shield/INSEA/Projects/framopia-studio/assets/client-pictures/dr-loubna-kfafi/pic012.jpeg",
+      "description": "regenera",
+      "label": "regenera"
+    },
+    {
+      "id": "pic013",
+      "path": "/Volumes/T7 Shield/INSEA/Projects/framopia-studio/assets/client-pictures/dr-loubna-kfafi/pic013.jpeg",
+      "description": "restylane",
+      "label": "restylane"
+    },
+    {
+      "id": "pic014",
+      "path": "/Volumes/T7 Shield/INSEA/Projects/framopia-studio/assets/client-pictures/dr-loubna-kfafi/pic014.jpeg",
+      "description": "sculptra",
+      "label": "sculptra"
+    }
+  ]
 }
