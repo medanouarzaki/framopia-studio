@@ -34,6 +34,22 @@ pictures to one video. All of it measured on a copy holding no video, no saved
 API answers and no cost ledger. The panel's own test suite — 244 checks — passes
 in full in that state.
 
+**What arrives with the clone, and what does not.** Since 2026-09-10 a client's
+own pictures come down with the repository: Dr Loubna Kfafi's fourteen are in
+`assets/client-pictures/`, 25.5 MB, and they were **measured** arriving — cloned
+fresh, compared file by file against this machine's by sha256, fourteen
+identical. Her client file names them by a path that was written on the T7, and
+session 61's read-time re-rooting turns each one into a path inside your own
+clone; all fourteen were checked to resolve to a file that exists.
+
+**A reel that used one still cannot be rebuilt on your machine**, and the
+pictures are no longer the reason. Measured in the rehearsal clone: the client
+file, the templates, the SFX and the watermark are all there, but the Edit
+Plan is not — `.local/` is gitignored and carries every plan — and neither is
+the source video, which lives on the T7 and which `.gitignore` excludes by
+extension. Those two are what `npm run backup` is for, and a photograph is
+deliberately not in that set.
+
 **What you cannot do until you have your own key.** Anything that costs money:
 transcribing a video, working out its keywords, and generating pictures. §10 is
 where your key goes. **Nothing else in this document is blocked by it.**
