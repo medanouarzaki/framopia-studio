@@ -46,3 +46,19 @@ panel/dist/
 
 # session 35 flattens a cutout beside it at build time
 *.on-fill.png
+
+# A client's own photographs.
+#
+# Mohamed ruled on 2026-09-05 that attaching a photograph copies it into the
+# project, so the path on a client survives the drive it came from. That put a
+# real person's face inside the working copy of a repository with a remote, and
+# nothing kept it out of a commit: session 81 found fourteen of Dr Loubna
+# Kfafi's here, 25.5 MB, untracked in a directory nobody had ignored, where
+# `git add -A` would have staged every one.
+#
+# Ignored so no ordinary command sweeps them up. The ignore is not the whole
+# guard — a `-f` overrides it and this file can be edited — so
+# `scripts/check-no-photographs-staged.mjs` fails the gate if one is ever
+# staged. Nothing here deletes or moves them; they stay exactly where the panel
+# put them.
+assets/client-pictures/

@@ -227,3 +227,111 @@ describe('what he is told about a folder that leaves videos out', () => {
     expect(said).not.toMatch(/npm |terminal|quit|restart/i);
   });
 });
+
+/**
+ * **The two folder rules, ordered rather than balanced.**
+ *
+ * Block 12 session 81 found K2 Syndicalia told that three videos sat outside its
+ * folder, one of them the reel `mismatchedClient` says is Dr Loubna Kfafi's
+ * footage attached to K2. Both rules read the same fact and drew opposite
+ * conclusions: one that the reel is on the wrong client, the other that K2's
+ * folder is too narrow to hold it. Only the first is true, and widening K2's
+ * folder to take in Dr Loubna's would be the worst answer available.
+ */
+describe('a video that looks like another client’s', () => {
+  /* Deep enough that the two share a real folder, so only the rule under test decides. */
+  const HERS = '/Framopia/Clients/Loubna';
+  const THEIRS = '/Framopia/Clients/K2';
+  const clients = [
+    { id: 'loubna', name: 'Loubna', videoFolder: HERS },
+    { id: 'k2', name: 'K2', videoFolder: THEIRS },
+  ];
+
+  it('is not counted against the client it is attached to', () => {
+    expect(
+      videosLeftOutside({
+        clientId: 'k2',
+        videoFolder: THEIRS,
+        setUpAs: [{ clientId: 'k2', videoPath: `${HERS}/September/sora.mov` }],
+        clients,
+      }),
+    ).toEqual([]);
+  });
+
+  /* Without the clients there is nothing to ask, and it counts as it used to. */
+  it('is counted when no client folders are given to ask', () => {
+    expect(
+      videosLeftOutside({
+        clientId: 'k2',
+        videoFolder: THEIRS,
+        setUpAs: [{ clientId: 'k2', videoPath: `${HERS}/September/sora.mov` }],
+      }),
+    ).toEqual([`${HERS}/September/sora.mov`]);
+  });
+
+  /* A video in nobody's declared folder is still evidence about this one. */
+  it('still counts a video no client claims', () => {
+    expect(
+      videosLeftOutside({
+        clientId: 'k2',
+        videoFolder: `${THEIRS}/Inputs`,
+        setUpAs: [{ clientId: 'k2', videoPath: `${THEIRS}/September/two.mov` }],
+        clients,
+      }),
+    ).toEqual([`${THEIRS}/September/two.mov`]);
+  });
+});
+
+/**
+ * **The sentence promises a folder further up, so there has to be one.**
+ *
+ * Two of the three K2 was warned about were reels whose videos live in the
+ * operating system's temporary directory. The first thing those paths have in
+ * common with a client folder on an external disk is the root of the filesystem,
+ * and "a folder further up would take them in" is then not a warning but false
+ * advice.
+ */
+describe('a video nowhere near the declared folder', () => {
+  const THEIRS = '/Volumes/T7 Shield/Framopia/Clients/K2';
+
+  it('is not counted when the two meet only at the root', () => {
+    expect(
+      videosLeftOutside({
+        clientId: 'k2',
+        videoFolder: THEIRS,
+        setUpAs: [{ clientId: 'k2', videoPath: '/var/folders/41/scratch/a video.mov' }],
+      }),
+    ).toEqual([]);
+  });
+
+  /* Two disks are the same Mac, not the same folder. */
+  it('is not counted when the two meet only at the disks', () => {
+    expect(
+      videosLeftOutside({
+        clientId: 'k2',
+        videoFolder: THEIRS,
+        setUpAs: [{ clientId: 'k2', videoPath: '/Volumes/Another Disk/K2/a video.mov' }],
+      }),
+    ).toEqual([]);
+  });
+
+  it('is counted when the two share a real folder on the disk', () => {
+    const stray = '/Volumes/T7 Shield/Framopia/Clients/K2 elsewhere/a video.mov';
+    expect(
+      videosLeftOutside({ clientId: 'k2', videoFolder: THEIRS, setUpAs: [{ clientId: 'k2', videoPath: stray }] }),
+    ).toEqual([stray]);
+  });
+
+  /* The case the warning exists for is untouched by either exclusion. */
+  it('still warns about footage in the client’s own tree', () => {
+    const HERS = '/Volumes/T7 Shield/Framopia/Clients/Loubna';
+    expect(
+      videosLeftOutside({
+        clientId: 'loubna',
+        videoFolder: `${HERS}/September/Exports/Work in Progress`,
+        setUpAs: [{ clientId: 'loubna', videoPath: `${HERS}/Inputs/Footages/sora.mov` }],
+        clients: [{ id: 'loubna', name: 'Loubna', videoFolder: `${HERS}/September/Exports/Work in Progress` }],
+      }),
+    ).toEqual([`${HERS}/Inputs/Footages/sora.mov`]);
+  });
+});

@@ -88,6 +88,11 @@ have cost this project a session each when broken.
   Session 71 moved three files to a quarantine directory with `2>/dev/null`,
   moved nothing, and reported that it had. List the destination afterwards and
   say what is actually in it, or the claim is untested.
+- **A client's own photographs never enter the repository.** Mohamed's ruling of
+  2026-09-05 copies an attached photograph into `assets/client-pictures/`, so a
+  client's picture survives the drive it came from — which puts a real person's
+  face in a working copy that has a remote. The store is gitignored and
+  `npm run check` fails if one is staged. Never commit, move or delete one.
 - **`templates/library.aep` is never opened for writing** and never imported
   into itself.
 - **`appendCost` fires at the point of spend**, once per billable call, never

@@ -23,6 +23,24 @@ import { browsedPlansDir, knownVideos, rememberVideo } from './videos.js';
  * catalogue that throws because one reel is malformed takes every client with
  * it. A plan missing either field is simply not evidence and is skipped.
  */
+function everyClientFolder(): { id: string; name: string; videoFolder?: string }[] {
+  try {
+    return readdirSync(modesDir())
+      .filter((f) => f.endsWith('.json'))
+      .flatMap((file) => {
+        try {
+          const modePath = path.join(modesDir(), file);
+          const mode = parseMode(readFileSync(modePath, 'utf8'), modePath);
+          return [{ id: mode.id, name: mode.name, videoFolder: mode.videoFolder }];
+        } catch {
+          return [];
+        }
+      });
+  } catch {
+    return [];
+  }
+}
+
 function reelsSetUpAs(): { clientId: string; videoPath: string }[] {
   let files: string[];
   try {
@@ -388,6 +406,9 @@ export function listModes(): CatalogueMode[] {
               clientId: mode.id,
               videoFolder: mode.videoFolder,
               setUpAs: reelsSetUpAs(),
+              // So a video the wrong-client rule claims for someone else is not
+              // also counted as evidence that this client's folder is too deep.
+              clients: everyClientFolder(),
             }).length,
           ),
         };

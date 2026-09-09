@@ -146,15 +146,80 @@ export function videosLeftOutside(options: {
   videoFolder: string | undefined;
   /** One per reel already made: which client it was set up as, and its video. */
   setUpAs: readonly { clientId: string; videoPath: string }[];
+  /**
+   * Every client and their declared folder, so a video this rule is about to
+   * count can first be asked whose it looks like.
+   *
+   * Optional, and an absent list only makes this say more rather than less, so
+   * an older caller keeps working.
+   */
+  clients?: readonly ClientFolder[];
 }): string[] {
-  const { clientId, videoFolder, setUpAs } = options;
+  const { clientId, videoFolder, setUpAs, clients = [] } = options;
   if (typeof videoFolder !== 'string' || videoFolder.trim() === '') return [];
   const folder = path.resolve(videoFolder);
   const outside = setUpAs
     .filter((reel) => reel.clientId === clientId)
     .map((reel) => reel.videoPath)
-    .filter((videoPath) => !inside(folder, path.resolve(videoPath)));
+    .filter((videoPath) => !inside(folder, path.resolve(videoPath)))
+    /*
+     * **A video that looks like someone else's is not evidence about this
+     * client's folder.**
+     *
+     * Session 81 found K2 Syndicalia being told three videos sat outside its
+     * folder, one of them `sora-995f2d27` — the very reel `mismatchedClient`
+     * says is Dr Loubna Kfafi's footage attached to K2. Both rules were reading
+     * the same fact and drawing opposite conclusions from it: one said the reel
+     * is on the wrong client, the other said K2's folder is too narrow to hold
+     * it. Only the first is true, and widening K2's folder to take in Dr
+     * Loubna's would be the worst thing he could do about it.
+     *
+     * So the two rules are ordered rather than balanced: **the wrong-client rule
+     * answers first**, and whatever it claims is left out of this one.
+     */
+    .filter((videoPath) => {
+      const owner = whoseVideo(videoPath, clients);
+      return owner === null || owner.id === clientId;
+    })
+    /*
+     * **The sentence promises that a folder further up would take them in, so
+     * there has to be one.**
+     *
+     * The other two K2 was warned about are reels whose videos live in the
+     * operating system's temporary directory. Nothing they share with a client
+     * folder on an external disk is a folder anyone would declare — the first
+     * thing the two paths have in common is the root of the filesystem. Saying
+     * "a folder further up would take them in" about those is not a warning, it
+     * is false advice.
+     *
+     * A video counts only when it and the declared folder are both inside some
+     * real folder below the disk they are on. That is a fact about paths, not
+     * about his disk, and it holds for a machine that has never seen this
+     * project.
+     */
+    .filter((videoPath) => sharesAFolderWith(folder, path.resolve(videoPath)));
   return [...new Set(outside)];
+}
+
+/**
+ * Whether two paths meet anywhere that is a folder rather than a disk.
+ *
+ * `/` is where everything meets, and on macOS every external volume meets at
+ * `/Volumes`, so neither of those counts as somewhere a person keeps a client's
+ * work. Anything deeper does.
+ */
+function sharesAFolderWith(a: string, b: string): boolean {
+  const left = a.split(path.sep).filter((part) => part !== '');
+  const right = b.split(path.sep).filter((part) => part !== '');
+  let shared = 0;
+  while (shared < left.length && shared < right.length && left[shared] === right[shared]) {
+    shared += 1;
+  }
+  if (shared === 0) return false;
+  // `/Volumes/<disk>` is a mount point; two paths meeting only there are on the
+  // same Mac, not in the same folder.
+  if (left[0] === 'Volumes') return shared > 2;
+  return shared > 1;
 }
 
 /**
