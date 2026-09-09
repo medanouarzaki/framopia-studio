@@ -475,7 +475,7 @@ export function createApp(token: string): http.Server {
           return;
         }
         if (typeof asked.pid !== 'number') {
-          sendJson(res, 400, { error: 'name the service to stop as \"pid\"' });
+          sendJson(res, 400, { error: 'name the service to stop as "pid"' });
           return;
         }
         /*
@@ -1114,10 +1114,13 @@ export interface RunningService {
  * listening. Block 12 session 78 found one six days old.
  */
 export class ServiceWithNoHandshakeError extends Error {
-  constructor() {
+  constructor(readonly holder: { pid: number; port: number } | null = null) {
     super(
-      'a service is already running, but the handshake naming it is gone, ' +
-        'so it cannot be reached or stopped by name',
+      holder === null
+        ? 'a service is already running, but the handshake naming it is gone, ' +
+            'so it cannot be reached or stopped by name'
+        : `a service is already running as pid ${holder.pid} on port ${holder.port}, ` +
+            'and the handshake naming it is gone',
     );
   }
 }
@@ -1160,7 +1163,7 @@ export async function startServer(
    * first — the panel already does exactly that — and the port comes free on
    * its own.
    */
-  const place = await takeTheOnlyPlace(options.onlyPlacePort, lockFile);
+  const place = await takeTheOnlyPlace(options.onlyPlacePort);
   if (place.taken === null) {
     if (place.heldByUs) {
       const held = inspectLock(lockFile);
@@ -1169,7 +1172,16 @@ export async function startServer(
        * session 78's orphan, and saying "pid 0 on port 0" would be a worse
        * answer than saying plainly that we cannot name it.
        */
-      if (held.state !== 'held') throw new ServiceWithNoHandshakeError();
+      if (held.state !== 'held') {
+        /*
+         * Nothing on disk names it, so the place itself is asked. That is what
+         * keeps this from being a dead end: the panel stops a service by pid,
+         * and this is where the pid comes from when the handshake is gone.
+         */
+        throw new ServiceWithNoHandshakeError(
+          await whoHoldsTheOnlyPlace(options.onlyPlacePort),
+        );
+      }
       throw new ServiceAlreadyRunningError(held.handshake.pid, held.handshake.port);
     }
     /*

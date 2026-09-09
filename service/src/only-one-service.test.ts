@@ -145,3 +145,23 @@ describe('every other Framopia service', () => {
     expect(withoutFirst.map((o) => o.pid)).not.toContain(first.pid);
   });
 });
+
+/**
+ * **The refusal names the process, so a nameless service is not a dead end.**
+ *
+ * Without this the guard would trade two services for an unreachable one: the
+ * handshake is gone, so nothing on disk says what to stop, and the port is held,
+ * so nothing new can start. The place is asked instead.
+ */
+describe('a service holding the place with no handshake', () => {
+  it('is named in the refusal by pid and port', async () => {
+    const port = aPort();
+    const file = lockFile();
+    const started = await startServer({ lockFile: file, onlyPlacePort: port });
+    running.push(started.server);
+    rmSync(file, { force: true });
+    await expect(startServer({ lockFile: file, onlyPlacePort: port })).rejects.toThrow(
+      new RegExp(`pid ${process.pid} on port ${started.port}`),
+    );
+  });
+});

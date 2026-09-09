@@ -180,7 +180,6 @@ export async function whoHoldsTheOnlyPlace(
  */
 export async function takeTheOnlyPlace(
   port = ONLY_PLACE_PORT,
-  lockFile = SERVICE_JSON_PATH,
 ): Promise<{ taken: TheOnlyPlace } | { taken: null; heldByUs: boolean }> {
   const { createServer } = await import('node:net');
   return await new Promise((resolve) => {
