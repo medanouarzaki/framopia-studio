@@ -37,6 +37,12 @@ npm run panel:build
 # the shape that hid a broken compiled service for seventy sessions.
 node scripts/check-artefacts.mjs
 
+# What is in assets/client-pictures/ before anything runs. A real client's
+# photographs live there for good, so the gate compares against this rather than
+# demanding the directory be empty, which it stopped being when Dr Loubna Kfafi
+# was given fourteen of her own.
+node scripts/check-store-empty.mjs --record
+
 npm run typecheck --workspaces --if-present
 npm run lint --workspaces --if-present
 # `--run` is not appended here: every workspace's own `test` script carries it,
