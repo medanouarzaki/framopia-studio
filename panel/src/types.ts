@@ -74,12 +74,26 @@ export interface DryRunStage {
   note: string;
 }
 
+/**
+ * **Whose folder this video is in, when the plan says someone else.**
+ *
+ * Null far more often than not: it needs the client to have declared where
+ * their videos live, and says nothing on a guess.
+ */
+export interface ClientMismatch {
+  attachedTo: { id: string; name: string };
+  looksLike: { id: string; name: string };
+  says: string;
+  offer: string;
+}
+
 export interface DryRunPlan {
   reel: string;
   videoPath: string;
   modeId: string;
   modeName: string;
   modeVersion: number;
+  mismatch?: ClientMismatch | null;
   planPath: string | null;
   spentUsd: number | null;
   stages: DryRunStage[];

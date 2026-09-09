@@ -852,3 +852,19 @@ section.client .say, section.video .say { margin: 8px 0 0; color: var(--muted); 
  */
 .colours .hint.needed { color: var(--warn); }
 .say.needed { color: var(--warn); margin: 6px 0 0; font-size: 0.8em; }
+
+/*
+ * A video whose plan names one client while it sits in another's folder.
+ * Mohamed's ruling of 2026-09-09: the tool notices and offers, and never
+ * re-attaches by itself. It sits above the buttons that bill.
+ */
+.wrongclient {
+  display: grid; gap: 6px;
+  background: var(--panel); border: 1px solid var(--warn); border-radius: 9px;
+  padding: 12px 13px;
+}
+.wrongclient .said { margin: 0; color: var(--text); font-size: 0.85em; line-height: 1.5; }
+.wrongclient .offer { margin: 0; color: var(--muted); font-size: 0.75em; line-height: 1.5; }
+.wrongclient .ghost { margin-top: 4px; justify-self: start; }
+.wrongclient.done { border-color: var(--line); }
+.wrongclient.done .said { color: var(--muted); }

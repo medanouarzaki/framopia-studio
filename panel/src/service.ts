@@ -1020,3 +1020,22 @@ export async function removePayment(
   }
   return { removed: body.removed, money: body.money };
 }
+
+/**
+ * Attach a reel to a different client, when he presses the offer.
+ *
+ * **Nothing happens unless he does.** Re-attaching changes the colours, the
+ * faces and the shadow the reel builds in, so the service copies the plan aside
+ * first and tells us where it went.
+ */
+export async function attachClient(
+  connection: Connection,
+  planPath: string,
+  modeId: string,
+): Promise<{ keptPreviousAt: string | null }> {
+  const body = await postJson<{ keptPreviousAt?: string }>(connection, '/client', {
+    planPath,
+    modeId,
+  });
+  return { keptPreviousAt: body.keptPreviousAt ?? null };
+}

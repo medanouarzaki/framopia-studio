@@ -22,6 +22,7 @@ import { panelBuildStamp, stalenessOf } from './staleness.js';
 import { whichIsBehind, PANEL_IS_BEHIND } from '@framopia/core/build-stamp';
 import { CapWarning } from './CapWarning.js';
 import { Money } from './Money.js';
+import { WrongClient } from './WrongClient.js';
 import { fetchMoney, type Money as MoneyData } from './service.js';
 import { fileDialogSupport, pickVideoFile } from './file-dialog.js';
 import { Transcript } from './Transcript.js';
@@ -640,6 +641,18 @@ function Panel({
         </section>
 
         <section className="do">
+          {/*
+            * **Above the buttons that bill.** Session 75 found a reel built in
+            * another client's colours; by the time a composition exists the
+            * wrong brand is already in it, so the notice sits where the money
+            * would be spent.
+            */}
+          <WrongClient
+            mismatch={dry?.mismatch}
+            planPath={dry?.planPath ?? null}
+            connection={connection}
+            onAttached={() => void check()}
+          />
           <RunActions
             dry={dry}
             enabled={gate.enabled}
