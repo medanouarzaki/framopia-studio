@@ -52,6 +52,7 @@ import './pipeline.js';
 import './build/job.js';
 import { health } from './health.js';
 import { addPayment, correctPayment, moneyView, removePayment, setCap, setCredit } from './money.js';
+import { keepPreviousAttachment } from './clients/reattach.js';
 import { planPathsForMoney } from './money-plans.js';
 import { clearHandshake, inspectLock, SERVICE_JSON_PATH, writeHandshake } from './lock.js';
 
@@ -114,6 +115,8 @@ async function withPlan(
   res: ServerResponse,
   planPath: string,
   edit: (plan: import('./editplan/types.js').EditPlan) => void,
+  /** Extra fields for the reply, when a route has something to say. */
+  also: () => Record<string, unknown> = () => ({}),
 ): Promise<void> {
   let plan;
   try {
@@ -133,7 +136,7 @@ async function withPlan(
   }
   plan.meta.updatedAt = new Date().toISOString();
   await writeEditPlan(planPath, plan);
-  sendJson(res, 200, { zones: plan.zones });
+  sendJson(res, 200, { zones: plan.zones, ...also() });
 }
 
 export function createApp(token: string): http.Server {
@@ -956,6 +959,7 @@ export function createApp(token: string): http.Server {
        * against a copy of the client's look rather than a pointer to it.
        */
       if (req.method === 'POST' && url.pathname === '/client') {
+        let keptPreviousAt: string | null = null;
         let body: { planPath?: unknown; modeId?: unknown };
         try {
           body = JSON.parse((await readBody(req)) || '{}') as typeof body;
@@ -968,18 +972,29 @@ export function createApp(token: string): http.Server {
           return;
         }
         const modeId = body.modeId;
-        await withPlan(res, body.planPath, (plan) => {
+        const planPath = body.planPath;
+        await withPlan(res, planPath, (plan) => {
           let mode;
           try {
             mode = loadMode(modeId);
           } catch (err) {
             throw new PlanEditError(`there is no client "${modeId}": ${(err as Error).message}`);
           }
+          /*
+           * **The previous attachment is kept, never simply overwritten.**
+           * Re-attaching changes the colours, the faces and the shadow this reel
+           * builds in, and nothing a person made is thrown away. Copied only
+           * when the client really changes: re-attaching a plan to the client it
+           * already has writes no copy, because nothing was lost.
+           */
+          if (plan.clientMode !== null && plan.clientMode.id !== mode.id) {
+            keptPreviousAt = keepPreviousAttachment(planPath);
+          }
           plan.clientMode = { id: mode.id, version: mode.version, path: modePathFor(mode.id) };
           plan.clientSnapshot = snapshotOfMode(mode, new Date().toISOString());
           // The client's own watermark default, on a reel that has not decided.
           applyClientDefaultsToPlan(plan, mode);
-        });
+        }, () => (keptPreviousAt === null ? {} : { keptPreviousAt }));
         return;
       }
 

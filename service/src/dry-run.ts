@@ -1,6 +1,13 @@
 import { existsSync, readFileSync } from 'node:fs';
-import { estimateImageRunCost, loadMode, type EntryProvenance } from '@framopia/core';
-import { listReels } from './catalogue.js';
+import {
+  estimateImageRunCost,
+  loadMode,
+  mismatchSentence,
+  mismatchedClient,
+  reattachSentence,
+  type EntryProvenance,
+} from '@framopia/core';
+import { listModes, listReels } from './catalogue.js';
 import { knownVideos } from './videos.js';
 import { resolveKeywordEntry, resolveSlotEntry } from './analysis/resolve-entry.js';
 import { imageSlotCountFor } from './analysis/count.js';
@@ -55,6 +62,26 @@ export interface DryRunStage {
    */
   action: 'skip' | 'reuse' | 'run';
   note: string;
+}
+
+/**
+ * **Whose folder this video is in, when the plan says someone else.**
+ *
+ * Session 75 found `sora-995f2d27` — Dr Loubna Kfafi's footage — built in K2
+ * Syndicalia's colours, because its plan was made four days before her client
+ * existed and pinned K2. Nothing warned him. Mohamed ruled that the tool
+ * notices and offers, and never re-attaches by itself.
+ *
+ * Null far more often than not: see `whoseVideo` for what the evidence is and
+ * everything it cannot tell.
+ */
+export interface ClientMismatch {
+  attachedTo: { id: string; name: string };
+  looksLike: { id: string; name: string };
+  /** What he reads. No path, no version, no id. */
+  says: string;
+  /** What pressing the offer would change. */
+  offer: string;
 }
 
 export interface DryRunPlan {
@@ -125,6 +152,8 @@ export interface DryRunPlan {
   wordsDone: boolean;
   /** True when any stage resolves `compatible`; the panel says so plainly. */
   reusesOlderGuide: boolean;
+  /** Null unless the evidence clearly says the video is someone else's. */
+  mismatch: ClientMismatch | null;
 }
 
 export class DryRunError extends Error {}
@@ -457,6 +486,29 @@ export async function dryRun(reelLabel: string, modeId: string): Promise<DryRunP
     'free, and done on this machine. It can take a few minutes the first time for a video.',
   );
 
+  /*
+   * Read from the clients on this machine, each of which may or may not have
+   * declared where their videos live. Silent when none has.
+   */
+  const mismatched = mismatchedClient({
+    videoPath: reel.videoPath,
+    attachedTo: { id: mode.id, name: mode.name },
+    clients: listModes().map((m) => ({
+      id: m.id,
+      name: m.name,
+      videoFolder: (m as { videoFolder?: string }).videoFolder,
+    })),
+  });
+  const mismatch: ClientMismatch | null =
+    mismatched === null
+      ? null
+      : {
+          attachedTo: mismatched.attachedTo,
+          looksLike: mismatched.looksLike,
+          says: mismatchSentence(mismatched),
+          offer: reattachSentence(mismatched),
+        };
+
   return {
     reel: reel.label,
     videoPath: reel.videoPath,
@@ -471,6 +523,7 @@ export async function dryRun(reelLabel: string, modeId: string): Promise<DryRunP
     watermarkWidthsPx: Object.fromEntries(
       WATERMARK_SIZES.map((size) => [size, Math.round(watermarkWidthFraction(size) * FRAME_WIDTH)]),
     ) as Record<WatermarkSize, number>,
+    mismatch,
     planClientMode,
     buildBlockedBecause:
       planClientMode === null && !hasClientSnapshot
