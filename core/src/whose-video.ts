@@ -117,3 +117,60 @@ export function reattachSentence(m: Mismatch): string {
     `behind the words. Nothing already built changes, and the old setting is kept.`
   );
 }
+
+/**
+ * The videos already set up as this client's that the folder just declared for
+ * them does not contain.
+ *
+ * **A folder declared too deep is silently narrow.** Dr Loubna Kfafi keeps
+ * footage in at least two unrelated places inside her own folder —
+ * `Framopia Studio Inputs/Footages/` and `September Content/Exports/Work in
+ * Progress/` — so declaring either one leaves the other owned by nobody, and
+ * `whoseVideo` then answers `null` for a video that plainly is hers. Sessions 77
+ * and 79 both measured this and neither said anything to him about it.
+ *
+ * **What this rests on, and what it refuses to guess.** The only evidence used
+ * is what the tool wrote down itself: a reel's plan records which client it was
+ * set up as, and where its video is. Nothing is inferred from the shape or the
+ * wording of a path — session 76 refused a rule that read a client's name out of
+ * a directory name, on the grounds that it could not hold for a machine that had
+ * never seen this project, and that reasoning applies here unchanged. Walking up
+ * from the declared folder looking for stray videos would be the same mistake in
+ * a different costume: it would sweep in whatever else happened to be nearby.
+ *
+ * On a machine with no reels yet there is no evidence either way, and this says
+ * nothing. That is the correct answer, not a gap.
+ */
+export function videosLeftOutside(options: {
+  clientId: string;
+  videoFolder: string | undefined;
+  /** One per reel already made: which client it was set up as, and its video. */
+  setUpAs: readonly { clientId: string; videoPath: string }[];
+}): string[] {
+  const { clientId, videoFolder, setUpAs } = options;
+  if (typeof videoFolder !== 'string' || videoFolder.trim() === '') return [];
+  const folder = path.resolve(videoFolder);
+  const outside = setUpAs
+    .filter((reel) => reel.clientId === clientId)
+    .map((reel) => reel.videoPath)
+    .filter((videoPath) => !inside(folder, path.resolve(videoPath)));
+  return [...new Set(outside)];
+}
+
+/**
+ * What he is told, in the place he sets the folder.
+ *
+ * No path: he chose the folder a moment ago and is looking at it, and the count
+ * is the fact that matters. **It says what was noticed and stops** — the folder
+ * is not changed, nothing is moved, and he decides.
+ */
+export function leftOutsideSentence(count: number): string | null {
+  if (count <= 0) return null;
+  const videos = count === 1 ? 'One video' : `${count} videos`;
+  const them = count === 1 ? 'it' : 'them';
+  return (
+    `${videos} already set up as this client's ${count === 1 ? 'sits' : 'sit'} outside this ` +
+    `folder, so the tool will not recognise ${them} as theirs. A folder further up would take ` +
+    `${them} in. Nothing has been changed.`
+  );
+}

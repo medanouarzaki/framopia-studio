@@ -437,6 +437,20 @@ function Details({
         }}
         onClear={() => set({ videoFolder: null })}
       />
+      {/*
+        * **A folder declared too deep is silently narrow.** Sessions 77 and 79
+        * both measured that a folder chosen below the client's root leaves her
+        * other footage owned by nobody, and neither said anything to him. It
+        * says what was noticed and stops: the folder is not changed.
+        *
+        * Only for the folder as saved, so it cannot contradict a choice he has
+        * made in this editor but not yet kept.
+        */}
+      {client.folderLeavesOut === null || client.folderLeavesOut === undefined ? null : (
+        <p className="say leavesout" role="status">
+          {client.folderLeavesOut}
+        </p>
+      )}
       <PathRow
         what="Their logo"
         value={text('logoPath')}

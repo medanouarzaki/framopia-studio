@@ -9,9 +9,45 @@ import {
   clientDefaults,
   parseMode,
   type ClientMode,
+  leftOutsideSentence,
+  videosLeftOutside,
 } from '@framopia/core';
 import { loadReels as loadFootageReels } from './frames/footage.js';
-import { knownVideos, rememberVideo } from './videos.js';
+import { browsedPlansDir, knownVideos, rememberVideo } from './videos.js';
+
+/**
+ * Which client each reel already made was set up as, and where its video is.
+ *
+ * **Read straight, not through `readEditPlan`.** That validates, and a plan this
+ * service cannot open must not stop the client list from being drawn — a
+ * catalogue that throws because one reel is malformed takes every client with
+ * it. A plan missing either field is simply not evidence and is skipped.
+ */
+function reelsSetUpAs(): { clientId: string; videoPath: string }[] {
+  let files: string[];
+  try {
+    files = readdirSync(browsedPlansDir()).filter((f) => f.endsWith('.json'));
+  } catch {
+    return [];
+  }
+  const out: { clientId: string; videoPath: string }[] = [];
+  for (const file of files) {
+    try {
+      const plan = JSON.parse(readFileSync(path.join(browsedPlansDir(), file), 'utf8')) as {
+        clientMode?: { id?: unknown };
+        source?: { videoPath?: unknown };
+      };
+      const clientId = plan.clientMode?.id;
+      const videoPath = plan.source?.videoPath;
+      if (typeof clientId === 'string' && typeof videoPath === 'string') {
+        out.push({ clientId, videoPath });
+      }
+    } catch {
+      continue;
+    }
+  }
+  return out;
+}
 import { editPlanPathFor } from './editplan/io.js';
 import { listClientVideos, type FolderListing } from './clients/videos.js';
 
@@ -104,6 +140,14 @@ export interface CatalogueMode {
    * control that would fail on the first press, which is what
    * `pictures === undefined` already does one field above.
    */
+  /**
+   * Videos already set up as this client's that their declared folder does not
+   * contain, as the sentence he is shown, or null when there are none.
+   *
+   * **Schema addition, optional with a default**: an older panel simply does not
+   * draw it.
+   */
+  folderLeavesOut?: string | null;
   editable: {
     name: string;
     about?: string;
@@ -322,6 +366,13 @@ export function listModes(): CatalogueMode[] {
             onThisMachine: existsSync(p.path),
           })),
           editable: editableOf(mode),
+          folderLeavesOut: leftOutsideSentence(
+            videosLeftOutside({
+              clientId: mode.id,
+              videoFolder: mode.videoFolder,
+              setUpAs: reelsSetUpAs(),
+            }).length,
+          ),
         };
         if (mode.fonts.status === 'set') {
           entry.fonts = { latin: mode.fonts.latin, arabic: mode.fonts.arabic };

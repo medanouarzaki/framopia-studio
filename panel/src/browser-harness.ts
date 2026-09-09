@@ -205,17 +205,20 @@ export function realMoney(): Record<string, unknown> {
 }
 
 /**
- * **A real mismatch, from a copy of the real clients.**
+ * **A real mismatch, from the real clients, with nothing added.**
  *
- * Session 76 proved the rule and the wording; session 77 proves the sentence
+ * Session 76 proved the rule and the wording; session 77 proved the sentence
  * reaches the screen. It is computed by the same `mismatchedClient` the service
- * calls, over the **real** clients as they are on disk — except that Dr Loubna
- * is given, **in memory only**, the folder her footage actually sits in.
+ * calls, over the clients exactly as they are on disk.
  *
- * **Nothing is written to a client file.** Neither has declared a folder, so the
- * service would produce no mismatch today; a fixture sentence would prove only
- * that the panel can draw a string it was handed. This proves the panel draws
- * what the rule really produces.
+ * **Session 77 had to lend Dr Loubna a folder in memory**, because neither
+ * client had declared one and the rule could therefore find no owner for any
+ * video. Mohamed set both folders on 2026-09-09, so the loan is gone: every
+ * value below — both names, the folder, the ownership — is read from the two
+ * real client files. Nothing is written to them.
+ *
+ * The video is the one `sora-995f2d27` is built from, which really does sit in
+ * Dr Loubna's folder while being attached to K2 Syndicalia.
  */
 export function realMismatch(): Record<string, unknown> | null {
   const clients: ClientFolder[] = [];
@@ -225,10 +228,7 @@ export function realMismatch(): Record<string, unknown> | null {
       clients.push({
         id: m.id,
         name: m.name,
-        videoFolder:
-          id === 'dr-loubna-kfafi'
-            ? '/Volumes/T7 Shield/Framopia/Clients/Dr Loubna Kfafi'
-            : (m as { videoFolder?: string }).videoFolder,
+        videoFolder: (m as { videoFolder?: string }).videoFolder,
       });
     } catch {
       return null;

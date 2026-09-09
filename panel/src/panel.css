@@ -879,3 +879,5 @@ section.client .say, section.video .say { margin: 8px 0 0; color: var(--muted); 
 .otherservice .ghost { margin-top: 4px; justify-self: start; }
 .otherservice.done { border-color: var(--line); }
 .otherservice.done .said { color: var(--muted); }
+
+.leavesout { margin: 2px 0 0; color: var(--warn); font-size: 0.75em; line-height: 1.5; }

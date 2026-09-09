@@ -6,6 +6,8 @@ import {
   reattachSentence,
   whoseVideo,
   type ClientFolder,
+  videosLeftOutside,
+  leftOutsideSentence,
 } from './whose-video.js';
 
 /**
@@ -133,5 +135,95 @@ describe('a video and a client that do not match', () => {
     // The offer says what pressing it changes, because it changes the look.
     expect(offer).toContain('colours');
     expect(offer).toContain('Nothing already built changes');
+  });
+});
+
+/**
+ * **A folder declared too deep leaves a client's own footage unowned.**
+ *
+ * Sessions 77 and 79 both measured this and neither said anything to him:
+ * declaring `…/Dr Loubna Kfafi/Framopia Studio Inputs/Footages` rather than her
+ * folder itself leaves everything in `September Content/…` answering `null` from
+ * `whoseVideo`, for a video that is plainly hers.
+ *
+ * The only evidence used is what the tool wrote down itself — a reel's plan says
+ * which client it was set up as and where its video is. Nothing is read out of
+ * the shape of a path.
+ */
+describe('videos a declared folder leaves out', () => {
+  const HERS = '/Clients/Loubna';
+  const setUpAs = [
+    { clientId: 'loubna', videoPath: `${HERS}/Inputs/Footages/one.mov` },
+    { clientId: 'loubna', videoPath: `${HERS}/September/Exports/two.mov` },
+    { clientId: 'k2', videoPath: `${HERS}/September/Exports/three.mov` },
+  ];
+
+  it('finds none when the folder is the client’s own root', () => {
+    expect(
+      videosLeftOutside({ clientId: 'loubna', videoFolder: HERS, setUpAs }),
+    ).toEqual([]);
+  });
+
+  it('finds the sibling footage when the folder is declared too deep', () => {
+    expect(
+      videosLeftOutside({
+        clientId: 'loubna',
+        videoFolder: `${HERS}/Inputs/Footages`,
+        setUpAs,
+      }),
+    ).toEqual([`${HERS}/September/Exports/two.mov`]);
+  });
+
+  /* Another client's video in her tree is not evidence about her folder. */
+  it('counts only videos set up as this client', () => {
+    expect(
+      videosLeftOutside({
+        clientId: 'loubna',
+        videoFolder: `${HERS}/September`,
+        setUpAs,
+      }),
+    ).toEqual([`${HERS}/Inputs/Footages/one.mov`]);
+  });
+
+  it('says nothing when no folder has been declared', () => {
+    expect(videosLeftOutside({ clientId: 'loubna', videoFolder: undefined, setUpAs })).toEqual([]);
+    expect(videosLeftOutside({ clientId: 'loubna', videoFolder: '   ', setUpAs })).toEqual([]);
+  });
+
+  /* A machine with no reels has no evidence either way, and says so by silence. */
+  it('says nothing on a machine that has made no reels', () => {
+    expect(videosLeftOutside({ clientId: 'loubna', videoFolder: HERS, setUpAs: [] })).toEqual([]);
+  });
+
+  it('names the same video once however many reels used it', () => {
+    expect(
+      videosLeftOutside({
+        clientId: 'loubna',
+        videoFolder: `${HERS}/Inputs`,
+        setUpAs: [
+          { clientId: 'loubna', videoPath: `${HERS}/September/two.mov` },
+          { clientId: 'loubna', videoPath: `${HERS}/September/two.mov` },
+        ],
+      }),
+    ).toEqual([`${HERS}/September/two.mov`]);
+  });
+});
+
+describe('what he is told about a folder that leaves videos out', () => {
+  it('says nothing at all when nothing is left out', () => {
+    expect(leftOutsideSentence(0)).toBeNull();
+  });
+
+  it('says it once for one, and counts the rest', () => {
+    expect(leftOutsideSentence(1)).toContain("One video already set up as this client's sits");
+    expect(leftOutsideSentence(3)).toContain("3 videos already set up as this client's sit");
+  });
+
+  /* It reports and stops: nothing is changed, and no path is quoted back at him. */
+  it('says the folder was not changed, and names no path or command', () => {
+    const said = leftOutsideSentence(2) ?? '';
+    expect(said).toContain('Nothing has been changed');
+    expect(said).not.toMatch(/\//);
+    expect(said).not.toMatch(/npm |terminal|quit|restart/i);
   });
 });

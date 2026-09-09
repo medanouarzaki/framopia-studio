@@ -3,6 +3,8 @@ export {
   mismatchedClient,
   mismatchSentence,
   reattachSentence,
+  videosLeftOutside,
+  leftOutsideSentence,
   type ClientFolder,
   type Mismatch,
 } from './whose-video.js';

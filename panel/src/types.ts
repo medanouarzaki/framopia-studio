@@ -197,6 +197,12 @@ export interface ClientMode {
    * edits them. Absent means a service older than this panel, and the card
    * hides the editor rather than offering a control that would fail.
    */
+  /**
+   * Videos already set up as this client's that their declared folder does not
+   * contain, as a sentence, or null when there are none. Absent from an older
+   * service, which the card treats the same as none.
+   */
+  folderLeavesOut?: string | null;
   editable?: {
     name: string;
     about?: string;
