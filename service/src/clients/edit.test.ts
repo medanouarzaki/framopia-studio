@@ -228,3 +228,94 @@ describe('a client taken off the list', () => {
     expect(() => deleteClient('nobody-at-all')).toThrow(/no client called/);
   });
 });
+
+/**
+ * **A change naming something a client does not have is refused.**
+ *
+ * Block 12 session 78 looked for a video folder Mohamed set on both clients that
+ * never reached either file, and could not reproduce the loss: `videoFolder` is
+ * carried correctly from both panel screens to disk. What it did find is the one
+ * way this product can take something a person typed and lose it in silence —
+ * `setDetails` touches only the fields it knows, so a field it does not know was
+ * read out of the request, dropped, and answered as a success.
+ *
+ * The refusal is what these assert. Silent acceptance of something that vanished
+ * is worse than either saving it or refusing it, because nothing ever finds out.
+ */
+describe('a change naming something a client does not have', () => {
+  it('is refused, and names the field and what a client does have', () => {
+    const id = client('Edit Test Stranger');
+    expect(() => setDetails(id, { videoFolder: '/somewhere', notAField: 'x' } as never)).toThrow(
+      /a client has nothing called notAField/,
+    );
+    expect(() => setDetails(id, { notAField: 'x' } as never)).toThrow(/A client has: name, about/);
+  });
+
+  /* Half a save is worse than none: the whole change is refused, not the stranger alone. */
+  it('saves nothing else in the same change', () => {
+    const id = client('Edit Test Stranger Atomic');
+    expect(() => setDetails(id, { videoFolder: '/should/not/land', nope: 1 } as never)).toThrow();
+    expect(loadMode(id).videoFolder).toBeUndefined();
+  });
+
+  it('names every stranger, not just the first', () => {
+    const id = client('Edit Test Two Strangers');
+    expect(() => setDetails(id, { nope: 1, alsoNope: 2 } as never)).toThrow(
+      /nothing called nope, alsoNope, so those changes were not saved/,
+    );
+  });
+
+  /* The nine a client does have still go through, or the refusal is a wall. */
+  it('lets every field a client does have through', () => {
+    const id = client('Edit Test Every Field');
+    expect(() =>
+      setDetails(id, {
+        name: 'Edit Test Every Field',
+        about: 'a note',
+        videoFolder: '/Volumes/T7 Shield/Somewhere',
+        logoPath: null,
+        language: 'darija',
+        subtitleBaselineY: 1400,
+        videoShape: 'vertical',
+        watermarkByDefault: false,
+        fonts: null,
+      }),
+    ).not.toThrow();
+  });
+});
+
+/**
+ * **The video folder reaches the file and comes back on read.**
+ *
+ * Session 77 measured both real clients byte-identical with no `videoFolder`
+ * anywhere, after Mohamed had set one on each. These are the round trip the
+ * product is supposed to make, asserted so a future session inherits a fact
+ * rather than session 78's inability to reproduce the loss.
+ */
+describe('a client’s video folder', () => {
+  it('lands in the file and is read back', () => {
+    const id = client('Edit Test Folder');
+    expect(loadMode(id).videoFolder).toBeUndefined();
+    setDetails(id, { videoFolder: '/Volumes/T7 Shield/Somewhere/Their Footage' });
+    expect(loadMode(id).videoFolder).toBe('/Volumes/T7 Shield/Somewhere/Their Footage');
+    expect(validateMode(JSON.parse(readFileSync(modePathFor(id), 'utf8')))).toEqual([]);
+  });
+
+  it('is cleared by sending null, and blank counts as cleared', () => {
+    const id = client('Edit Test Folder Cleared');
+    setDetails(id, { videoFolder: '/Volumes/T7 Shield/Somewhere' });
+    setDetails(id, { videoFolder: null });
+    expect(loadMode(id).videoFolder).toBeUndefined();
+    setDetails(id, { videoFolder: '/Volumes/T7 Shield/Somewhere' });
+    setDetails(id, { videoFolder: '   ' });
+    expect(loadMode(id).videoFolder).toBeUndefined();
+  });
+
+  /* It is not in the snapshot, so correcting it cannot restyle a built reel. */
+  it('does not move the client’s version', () => {
+    const id = client('Edit Test Folder Version');
+    const before = loadMode(id).version;
+    setDetails(id, { videoFolder: '/Volumes/T7 Shield/Somewhere' });
+    expect(loadMode(id).version).toBe(before);
+  });
+});

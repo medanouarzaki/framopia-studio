@@ -459,9 +459,57 @@ export interface ClientDetails {
 /** The fields a reel's pinned snapshot carries, and so the ones that move it. */
 const IN_THE_SNAPSHOT: readonly (keyof ClientDetails)[] = ['name', 'fonts', 'subtitleBaselineY'];
 
+/**
+ * Every field this route knows how to save.
+ *
+ * **The list is the refusal, not documentation.** `setDetails` touches only what
+ * it is sent, which it does by asking `hasOwnProperty` for each field it knows;
+ * a field it does not know is simply never asked about, so before session 78 it
+ * was read out of the request, dropped, and answered `200` with the client
+ * unchanged. The panel then closed its editor, because as far as it could tell
+ * the save had worked.
+ *
+ * Block 12 session 78 went looking for a video folder Mohamed had set on both
+ * clients that never reached either file. It could not reproduce the loss —
+ * `videoFolder` is carried correctly end to end today — but it found this:
+ * **the one way this product can take something a person typed and lose it
+ * without saying so.** Whatever swallowed that folder, silence is what made it
+ * survive long enough to be noticed days later.
+ */
+const FIELDS_A_CLIENT_HAS: readonly (keyof ClientDetails)[] = [
+  'name',
+  'about',
+  'videoFolder',
+  'logoPath',
+  'language',
+  'subtitleBaselineY',
+  'videoShape',
+  'watermarkByDefault',
+  'fonts',
+];
+
+/**
+ * Refuses a change naming something a client does not have.
+ *
+ * Named rather than counted, and the known fields are listed, because the
+ * person reading this is looking at a form and needs to know which control
+ * failed them.
+ */
+function onlyFieldsAClientHas(details: ClientDetails): void {
+  const known = new Set<string>(FIELDS_A_CLIENT_HAS as readonly string[]);
+  const strangers = Object.keys(details).filter((key) => !known.has(key));
+  if (strangers.length === 0) return;
+  throw new ClientWriteError(
+    `a client has nothing called ${strangers.join(', ')}, so ` +
+      `${strangers.length === 1 ? 'that change was' : 'those changes were'} not saved. ` +
+      `A client has: ${FIELDS_A_CLIENT_HAS.join(', ')}.`,
+  );
+}
+
 export function setDetails(modeId: string, details: ClientDetails): ClientMode {
   const modePath = modePathFor(modeId);
   if (!existsSync(modePath)) throw new ClientWriteError(`there is no client called ${modeId}`);
+  onlyFieldsAClientHas(details);
   const raw = JSON.parse(readFileSync(modePath, 'utf8')) as ClientMode;
   const next: ClientMode = { ...raw };
 

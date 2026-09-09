@@ -24,10 +24,27 @@ function scratchSidecar(body: string): string {
   return dir;
 }
 
-const DIES_MID_WORK = 'import sys, os\nsys.stdin.read()\nsys.stderr.write("model blew up\\n")\nos.abort()\n';
+/*
+ * **These fixtures used to call `os.abort()`, and macOS wrote a crash report and
+ * showed Mohamed "Python quit unexpectedly" every time the suite ran.**
+ *
+ * Block 12 session 78 classified the 117 reports in
+ * ~/Library/Logs/DiagnosticReports: 107 of them were these two lines, not the
+ * product. He was being shown a dialog for tests passing.
+ *
+ * `SIGKILL` is still an abnormal exit by a signal, which is the whole of what
+ * these tests are about — the service naming how the sidecar died rather than
+ * guessing. macOS does not write a crash report for one, because a killed
+ * process did not fault. Sending it to our own pid keeps the death inside the
+ * fixture, so nothing else can be hit by it.
+ */
+const DIES_MID_WORK =
+  'import sys, os, signal\nsys.stdin.read()\nsys.stderr.write("model blew up\\n")\n' +
+  'sys.stderr.flush()\nos.kill(os.getpid(), signal.SIGKILL)\n';
 const ANSWERS_THEN_DIES =
-  'import sys, os, json\nsys.stdin.read()\n' +
-  'print(json.dumps({"ok": True, "task": "remove_bg"}), flush=True)\nos.abort()\n';
+  'import sys, os, json, signal\nsys.stdin.read()\n' +
+  'print(json.dumps({"ok": True, "task": "remove_bg"}), flush=True)\n' +
+  'os.kill(os.getpid(), signal.SIGKILL)\n';
 
 afterEach(() => {
   setAbnormalExitReporter((message) => console.error(message));
@@ -40,7 +57,7 @@ describe('the picture tools, when they die', () => {
     await expect(runSidecar({ task: 'remove_bg' })).rejects.toThrow(SidecarError);
     await runSidecar({ task: 'remove_bg' }).catch((error: SidecarError) => {
       expect(error.message).toContain('stopped during remove_bg');
-      expect(error.message).toContain('SIGABRT');
+      expect(error.message).toContain('SIGKILL');
       expect(error.message).toContain('wrote nothing');
       // stderr is carried, so the cause is not lost with the process.
       expect(error.stderr).toContain('model blew up');
@@ -61,6 +78,6 @@ describe('the picture tools, when they die', () => {
     expect(result.ok).toBe(true);
     expect(said).toHaveLength(1);
     expect(said[0]).toContain('remove_bg finished and answered');
-    expect(said[0]).toContain('SIGABRT');
+    expect(said[0]).toContain('SIGKILL');
   }, 30_000);
 });

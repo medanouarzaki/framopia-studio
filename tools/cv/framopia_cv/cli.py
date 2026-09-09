@@ -20,6 +20,7 @@ caller should never have to distinguish "crashed" from "wrote garbage".
 from __future__ import annotations
 
 import json
+import os
 import sys
 import traceback
 
@@ -410,5 +411,40 @@ def main() -> int:
         return 1
 
 
+def _leave(status: int) -> None:
+    """Ends the process without running interpreter shutdown.
+
+    **macOS has been showing "Python quit unexpectedly" for a sidecar that did
+    its work perfectly.** Block 12 session 78 read the crash reports rather than
+    the symptom: 108 of them in ~/Library/Logs/DiagnosticReports, every one
+    `SIGABRT`, `byProc: Python` — the process aborting *itself*, on the main
+    thread, from `os_abort` called out of Python bytecode. Nothing in this
+    repository sends the sidecar a signal; there is no `kill` on this path at
+    all. It was never being killed.
+
+    What calls `os.abort()` is `absl.logging`, which mediapipe brings with it:
+    on a FATAL record it flushes and aborts, because in threaded Python
+    `sys.exit` from a non-main thread would only end that thread. That runs
+    during the interpreter's own shutdown, *after* the answer is on stdout —
+    which is why every result was still correct and the caller never noticed.
+
+    So the answer is written, both streams are flushed, and the process leaves
+    here. `os._exit` does not run atexit handlers, garbage collection or C++
+    static destructors, which is precisely the code that was aborting. It is
+    also the strongest possible guarantee that the sidecar stops: there is no
+    path from here back into Python.
+
+    **The flush is not optional.** `os._exit` does not flush, and the whole
+    contract of this program is one JSON object on stdout.
+    """
+    try:
+        sys.stdout.flush()
+    finally:
+        try:
+            sys.stderr.flush()
+        finally:
+            os._exit(status)
+
+
 if __name__ == "__main__":
-    sys.exit(main())
+    _leave(main())
