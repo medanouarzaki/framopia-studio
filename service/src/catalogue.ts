@@ -240,7 +240,24 @@ export function listVideosFor(modeId: string | null): VideoListing {
     return { reels: listReels(), folder: null, trouble: null, skipped: [] };
   }
   return {
-    reels: listing.videos.map((video) => describe(video.label, video.path, null)),
+    /*
+     * **The label carries the folder it was found in.**
+     *
+     * The panel keys its picker by label and looks the chosen reel back up with
+     * `reels.find((r) => r.label === reelLabel)`. Three of Dr Loubna Kfafi's
+     * files are called `sora.mov`, in three different sub-folders, so before
+     * session 81 all three would have arrived here labelled `sora`: the same
+     * option key three times, and whichever he picked would silently resolve to
+     * the first. A filename collision has already cost this project three
+     * sessions and $1.01.
+     *
+     * Qualified always rather than only when they clash, so a label does not
+     * change under him because some other video appeared or went away. Two files
+     * cannot share a name inside one folder, so this is unique by construction.
+     */
+    reels: listing.videos.map((video) =>
+      describe(video.where === '' ? video.label : `${video.where}/${video.label}`, video.path, null),
+    ),
     folder: listing.folder,
     trouble: listing.trouble,
     skipped: listing.skipped,

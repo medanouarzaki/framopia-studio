@@ -1,5 +1,13 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import {
+  chmodSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { listFolder, VIDEO_EXTENSIONS } from './videos.js';
@@ -110,5 +118,119 @@ describe('the videos a client without a folder gets', () => {
     expect(listVideosFor(null).reels.map((r) => r.label)).toEqual(
       listVideosFor('a-client-with-no-folder').reels.map((r) => r.label),
     );
+  });
+});
+
+/**
+ * **Videos anywhere inside the declared folder, however deep.**
+ *
+ * Session 79 told Mohamed to declare the client root, so the wrong-client rule
+ * could resolve both of Dr Loubna Kfafi's videos. The list then looked only in
+ * that folder and told him there were no videos in it, while 25 of hers sat two,
+ * three and four levels down. One declaration has to serve both rules.
+ *
+ * Every tree here is the test's own, built in a scratch directory.
+ */
+describe('videos inside the subfolders', () => {
+  let tree: string;
+
+  beforeEach(() => {
+    tree = mkdtempSync(path.join(tmpdir(), 'framopia-deep-'));
+  });
+
+  afterEach(() => {
+    /* Anything the test locked has to be openable again or it cannot be removed. */
+    for (const dir of ['locked']) {
+      try {
+        chmodSync(path.join(tree, dir), 0o755);
+      } catch {
+        continue;
+      }
+    }
+    rmSync(tree, { recursive: true, force: true });
+  });
+
+  function video(relative: string, bytes = 'x'): void {
+    const full = path.join(tree, relative);
+    mkdirSync(path.dirname(full), { recursive: true });
+    writeFileSync(full, bytes);
+  }
+
+  it('finds one several levels down, and says where it was', () => {
+    video('September Content/Footage/Video/MVI_9499.MP4');
+    const found = listFolder(tree).videos;
+    expect(found).toHaveLength(1);
+    expect(found[0]?.label).toBe('MVI_9499');
+    expect(found[0]?.where).toBe(path.join('September Content', 'Footage', 'Video'));
+  });
+
+  it('finds them at every depth at once, shallowest first', () => {
+    video('top.mov');
+    video('one/a.mov');
+    video('one/two/three/four/five/deep.mov');
+    expect(listFolder(tree).videos.map((v) => v.label)).toEqual(['top', 'a', 'deep']);
+  });
+
+  /*
+   * Three of Dr Loubna Kfafi's files are called `sora.mov`. A filename collision
+   * has cost this project three sessions and $1.01; the label carries the folder
+   * so the picker cannot resolve the wrong one.
+   */
+  it('keeps videos of the same name in different folders apart', () => {
+    video('Inputs/Footages/sora.mov');
+    video('August/Work in Progress/sora.mov');
+    video('September/Work in Progress/sora.mov');
+    const found = listFolder(tree).videos;
+    expect(found).toHaveLength(3);
+    expect(new Set(found.map((v) => v.where)).size).toBe(3);
+    expect(new Set(found.map((v) => v.path)).size).toBe(3);
+  });
+
+  /** One folder he cannot open must not cost him the videos everywhere else. */
+  it('lists the rest when a folder cannot be read, and names the one it could not', () => {
+    video('open/fine.mov');
+    video('locked/inner/behind.mov');
+    chmodSync(path.join(tree, 'locked'), 0o000);
+    const listing = listFolder(tree);
+    expect(listing.videos.map((v) => v.label)).toEqual(['fine']);
+    expect(listing.skipped).toContainEqual({ name: 'locked', why: 'this folder could not be read' });
+  });
+
+  /* A package is one opaque thing, not a place he keeps footage. */
+  it('does not walk into an editing library or an application', () => {
+    video('Library.fcpbundle/Media/inside.mov');
+    video('Something.app/Contents/clip.mov');
+    video('real/keeper.mov');
+    expect(listFolder(tree).videos.map((v) => v.label)).toEqual(['keeper']);
+  });
+
+  it('still ignores hidden folders and hidden files', () => {
+    video('.hidden/secret.mov');
+    video('shown/seen.mov');
+    expect(listFolder(tree).videos.map((v) => v.label)).toEqual(['seen']);
+  });
+
+  /* A link is the one way a tree of folders can be a circle. */
+  it('does not follow a link that points back up the tree', () => {
+    video('real/keeper.mov');
+    symlinkSync(tree, path.join(tree, 'real', 'loop'), 'dir');
+    const listing = listFolder(tree);
+    expect(listing.videos.map((v) => v.label)).toEqual(['keeper']);
+  });
+
+  it('says there is nothing in it or in any folder inside it', () => {
+    mkdirSync(path.join(tree, 'empty', 'deeper'), { recursive: true });
+    expect(listFolder(tree).trouble).toBe(
+      `There are no videos in ${tree}, or in any folder inside it.`,
+    );
+  });
+
+  /* Empty and unopenable files are still named rather than silently dropped. */
+  it('still names a file it will not offer', () => {
+    video('deep/inside/nothing.mov', '');
+    expect(listFolder(tree).skipped).toContainEqual({
+      name: 'nothing.mov',
+      why: 'the file is empty',
+    });
   });
 });
