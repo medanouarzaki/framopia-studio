@@ -1,4 +1,12 @@
 export {
+  whoseVideo,
+  mismatchedClient,
+  mismatchSentence,
+  reattachSentence,
+  type ClientFolder,
+  type Mismatch,
+} from './whose-video.js';
+export {
   readLedger,
   sumUsd,
   byStage,
