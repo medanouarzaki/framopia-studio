@@ -47,18 +47,15 @@ panel/dist/
 # session 35 flattens a cutout beside it at build time
 *.on-fill.png
 
-# A client's own photographs.
+# A client's own photographs are NOT ignored.
 #
-# Mohamed ruled on 2026-09-05 that attaching a photograph copies it into the
-# project, so the path on a client survives the drive it came from. That put a
-# real person's face inside the working copy of a repository with a remote, and
-# nothing kept it out of a commit: session 81 found fourteen of Dr Loubna
-# Kfafi's here, 25.5 MB, untracked in a directory nobody had ignored, where
-# `git add -A` would have staged every one.
+# Session 82 ignored them, on the position that a client's photograph never
+# leaves the machine. **Mohamed reversed that on 2026-09-10**: they go to
+# GitHub, all of them, with no exception and no prompt. His grounds, recorded
+# because they are what the ruling rests on: the repository is public and
+# deliberately so; the fourteen files are AI-generated product mockups he made
+# himself, not photographs of any person; and he accepts that a public push is
+# permanent and that deleting a file later does not remove it from the history.
 #
-# Ignored so no ordinary command sweeps them up. The ignore is not the whole
-# guard — a `-f` overrides it and this file can be edited — so
-# `scripts/check-no-photographs-staged.mjs` fails the gate if one is ever
-# staged. Nothing here deletes or moves them; they stay exactly where the panel
-# put them.
-assets/client-pictures/
+# So there is no rule here. The line that was here is gone, and this note is
+# what a future session finds in its place.

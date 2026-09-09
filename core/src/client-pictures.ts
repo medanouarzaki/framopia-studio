@@ -5,11 +5,13 @@ import { normalizeToken } from './normalize.js';
 /**
  * The client's own pictures, and the three properties that are not negotiable.
  *
- * **1. A client's picture is never sent anywhere.** Generated images pass
- * through Gemini; a client's photograph — a doctor's patient results above all
- * — must not. Nothing in `service/src/images/` reads this module, and a test
- * asserts that the image-generation graph never imports it. **This is the
- * strongest of the three and nothing below relaxes it.**
+ * **1. A client's picture is never sent to a model or over any network call.**
+ * Generated images pass through Gemini; a client's photograph — a doctor's
+ * patient results above all — must not. Nothing in `service/src/images/` reads
+ * this module, and a test asserts that the image-generation graph never imports
+ * it. **This is the strongest of the three and nothing below relaxes it**,
+ * including Mohamed's ruling of 2026-09-10 that the files go to GitHub: pushing
+ * a file he chose to publish is not this tool handing one to a model.
  *
  * **2. It is never put in a cache.** `.local/cache/` is for things the tool made
  * and can make again; a photograph is neither, and an eviction pass that deleted
@@ -23,10 +25,22 @@ import { normalizeToken } from './normalize.js';
  * shared drive. So attaching a photograph now copies it to
  * `assets/client-pictures/`, where git carries it and a clone has it.
  *
- * He was told, and accepted, that this makes **the private GitHub repository the
- * only backup a photograph has**: they are deliberately excluded from
- * `npm run backup`, because that copies to Google Drive and a client's
- * photographs are not ours to put there.
+ * **Mohamed ruled on 2026-09-10 that they go to GitHub, all of them, with no
+ * exception and no prompt.** Three grounds, recorded because they are what the
+ * ruling rests on and a future session must be able to weigh them: the
+ * repository is **public**, deliberately — this was written when it was
+ * described as private, and that was wrong; the fourteen files in the store are
+ * AI-generated product mockups he made himself, not photographs of any person;
+ * and he accepts that a public push is permanent, and that deleting a file later
+ * does not remove it from the history.
+ *
+ * Session 82 had ignored the store and failed the gate on a staged photograph,
+ * on the position that a photograph never leaves the machine. **That position is
+ * reversed.** Both were removed in session 83 rather than left half-alive.
+ *
+ * They remain excluded from `npm run backup`, which copies to Google Drive:
+ * that half of session 62 stands, because he has not ruled on it. GitHub is
+ * therefore where a photograph is backed up, and the only place.
  *
  * **The third is an allow-list of one destination, not the removal of the
  * second.** `clientPictureStorePath` is the only answer to where a photograph

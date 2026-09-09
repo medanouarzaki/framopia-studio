@@ -1,8 +1,13 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { isInClientPictureStore, modePathFor, REPO_ROOT } from '@framopia/core';
+import {
+  CLIENT_PICTURE_STORE,
+  isInClientPictureStore,
+  modePathFor,
+  REPO_ROOT,
+} from '@framopia/core';
 import { addPicture, createClient } from '../clients/create.js';
 import { surveyGroups, withoutExcluded } from './set.js';
 
@@ -24,8 +29,18 @@ const SCRATCH_PALETTE = {
  * `npm run backup` copies to Google Drive, and a doctor's patient results are
  * not ours to put there — the same reason nothing sends one to an image model.
  * Mohamed ruled on 2026-09-05 that a photograph is copied into the project so a
- * client travels with the repository, and accepted that this makes **the
- * private GitHub repository the only backup a photograph has**.
+ * client travels with the repository.
+ *
+ * **This said "the private GitHub repository", and the repository is public.**
+ * Block 12 session 83 measured it: `visibility: public`, deliberately so. He
+ * ruled on 2026-09-10 that the store is pushed there, all of it, with no
+ * exception and no prompt — the files are AI-generated product mockups he made
+ * himself, not photographs of anyone, and he accepts that a public push is
+ * permanent.
+ *
+ * **The Google Drive exclusion is untouched by that ruling**, because he has not
+ * ruled on it. It is the half of session 62 that stands, and these assert it
+ * still holds now that the store is tracked and pushed.
  *
  * Measured rather than read: a photograph is really attached through the real
  * route, and the backup's own file selection is asked what it would copy.
@@ -92,6 +107,31 @@ describe('what a backup would copy', () => {
     const asAGroupWouldSeeThem = [brand, picture.path];
 
     expect(withoutExcluded(asAGroupWouldSeeThem)).toEqual([brand]);
+  });
+
+  /*
+   * **The real store, now that it is tracked and pushed.** The tests above build
+   * a scratch client; this one asks about the fourteen files actually on this
+   * machine, because being in git is exactly the condition under which someone
+   * might assume the backup had picked them up too.
+   */
+  it('leaves out every photograph really in the store, tracked or not', () => {
+    const store = path.join(REPO_ROOT, ...CLIENT_PICTURE_STORE);
+    let realOnes: string[] = [];
+    try {
+      realOnes = readdirSync(store, { recursive: true, withFileTypes: true })
+        .filter((e) => e.isFile())
+        .map((e) => path.join(e.parentPath ?? store, e.name));
+    } catch {
+      realOnes = [];
+    }
+    const carried = everyFile();
+    for (const photograph of realOnes) {
+      expect(`${path.basename(photograph)}: ${String(carried.includes(photograph))}`).toBe(
+        `${path.basename(photograph)}: false`,
+      );
+    }
+    expect(withoutExcluded(realOnes)).toEqual([]);
   });
 
   /* The property the ruling rests on: no photograph reaches Google Drive. */

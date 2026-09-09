@@ -10,14 +10,20 @@ import {
 } from '@framopia/core';
 
 /*
- * **A client's picture is never sent anywhere.**
+ * **A client's picture is never sent to a model or over any network call.**
  *
  * Generated images pass through Gemini; a client's photograph — a doctor's
  * patient results above all — must not. This is the kind of property a comment
  * cannot hold, so it is asserted against the source of the image-generation
  * graph itself.
+ *
+ * **This block was called "never leaves the machine" until Block 12 session 83**,
+ * and that title is now false: Mohamed ruled on 2026-09-10 that the store is
+ * pushed to a public GitHub repository. The assertions below did not change and
+ * did not need to — being published by him is not the same act as being handed
+ * to a model by this tool, and it is the second that these forbid.
  */
-describe('a client’s own picture never leaves the machine', () => {
+describe('a client’s own picture is never sent to a model', () => {
   const imagesDir = path.join(REPO_ROOT, 'service', 'src', 'images');
   const sources = readdirSync(imagesDir)
     .filter((f) => f.endsWith('.ts') && !f.includes('.test.'))

@@ -52,9 +52,6 @@ npm run test --workspaces --if-present
 # tracked, so every test that attaches one writes into the repository. Runs
 # after the suites, because it is their leavings it is looking for.
 node scripts/check-store-empty.mjs
-# The ignore keeps a client's photograph out of an ordinary commit; this keeps
-# the ignore from being the only thing that does. Asks git what is staged.
-node scripts/check-no-photographs-staged.mjs
 
 npm run validate:modes --workspace @framopia/core
 
