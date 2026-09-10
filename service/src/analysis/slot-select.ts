@@ -347,9 +347,18 @@ export function planSlots(options: PlanSlotsOptions): SlotSelectionResult {
    * nothing, so placing it first leaves the paid budget for the moments they
    * have *not* pre-decided, which is the only place money can buy anything.
    */
-  /* Free to place: the client answered it, or this reel has already paid for it. */
+  /*
+   * Free to place: the client answered it, or this reel has already paid for it.
+   *
+   * **A bought span is matched by the words it holds, not by an identical
+   * list.** Block 12 session 87 asked the model for more ideas, it returned
+   * `["w0011"]` where it had returned `["w0010","w0011"]`, and two pictures
+   * already paid for stopped matching and were bought a second time. The same
+   * moment described by a shorter span is the same moment.
+   */
+  const boughtWords = new Set([...alreadyBought].flatMap((span) => span.split(' ')));
   const isFree = (slot: (typeof resolved)[number]): boolean =>
-    freeSpans.has(slot.wordIds.join(' '));
+    freeSpans.has(slot.wordIds.join(' ')) || slot.wordIds.some((id) => boughtWords.has(id));
 
   const fits = (slot: (typeof resolved)[number], asCandidate: SlotCandidate): boolean => {
     for (const already of accepted) {

@@ -63,24 +63,8 @@ export const SLOT_LEDGER_STAGE = 'analysis-slots';
 export const SLOT_CANDIDATE_MULTIPLIER = 2;
 export const MIN_SLOT_CANDIDATES = 8;
 
-/**
- * How many ideas the model is asked for.
- *
- * **Twice what the reel can place**, so selection has something to refuse and
- * the answer is not simply whatever fitted. The base used to be the paid budget,
- * which was the same number as the pictures until Block 12 session 86 stopped a
- * free picture spending from it — after that the reel could place more than it
- * bought, and the model was still being asked for twice the money.
- *
- * `sora-1` showed the cost of the mismatch: it can hold eleven things she names,
- * the model was asked for eight, and **شد and volume were never proposed at
- * all**. They were not refused by any rule; nobody had an idea for them.
- *
- * Asking for more costs nothing extra — it is one call either way, and the
- * answer is longer, not repeated.
- */
-export function slotCandidateCountFor(placeableCount: number): number {
-  return Math.max(MIN_SLOT_CANDIDATES, placeableCount * SLOT_CANDIDATE_MULTIPLIER);
+export function slotCandidateCountFor(slotCount: number): number {
+  return Math.max(MIN_SLOT_CANDIDATES, slotCount * SLOT_CANDIDATE_MULTIPLIER);
 }
 
 export interface BuildSlotPromptOptions {

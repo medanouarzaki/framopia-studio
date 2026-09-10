@@ -396,11 +396,18 @@ export async function planImageSlotsForPlan(
    * the other half, because `planSlots` returns fresh slots with no candidates
    * on them. Without it the span survived and the images paid for did not.
    */
-  const boughtFor = new Map(
-    (plan.images?.slots ?? [])
-      .filter((slot) => slot.candidates.length > 0)
-      .map((slot) => [slot.wordIds.join(' '), slot]),
-  );
+  /*
+   * Keyed by every word the bought span held, so a re-span that names the same
+   * moment still finds its pictures. Session 87 lost two of them to an exact
+   * span match when the model returned a shorter list for the same product.
+   */
+  const boughtFor = new Map<string, (typeof plan.images.slots)[number]>();
+  for (const slot of plan.images?.slots ?? []) {
+    if (slot.candidates.length === 0) continue;
+    for (const wordId of slot.wordIds) boughtFor.set(wordId, slot);
+  }
+  const boughtForSlot = (wordIds: readonly string[]): (typeof plan.images.slots)[number] | undefined =>
+    wordIds.map((id) => boughtFor.get(id)).find((s) => s !== undefined);
 
   const slots: ImageSlot[] = analysis.selection.slots.map((slot, i) => ({
     id: `img${String(i + 1).padStart(3, '0')}`,
@@ -412,15 +419,16 @@ export async function planImageSlotsForPlan(
     ...(slot.nameWordId === undefined ? {} : { nameWordId: slot.nameWordId }),
     prompt: slot.prompt,
     negativePrompt: slot.negativePrompt,
-    candidates: boughtFor.get(slot.wordIds.join(' '))?.candidates ?? [],
-    chosenCandidateId: boughtFor.get(slot.wordIds.join(' '))?.chosenCandidateId ?? null,
-    presentation: boughtFor.get(slot.wordIds.join(' '))?.presentation ?? null,
+    candidates: boughtForSlot(slot.wordIds)?.candidates ?? [],
+    chosenCandidateId: boughtForSlot(slot.wordIds)?.chosenCandidateId ?? null,
+    presentation: boughtForSlot(slot.wordIds)?.presentation ?? null,
     zoneId: null,
     templateId: null,
-    status: boughtFor.get(slot.wordIds.join(' '))?.status ?? 'pending',
+    status: boughtForSlot(slot.wordIds)?.status ?? 'pending',
   }));
-  for (const [span, kept] of boughtFor) {
-    if (slots.some((s) => s.wordIds.join(' ') === span)) {
+  for (const kept of new Set(boughtFor.values())) {
+    const span = kept.wordIds.join(' ');
+    if (slots.some((s) => s.wordIds.some((id) => kept.wordIds.includes(id)))) {
       log(`slots: kept the ${kept.candidates.length} picture(s) already bought for ${JSON.stringify(span)}`);
     } else {
       log(`slots: ${JSON.stringify(span)} is no longer a slot, and its bought picture(s) go with it`);

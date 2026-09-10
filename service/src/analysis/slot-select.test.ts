@@ -453,3 +453,68 @@ describe('what the picture budget actually limits', () => {
     expect(out.slots.length).toBeGreaterThan(1);
   });
 });
+
+/**
+ * **A picture already bought is found by the words it was bought for, not by an
+ * identical span.**
+ *
+ * Block 12 session 87 asked the model for more ideas and it returned `["w0011"]`
+ * where it had returned `["w0010","w0011"]` — the same product, one word shorter.
+ * The exact-span match missed it, two pictures already paid for were bought a
+ * second time, and the session went over its ceiling. The same moment described
+ * by a shorter span is the same moment.
+ */
+describe('a bought picture whose span the model re-described', () => {
+  const words: AnalysisWord[] = [
+    { id: 'w0', text: 'khaskek', start: 0, end: 0.3, removed: false },
+    { id: 'w1', text: 'Pluryal', start: 0.4, end: 0.9, removed: false },
+    { id: 'w2', text: 'other', start: 4, end: 4.5, removed: false },
+  ];
+
+  it('is still free when the new span is shorter than the bought one', () => {
+    const out = planSlots({
+      candidates: [
+        { wordIds: ['w1'], idea: 'the product, re-spanned' },
+        { wordIds: ['w2'], idea: 'something else' },
+      ],
+      words,
+      mode: mode(),
+      planId: 'p',
+      requestedCount: 1,
+      durationS: 10,
+      alreadyBought: ['w0 w1'],
+    });
+    // Both are placed: the re-spanned one is free, so the budget of one is spent
+    // on the other rather than on a picture that already exists.
+    expect(out.slots).toHaveLength(2);
+  });
+
+  it('is still free when the new span is longer than the bought one', () => {
+    const out = planSlots({
+      candidates: [
+        { wordIds: ['w0', 'w1'], idea: 'the product, widened' },
+        { wordIds: ['w2'], idea: 'something else' },
+      ],
+      words,
+      mode: mode(),
+      planId: 'p',
+      requestedCount: 1,
+      durationS: 10,
+      alreadyBought: ['w1'],
+    });
+    expect(out.slots).toHaveLength(2);
+  });
+
+  it('does not make an unrelated span free', () => {
+    const out = planSlots({
+      candidates: [{ wordIds: ['w2'], idea: 'unrelated' }],
+      words,
+      mode: mode(),
+      planId: 'p',
+      requestedCount: 0,
+      durationS: 10,
+      alreadyBought: ['w0 w1'],
+    });
+    expect(out.slots).toEqual([]);
+  });
+});

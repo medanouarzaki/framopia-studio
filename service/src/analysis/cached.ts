@@ -1,4 +1,4 @@
-import { clientPictures, matchClientPicture, type ClientMode } from '@framopia/core';
+import type { ClientMode } from '@framopia/core';
 import {
   cacheEntryDir,
   evictStaleEntries,
@@ -271,23 +271,7 @@ export async function planSlotsCached(options: CachedSlotOptions): Promise<Cache
   } = options;
 
   const slotCount = imageSlotCountFor(durationS);
-  /*
-   * What this reel could place, not what it will pay for.
-   *
-   * Three terms, each a real one: the pictures the budget allows, the pictures
-   * already bought for it, and the client's own pictures **whose labels a word
-   * in this reel actually says** — not the whole store, which for Dr Loubna
-   * Kfafi is fourteen and would ask the model for ideas about products she never
-   * mentions.
-   */
-  const spokenPictures = new Set(
-    words.flatMap((word) => {
-      const hit = matchClientPicture(clientPictures(mode), [{ id: word.id, text: word.text }]);
-      return hit === null ? [] : [hit.pictureId];
-    }),
-  );
-  const placeable = slotCount + (options.alreadyBought?.length ?? 0) + spokenPictures.size;
-  const candidateCount = slotCandidateCountFor(placeable);
+  const candidateCount = slotCandidateCountFor(slotCount);
   const { ref } = slotCacheRef({ videoSha256, mode, words, candidateCount, cacheRoot });
 
   const warnings: string[] = [];
