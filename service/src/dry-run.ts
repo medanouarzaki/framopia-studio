@@ -7,7 +7,7 @@ import {
   reattachSentence,
   type EntryProvenance,
 } from '@framopia/core';
-import { findReelByLabel, listModes, listReels } from './catalogue.js';
+import { findReelByLabel, listModes } from './catalogue.js';
 import { knownVideos, rememberVideo } from './videos.js';
 import { resolveKeywordEntry, resolveSlotEntry } from './analysis/resolve-entry.js';
 import { imageSlotCountFor } from './analysis/count.js';
