@@ -65,12 +65,32 @@ export interface SlotSelectionResult {
 }
 
 /**
- * Absolute floor between one slot ending and the next beginning. Chosen, not
- * measured: two images butting up against each other read as one long
- * dissolve rather than two ideas, and the window rule below already does most
- * of the spreading. Revisit once a reel has actually been built.
+ * **How long a picture must be on screen before the next one replaces it.**
+ *
+ * This was `MIN_SLOT_GAP_S = 0.5`, "chosen, not measured", and it compared the
+ * *end of one word span to the start of the next*. Its stated purpose was about
+ * what the eye sees — two images butting together reading as one long dissolve —
+ * and those are different quantities. A picture starts on its word and holds
+ * until the next arrives (session 27), so what a viewer experiences is the
+ * distance between two *starts*, not the space between two spans.
+ *
+ * Block 12 session 87 measured the difference on `sora-1`. Its pairs — *if you
+ * want <this>, you need <this product>* — have word spans 0.00 to 0.24 s apart,
+ * which the old rule refused. The pictures those spans would produce live **0.52
+ * to 1.06 seconds each, a mean of 0.88**. Nothing was butting together; the rule
+ * was measuring the wrong thing and refusing a second of screen time as though
+ * it were a frame. `img006` proves it from the other side: session 86 added it
+ * outside selection, its span gap is **0.00 s**, and it is on screen for 1.56 s.
+ *
+ * **The floor is measured, not chosen.** A picture may not leave before its own
+ * entrance animation has finished playing, or the viewer never sees it arrive —
+ * which is precisely the "one long dissolve" the old comment was reaching for.
+ * The number is read from `templates/library.aep`'s audit: both image templates
+ * authored by Mohamed animate `IMG_MAIN`'s opacity over **0.400 s**. It is a
+ * fact about the template library, so it holds for any video on any machine, and
+ * it moves if he re-authors the templates.
  */
-export const MIN_SLOT_GAP_S = 0.5;
+export const FALLBACK_MIN_PICTURE_LIFE_S = 0.4;
 
 /**
  * Deterministic per-axis draw. The user ruled that the palette stays dominant
@@ -184,6 +204,13 @@ export interface PlanSlotsOptions {
   requestedCount: number;
   durationS: number;
   /**
+   * How long a picture must be on screen before the next replaces it.
+   *
+   * Defaults to the templates' authored entrance. Passed in rather than read
+   * here so this stays pure and a test can state the number it is asserting.
+   */
+  minPictureLifeS?: number;
+  /**
    * Spans this reel has already bought a picture for, as `wordIds.join(' ')`.
    *
    * **Money already spent is not spent again, and a picture already made is not
@@ -200,11 +227,20 @@ export interface PlanSlotsOptions {
  * Turns slot candidates into planned slots. Pure, and the only place the
  * count, the no-overlap rule and the spread rule are decided.
  *
- * Spread is enforced by dividing the reel into `requestedCount` equal windows
- * and keeping at most one slot per window, chosen by the slot's midpoint.
- * That guarantees coverage across the reel without a tuned constant, and it
- * degrades honestly: a window no candidate reached becomes a shortfall rather
- * than a second slot crammed next to the first.
+ * **Spread used to be a grid and is now the pictures' own lives.** The reel was
+ * divided into equal windows with at most one slot in each, which guaranteed
+ * coverage without a tuned constant — but a uniform grid over unevenly spaced
+ * speech refuses legitimate placements: Block 12 session 87 measured `sora-1`
+ * putting ترطيب and Profhilo in the same 1.28-second cell while other cells
+ * stood empty, and the second was dropped for the arithmetic of the grid rather
+ * than for anything a viewer would see.
+ *
+ * The minimum-life floor is a strictly better version of the same intent. It is
+ * local, it is measured off the templates rather than chosen, and it refuses
+ * exactly the thing the grid existed to prevent — a second picture crammed
+ * against the first — without also refusing a picture a second later. `shortfall`
+ * and `uncoveredS` still report what was not covered, so the degradation stays
+ * visible rather than becoming silent.
  *
  * Images are independent of keywords per PROJECT_SPEC §5, so a span that is
  * also a keyword is neither preferred nor excluded.
@@ -230,6 +266,7 @@ export interface PlanSlotsOptions {
 export function planSlots(options: PlanSlotsOptions): SlotSelectionResult {
   const { candidates, words, mode, planId, requestedCount, durationS } = options;
   const alreadyBought = new Set(options.alreadyBought ?? []);
+  const minPictureLifeS = options.minPictureLifeS ?? FALLBACK_MIN_PICTURE_LIFE_S;
   const byId = new Map(words.map((w) => [w.id, w]));
   const failures: SlotFailure[] = [];
 
@@ -291,8 +328,6 @@ export function planSlots(options: PlanSlotsOptions): SlotSelectionResult {
   /* Deduped: a span can be both the client's and already bought, and is one slot. */
   const freeSpans = new Set([...answeredFree, ...alreadyBought]);
   const placeable = requestedCount + freeSpans.size;
-  const windowLength = placeable > 0 ? durationS / placeable : durationS;
-  const takenWindows = new Set<number>();
   const accepted: typeof resolved = [];
   let paid = 0;
 
@@ -322,29 +357,29 @@ export function planSlots(options: PlanSlotsOptions): SlotSelectionResult {
         failures.push({ candidate: asCandidate, reason: 'overlaps-a-selected-slot' });
         return false;
       }
-      const gap =
-        slot.start >= already.end ? slot.start - already.end : already.start - slot.end;
-      if (gap < MIN_SLOT_GAP_S) {
+      /*
+       * Start to start: the earlier picture is on screen from its own word until
+       * this one takes over, so that distance is its life.
+       */
+      const apart = Math.abs(slot.start - already.start);
+      if (apart < minPictureLifeS) {
         failures.push({ candidate: asCandidate, reason: 'too-close' });
         return false;
       }
     }
-    const midpoint = (slot.start + slot.end) / 2;
-    const window = Math.min(placeable - 1, Math.floor(midpoint / windowLength));
-    if (takenWindows.has(window)) {
-      failures.push({ candidate: asCandidate, reason: 'window-taken' });
-      return false;
-    }
-    takenWindows.add(window);
     return true;
   };
 
   for (const pass of [true, false]) {
     for (const slot of resolved) {
       if (isFree(slot) !== pass) continue;
-      if (accepted.length >= placeable) break;
       const asCandidate: SlotCandidate = { wordIds: slot.wordIds, idea: slot.idea };
-      if (!pass && paid >= requestedCount) {
+      /*
+       * Named, not silently dropped. The loop used to break here, so a candidate
+       * arriving after the reel was full left no trace at all — the one shape
+       * this file exists to avoid, since every other refusal says why.
+       */
+      if (accepted.length >= placeable || (!pass && paid >= requestedCount)) {
         failures.push({ candidate: asCandidate, reason: 'budget-spent' });
         continue;
       }

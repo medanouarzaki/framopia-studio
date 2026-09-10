@@ -4,7 +4,7 @@ import {
   composeNegativePrompt,
   composePrompt,
   drawVariation,
-  MIN_SLOT_GAP_S,
+  FALLBACK_MIN_PICTURE_LIFE_S,
   planSlots,
 } from './slot-select.js';
 import { imageSlotCountFor } from './count.js';
@@ -154,17 +154,36 @@ describe('planSlots', () => {
   const plan = (candidates: { wordIds: string[]; idea: string }[], requestedCount = 4) =>
     planSlots({ candidates, words, mode: mode(), planId: 'plan-a', requestedCount, durationS: 20 });
 
-  it('spreads slots across the reel, one per window', () => {
+  /**
+   * **Spread was a grid and is now the pictures' own lives.**
+   *
+   * The reel was divided into `requestedCount` equal windows with at most one
+   * slot in each. Block 12 session 87 measured that grid refusing legitimate
+   * placements on `sora-1`: ترطيب and Profhilo fell in the same 1.28-second cell
+   * while other cells stood empty, and the second was dropped for the arithmetic
+   * of the grid rather than for anything a viewer would see. This asserted the
+   * grid, so it asserts what replaced it.
+   */
+  it('keeps every picture that lives long enough, wherever it falls', () => {
     const result = plan([
       { wordIds: ['w0'], idea: 'first' },
-      { wordIds: ['w1'], idea: 'also first window' },
+      { wordIds: ['w1'], idea: 'a second later' },
       { wordIds: ['w6'], idea: 'second' },
       { wordIds: ['w11'], idea: 'third' },
       { wordIds: ['w16'], idea: 'fourth' },
     ]);
-    expect(result.slots.map((s) => s.idea)).toEqual(['first', 'second', 'third', 'fourth']);
-    expect(result.failures.map((f) => f.reason)).toEqual(['window-taken']);
-    expect(result.shortfall).toBe(0);
+    /*
+     * The words are a second apart, comfortably above the 0.4s floor, so none is
+     * refused for pacing. The fifth is refused for the budget of four, which is
+     * the rule that should be deciding.
+     */
+    expect(result.slots.map((s) => s.idea)).toEqual([
+      'first',
+      'a second later',
+      'second',
+      'third',
+    ]);
+    expect(result.failures.map((f) => f.reason)).toEqual(['budget-spent']);
   });
 
   it('rejects a slot that overlaps one already taken', () => {
@@ -177,10 +196,19 @@ describe('planSlots', () => {
     expect(result.slots.map((s) => s.idea)).toEqual(['wide', 'later']);
   });
 
-  it('rejects a slot closer than the minimum gap', () => {
+  /**
+   * **A picture may not leave before its entrance has finished playing.**
+   *
+   * The floor used to be 0.5s between the end of one word span and the start of
+   * the next, "chosen, not measured". It is now the templates' authored
+   * entrance, measured between two picture *starts* — which is what a viewer
+   * experiences, because a picture holds until the next arrives.
+   */
+  it('refuses a picture that would replace one before its entrance has played', () => {
+    /* Short spans, so the two do not overlap and only the life floor decides. */
     const tight: AnalysisWord[] = [
-      { id: 'a', text: 'a', start: 0, end: 1, removed: false },
-      { id: 'b', text: 'b', start: 1 + MIN_SLOT_GAP_S / 2, end: 2, removed: false },
+      { id: 'a', text: 'a', start: 0, end: 0.1, removed: false },
+      { id: 'b', text: 'b', start: FALLBACK_MIN_PICTURE_LIFE_S / 2, end: 0.3, removed: false },
     ];
     const result = planSlots({
       candidates: [
@@ -197,6 +225,47 @@ describe('planSlots', () => {
     expect(result.failures[0]?.reason).toBe('too-close');
   });
 
+  /* Exactly the entrance is enough: the picture is fully arrived when it goes. */
+  it('keeps a picture that lives exactly as long as its entrance', () => {
+    const tight: AnalysisWord[] = [
+      { id: 'a', text: 'a', start: 0, end: 0.2, removed: false },
+      { id: 'b', text: 'b', start: FALLBACK_MIN_PICTURE_LIFE_S, end: 0.8, removed: false },
+    ];
+    const result = planSlots({
+      candidates: [
+        { wordIds: ['a'], idea: 'one' },
+        { wordIds: ['b'], idea: 'two' },
+      ],
+      words: tight,
+      mode: mode(),
+      planId: 'p',
+      requestedCount: 2,
+      durationS: 20,
+    });
+    expect(result.slots).toHaveLength(2);
+  });
+
+  /* The floor is the templates', not a constant here: a caller may state it. */
+  it('takes the minimum life from the caller', () => {
+    const tight: AnalysisWord[] = [
+      { id: 'a', text: 'a', start: 0, end: 0.2, removed: false },
+      { id: 'b', text: 'b', start: 0.6, end: 0.8, removed: false },
+    ];
+    const args = {
+      candidates: [
+        { wordIds: ['a'], idea: 'one' },
+        { wordIds: ['b'], idea: 'two' },
+      ],
+      words: tight,
+      mode: mode(),
+      planId: 'p',
+      requestedCount: 2,
+      durationS: 20,
+    };
+    expect(planSlots({ ...args, minPictureLifeS: 0.5 }).slots).toHaveLength(2);
+    expect(planSlots({ ...args, minPictureLifeS: 1.0 }).slots).toHaveLength(1);
+  });
+
   it('drops an unresolvable slot and counts it, never fuzzy-matching', () => {
     const result = plan([
       { wordIds: ['w99'], idea: 'ghost' },
@@ -210,14 +279,11 @@ describe('planSlots', () => {
     expect(plan([{ wordIds: [], idea: 'nothing' }]).failures[0]?.reason).toBe('empty-word-ids');
   });
 
-  it('reports a shortfall rather than padding a window twice', () => {
-    const result = plan([
-      { wordIds: ['w0'], idea: 'first' },
-      { wordIds: ['w2'], idea: 'same window' },
-    ]);
+  /* Fewer pictures than asked for is still reported, so it cannot go silent. */
+  it('reports a shortfall when fewer candidates arrive than were asked for', () => {
+    const result = plan([{ wordIds: ['w0'], idea: 'the only one' }]);
     expect(result.slots).toHaveLength(1);
     expect(result.shortfall).toBe(3);
-    expect(result.failures.some((f) => f.reason === 'window-taken')).toBe(true);
   });
 
   it('reports gaps and uncovered time', () => {
@@ -335,7 +401,8 @@ describe('what the picture budget actually limits', () => {
    * Without this, whichever moment came earlier in the reel simply won.
    */
   it('places the client’s own picture ahead of a paid idea competing for the seconds', () => {
-    const near: AnalysisWord[] = [word('a', 'thing', 0), word('b', 'Profhilo', 0.4)];
+    /* Closer than the 0.4s floor, so only one of the two can be placed. */
+    const near: AnalysisWord[] = [word('a', 'thing', 0), word('b', 'Profhilo', 0.2)];
     const out = planSlots({
       candidates: [
         { wordIds: ['a'], idea: 'the model’s idea' },
@@ -356,7 +423,8 @@ describe('what the picture budget actually limits', () => {
    * because a new idea landed within the spacing floor of it.
    */
   it('keeps a span this reel has already bought a picture for', () => {
-    const near: AnalysisWord[] = [word('a', 'thing', 0), word('b', 'other', 0.4)];
+    /* Closer than the 0.4s floor, so only one of the two can be placed. */
+    const near: AnalysisWord[] = [word('a', 'thing', 0), word('b', 'other', 0.2)];
     const out = planSlots({
       candidates: [
         { wordIds: ['a'], idea: 'a new idea' },
