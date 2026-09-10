@@ -291,19 +291,27 @@ export interface PlanImageSlotsResult {
 export class SlotsReplaceBlockedError extends Error {
   constructor(readonly reasons: { slotId: string; detail: string }[]) {
     super(
-      `re-planning would discard work on ${reasons.length} slot(s): ` +
+      `re-planning would change ${reasons.length} slot(s): ` +
         `${reasons.map((r) => `${r.slotId} (${r.detail})`).join('; ')}. ` +
-        'The ideas would be re-requested from the model and would come back different, ' +
-        'because the call is not reproducible. Re-run with --force to discard them.',
+        'A picture already bought is carried across when its span survives the ' +
+        're-plan, and lost with the span when it does not — and the run says ' +
+        'which happened to each. Re-run with --force to go ahead.',
     );
     this.name = 'SlotsReplaceBlockedError';
   }
 }
 
 /**
- * What a wholesale replacement of `plan.images.slots` would destroy. A
+ * What a wholesale replacement of `plan.images.slots` would change. A
  * recomposed prompt counts: it is the product of a deliberate mode edit that
  * no re-run reproduces, since a re-run asks the model for fresh ideas.
+ *
+ * **It runs before planning, so it cannot know which spans will survive.** Block
+ * 12 session 86 made a bought span outlive a re-plan and carry its pictures with
+ * it, so this is no longer a list of things that will certainly be destroyed —
+ * it is a list of what is at stake, and the run reports what actually became of
+ * each. It stays conservative on purpose: being asked is cheap and a picture is
+ * not.
  */
 export function slotsReplacementFlags(plan: EditPlan): { slotId: string; detail: string }[] {
   const reasons: { slotId: string; detail: string }[] = [];
@@ -381,6 +389,19 @@ export async function planImageSlotsForPlan(
     log(`slots: dropped candidate ${JSON.stringify(failure.candidate.wordIds)} (${failure.reason})`);
   }
 
+  /*
+   * The pictures this reel has already bought, by the span they were bought for.
+   *
+   * `alreadyBought` keeps such a span from being dropped in selection; this is
+   * the other half, because `planSlots` returns fresh slots with no candidates
+   * on them. Without it the span survived and the images paid for did not.
+   */
+  const boughtFor = new Map(
+    (plan.images?.slots ?? [])
+      .filter((slot) => slot.candidates.length > 0)
+      .map((slot) => [slot.wordIds.join(' '), slot]),
+  );
+
   const slots: ImageSlot[] = analysis.selection.slots.map((slot, i) => ({
     id: `img${String(i + 1).padStart(3, '0')}`,
     wordIds: slot.wordIds,
@@ -391,13 +412,20 @@ export async function planImageSlotsForPlan(
     ...(slot.nameWordId === undefined ? {} : { nameWordId: slot.nameWordId }),
     prompt: slot.prompt,
     negativePrompt: slot.negativePrompt,
-    candidates: [],
-    chosenCandidateId: null,
-    presentation: null,
+    candidates: boughtFor.get(slot.wordIds.join(' '))?.candidates ?? [],
+    chosenCandidateId: boughtFor.get(slot.wordIds.join(' '))?.chosenCandidateId ?? null,
+    presentation: boughtFor.get(slot.wordIds.join(' '))?.presentation ?? null,
     zoneId: null,
     templateId: null,
-    status: 'pending',
+    status: boughtFor.get(slot.wordIds.join(' '))?.status ?? 'pending',
   }));
+  for (const [span, kept] of boughtFor) {
+    if (slots.some((s) => s.wordIds.join(' ') === span)) {
+      log(`slots: kept the ${kept.candidates.length} picture(s) already bought for ${JSON.stringify(span)}`);
+    } else {
+      log(`slots: ${JSON.stringify(span)} is no longer a slot, and its bought picture(s) go with it`);
+    }
+  }
 
   /*
    * Before anything can be generated: the slots this client's own pictures

@@ -494,7 +494,7 @@ export async function runPipeline(options: RunPipelineOptions): Promise<Pipeline
     assertWithinCeiling('analysis');
     const keywords = await impl.keywords({ planPath, modeId, keywordMode: 'auto', cacheRoot, log });
     assertWithinCeiling('analysis');
-    const slots = await impl.slots({ planPath, modeId, cacheRoot, log });
+    const slots = await impl.slots({ planPath, modeId, cacheRoot, log, force: forceTranscript });
     const cost =
       (keywords.cached ? 0 : keywords.analysis.costUsd) + (slots.cached ? 0 : slots.analysis.costUsd);
     return { costUsd: cost, reason: keywords.cached && slots.cached ? 'cached' : null };
