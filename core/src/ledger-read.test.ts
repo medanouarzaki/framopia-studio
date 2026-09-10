@@ -108,9 +108,27 @@ describe('the real ledger, read', () => {
     readFileSync(path.join(REPO_ROOT, '.local', 'costs.jsonl'), 'utf8'),
   );
 
+  /**
+   * **The total is the sum of the lines, whatever the lines are.**
+   *
+   * This asserted `18.832129`, the figure every session report carried from
+   * Block 10 session 46 — and it was true for as long as no session spent
+   * anything. Block 12 session 84 ran Mohamed's first real reel through the
+   * pipeline, seven lines were appended for work he actually paid for, and this
+   * went red for the tool working.
+   *
+   * A frozen total is a test of the ledger's contents, not of the reader, and
+   * it makes doing real work look like a regression. What the reader owes is
+   * that it loses nothing: the total is what the lines add up to, computed the
+   * same way twice and agreeing.
+   */
   it('reconciles to the cent', () => {
-    // The figure every session report has carried since Block 10 session 46.
-    expect(read.totalUsd).toBe(18.832129);
+    expect(read.totalUsd).toBe(sumUsd(read.lines.map((l) => l.usd)));
+  });
+
+  /* Money only ever goes up: a total below the historical figure means lines were lost. */
+  it('has not lost the spending every session before this recorded', () => {
+    expect(read.totalUsd).toBeGreaterThanOrEqual(18.832129);
   });
 
   it('parses every line', () => {

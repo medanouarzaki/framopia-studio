@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { COSTS_PATH, REPO_ROOT, readLedger } from '@framopia/core';
+import { COSTS_PATH, REPO_ROOT, readLedger, sumUsd } from '@framopia/core';
 import {
   addPayment,
   correctPayment,
@@ -15,6 +15,10 @@ import {
   type ReelCost,
 } from './money.js';
 import { planPathsForMoney } from './money-plans.js';
+
+/** The real ledger, read the way the money view reads it. */
+const readLedgerFile = (file: string): ReturnType<typeof readLedger> =>
+  readLedger(readFileSync(file, 'utf8'));
 
 /**
  * **The money screen's back end reads the ledger and never writes it.**
@@ -50,17 +54,38 @@ describe('the money view', () => {
     expect(CODE).not.toContain("'a'");
   });
 
+  /*
+   * **The total is what the ledger adds up to, whatever it now holds.**
+   *
+   * Five assertions in this file froze the real ledger's figures — $18.832129,
+   * six reels, every line unattributed — and each was true for exactly as long
+   * as no session spent anything. Block 12 session 84 ran Mohamed's first real
+   * reel and all five went red for the tool working. A frozen figure tests the
+   * ledger's contents, not the reader, and it makes real work look like a
+   * regression.
+   */
   it('reads the real ledger and reconciles to the cent', () => {
     const view = moneyView({ costsPath: COSTS_PATH, planPaths: planPathsForMoney() });
-    // The figure every report has carried since Block 10 session 46.
-    expect(view.totalUsd).toBe(18.832129);
+    expect(view.totalUsd).toBe(sumUsd(readLedgerFile(COSTS_PATH).lines.map((l) => l.usd)));
     expect(view.unreadable).toBe(0);
+    // Money only ever goes up: below this and lines have been lost.
+    expect(view.totalUsd).toBeGreaterThanOrEqual(18.832129);
   });
 
+  /**
+   * **Nothing is dropped: what cannot be put against a client is named.**
+   *
+   * This asserted that with no plans *everything* is unattributed, and gave the
+   * reason that all 165 lines predated session 68's fields. Session 84 was the
+   * first run to write any, so seven lines now name their client and are
+   * attributed without a plan at all. The property was never "all of it" — it is
+   * that the part which names no client is reported rather than lost.
+   */
   it('says what it cannot attribute rather than dropping it', () => {
     const view = moneyView({ costsPath: COSTS_PATH, planPaths: [] });
-    // Every one of the 165 existing lines predates session 68's fields.
-    expect(view.unattributedUsd).toBe(view.totalUsd);
+    const namesNoClient = readLedgerFile(COSTS_PATH).lines.filter((l) => l.client === undefined);
+    expect(view.unattributedUsd).toBe(sumUsd(namesNoClient.map((l) => l.usd)));
+    expect(view.unattributedUsd).toBeLessThanOrEqual(view.totalUsd);
   });
 
   /*
@@ -152,11 +177,18 @@ describe('which reels are his', () => {
     expect(reelCosts([idle])).toHaveLength(1);
   });
 
-  it('lists only the six reels that were really paid for', () => {
+  /*
+   * It listed six reels by name. Session 84 built a seventh — Mohamed's first
+   * real one — so the names are no longer the property. What is: a reel appears
+   * here when it was paid for, and only then.
+   */
+  it('lists only reels that were really paid for', () => {
     const reels = reelCosts(planPathsForMoney());
-    expect(reels.map((r) => r.reel).sort()).toEqual(
-      ['ground truth', 'sora-6a60ced1', 'sora-995f2d27', 'test 1', 'test 2', 'vitasilk'].sort(),
-    );
+    expect(reels.length).toBeGreaterThanOrEqual(6);
+    for (const r of reels) expect(`${r.reel}: ${r.spentUsd > 0}`).toBe(`${r.reel}: true`);
+    for (const name of ['ground truth', 'test 1', 'test 2', 'vitasilk']) {
+      expect(`${name}: ${reels.some((r) => r.reel === name)}`).toBe(`${name}: true`);
+    }
   });
 });
 
@@ -250,8 +282,12 @@ describe('the two sources', () => {
     const r = view.reconciliation;
     expect(r.agrees).toBe(true);
     expect(r.overclaimedUsd).toBe(0);
-    // Measured on 2026-09-08 and unchanged by this session.
-    expect(r.ledgerTotalUsd).toBe(18.832129);
+    /*
+     * The two sources agreeing is the property; the figure is whatever has been
+     * spent by now. `outsideAnyVideoUsd` is the benchmark and bake-off spending
+     * that belongs to no reel, and nothing this session did adds to it.
+     */
+    expect(r.ledgerTotalUsd).toBe(sumUsd(readLedgerFile(COSTS_PATH).lines.map((l) => l.usd)));
     expect(r.outsideAnyVideoUsd).toBe(4.502282);
   });
 });
@@ -341,11 +377,34 @@ describe('a reel’s real cost', () => {
     expect(reel?.basis).toBe('plan');
   });
 
-  it('reads the real ledger, which knows no video yet', () => {
+  /**
+   * **A reel is costed from the ledger when the ledger knows it, and from the
+   * plan when it does not.**
+   *
+   * This asserted every reel fell back to the plan, because no line carried a
+   * video. Session 68 added the field and session 84 was the first run to write
+   * any: `sora-1`'s seven lines name their video, so it is costed from the
+   * ledger and every older reel still falls back. The rule was always the
+   * fallback; the old assertion was the state of the ledger on the day.
+   */
+  it('costs a reel from the ledger when the ledger knows it, and from the plan when not', () => {
     const view = moneyView({ costsPath: COSTS_PATH, planPaths: planPathsForMoney() });
+    const knownVideos = new Set(
+      readLedgerFile(COSTS_PATH)
+        .lines.map((l) => l.video)
+        .filter((v): v is string => typeof v === 'string'),
+    );
+    expect(view.perReel.length).toBeGreaterThan(0);
     for (const r of view.perReel) {
-      expect(`${r.reel}: ${r.basis}`).toBe(`${r.reel}: plan`);
-      expect(`${r.reel}: ${r.ledgerUsd}`).toBe(`${r.reel}: 0`);
+      const fromLedger = r.basis === 'ledger';
+      expect(`${r.reel}: ${String(fromLedger && r.ledgerUsd > 0)}`).toBe(
+        `${r.reel}: ${String(fromLedger)}`,
+      );
+      if (!fromLedger) expect(`${r.reel}: ${r.ledgerUsd}`).toBe(`${r.reel}: 0`);
     }
+    // At least one reel is now costed each way, or this proves nothing.
+    expect(knownVideos.size).toBeGreaterThan(0);
+    expect(view.perReel.some((r) => r.basis === 'ledger')).toBe(true);
+    expect(view.perReel.some((r) => r.basis === 'plan')).toBe(true);
   });
 });

@@ -412,10 +412,24 @@ describe('progress', () => {
     expect(seen[0]?.[0]).toBe('running');
   });
 
-  it('refuses a reel that is not in the catalogue, by name', async () => {
+  /*
+   * **The message no longer names the benchmark catalogue.** Block 12 session 84:
+   * Mohamed picked a video out of his client's folder and was told there was
+   * `no reel labelled "…" in benchmarks/footage.json` — a sentence about a
+   * benchmark, said about his footage, and it named the wrong place to look
+   * because the run path was searching the wrong list. It says what he can do
+   * about it now, and this asserts that rather than the old wording.
+   */
+  it('refuses a video it cannot find, by name', async () => {
     await expect(
       runPipeline({ ...fakeHooks(), reel: 'nope', modeId: 'k2-syndicalia', stages: fakeStages() }),
-    ).rejects.toThrow('no reel labelled "nope"');
+    ).rejects.toThrow('there is no video called "nope"');
+  });
+
+  it('does not blame the benchmark catalogue for a video it cannot find', async () => {
+    await expect(
+      runPipeline({ ...fakeHooks(), reel: 'nope', modeId: 'k2-syndicalia', stages: fakeStages() }),
+    ).rejects.not.toThrow(/footage\.json/);
   });
 });
 
