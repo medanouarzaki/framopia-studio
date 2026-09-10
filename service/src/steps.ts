@@ -9,7 +9,7 @@ import {
   templatesById,
 } from '@framopia/core';
 import { resolveClientIdentity, type ClientIdentitySource } from './build/client-identity.js';
-import { listReels } from './catalogue.js';
+import { findReelByLabel } from './catalogue.js';
 import { checkBuildability } from './analysis/buildability.js';
 import { plannedCards } from './build/planned-cards.js';
 import {
@@ -181,9 +181,9 @@ function countCandidatesOnDisk(plan: EditPlan): { total: number; present: number
 }
 
 export function stepsFor(reelLabel: string, modeId: string): PlanSteps {
-  const reel = listReels().find((r) => r.label === reelLabel);
+  const reel = findReelByLabel(reelLabel);
   if (reel === undefined) {
-    throw new StepsError(`no reel labelled "${reelLabel}" in benchmarks/footage.json`);
+    throw new StepsError(`there is no video called "${reelLabel}" any more. Pick it again from the list.`);
   }
 
   let mode;

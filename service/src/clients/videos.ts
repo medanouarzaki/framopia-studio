@@ -166,8 +166,25 @@ export function listFolder(folder: string): FolderListing {
 
       const extension = path.extname(entry.name).toLowerCase();
       if (!VIDEO_EXTENSIONS.includes(extension)) {
-        // Only worth mentioning for things that look like they might be video.
-        if (/\.(webm|flv|wmv|mpg|mpeg|mts|m2ts|prproj|aep)$/i.test(entry.name)) {
+        /*
+         * **Only what he might have expected to be offered.**
+         *
+         * `.aep` and `.prproj` were on this list, and Dr Loubna Kfafi keeps her
+         * After Effects projects and their auto-saves beside her footage —
+         * eleven of them. Session 84: he picked a video, the run failed, and the
+         * real reason was under a wall of eleven lines saying his own project
+         * files could not be opened. They were never going to be: an editing
+         * project is not a video anyone would expect this tool to offer, and
+         * saying so about each one buries the thing that actually broke.
+         *
+         * The formats below stay, because each really is video this tool will
+         * not open, and a video he can see in the folder and not in the list is
+         * a video he goes looking for. **Nothing that could not be read for a
+         * real reason is hidden** — an unreadable file and an empty one are
+         * reported by the two branches after this, and a folder that could not
+         * be opened by the walk itself.
+         */
+        if (/\.(webm|flv|wmv|mpg|mpeg|mts|m2ts)$/i.test(entry.name)) {
           skipped.push({ name: entry.name, why: `this tool does not open ${extension} files` });
         }
         continue;

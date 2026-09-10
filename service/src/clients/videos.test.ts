@@ -234,3 +234,76 @@ describe('videos inside the subfolders', () => {
     });
   });
 });
+
+/**
+ * **What is worth putting under the picker, and what is noise.**
+ *
+ * Block 12 session 84: Mohamed picked a video, the run refused, and the reason
+ * was under eleven red lines saying his own After Effects projects could not be
+ * opened. They were never going to be — an editing project is not a video anyone
+ * would expect this tool to offer — and saying so about each one buried the
+ * thing that had actually broken.
+ *
+ * The line between them: a file he might reasonably have expected in the list is
+ * named; a file that was never a video is not. **Nothing unreadable is hidden.**
+ */
+describe('what is said about the files that are not offered', () => {
+  let tree: string;
+
+  beforeEach(() => {
+    tree = mkdtempSync(path.join(tmpdir(), 'framopia-noise-'));
+  });
+
+  afterEach(() => {
+    try {
+      chmodSync(path.join(tree, 'locked'), 0o755);
+    } catch {
+      /* only some of these lock a folder */
+    }
+    rmSync(tree, { recursive: true, force: true });
+  });
+
+  function file(relative: string, bytes = 'x'): void {
+    const full = path.join(tree, relative);
+    mkdirSync(path.dirname(full), { recursive: true });
+    writeFileSync(full, bytes);
+  }
+
+  it('says nothing about an editing project sitting beside the footage', () => {
+    file('reel.mov');
+    file('Loubna current.aep');
+    file('Loubna current auto-save 1.aep');
+    file('a cut.prproj');
+    const listing = listFolder(tree);
+    expect(listing.videos.map((v) => v.label)).toEqual(['reel']);
+    expect(listing.skipped).toEqual([]);
+  });
+
+  /* A video he can see in the folder and not in the list is one he goes hunting for. */
+  it('still names a video in a format this tool will not open', () => {
+    file('clip.webm');
+    expect(listFolder(tree).skipped).toEqual([
+      { name: 'clip.webm', why: 'this tool does not open .webm files' },
+    ]);
+  });
+
+  it('still names a file it could not read, and an empty one', () => {
+    file('empty.mov', '');
+    expect(listFolder(tree).skipped).toContainEqual({
+      name: 'empty.mov',
+      why: 'the file is empty',
+    });
+  });
+
+  it('still names a folder it could not open', () => {
+    file('open/fine.mov');
+    file('locked/inner/hidden.mov');
+    chmodSync(path.join(tree, 'locked'), 0o000);
+    const listing = listFolder(tree);
+    expect(listing.videos.map((v) => v.label)).toEqual(['fine']);
+    expect(listing.skipped).toContainEqual({
+      name: 'locked',
+      why: 'this folder could not be read',
+    });
+  });
+});

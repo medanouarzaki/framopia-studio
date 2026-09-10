@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { REPO_ROOT, fitByLongEdge, type AuditComp } from '@framopia/core';
-import { listReels } from './catalogue.js';
+import { findReelByLabel, listReels } from './catalogue.js';
 import { readEditPlan, writeEditPlan } from './editplan/io.js';
 import { dryRun } from './dry-run.js';
 import { buildChoiceFor } from './build/choose-candidate.js';
@@ -179,9 +179,9 @@ export interface ImagesView {
 }
 
 function planFor(reelLabel: string): { planPath: string } {
-  const reel = listReels().find((r) => r.label === reelLabel);
+  const reel = findReelByLabel(reelLabel);
   if (reel === undefined) {
-    throw new ImageViewError(`no reel labelled "${reelLabel}" in benchmarks/footage.json`);
+    throw new ImageViewError(`there is no video called "${reelLabel}" any more. Pick it again from the list.`);
   }
   if (reel.planPath === null || !existsSync(reel.planPath)) {
     throw new ImageViewError(

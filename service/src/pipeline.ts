@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs';
 import { readCosts } from '@framopia/core';
-import { listReels } from './catalogue.js';
+import { findReelByLabel } from './catalogue.js';
 import { registerJobRunner } from './jobs.js';
 import { readEditPlan } from './editplan/io.js';
 import { PIPELINE_STAGES, type PipelineStageId } from './pipeline-stages.js';
@@ -286,11 +286,11 @@ export async function runPipeline(options: RunPipelineOptions): Promise<Pipeline
     ...options.stages,
   };
 
-  const reel = listReels().find((r) => r.label === reelLabel);
+  const reel = findReelByLabel(reelLabel);
   if (reel === undefined) {
     throw new PipelineError({
       stage: 'transcription',
-      cause: `no reel labelled "${reelLabel}" in benchmarks/footage.json`,
+      cause: `there is no video called "${reelLabel}" any more. Pick it again from the list.`,
       retryable: false,
     });
   }

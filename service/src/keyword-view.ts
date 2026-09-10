@@ -6,7 +6,7 @@ import {
   SUBTITLE_FONT_SIZE,
   templatesById,
 } from '@framopia/core';
-import { listReels } from './catalogue.js';
+import { findReelByLabel, listReels } from './catalogue.js';
 import { readEditPlan, writeEditPlan } from './editplan/io.js';
 import { deriveSfxEvents } from './analysis/sfx.js';
 import { templateImpacts } from './analysis/template-impacts.js';
@@ -79,10 +79,10 @@ export interface KeywordsView {
 }
 
 function planFor(reelLabel: string): { planPath: string } {
-  const reel = listReels().find((r) => r.label === reelLabel);
+  const reel = findReelByLabel(reelLabel);
   if (reel === undefined) {
     throw new KeywordViewError(
-      `no reel labelled "${reelLabel}" in benchmarks/footage.json`,
+      `there is no video called "${reelLabel}" any more. Pick it again from the list.`,
     );
   }
   if (reel.planPath === null || !existsSync(reel.planPath)) {

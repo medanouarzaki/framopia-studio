@@ -7,8 +7,8 @@ import {
   reattachSentence,
   type EntryProvenance,
 } from '@framopia/core';
-import { listModes, listReels } from './catalogue.js';
-import { knownVideos } from './videos.js';
+import { findReelByLabel, listModes, listReels } from './catalogue.js';
+import { knownVideos, rememberVideo } from './videos.js';
 import { resolveKeywordEntry, resolveSlotEntry } from './analysis/resolve-entry.js';
 import { imageSlotCountFor } from './analysis/count.js';
 import { PIPELINE_STAGES, WORDS_STAGE_IDS, type PipelineStageId } from './pipeline-stages.js';
@@ -227,9 +227,9 @@ function perImageCeilingUsd(): number {
 }
 
 export async function dryRun(reelLabel: string, modeId: string): Promise<DryRunPlan> {
-  const reel = listReels().find((r) => r.label === reelLabel);
+  const reel = findReelByLabel(reelLabel);
   if (reel === undefined) {
-    throw new DryRunError(`no reel labelled "${reelLabel}" in benchmarks/footage.json`);
+    throw new DryRunError(`there is no video called "${reelLabel}" any more. Pick it again from the list.`);
   }
   if (!reel.present) {
     throw new DryRunError(`${reelLabel} is catalogued but ${reel.videoPath} is not on this machine`);
@@ -289,10 +289,34 @@ export async function dryRun(reelLabel: string, modeId: string): Promise<DryRunP
       durationS = known.durationS;
     }
   }
+  /*
+   * **A video picked out of a client's folder has never been written down.**
+   *
+   * The registry is filled by Browse, and only by Browse. Session 84: Mohamed
+   * picked `sora-1` from Dr Loubna Kfafi's folder — a route that reads the disk
+   * and writes nothing — so there was no hash to price the run with and this
+   * threw where the cost belonged, telling him about an edit plan he had no way
+   * to have made.
+   *
+   * Reading it now is the same act Browse performs, on the same function: the
+   * duration, the shape and the sha256 come off the file, and the video is
+   * written down so every later stage finds it without walking a folder again.
+   * It costs nothing — ffprobe and a hash, both local.
+   */
+  if (sha === '') {
+    try {
+      const measured = await rememberVideo(reel.videoPath);
+      sha = measured.sha256;
+      durationS = measured.durationS;
+    } catch (error) {
+      throw new DryRunError(
+        `${reelLabel} could not be read: ${(error as Error).message}`,
+      );
+    }
+  }
   if (sha === '') {
     throw new DryRunError(
-      `${reelLabel} has no edit plan yet, so nothing can be looked up in the cache by video hash. ` +
-        'A first run transcribes and bills.',
+      `${reelLabel} could not be measured, so this run cannot be priced.`,
     );
   }
 

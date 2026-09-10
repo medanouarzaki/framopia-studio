@@ -331,6 +331,45 @@ export async function describeVideo(videoPath: string): Promise<CatalogueReel> {
  * byte count `npm run doctor` verifies are still only about those five — and
  * stops being the list that decides what the product may open.
  */
+/**
+ * The one way a label from the picker becomes the video it names.
+ *
+ * **`benchmarks/footage.json` describes benchmarks.** `frames/footage.ts` still
+ * says it is "the only list of the footage that exists", which was true when it
+ * was written and is the root of this defect: every stage on the run path
+ * resolved a label with `listReels().find(...)`, and `listReels` knows the five
+ * corpus reels plus whatever has been opened through Browse. A video Mohamed
+ * picked out of a client's folder is in neither, so the answer was
+ * `no reel labelled "September Content/Exports/Work in Progress/sora-1" in
+ * benchmarks/footage.json` — a sentence about a benchmark catalogue, said about
+ * his client's footage, which has no business being looked for in it.
+ *
+ * Session 81 qualified a folder video's label with the folder it was found in,
+ * so two files called `sora.mov` could be told apart. That made the mismatch
+ * visible rather than causing it: the picker offered 25 labels for Dr Loubna
+ * Kfafi and the run path could resolve 7, and the 7 were not a subset.
+ *
+ * **This searches the same places the picker offers from, in the order that
+ * costs least.** The corpus and the registry are two file reads. A client's
+ * folder is a disk walk, bounded by `listFolder`'s own two seconds, and is only
+ * reached when the first two do not answer — which after the first run of a
+ * video they do, because running one writes it down.
+ *
+ * No client id is needed, and that is deliberate: `/transcript`, `/keywords`
+ * and `/images` are asked for by label alone, so a resolver that required one
+ * would have fixed the stage Mohamed happened to hit and left three behind.
+ */
+export function findReelByLabel(label: string): CatalogueReel | undefined {
+  const known = listReels().find((r) => r.label === label);
+  if (known !== undefined) return known;
+  for (const client of everyClientFolder()) {
+    if (client.videoFolder === undefined) continue;
+    const mine = listVideosFor(client.id).reels.find((r) => r.label === label);
+    if (mine !== undefined) return mine;
+  }
+  return undefined;
+}
+
 export function listReels(): CatalogueReel[] {
   const browsed = knownVideos().map((v) => describe(v.label, v.path, v.durationS));
   const corpus = corpusReels();

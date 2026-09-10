@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs';
 import { loadTemplateManifest, templatesById } from '@framopia/core';
-import { listReels } from './catalogue.js';
+import { findReelByLabel, listReels } from './catalogue.js';
 import { readEditPlan, writeEditPlan } from './editplan/io.js';
 import { checkBuildability } from './analysis/buildability.js';
 import { SCRIPT_VARIANT_SUFFIX } from './analysis/assign.js';
@@ -112,9 +112,9 @@ export interface TranscriptView {
 export const OVERLONG_WORD_CHARS = 11;
 
 function planFor(reelLabel: string): { plan: Promise<EditPlan>; planPath: string } {
-  const reel = listReels().find((r) => r.label === reelLabel);
+  const reel = findReelByLabel(reelLabel);
   if (reel === undefined) {
-    throw new TranscriptViewError(`no reel labelled "${reelLabel}" in benchmarks/footage.json`);
+    throw new TranscriptViewError(`there is no video called "${reelLabel}" any more. Pick it again from the list.`);
   }
   if (reel.planPath === null || !existsSync(reel.planPath)) {
     throw new TranscriptViewError(
