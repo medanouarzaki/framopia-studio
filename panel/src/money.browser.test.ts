@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { chromium, type Browser, type Page } from 'playwright';
+import { usdExact } from './Money.js';
 import { HANDSHAKE, INDEX, built, realMoney, stubHost, stubRoutes } from './browser-harness.js';
 
 /**
@@ -47,6 +48,7 @@ async function open(): Promise<{ page: Page; uncaught: string[] } | null> {
 }
 
 const money = realMoney();
+/** Two decimals, which is what most of this screen shows. */
 const dollars = (n: number): string => `$${n.toFixed(2)}`;
 
 describe.skipIf(!built)('the money screen', () => {
@@ -55,7 +57,14 @@ describe.skipIf(!built)('the money screen', () => {
     if (loaded === null) return;
     try {
       const banner = (await loaded.page.textContent('.moneybanner')) ?? '';
-      expect(banner).toContain(dollars(money['totalUsd'] as number));
+      /*
+       * **The banner shows the exact figure, not a rounded one.** This asserted
+       * `toFixed(2)` with `toContain`, which passed only because `$18.83` is a
+       * prefix of `$18.832129`. Session 85's spending took the total to
+       * `$19.946952`, whose two-decimal rounding is `$19.95` — a prefix of
+       * nothing on screen — and it went red for the screen being right.
+       */
+      expect(banner).toContain(usdExact(money['totalUsd'] as number));
       expect(banner).toContain('Spent since the beginning');
       expect(loaded.uncaught).toEqual([]);
     } finally {

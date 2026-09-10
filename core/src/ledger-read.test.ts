@@ -136,9 +136,32 @@ describe('the real ledger, read', () => {
     expect(read.lines.length).toBeGreaterThanOrEqual(165);
   });
 
+  /**
+   * **No money is lost to grouping**, which is not the same as the two sums
+   * being the same float.
+   *
+   * `sumUsd` rounds once at the end (session 69), so adding 178 values grouped
+   * one way and grouped another can differ in the sixth decimal — a millionth of
+   * a dollar, from the order of the additions. With 165 lines the two happened
+   * to agree exactly and this asserted `toBe`; session 85's seven new lines made
+   * them differ by 0.000001 and it went red for floating point, not for a lost
+   * charge.
+   *
+   * A cent is the unit anyone cares about, and it is far coarser than the error
+   * this can accumulate; a difference of even one cent would mean a real line
+   * had gone missing.
+   */
   it('groups the whole total, losing nothing to rounding', () => {
     for (const groups of [byStage(read.lines), byMonth(read.lines), byPurpose(read.lines)]) {
-      expect(sumUsd(groups.map((g) => g.usd))).toBe(read.totalUsd);
+      expect(sumUsd(groups.map((g) => g.usd))).toBeCloseTo(read.totalUsd, 2);
+    }
+  });
+
+  /* Every line lands in exactly one group of each kind, whatever the arithmetic. */
+  it('puts every charge in exactly one group of each kind', () => {
+    for (const groups of [byStage(read.lines), byMonth(read.lines), byPurpose(read.lines)]) {
+      const counted = groups.reduce((n, g) => n + g.lines, 0);
+      expect(counted).toBe(read.lines.length);
     }
   });
 });
