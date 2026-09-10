@@ -1,6 +1,8 @@
 import { createHash } from 'node:crypto';
 import {
   checkSlotIdea,
+  clientPictures,
+  matchClientPicture,
   renderNegativePrompt,
   renderStylePrompt,
   type ClientMode,
@@ -27,7 +29,14 @@ export interface SlotCandidate {
 
 export interface SlotFailure {
   candidate: SlotCandidate;
-  reason: 'unknown-word-id' | 'empty-word-ids' | 'overlaps-a-selected-slot' | 'too-close' | 'window-taken';
+  reason:
+    | 'unknown-word-id'
+    | 'empty-word-ids'
+    | 'overlaps-a-selected-slot'
+    | 'too-close'
+    | 'window-taken'
+    /** The reel has spent every generated picture its density allows. */
+    | 'budget-spent';
 }
 
 export interface PlannedSlot {
@@ -174,6 +183,17 @@ export interface PlanSlotsOptions {
   planId: string;
   requestedCount: number;
   durationS: number;
+  /**
+   * Spans this reel has already bought a picture for, as `wordIds.join(' ')`.
+   *
+   * **Money already spent is not spent again, and a picture already made is not
+   * thrown away.** Block 12 session 86: re-planning `sora-1` dropped the Pluryal
+   * slot as too close to a new one, and that slot holds the two candidates
+   * session 84 paid for and Mohamed approved. The budget governs *new*
+   * spending, so a span already paid for is placed alongside the free ones and
+   * counts against nothing.
+   */
+  alreadyBought?: readonly string[];
 }
 
 /**
@@ -188,9 +208,28 @@ export interface PlanSlotsOptions {
  *
  * Images are independent of keywords per PROJECT_SPEC §5, so a span that is
  * also a keyword is neither preferred nor excluded.
+ *
+ * **`requestedCount` is a budget in money, not in pictures.** It comes from
+ * `imageSlotCountFor`, Mohamed's ruling of 2026-08-29 at eight per thirty
+ * seconds, and what that ruling limits is generated images: they cost about
+ * $0.17 each and a reel that flashes one every second is unwatchable. A slot the
+ * client's own store answers costs nothing and was chosen by them, so it does
+ * not spend from that budget — session 85 established exactly this for the slots
+ * it added after selection, and this is the same principle applied inside it.
+ *
+ * Block 12 session 86: `sora-1` is 10.2 seconds, so the budget is three. The
+ * model proposed eight good slots — five products and three of the results she
+ * names in the same breath — and three were kept. Two of those three were
+ * answered from her own pictures, so **the reel spent one of its three paid
+ * pictures and dropped five candidates**, which is the opposite of what the
+ * ruling is for.
+ *
+ * The windows are sized over everything that may be placed rather than over the
+ * money, or one free picture per window would cap the reel at the budget again.
  */
 export function planSlots(options: PlanSlotsOptions): SlotSelectionResult {
   const { candidates, words, mode, planId, requestedCount, durationS } = options;
+  const alreadyBought = new Set(options.alreadyBought ?? []);
   const byId = new Map(words.map((w) => [w.id, w]));
   const failures: SlotFailure[] = [];
 
@@ -232,31 +271,89 @@ export function planSlots(options: PlanSlotsOptions): SlotSelectionResult {
 
   resolved.sort((a, b) => a.start - b.start || a.end - b.end);
 
-  const windowLength = requestedCount > 0 ? durationS / requestedCount : durationS;
+  /*
+   * Which candidates the client's own pictures already answer. Asked of the same
+   * `matchClientPicture` the planner uses later, so the two cannot disagree
+   * about what counts as free.
+   */
+  const answeredFree = new Set<string>();
+  for (const slot of resolved) {
+    const spoken = slot.wordIds
+      .map((id) => byId.get(id))
+      .filter((w): w is AnalysisWord => w !== undefined)
+      .map((w) => ({ id: w.id, text: w.text }));
+    const named = 'nameWordId' in slot ? (slot as { nameWordId?: string }).nameWordId : undefined;
+    if (matchClientPicture(clientPictures(mode), spoken, named) !== null) {
+      answeredFree.add(slot.wordIds.join(' '));
+    }
+  }
+
+  /* Deduped: a span can be both the client's and already bought, and is one slot. */
+  const freeSpans = new Set([...answeredFree, ...alreadyBought]);
+  const placeable = requestedCount + freeSpans.size;
+  const windowLength = placeable > 0 ? durationS / placeable : durationS;
   const takenWindows = new Set<number>();
   const accepted: typeof resolved = [];
+  let paid = 0;
 
-  for (const slot of resolved) {
-    const previous = accepted[accepted.length - 1];
-    const asCandidate: SlotCandidate = { wordIds: slot.wordIds, idea: slot.idea };
-    if (previous !== undefined && slot.start < previous.end) {
-      failures.push({ candidate: asCandidate, reason: 'overlaps-a-selected-slot' });
-      continue;
-    }
-    if (previous !== undefined && slot.start - previous.end < MIN_SLOT_GAP_S) {
-      failures.push({ candidate: asCandidate, reason: 'too-close' });
-      continue;
+  /*
+   * **What she has already decided is placed first; the budget then fills what
+   * is left.**
+   *
+   * Selection used to walk the reel once in time order, so whichever candidate
+   * came first took the space and the next one within `MIN_SLOT_GAP_S` was
+   * dropped. That is a coin toss between two moments, decided by which happens
+   * earlier — and one of the two is not a guess: a label is the client saying
+   * what to show when this word is said.
+   *
+   * Two clauses, and neither is about products or subject matter. A labelled
+   * match is a decision the client has already made about a specific word, which
+   * outranks an idea a model proposed for the same seconds. And it costs
+   * nothing, so placing it first leaves the paid budget for the moments they
+   * have *not* pre-decided, which is the only place money can buy anything.
+   */
+  /* Free to place: the client answered it, or this reel has already paid for it. */
+  const isFree = (slot: (typeof resolved)[number]): boolean =>
+    freeSpans.has(slot.wordIds.join(' '));
+
+  const fits = (slot: (typeof resolved)[number], asCandidate: SlotCandidate): boolean => {
+    for (const already of accepted) {
+      if (slot.start < already.end && already.start < slot.end) {
+        failures.push({ candidate: asCandidate, reason: 'overlaps-a-selected-slot' });
+        return false;
+      }
+      const gap =
+        slot.start >= already.end ? slot.start - already.end : already.start - slot.end;
+      if (gap < MIN_SLOT_GAP_S) {
+        failures.push({ candidate: asCandidate, reason: 'too-close' });
+        return false;
+      }
     }
     const midpoint = (slot.start + slot.end) / 2;
-    const window = Math.min(requestedCount - 1, Math.floor(midpoint / windowLength));
+    const window = Math.min(placeable - 1, Math.floor(midpoint / windowLength));
     if (takenWindows.has(window)) {
       failures.push({ candidate: asCandidate, reason: 'window-taken' });
-      continue;
+      return false;
     }
     takenWindows.add(window);
-    accepted.push(slot);
-    if (accepted.length >= requestedCount) break;
+    return true;
+  };
+
+  for (const pass of [true, false]) {
+    for (const slot of resolved) {
+      if (isFree(slot) !== pass) continue;
+      if (accepted.length >= placeable) break;
+      const asCandidate: SlotCandidate = { wordIds: slot.wordIds, idea: slot.idea };
+      if (!pass && paid >= requestedCount) {
+        failures.push({ candidate: asCandidate, reason: 'budget-spent' });
+        continue;
+      }
+      if (!fits(slot, asCandidate)) continue;
+      accepted.push(slot);
+      if (!pass) paid += 1;
+    }
   }
+  accepted.sort((a, b) => a.start - b.start || a.end - b.end);
 
   const slots: PlannedSlot[] = accepted.map((slot, i) => {
     const variation = drawVariation(mode, planId, i);

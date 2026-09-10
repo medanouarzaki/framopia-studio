@@ -70,6 +70,8 @@ export interface CachedKeywordOptions {
   bypassCache?: boolean;
   cacheRoot?: string;
   log?: (message: string) => void;
+  /** Spans this reel has already bought a picture for, as `wordIds.join(" ")`. */
+  alreadyBought?: readonly string[];
   /** Injected in tests so a hit can be exercised without an API key. */
   runAnalysis?: (options: {
     apiKey: string;
@@ -225,6 +227,8 @@ export interface CachedSlotOptions {
   bypassCache?: boolean;
   cacheRoot?: string;
   log?: (message: string) => void;
+  /** Spans this reel has already bought a picture for, as the joined word ids. */
+  alreadyBought?: readonly string[];
   /** Injected in tests so a hit can be exercised without an API key. */
   runAnalysis?: (options: {
     apiKey: string;
@@ -279,6 +283,7 @@ export async function planSlotsCached(options: CachedSlotOptions): Promise<Cache
       planId,
       requestedCount: slotCount,
       durationS,
+      alreadyBought: options.alreadyBought,
     }),
     cached,
     costUsd: cached ? 0 : payload.costUsd,

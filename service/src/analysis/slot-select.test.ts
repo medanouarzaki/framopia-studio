@@ -247,3 +247,141 @@ describe('planSlots', () => {
     expect(result.slots[0]?.wordIds).toEqual(['w0']);
   });
 });
+
+/**
+ * **The density is a budget in money, and free pictures do not spend from it.**
+ *
+ * `imageSlotCountFor` is Mohamed's ruling of 2026-08-29 at eight per thirty
+ * seconds, and what it limits is generated images: about $0.17 each, and a reel
+ * that flashes one every second is unwatchable. Block 12 session 86: `sora-1` is
+ * 10.2 seconds so the budget was three, the model proposed eight good slots, and
+ * three were kept — **two of them answered from the client's own store**, so the
+ * reel spent one of its three paid pictures and dropped five candidates. A
+ * picture that costs nothing was crowding out one that would have been bought.
+ */
+describe('what the picture budget actually limits', () => {
+  const word = (id: string, text: string, start: number): AnalysisWord =>
+    ({ id, text, start, end: start + 0.3 }) as AnalysisWord;
+
+  const modeWith = (labels: [string, string][]): ClientMode =>
+    ({
+      ...mode(),
+      pictures: labels.map(([id, label]) => ({
+        id,
+        path: `/p/${id}.jpg`,
+        description: '',
+        label,
+      })),
+    }) as ClientMode;
+
+  /* Six candidates two seconds apart, so spacing never decides anything here. */
+  const words: AnalysisWord[] = [];
+  const candidates: SlotCandidate[] = [];
+  for (let i = 0; i < 6; i += 1) {
+    const id = `w${i}`;
+    words.push(word(id, i % 2 === 0 ? 'Profhilo' : `thing${i}`, i * 2));
+    candidates.push({ wordIds: [id], idea: `a picture of ${i}` });
+  }
+
+  it('spends the budget only on the pictures it has to buy', () => {
+    const out = planSlots({
+      candidates,
+      words,
+      mode: modeWith([['pic1', 'profhilo']]),
+      planId: 'p',
+      requestedCount: 2,
+      durationS: 12,
+    });
+    const bought = out.slots.filter(
+      (s) => !s.wordIds.some((id) => words.find((w) => w.id === id)?.text === 'Profhilo'),
+    );
+    expect(bought).toHaveLength(2);
+    // And the free ones are extra, not instead.
+    expect(out.slots.length).toBeGreaterThan(2);
+  });
+
+  /**
+   * **However many candidates arrive, the reel never buys more than its budget.**
+   *
+   * `budget-spent` is the last of the four refusals and it is hard to reach on
+   * purpose: the windows are sized over everything placeable, the free slots
+   * take their own windows, and a paid candidate competing for one of those is
+   * refused as `window-taken` before the money is ever consulted. It is kept as
+   * the belt to those braces, and what is asserted here is the property it
+   * exists for, which no arrangement of candidates may break.
+   */
+  it('never buys more pictures than the budget, whatever arrives', () => {
+    for (const requestedCount of [1, 2, 3]) {
+      const out = planSlots({
+        candidates,
+        words,
+        mode: modeWith([['pic1', 'profhilo']]),
+        planId: 'p',
+        requestedCount,
+        durationS: 12,
+      });
+      const bought = out.slots.filter(
+        (s) => !s.wordIds.some((id) => words.find((w) => w.id === id)?.text === 'Profhilo'),
+      );
+      expect(`${requestedCount}: ${bought.length <= requestedCount}`).toBe(
+        `${requestedCount}: true`,
+      );
+    }
+  });
+
+  /*
+   * **What the client already decided outranks an idea a model proposed**, and
+   * costs nothing, so it is placed first and the budget fills what is left.
+   * Without this, whichever moment came earlier in the reel simply won.
+   */
+  it('places the client’s own picture ahead of a paid idea competing for the seconds', () => {
+    const near: AnalysisWord[] = [word('a', 'thing', 0), word('b', 'Profhilo', 0.4)];
+    const out = planSlots({
+      candidates: [
+        { wordIds: ['a'], idea: 'the model’s idea' },
+        { wordIds: ['b'], idea: 'the product' },
+      ],
+      words: near,
+      mode: modeWith([['pic1', 'profhilo']]),
+      planId: 'p',
+      requestedCount: 3,
+      durationS: 4,
+    });
+    expect(out.slots.map((s) => s.wordIds[0])).toEqual(['b']);
+  });
+
+  /**
+   * **Money already spent is not spent again.** Re-planning dropped the slot
+   * holding the two candidates session 84 paid for and Mohamed approved,
+   * because a new idea landed within the spacing floor of it.
+   */
+  it('keeps a span this reel has already bought a picture for', () => {
+    const near: AnalysisWord[] = [word('a', 'thing', 0), word('b', 'other', 0.4)];
+    const out = planSlots({
+      candidates: [
+        { wordIds: ['a'], idea: 'a new idea' },
+        { wordIds: ['b'], idea: 'the one already paid for' },
+      ],
+      words: near,
+      mode: modeWith([]),
+      planId: 'p',
+      requestedCount: 3,
+      durationS: 4,
+      alreadyBought: ['b'],
+    });
+    expect(out.slots.map((s) => s.wordIds[0])).toEqual(['b']);
+  });
+
+  it('does not charge the budget for a span already bought', () => {
+    const out = planSlots({
+      candidates,
+      words,
+      mode: modeWith([]),
+      planId: 'p',
+      requestedCount: 1,
+      durationS: 12,
+      alreadyBought: ['w0', 'w2'],
+    });
+    expect(out.slots.length).toBeGreaterThan(1);
+  });
+});

@@ -353,11 +353,22 @@ export async function planImageSlotsForPlan(
   const config = loadConfig();
   const words = planWordsForAnalysis(plan);
 
+  /*
+   * Spans this reel has already bought a picture for. Selection places them
+   * alongside the client's own rather than re-deciding them: the budget governs
+   * new spending, and a candidate already paid for is not thrown away because a
+   * later idea landed near it.
+   */
+  const alreadyBought = (plan.images?.slots ?? [])
+    .filter((slot) => slot.candidates.length > 0)
+    .map((slot) => slot.wordIds.join(' '));
+
   const analysis = await runCached({
     apiKey: config.googleApiKey,
     videoSha256: plan.source.sha256,
     durationS: plan.source.durationS,
     planId: plan.meta.id,
+    alreadyBought,
     words,
     mode,
     bypassCache,
