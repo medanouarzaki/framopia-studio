@@ -11,7 +11,7 @@ import {
 import { AnalysisError, type AnalysisWord } from './types.js';
 import type { SlotCandidate } from './slot-select.js';
 
-export type SlotPromptVersion = 1 | 2 | 3;
+export type SlotPromptVersion = 1 | 2 | 3 | 4;
 
 /**
  * Identity of the image-slot prompt, and part of the slot cache fingerprint
@@ -41,8 +41,21 @@ export type SlotPromptVersion = 1 | 2 | 3;
  * English, and matching one against the other fires on 1 of 26 slots. The model
  * chose the span and wrote the idea in the same breath, so it is the only thing
  * that knows, and it was simply never asked.
+ *
+ * **Version 4** closes a hole in the one-subject rule, adopted 2026-09-10 at
+ * Block 12 session 84. Version 3 said a concrete thing beside an abstract one
+ * is two subjects — and said nothing about two concrete things. Mohamed's first
+ * real reel refused to plan: slot 1 came back as *"Vials of Sculptra and
+ * Lanluma aesthetic treatments"*, `MultiSubjectIdeaError` caught it, and that
+ * error's own comment says the planner is what has to change because rewriting
+ * the idea would hide it behind something nobody wrote.
+ *
+ * **The corpus could never have found this.** Its five reels are talking-head
+ * content that names one thing at a time; a doctor listing the products she
+ * uses names two in a breath constantly, and every session since Block 11 proved
+ * its work against the corpus.
  */
-export const ACTIVE_SLOT_PROMPT_VERSION: SlotPromptVersion = 3;
+export const ACTIVE_SLOT_PROMPT_VERSION: SlotPromptVersion = 4;
 
 /** ARCHITECTURE §8: every billable call appends one line under this stage. */
 export const SLOT_LEDGER_STAGE = 'analysis-slots';
@@ -116,6 +129,11 @@ seconds the picture is on screen.
 
 Do not blend the two. A concrete thing beside an abstract one is two
 subjects, and a slot idea depicts one.
+
+One subject also means one thing, not a pair or a group. If she names two
+products in a breath, the idea takes the one the picture is about and leaves
+the other out. Do not join them with "and", and do not make the subject a
+plural of the thing.
 
 Do not describe colours, lighting, framing or art style. Those come from the
 client's own visual identity and are added after you answer.
