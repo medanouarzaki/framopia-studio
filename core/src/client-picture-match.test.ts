@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { labelWords, matchClientPicture } from './client-pictures.js';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { clientKeyterms, labelWords, matchClientPicture } from './client-pictures.js';
+import { REPO_ROOT } from './paths.js';
 import type { ClientPicture } from './mode.js';
 
 function picture(id: string, label?: string): ClientPicture {
@@ -128,5 +131,59 @@ describe('which word is tried, and which picture wins', () => {
     expect(matchClientPicture(both, said('Botox'))?.pictureId).toBe('pic001');
     expect(matchClientPicture([both[1] as ClientPicture, both[0] as ClientPicture], said('Botox'))
       ?.pictureId).toBe('pic002');
+  });
+});
+
+/**
+ * **The words this client has told us matter, handed to the transcriber.**
+ *
+ * Block 12 session 85: Dr Loubna Kfafi says "wela Planiti" and the transcriber,
+ * which has never heard the name of a Korean skin booster, returned "Lanluma".
+ * Nothing was ever looked for, so no picture could be placed for a product she
+ * plainly named — and her fourteen labels were on her client file the whole
+ * time. The same statement the matcher reads, used one step earlier.
+ */
+describe('the words a client has labelled', () => {
+  const pic = (id: string, label: string): ClientPicture =>
+    ({ id, path: `/p/${id}.jpg`, description: '', label }) as ClientPicture;
+
+  it('are every word on every label, once each', () => {
+    const mode = { pictures: [pic('a', 'profhilo'), pic('b', 'neauvia, stimulate')] };
+    expect(clientKeyterms(mode)).toEqual(['profhilo', 'neauvia', 'stimulate']);
+  });
+
+  it('does not repeat a word two pictures share', () => {
+    const mode = { pictures: [pic('a', 'profhilo'), pic('b', 'profhilo, structura')] };
+    expect(clientKeyterms(mode)).toEqual(['profhilo', 'structura']);
+  });
+
+  it('is empty for a client who has labelled nothing', () => {
+    expect(clientKeyterms({ pictures: [] })).toEqual([]);
+    expect(clientKeyterms({ pictures: [pic('a', '')] })).toEqual([]);
+  });
+
+  /* A reel's own pictures are the more specific statement, so they come first. */
+  it('puts a reel’s own pictures before the client’s', () => {
+    const mode = { pictures: [pic('a', 'profhilo')] };
+    expect(clientKeyterms(mode, [pic('own', 'planiti')])).toEqual(['planiti', 'profhilo']);
+  });
+
+  /* Same client, same list, so a cache key over it does not drift. */
+  it('gives the same list twice', () => {
+    const mode = { pictures: [pic('a', 'profhilo'), pic('b', 'sculptra')] };
+    expect(clientKeyterms(mode)).toEqual(clientKeyterms(mode));
+  });
+
+  /*
+   * **It cannot put a word in her mouth**, and that is not this function's job:
+   * it produces a list, and the correction prompt says "if spoken". This pins
+   * that wording, because it is the whole of the protection.
+   */
+  it('is offered to the model only for words that are spoken', () => {
+    const correction = readFileSync(
+      path.join(REPO_ROOT, 'service', 'src', 'transcription', 'correction.ts'),
+      'utf8',
+    );
+    expect(correction).toContain('Keyterms to recognize accurately if spoken');
   });
 });

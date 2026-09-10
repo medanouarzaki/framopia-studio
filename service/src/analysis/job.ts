@@ -21,7 +21,10 @@ import { analyseKeywordsCached, planSlotsCached, type CachedKeywordResult, type 
 import { ACTIVE_ANALYSIS_PROMPT_VERSION, parseKeywordResponse } from './keywords.js';
 import { selectTermSpans } from './terms.js';
 import { ACTIVE_SLOT_PROMPT_VERSION } from './slots.js';
-import { fillSlotsFromClientPictures } from './client-picture-slots.js';
+import {
+  fillSlotsFromClientPictures,
+  slotsForSpokenPictures,
+} from './client-picture-slots.js';
 import type { AnalysisWord, KeywordMode } from './types.js';
 
 /** Mirrors transcriptionConfigLabel: the prompt version is the identity. */
@@ -403,8 +406,27 @@ export async function planImageSlotsForPlan(
     );
   }
 
+  /*
+   * And the ones the clock left out. A word that names one of her pictures gets
+   * it whether or not the density rule had room: the picture exists, she said
+   * when to use it, and it can never be generated.
+   */
+  const spoken = slotsForSpokenPictures({
+    slots: own.slots,
+    words: plan.transcript.words,
+    mode,
+    ownPictures: plan.pictures ?? [],
+    nextId: (index) => `img${String(index + 1).padStart(3, '0')}`,
+  });
+  for (const fill of spoken.added) {
+    log(
+      `slots: ${fill.slotId} added for the client's own picture ${fill.pictureId} ` +
+        `— she says ${JSON.stringify(fill.word)} and the clock had no room`,
+    );
+  }
+
   const timestamp = now();
-  plan.images = { slots: own.slots };
+  plan.images = { slots: spoken.slots };
 
   // Templates and sfx are re-derived on every run over the whole plan, not
   // just the slots this call produced: assignment depends on element order

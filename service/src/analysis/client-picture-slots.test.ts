@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { fillSlotsFromClientPictures } from './client-picture-slots.js';
+import {
+  fillSlotsFromClientPictures,
+  slotsForSpokenPictures,
+} from './client-picture-slots.js';
 import { slotNeedsGenerating, slotsNeedingGeneration } from '../editplan/slot-fill.js';
 import type { ImageSlot, PlanWord } from '../editplan/types.js';
 
@@ -122,5 +125,125 @@ describe('what it will not overwrite', () => {
       mode: { pictures: PICTURES },
     });
     expect(out.filled).toEqual([]);
+  });
+});
+
+/**
+ * **A thing named gets a picture, whatever the clock allowed.**
+ *
+ * Block 12 session 85: `sora-1` is 10.2 seconds, so `imageSlotCountFor` allowed
+ * three slots, and Dr Loubna Kfafi names six things in it. She says Profhilo,
+ * `pic010` is labelled `profhilo`, and **nothing was placed at all** — no slot
+ * ever spanned that word, so the matcher never saw it. The density rule counts
+ * pictures against the clock; a label counts against what she said.
+ */
+describe('slots for the pictures she names that the clock left out', () => {
+  const words = (...pairs: [string, string][]): PlanWord[] =>
+    pairs.map(([id, text], i) => ({ id, text, start: i, end: i + 0.5 }) as PlanWord);
+
+  const mode = {
+    pictures: [
+      { id: 'pic010', path: '/p/10.jpg', description: '', label: 'profhilo' },
+      { id: 'pic014', path: '/p/14.jpg', description: '', label: 'sculptra' },
+    ],
+  };
+
+  const nextId = (i: number): string => `img${String(i + 1).padStart(3, '0')}`;
+
+  it('adds a slot for a word no planned slot covers', () => {
+    const out = slotsForSpokenPictures({
+      slots: [],
+      words: words(['w1', 'خاصك'], ['w2', 'Profhilo']),
+      mode,
+      nextId,
+    });
+    expect(out.added).toEqual([{ slotId: 'img001', pictureId: 'pic010', word: 'Profhilo' }]);
+    expect(out.slots).toHaveLength(1);
+    expect(out.slots[0]?.chosenClientPictureId).toBe('pic010');
+  });
+
+  /* A word a planned slot already spans is that slot's business. */
+  it('leaves a word a planned slot already covers alone', () => {
+    const planned = {
+      id: 'img001',
+      wordIds: ['w2'],
+      start: 1,
+      end: 1.5,
+      contextText: 'Profhilo',
+      idea: 'a thing',
+      prompt: 'p',
+      negativePrompt: '',
+      candidates: [],
+      chosenCandidateId: null,
+      presentation: null,
+      zoneId: null,
+      templateId: null,
+      status: 'pending',
+    } as unknown as ImageSlot;
+    const out = slotsForSpokenPictures({
+      slots: [planned],
+      words: words(['w1', 'خاصك'], ['w2', 'Profhilo']),
+      mode,
+      nextId,
+    });
+    expect(out.added).toEqual([]);
+    expect(out.slots).toHaveLength(1);
+  });
+
+  /* One picture is placed once, however many times its word is said. */
+  it('places a picture once however often the word is said', () => {
+    const out = slotsForSpokenPictures({
+      slots: [],
+      words: words(['w1', 'Profhilo'], ['w2', 'Profhilo'], ['w3', 'Profhilo']),
+      mode,
+      nextId,
+    });
+    expect(out.added).toHaveLength(1);
+  });
+
+  it('says nothing about a word no label matches', () => {
+    const out = slotsForSpokenPictures({
+      slots: [],
+      words: words(['w1', 'filler'], ['w2', 'volume']),
+      mode,
+      nextId,
+    });
+    expect(out.added).toEqual([]);
+    expect(out.slots).toEqual([]);
+  });
+
+  it('adds nothing at all for a client with no pictures', () => {
+    const out = slotsForSpokenPictures({
+      slots: [],
+      words: words(['w1', 'Profhilo']),
+      mode: { pictures: [] },
+      nextId,
+    });
+    expect(out.added).toEqual([]);
+  });
+
+  /* Added slots can never be generated: they are born answered. */
+  it('gives every added slot a picture and no prompt', () => {
+    const out = slotsForSpokenPictures({
+      slots: [],
+      words: words(['w1', 'Profhilo'], ['w2', 'Sculptra']),
+      mode,
+      nextId,
+    });
+    expect(out.added).toHaveLength(2);
+    for (const slot of out.slots) {
+      expect(`${slot.id}: ${slot.prompt}`).toBe(`${slot.id}: `);
+      expect(typeof slot.chosenClientPictureId).toBe('string');
+    }
+  });
+
+  it('keeps the slots in the order they are spoken', () => {
+    const out = slotsForSpokenPictures({
+      slots: [],
+      words: words(['w1', 'Sculptra'], ['w2', 'x'], ['w3', 'Profhilo']),
+      mode,
+      nextId,
+    });
+    expect(out.slots.map((s) => s.chosenClientPictureId)).toEqual(['pic014', 'pic010']);
   });
 });

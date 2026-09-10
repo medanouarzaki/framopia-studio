@@ -102,6 +102,7 @@ export {
   clientPictureStorePath,
   isInClientPictureStore,
   matchClientPicture,
+  clientKeyterms,
   type ClientPictureMatch,
   fitByLongEdge,
   SOFT_ENLARGEMENT_PERCENT,

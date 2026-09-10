@@ -251,6 +251,35 @@ export interface ClientPictureMatch {
  * order he added them and the only order he can see, and it reports the word
  * that fired so the choice is explicable rather than mysterious.
  */
+/**
+ * Every word this client has told us may be said, from their pictures' labels.
+ *
+ * A label is the client's own statement that a word matters and what to show
+ * when it is said. Handing that list to the transcriber is the same statement
+ * used one step earlier: Block 12 session 85 found Dr Loubna Kfafi saying
+ * "Planiti" and the transcriber returning "Lanluma", so the matcher below never
+ * had the word to match.
+ *
+ * **Nothing here knows what a product is.** It is whatever words are on the
+ * labels, deduplicated and in the order the pictures were added, so the same
+ * client gives the same list twice and a cache key over it is stable.
+ */
+export function clientKeyterms(
+  mode: Pick<ClientMode, 'pictures'>,
+  ownPictures: readonly ClientPicture[] = [],
+): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const picture of [...ownPictures, ...clientPictures(mode)]) {
+    for (const word of labelWords(picture.label)) {
+      if (seen.has(word)) continue;
+      seen.add(word);
+      out.push(word);
+    }
+  }
+  return out;
+}
+
 export function matchClientPicture(
   pictures: readonly ClientPicture[],
   spoken: readonly { id: string; text: string }[],

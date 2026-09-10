@@ -75,3 +75,92 @@ export function fillSlotsFromClientPictures(options: {
 
   return { slots: next, filled };
 }
+
+/**
+ * Slots for the client's own pictures whose words are spoken and which no
+ * planned slot covers.
+ *
+ * **The density rule counts pictures against the clock; a label counts against
+ * what she said.** `imageSlotCountFor` gives a reel one picture per 3.75
+ * seconds, Mohamed's ruling of 2026-08-29, and that governs how many ideas the
+ * model is asked for. It is the right rule for the thing it was made for:
+ * generated pictures cost money and a reel that flashes one every second is
+ * unwatchable.
+ *
+ * It is the wrong rule for a picture the client has already given us. Block 12
+ * session 85: `sora-1` is 10.2 seconds, so the clock allowed three slots, and
+ * she names six things in it. Sculptra and Radiesse landed on two of the three
+ * and were matched; **Profhilo was spoken, `pic010` is labelled `profhilo`, and
+ * nothing was placed at all** — no slot ever covered that word, so
+ * `fillSlotsFromClientPictures` never saw it. The matcher was not wrong; it was
+ * never asked.
+ *
+ * A label is the client saying *when I say this word, show this picture*. That
+ * is a decision they have already made, about a file they have already given us,
+ * and honouring it costs nothing: these slots can never be generated, because
+ * they are born already answered. So the clock does not get to overrule it.
+ *
+ * **Nothing here knows what a product is, or a result, or this client's
+ * subject.** It compares spoken words against labels, which is what session 53
+ * built and all this does is ask it about every word rather than about three.
+ */
+export function slotsForSpokenPictures(options: {
+  slots: readonly ImageSlot[];
+  words: readonly PlanWord[];
+  mode: Pick<ClientMode, 'pictures'>;
+  ownPictures?: readonly ClientPicture[];
+  /** Ids already taken, so a new slot cannot collide with a planned one. */
+  nextId: (index: number) => string;
+}): { slots: ImageSlot[]; added: ClientPictureFill[] } {
+  const { slots, words, mode, nextId } = options;
+  const pictures = [...(options.ownPictures ?? []), ...clientPictures(mode)];
+  if (pictures.length === 0) return { slots: [...slots], added: [] };
+
+  /* A word a planned slot already spans is that slot's business, not this one's. */
+  const spokenFor = new Set(slots.flatMap((s) => s.wordIds));
+  /* One picture is placed once, however many times its word is said. */
+  const used = new Set(
+    slots
+      .map((s) => s.chosenClientPictureId)
+      .filter((id): id is string => typeof id === 'string'),
+  );
+
+  const added: ClientPictureFill[] = [];
+  const extra: ImageSlot[] = [];
+
+  for (const word of words) {
+    if (spokenFor.has(word.id)) continue;
+    const match = matchClientPicture(pictures, [{ id: word.id, text: word.text }], word.id);
+    if (match === null || used.has(match.pictureId)) continue;
+    used.add(match.pictureId);
+    const id = nextId(slots.length + extra.length);
+    extra.push({
+      id,
+      wordIds: [word.id],
+      start: word.start,
+      end: word.end,
+      contextText: word.text,
+      /*
+       * The idea is what a picture would have been generated from, and this one
+       * never will be. It says where it came from so the picture editor and the
+       * report read as sentences rather than as a blank.
+       */
+      idea: `The client's own picture for ${JSON.stringify(word.text)}`,
+      nameWordId: word.id,
+      prompt: '',
+      negativePrompt: '',
+      candidates: [],
+      chosenCandidateId: null,
+      chosenClientPictureId: match.pictureId,
+      chosenClientPictureWord: match.word,
+      presentation: null,
+      zoneId: null,
+      templateId: null,
+      status: 'pending',
+    } as ImageSlot);
+    added.push({ slotId: id, pictureId: match.pictureId, word: match.word });
+  }
+
+  const all = [...slots, ...extra].sort((a, b) => a.start - b.start);
+  return { slots: all, added };
+}

@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs';
-import { readCosts } from '@framopia/core';
+import { clientKeyterms, loadMode, readCosts } from '@framopia/core';
 import { findReelByLabel } from './catalogue.js';
 import { registerJobRunner } from './jobs.js';
 import { readEditPlan } from './editplan/io.js';
@@ -423,8 +423,42 @@ export async function runPipeline(options: RunPipelineOptions): Promise<Pipeline
     stageOf('transcription').cacheProvenance = entry?.provenance ?? null;
     if (entry === null || entry.provenance === 'none') assertWithinCeiling('transcription');
     log(`transcription: ${entry?.note ?? 'no plan yet; this reel has never been transcribed'}`);
+    /*
+     * **The words this client has told us matter.**
+     *
+     * A picture's label is the client saying "I will say this word". Block 12
+     * session 85: Dr Loubna Kfafi says "wela Planiti" and the transcriber, which
+     * has never heard the name of a Korean skin booster, returned "Lanluma" — so
+     * nothing was ever looked for, and no picture could be placed for a product
+     * she plainly named. Her fourteen labels were sitting on her client file the
+     * whole time and nothing had ever handed them over.
+     *
+     * `keyterms` was built for exactly this and reachable only from
+     * `npm run transcribe --keyterms <file>`, a file kept by hand. Nothing about
+     * products or subject matter: it is whatever words this client has labelled,
+     * however many.
+     *
+     * **It cannot put a word in her mouth.** The correction prompt asks for
+     * "Keyterms to recognize accurately if spoken", and Scribe treats them as a
+     * bias rather than a substitution — a term that is not said does not appear.
+     * `measureTokenDrift` still watches the whole rewrite on top of that.
+     */
+    let heardBefore: string[] = [];
+    try {
+      heardBefore = clientKeyterms(loadMode(modeId));
+    } catch {
+      // A client that will not load is the client stage's problem, not this one's.
+      heardBefore = [];
+    }
+    if (heardBefore.length > 0) {
+      log(
+        `transcription: listening for ${heardBefore.length} word(s) this client has labelled` +
+          ` — ${heardBefore.slice(0, 8).join(', ')}${heardBefore.length > 8 ? ', …' : ''}`,
+      );
+    }
     const result = await impl.transcribe({
       videoPath: reel.videoPath,
+      keyterms: heardBefore,
       cacheRoot,
       log,
     });
