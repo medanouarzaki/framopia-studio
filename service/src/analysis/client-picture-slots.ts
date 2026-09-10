@@ -116,8 +116,24 @@ export function slotsForSpokenPictures(options: {
   const pictures = [...(options.ownPictures ?? []), ...clientPictures(mode)];
   if (pictures.length === 0) return { slots: [...slots], added: [] };
 
-  /* A word a planned slot already spans is that slot's business, not this one's. */
-  const spokenFor = new Set(slots.flatMap((s) => s.wordIds));
+  /*
+   * **A word is spoken for only when the slot spanning it shows *its* picture.**
+   *
+   * This skipped every word any slot spanned, and `sora-1` showed why that is
+   * not the same thing: she says "khaskek Sculptra wela Planiti" in one breath,
+   * one planned slot covered all four words, and it showed Sculptra. Planiti has
+   * a label and a picture of its own and got nothing — the same failure as
+   * Profhilo, one level in.
+   *
+   * So a covering slot only settles a word if it is already showing what that
+   * word names. Otherwise the word gets its own slot and the covering one gives
+   * up the time from there, which is why the split below exists rather than two
+   * pictures being on screen at once.
+   */
+  const showing = new Map<string, string | undefined>();
+  for (const slot of slots) {
+    for (const wordId of slot.wordIds) showing.set(wordId, slot.chosenClientPictureId);
+  }
   /* One picture is placed once, however many times its word is said. */
   const used = new Set(
     slots
@@ -129,9 +145,9 @@ export function slotsForSpokenPictures(options: {
   const extra: ImageSlot[] = [];
 
   for (const word of words) {
-    if (spokenFor.has(word.id)) continue;
     const match = matchClientPicture(pictures, [{ id: word.id, text: word.text }], word.id);
     if (match === null || used.has(match.pictureId)) continue;
+    if (showing.has(word.id) && showing.get(word.id) === match.pictureId) continue;
     used.add(match.pictureId);
     const id = nextId(slots.length + extra.length);
     extra.push({
@@ -161,6 +177,16 @@ export function slotsForSpokenPictures(options: {
     added.push({ slotId: id, pictureId: match.pictureId, word: match.word });
   }
 
-  const all = [...slots, ...extra].sort((a, b) => a.start - b.start);
+  /*
+   * A slot that was spanning a word now taken by a new one ends where the new
+   * one begins. Nothing overlaps, and the picture that was already there keeps
+   * every frame up to the moment she names the next thing.
+   */
+  const trimmed = slots.map((slot) => {
+    const cutter = extra.find((e) => e.start > slot.start && e.start < slot.end);
+    return cutter === undefined ? slot : { ...slot, end: cutter.start };
+  });
+
+  const all = [...trimmed, ...extra].sort((a, b) => a.start - b.start);
   return { slots: all, added };
 }

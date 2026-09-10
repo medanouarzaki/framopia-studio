@@ -162,9 +162,8 @@ describe('slots for the pictures she names that the clock left out', () => {
     expect(out.slots[0]?.chosenClientPictureId).toBe('pic010');
   });
 
-  /* A word a planned slot already spans is that slot's business. */
-  it('leaves a word a planned slot already covers alone', () => {
-    const planned = {
+  const planned = (over: Partial<ImageSlot> = {}): ImageSlot =>
+    ({
       id: 'img001',
       wordIds: ['w2'],
       start: 1,
@@ -179,15 +178,51 @@ describe('slots for the pictures she names that the clock left out', () => {
       zoneId: null,
       templateId: null,
       status: 'pending',
-    } as unknown as ImageSlot;
+      ...over,
+    }) as unknown as ImageSlot;
+
+  /* Settled: the slot over that word is already showing what the word names. */
+  it('leaves a word alone when its slot already shows its picture', () => {
     const out = slotsForSpokenPictures({
-      slots: [planned],
+      slots: [planned({ chosenClientPictureId: 'pic010' })],
       words: words(['w1', 'خاصك'], ['w2', 'Profhilo']),
       mode,
       nextId,
     });
     expect(out.added).toEqual([]);
     expect(out.slots).toHaveLength(1);
+  });
+
+  /**
+   * **Spanning a word is not the same as showing its picture.**
+   *
+   * She says "khaskek Sculptra wela Planiti" in one breath. One planned slot
+   * covered all four words and showed Sculptra, so Planiti — which has a label
+   * and a picture of its own — got nothing, the same failure as Profhilo one
+   * level in.
+   */
+  it('gives a word its own slot when the covering slot shows something else', () => {
+    const out = slotsForSpokenPictures({
+      slots: [planned({ wordIds: ['w1', 'w2'], start: 0, end: 2, chosenClientPictureId: 'pic014' })],
+      words: words(['w1', 'Sculptra'], ['w2', 'Profhilo']),
+      mode,
+      nextId,
+    });
+    expect(out.added).toEqual([{ slotId: 'img002', pictureId: 'pic010', word: 'Profhilo' }]);
+  });
+
+  /* And the slot that was covering it ends where the new one begins. */
+  it('ends the covering slot where the new one starts, so nothing overlaps', () => {
+    const out = slotsForSpokenPictures({
+      slots: [planned({ wordIds: ['w1', 'w2'], start: 0, end: 2, chosenClientPictureId: 'pic014' })],
+      words: words(['w1', 'Sculptra'], ['w2', 'Profhilo']),
+      mode,
+      nextId,
+    });
+    const [first, second] = [...out.slots].sort((a, b) => a.start - b.start);
+    expect(first?.end).toBe(second?.start);
+    expect(first?.chosenClientPictureId).toBe('pic014');
+    expect(second?.chosenClientPictureId).toBe('pic010');
   });
 
   /* One picture is placed once, however many times its word is said. */

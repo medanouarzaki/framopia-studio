@@ -55,8 +55,22 @@ export async function transcribeWithScribe(options: ScribeOptions): Promise<Scri
   const form = new FormData();
   form.append('model_id', modelId);
   form.append('timestamps_granularity', 'word');
-  if (keyterms.length > 0) {
-    form.append('keyterms', JSON.stringify(keyterms));
+  /*
+   * **One field per keyterm, not one field holding all of them.**
+   *
+   * This sent `JSON.stringify(keyterms)` — the whole list as a single value —
+   * and the API read that as one keyword. Block 12 session 85 was the first run
+   * ever to pass any, because `keyterms` was reachable only from
+   * `npm run transcribe --keyterms <file>`, a file kept by hand, and the answer
+   * came straight back:
+   *
+   *   All keywords must be less than 50 characters.
+   *
+   * Fifteen words of four to nine characters, refused for being one string of a
+   * hundred and thirty. The whole feature had never worked.
+   */
+  for (const keyterm of keyterms) {
+    form.append('keyterms', keyterm);
   }
   form.append('file', new Blob([audioBuffer]), path.basename(audioPath));
 

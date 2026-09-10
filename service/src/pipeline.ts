@@ -142,6 +142,17 @@ export interface RunPipelineOptions {
    */
   only?: PipelineStageId[];
   ceilingUsd?: number;
+  /**
+   * Discard downstream items a changed transcript invalidates, rather than
+   * refusing.
+   *
+   * `transcribeVideo` has taken this since Block 6 and nothing has ever been
+   * able to pass it from here, so the pipeline's own refusal — *"Re-run with
+   * --force to discard them"* — named a flag reachable only from a terminal.
+   * Block 12 session 85 hit it re-transcribing `sora-1` with the client's
+   * labels: the run could not proceed and the panel had no way to say go on.
+   */
+  force?: boolean;
   costsPath?: string;
   cacheRoot?: string;
   onProgress?: (progress: PipelineProgress) => void;
@@ -268,6 +279,7 @@ export async function runPipeline(options: RunPipelineOptions): Promise<Pipeline
     redo = [],
     only = [],
     ceilingUsd = PIPELINE_CEILING_USD,
+    force: forceTranscript = false,
     costsPath,
     cacheRoot,
     onProgress = (): void => undefined,
@@ -459,6 +471,7 @@ export async function runPipeline(options: RunPipelineOptions): Promise<Pipeline
     const result = await impl.transcribe({
       videoPath: reel.videoPath,
       keyterms: heardBefore,
+      force: forceTranscript,
       cacheRoot,
       log,
     });
