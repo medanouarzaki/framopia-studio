@@ -119,14 +119,6 @@ const saved = {
   plans: process.env['FRAMOPIA_PLANS_DIR'],
 };
 
-/** Every word of the transcript the stubbed transcription puts on the plan. */
-const SAID = [
-  ['w0', 'ila', 0.0, 0.2],
-  ['w1', 'bghiti', 0.25, 0.45],
-  ['w2', 'shed', 0.5, 0.7],
-  ['w3', 'khaskek', 0.75, 0.95],
-  ['w4', 'Kryolan', 1.0, 1.3],
-] as const;
 
 beforeAll(() => {
   /*
