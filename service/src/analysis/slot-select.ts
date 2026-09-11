@@ -225,8 +225,10 @@ export interface PlanSlotsOptions {
    * thrown away.** Block 12 session 86: re-planning `sora-1` dropped the Pluryal
    * slot as too close to a new one, and that slot holds the two candidates
    * session 84 paid for and Mohamed approved. The budget governs *new*
-   * spending, so a span already paid for is placed alongside the free ones and
-   * counts against nothing.
+   * spending, so a span already paid for is never bought a second time — but it
+   * still occupies one of the reel's places. Block 12 session 90 separated those
+   * two: counting it against nothing turned a re-plan of `sora-2` into twelve
+   * slots against a budget of six.
    */
   alreadyBought?: readonly string[];
 }
@@ -285,8 +287,17 @@ export function planSlots(options: PlanSlotsOptions): SlotSelectionResult {
     contextText: string;
     idea: string;
     nameWordId?: string;
+    /**
+     * Where the model put this idea in its own answer.
+     *
+     * The slot prompt asks it to *"return the N strongest slots, best first"*, so
+     * the order it replies in is its ranking. When two moments compete for the
+     * last picture a reel can afford, that is the measure used — the model's,
+     * not one invented here from Mohamed's videos.
+     */
+    rank: number;
   }[] = [];
-  for (const candidate of candidates) {
+  for (const [rank, candidate] of candidates.entries()) {
     if (!Array.isArray(candidate.wordIds) || candidate.wordIds.length === 0) {
       failures.push({ candidate, reason: 'empty-word-ids' });
       continue;
@@ -311,6 +322,7 @@ export function planSlots(options: PlanSlotsOptions): SlotSelectionResult {
       contextText: ordered.map((w) => w.text).join(' '),
       idea: candidate.idea,
       ...(named !== undefined && ids.includes(named) ? { nameWordId: named } : {}),
+      rank,
     });
   }
 
@@ -333,11 +345,26 @@ export function planSlots(options: PlanSlotsOptions): SlotSelectionResult {
     }
   }
 
-  /* Deduped: a span can be both the client's and already bought, and is one slot. */
-  const freeSpans = new Set([...answeredFree, ...alreadyBought]);
-  const placeable = requestedCount + freeSpans.size;
+  /**
+   * **The client's own pictures are extra; a picture already bought is not.**
+   *
+   * These two used to be one set, and both raised the number of slots the reel
+   * could hold. That is right for the first — Mohamed ruled on 2026-08-26 that a
+   * picture he has already chosen is placed *as well as* the ones the budget
+   * buys, not instead of one. It is wrong for the second, and Block 12 session
+   * 90 measured what it cost: re-planning `sora-2`, whose seven pictures were
+   * already bought, produced **twelve slots against a budget of six**, because
+   * every span the reel had paid for was counted as free and the budget then
+   * bought six more on top. A second re-plan would have gone further. The cap is
+   * his ruling of 2026-08-29 and a re-plan was quietly doubling it.
+   *
+   * So an already-bought span is a **discount, not a free pass**: it competes
+   * for one of the reel's places like any other candidate, and costs nothing
+   * when it wins one.
+   */
+  const placeable = requestedCount + answeredFree.size;
   const accepted: typeof resolved = [];
-  let paid = 0;
+  let placesSpent = 0;
 
   /*
    * **What she has already decided is placed first; the budget then fills what
@@ -356,7 +383,8 @@ export function planSlots(options: PlanSlotsOptions): SlotSelectionResult {
    * have *not* pre-decided, which is the only place money can buy anything.
    */
   /*
-   * Free to place: the client answered it, or this reel has already paid for it.
+   * Free to place: the client answered it from her own pictures. Already bought
+   * is handled below, where it wins a place rather than adding one.
    *
    * **A bought span is matched by the words it holds, not by an identical
    * list.** Block 12 session 87 asked the model for more ideas, it returned
@@ -365,8 +393,10 @@ export function planSlots(options: PlanSlotsOptions): SlotSelectionResult {
    * moment described by a shorter span is the same moment.
    */
   const boughtWords = new Set([...alreadyBought].flatMap((span) => span.split(' ')));
+  const isBought = (slot: (typeof resolved)[number]): boolean =>
+    alreadyBought.has(slot.wordIds.join(' ')) || slot.wordIds.some((id) => boughtWords.has(id));
   const isFree = (slot: (typeof resolved)[number]): boolean =>
-    freeSpans.has(slot.wordIds.join(' ')) || slot.wordIds.some((id) => boughtWords.has(id));
+    answeredFree.has(slot.wordIds.join(' '));
 
   const fits = (slot: (typeof resolved)[number], asCandidate: SlotCandidate): boolean => {
     for (const already of accepted) {
@@ -387,30 +417,99 @@ export function planSlots(options: PlanSlotsOptions): SlotSelectionResult {
     return true;
   };
 
-  for (const pass of [true, false]) {
-    for (const slot of resolved) {
-      if (isFree(slot) !== pass) continue;
-      const asCandidate: SlotCandidate = { wordIds: slot.wordIds, idea: slot.idea };
-      /*
-       * Named, not silently dropped. The loop used to break here, so a candidate
-       * arriving after the reel was full left no trace at all — the one shape
-       * this file exists to avoid, since every other refusal says why.
-       */
-      if (accepted.length >= placeable || (!pass && paid >= requestedCount)) {
-        failures.push({ candidate: asCandidate, reason: 'budget-spent' });
-        continue;
-      }
-      if (!fits(slot, asCandidate)) continue;
-      accepted.push(slot);
-      if (!pass) paid += 1;
+  /* What the client answered from her own pictures: in time order, and extra. */
+  for (const slot of resolved) {
+    if (!isFree(slot)) continue;
+    const asCandidate: SlotCandidate = { wordIds: slot.wordIds, idea: slot.idea };
+    if (accepted.length >= placeable) {
+      failures.push({ candidate: asCandidate, reason: 'budget-spent' });
+      continue;
     }
+    if (!fits(slot, asCandidate)) continue;
+    accepted.push(slot);
   }
+
+  /**
+   * **The budget is spread across the reel, not spent front to back.**
+   *
+   * It used to walk the reel once in time order and take what it met, so a reel
+   * with more good candidates than it can afford spent everything early and went
+   * dark. Block 12 session 89 measured `sora-2`: seven pictures, **all in the
+   * first half**, the last held for 13.30 s — 57% of the reel — and the five
+   * refused candidates all sat between 12.58 s and 18.58 s. It is not a
+   * long-reel problem: `test 1` is 40% dark and `vitasilk` opens with 6.16 s of
+   * nothing.
+   *
+   * Mohamed ruled on 2026-09-11: spread them across the whole video and choose
+   * the most important ones. **The count is untouched** — `IMAGE_SLOTS_PER_30S`
+   * is still his ruling of 2026-08-29 and `requestedCount` still says how many
+   * are bought. Only where they land changes.
+   *
+   * The reel is cut into as many equal stretches as there are pictures to buy,
+   * and each stretch buys at most one. That number is not chosen here: it is the
+   * budget, so a reel that can afford six pictures is considered in sixths. When
+   * two moments in a stretch compete, **the model's own ranking decides** — the
+   * slot prompt asks it to return its strongest first, so the order it replied
+   * in is the measure, and nothing is invented from anyone's videos.
+   *
+   * A stretch whose candidates do not fit leaves its money unspent rather than
+   * losing it, and the pass below spends what is left on the best remaining
+   * moments anywhere. So a reel never buys fewer pictures than it used to; they
+   * are only in different places.
+   */
+  const stretches = Math.max(1, requestedCount);
+  const stretchOf = (slot: (typeof resolved)[number]): number =>
+    Math.min(stretches - 1, Math.floor((slot.start / Math.max(durationS, 1e-9)) * stretches));
+
+  const paidCandidates = resolved.filter((slot) => !isFree(slot));
+  const takenStretch = new Set<number>();
+  const placed = new Set<(typeof resolved)[number]>();
+
+  /*
+   * Rank orders them, except that a moment this reel has already paid for wins
+   * its stretch outright. That is not a judgement about the picture: it is the
+   * standing rule that a picture Mohamed has already approved is never bought
+   * again, and keeping its moment is the only way to honour it. Nothing is
+   * scored here — the rest is the model's own order.
+   */
+  const strongestFirst = [...paidCandidates].sort(
+    (a, b) => Number(isBought(b)) - Number(isBought(a)) || a.rank - b.rank,
+  );
+  for (const slot of strongestFirst) {
+    if (placesSpent >= requestedCount || accepted.length >= placeable) break;
+    const stretch = stretchOf(slot);
+    if (takenStretch.has(stretch)) continue;
+    const asCandidate: SlotCandidate = { wordIds: slot.wordIds, idea: slot.idea };
+    if (!fits(slot, asCandidate)) continue;
+    takenStretch.add(stretch);
+    placed.add(slot);
+    accepted.push(slot);
+    placesSpent += 1;
+  }
+
+  /* Money a stretch could not use is spent on the best moment left anywhere. */
+  for (const slot of strongestFirst) {
+    if (placed.has(slot)) continue;
+    const asCandidate: SlotCandidate = { wordIds: slot.wordIds, idea: slot.idea };
+    if (placesSpent >= requestedCount || accepted.length >= placeable) {
+      failures.push({ candidate: asCandidate, reason: 'budget-spent' });
+      continue;
+    }
+    if (!fits(slot, asCandidate)) continue;
+    placed.add(slot);
+    accepted.push(slot);
+    placesSpent += 1;
+  }
+
   accepted.sort((a, b) => a.start - b.start || a.end - b.end);
 
   const slots: PlannedSlot[] = accepted.map((slot, i) => {
     const variation = drawVariation(mode, planId, i);
+    /* `rank` decides which candidate wins a stretch; it is not part of a slot. */
+    const placed: Omit<typeof slot, 'rank'> & { rank?: number } = { ...slot };
+    delete placed.rank;
     return {
-      ...slot,
+      ...placed,
       variation,
       prompt: composePrompt(mode, slot.idea, variation),
       negativePrompt: composeNegativePrompt(mode),

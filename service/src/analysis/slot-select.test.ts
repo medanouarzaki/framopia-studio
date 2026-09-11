@@ -165,6 +165,42 @@ describe('planSlots', () => {
    * grid, so it asserts what replaced it.
    */
   it('keeps every picture that lives long enough, wherever it falls', () => {
+    const result = plan(
+      [
+        { wordIds: ['w0'], idea: 'first' },
+        { wordIds: ['w1'], idea: 'a second later' },
+        { wordIds: ['w6'], idea: 'second' },
+        { wordIds: ['w11'], idea: 'third' },
+        { wordIds: ['w16'], idea: 'fourth' },
+      ],
+      5,
+    );
+    /*
+     * The words are a second apart, comfortably above the 0.4s floor, so none is
+     * refused for pacing, and the reel can afford all five. Two of them share the
+     * opening stretch and **both are still bought** — that is the session 87
+     * property, and what killed the old grid was refusing one of a close pair
+     * while money went unspent, not the closeness itself.
+     */
+    expect(result.slots.map((s) => s.idea)).toEqual([
+      'first',
+      'a second later',
+      'second',
+      'third',
+      'fourth',
+    ]);
+    expect(result.failures).toEqual([]);
+  });
+
+  /**
+   * The same five ideas, with the money for only four of them.
+   *
+   * This used to keep the first four and go dark for the last nine seconds of a
+   * twenty-second reel. Since Mohamed's ruling of 2026-09-11 the four are spread
+   * instead, and the one dropped is the weaker of the pair that share a stretch
+   * — 'a second later', not 'fourth'. The count is identical either way.
+   */
+  it('drops the weaker of a crowded pair rather than the whole second half', () => {
     const result = plan([
       { wordIds: ['w0'], idea: 'first' },
       { wordIds: ['w1'], idea: 'a second later' },
@@ -172,17 +208,7 @@ describe('planSlots', () => {
       { wordIds: ['w11'], idea: 'third' },
       { wordIds: ['w16'], idea: 'fourth' },
     ]);
-    /*
-     * The words are a second apart, comfortably above the 0.4s floor, so none is
-     * refused for pacing. The fifth is refused for the budget of four, which is
-     * the rule that should be deciding.
-     */
-    expect(result.slots.map((s) => s.idea)).toEqual([
-      'first',
-      'a second later',
-      'second',
-      'third',
-    ]);
+    expect(result.slots.map((s) => s.idea)).toEqual(['first', 'second', 'third', 'fourth']);
     expect(result.failures.map((f) => f.reason)).toEqual(['budget-spent']);
   });
 
@@ -295,15 +321,22 @@ describe('planSlots', () => {
     expect(result.uncoveredS).toBeCloseTo(19, 10);
   });
 
+  /**
+   * **The order candidates arrive in stopped being noise on 2026-09-11.**
+   *
+   * This used to reverse the array and assert nothing moved. The array is now
+   * the model's own ranking — the slot prompt asks it for the strongest first —
+   * so reversing it is not a no-op any more: it hands a contested stretch to the
+   * other candidate on purpose. What is still guaranteed, and what a rerun of a
+   * plan depends on, is that the same input gives the same output every time.
+   */
   it('is deterministic: same candidates, same plan, same slots and prompts', () => {
     const candidates = [
       { wordIds: ['w0'], idea: 'a' },
       { wordIds: ['w6'], idea: 'b' },
       { wordIds: ['w11'], idea: 'c' },
     ];
-    expect(JSON.stringify(plan(candidates))).toBe(
-      JSON.stringify(plan([...candidates].reverse())),
-    );
+    expect(JSON.stringify(plan(candidates))).toBe(JSON.stringify(plan(candidates)));
   });
 
   it('does not care whether a span is also a keyword', () => {
@@ -440,7 +473,23 @@ describe('what the picture budget actually limits', () => {
     expect(out.slots.map((s) => s.wordIds[0])).toEqual(['b']);
   });
 
-  it('does not charge the budget for a span already bought', () => {
+  /**
+   * **A span already bought is never bought again, and never enlarges the reel.**
+   *
+   * This asserted only the first half, and read `toBeGreaterThan(1)` — a reel
+   * with a budget of one ending up with more than one picture. Block 12 session
+   * 90 measured where that leads: re-planning `sora-2`, every one of whose seven
+   * pictures was already bought, produced **twelve slots against a budget of
+   * six**, and a second re-plan would have gone further. Mohamed's ruling of
+   * 2026-08-29 caps the count and his ruling of 2026-09-11 says the count is
+   * exactly what does not change.
+   *
+   * The two rulings this reconciles are both his and they pull opposite ways —
+   * the report of session 90 puts the choice back to him. What is asserted here
+   * is the cap: the bought span wins the place, so no money is spent, and the
+   * reel does not grow.
+   */
+  it('never buys a span twice, and never lets it enlarge the reel', () => {
     const out = planSlots({
       candidates,
       words,
@@ -450,7 +499,8 @@ describe('what the picture budget actually limits', () => {
       durationS: 12,
       alreadyBought: ['w0', 'w2'],
     });
-    expect(out.slots.length).toBeGreaterThan(1);
+    expect(out.slots).toHaveLength(1);
+    expect(out.slots[0]?.wordIds).toEqual(['w0']);
   });
 });
 
@@ -484,9 +534,13 @@ describe('a bought picture whose span the model re-described', () => {
       durationS: 10,
       alreadyBought: ['w0 w1'],
     });
-    // Both are placed: the re-spanned one is free, so the budget of one is spent
-    // on the other rather than on a picture that already exists.
-    expect(out.slots).toHaveLength(2);
+    /*
+     * The re-spanned one is recognised as the same moment and keeps the reel's
+     * one place, so nothing is bought. It used to be placed *as well*, which is
+     * how a re-plan doubled `sora-2` past its cap (session 90).
+     */
+    expect(out.slots).toHaveLength(1);
+    expect(out.slots[0]?.wordIds).toEqual(['w1']);
   });
 
   it('is still free when the new span is longer than the bought one', () => {
@@ -502,7 +556,8 @@ describe('a bought picture whose span the model re-described', () => {
       durationS: 10,
       alreadyBought: ['w1'],
     });
-    expect(out.slots).toHaveLength(2);
+    expect(out.slots).toHaveLength(1);
+    expect(out.slots[0]?.wordIds).toEqual(['w0', 'w1']);
   });
 
   it('does not make an unrelated span free', () => {
@@ -597,5 +652,79 @@ describe('an idea that names more than one thing', () => {
 
   it('says nothing was rejected when every idea is one thing', () => {
     expect(plan([{ wordIds: ['w0'], idea: 'a single clear thing' }]).rejected).toEqual([]);
+  });
+});
+
+/**
+ * **Mohamed, 2026-09-11, having watched `sora-2`: spread the pictures across
+ * the whole video, and choose the most important ones.**
+ *
+ * He liked the reel and named one fault — every picture was in the first half,
+ * and the last one sat on screen for 13.30 s, 57% of it. The budget was being
+ * spent front to back, so a reel with more good candidates than it can afford
+ * ran out of money before it reached its own second half. The count is not what
+ * he changed and it is not what these assert: `IMAGE_SLOTS_PER_30S` is still his
+ * ruling of 2026-08-29. Only where the pictures land.
+ */
+describe('where a reel spends its picture budget', () => {
+  const at = (id: string, start: number): AnalysisWord =>
+    ({ id, text: id, start, end: start + 0.3, removed: false }) as AnalysisWord;
+
+  /*
+   * Four candidates crowded into the opening four seconds and three spread over
+   * the rest. In the order the model returned them the crowded four come first,
+   * which is exactly the shape that used to eat the whole budget.
+   */
+  const spread = {
+    words: [0, 1, 2, 3, 6, 11, 16].map((s, i) => at(`w${i}`, s)),
+    candidates: [0, 1, 2, 3, 6, 11, 16].map((_, i) => ({
+      wordIds: [`w${i}`],
+      idea: `idea ${i}`,
+    })),
+  };
+
+  it('puts a picture in each quarter of the reel rather than four in the first', () => {
+    const out = planSlots({
+      ...spread,
+      mode: mode(),
+      planId: 'p',
+      requestedCount: 4,
+      durationS: 20,
+    });
+    const quarters = out.slots.map((s) => Math.floor(s.start / 5)).sort();
+    expect(quarters).toEqual([0, 1, 2, 3]);
+  });
+
+  /*
+   * Two moments inside one stretch, and the measure that separates them is the
+   * model's own: the slot prompt asks for the strongest first, so the order it
+   * replied in is the ranking. Nothing here is scored by us.
+   */
+  it('keeps the model’s strongest candidate when two share a stretch', () => {
+    const out = planSlots({
+      ...spread,
+      mode: mode(),
+      planId: 'p',
+      requestedCount: 4,
+      durationS: 20,
+    });
+    expect(out.slots.map((s) => s.idea)).toContain('idea 0');
+    expect(out.slots.map((s) => s.idea)).not.toContain('idea 1');
+  });
+
+  /*
+   * A stretch with nothing in it must not take its money to the grave. Here
+   * every candidate is in the opening quarter, and the reel still buys four.
+   */
+  it('spends a stretch’s unused money elsewhere rather than losing it', () => {
+    const out = planSlots({
+      words: spread.words.slice(0, 4),
+      candidates: spread.candidates.slice(0, 4),
+      mode: mode(),
+      planId: 'p',
+      requestedCount: 4,
+      durationS: 20,
+    });
+    expect(out.slots).toHaveLength(4);
   });
 });
