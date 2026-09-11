@@ -417,8 +417,25 @@ export async function planImageSlotsForPlan(
     contextText: slot.contextText,
     idea: slot.idea,
     ...(slot.nameWordId === undefined ? {} : { nameWordId: slot.nameWordId }),
-    prompt: slot.prompt,
-    negativePrompt: slot.negativePrompt,
+    /*
+     * **A span that survives a re-plan keeps the prompt its pictures were bought
+     * against.**
+     *
+     * The prompt is what the image cache keys on, and part of it is a variation
+     * drawn from the slot's *position* — `drawVariation(mode, planId, i)`. So a
+     * re-plan that drops one slot renumbers every later one, redraws its
+     * variation, composes a different prompt, misses the cache and buys a
+     * picture that already exists. Block 12 session 90 paid $0.609180 for
+     * exactly that: `sora-2`'s stem-cell and mesotherapy slots moved from
+     * img005/img006 to img004/img005 and were generated a second time, having
+     * been carried across and reported as kept in the same run.
+     *
+     * The variation is not redrawn here rather than reseeded on something
+     * stable, because reseeding would change the prompt of every slot in every
+     * existing plan and strand every image this project has already paid for.
+     */
+    prompt: boughtForSlot(slot.wordIds)?.prompt ?? slot.prompt,
+    negativePrompt: boughtForSlot(slot.wordIds)?.negativePrompt ?? slot.negativePrompt,
     candidates: boughtForSlot(slot.wordIds)?.candidates ?? [],
     chosenCandidateId: boughtForSlot(slot.wordIds)?.chosenCandidateId ?? null,
     presentation: boughtForSlot(slot.wordIds)?.presentation ?? null,

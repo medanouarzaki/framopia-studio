@@ -1,13 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import { assertValidEditPlan, EditPlanValidationError } from '../editplan/validate.js';
-import { createEditPlan } from '../editplan/io.js';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { createEditPlan, writeEditPlan } from '../editplan/io.js';
 import type { EditPlan, ImageSlot, TranscriptWord } from '../editplan/types.js';
 import {
   analysisConfigLabel,
+  planImageSlotsForPlan,
   planWordsForAnalysis,
   slotConfigLabel,
   slotsReplacementFlags,
 } from './job.js';
+import type { PlanImageSlotsOptions } from './job.js';
 
 const word = (id: string, text: string, start: number, removed = false): TranscriptWord => ({
   id,
@@ -273,5 +278,84 @@ describe('slotsReplacementFlags', () => {
       ]),
     );
     expect(flags.map((f) => f.slotId)).toEqual(['img001', 'img002']);
+  });
+});
+
+/**
+ * **A re-plan must not buy a picture the reel already owns.**
+ *
+ * Block 12 session 90 re-planned `sora-2` after its pictures were bought, the
+ * spread dropped two slots, every later slot was renumbered, and the two that
+ * moved from img005/img006 to img004/img005 were **generated a second time for
+ * $0.609180** — in the same run that logged them as kept. The prompt is what the
+ * image cache keys on, and part of it is a variation drawn from the slot's
+ * index, so renumbering alone is enough to miss.
+ */
+describe('a span that survives a re-plan', () => {
+  const bought: ImageSlot = {
+    id: 'img002',
+    wordIds: ['w1'],
+    start: 0.5,
+    end: 0.9,
+    contextText: 'chd',
+    idea: 'the thing she says',
+    prompt: 'the prompt its pictures were bought against',
+    negativePrompt: 'the negative it was bought against',
+    candidates: [{ id: 'c1', path: '/i.png', cutoutPath: null, cutoutQuality: null }],
+    chosenCandidateId: 'c1',
+    presentation: null,
+    zoneId: null,
+    templateId: null,
+    status: 'generated',
+  };
+
+  it('keeps the prompt its pictures were bought against, not a freshly drawn one', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'framopia-replan-'));
+    const planPath = join(dir, 'p.editplan.json');
+    const plan = planWith([]);
+    plan.clientMode = { id: 'k2-syndicalia', version: 2, path: '/m.json' };
+    plan.images.slots = [bought];
+    await writeEditPlan(planPath, plan);
+
+    /*
+     * The model re-describes the same span and the planner draws it a new
+     * variation, so the composed prompt differs from the bought one. That is the
+     * exact shape that cost the money.
+     */
+    const result = await planImageSlotsForPlan({
+      planPath,
+      modeId: 'k2-syndicalia',
+      force: true,
+      runCached: (async () => ({
+        cached: true,
+        costUsd: 0,
+        warnings: [],
+        reasks: [],
+        selection: {
+          slots: [
+            {
+              wordIds: ['w1'],
+              start: 0.5,
+              end: 0.9,
+              contextText: 'chd',
+              idea: 'the thing she says',
+              prompt: 'a freshly drawn prompt',
+              negativePrompt: 'a freshly drawn negative',
+            },
+          ],
+          failures: [],
+          rejected: [],
+          requestedCount: 1,
+          shortfall: 0,
+          gaps: [],
+          uncoveredS: 0,
+        },
+      })) as unknown as PlanImageSlotsOptions['runCached'],
+    });
+
+    const kept = result.plan.images.slots[0];
+    expect(kept?.prompt).toBe('the prompt its pictures were bought against');
+    expect(kept?.negativePrompt).toBe('the negative it was bought against');
+    rmSync(dir, { recursive: true, force: true });
   });
 });
