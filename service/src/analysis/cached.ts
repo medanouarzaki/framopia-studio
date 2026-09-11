@@ -388,7 +388,6 @@ export async function planSlotsCached(options: CachedSlotOptions): Promise<Cache
       const key = span.join(' ');
 
       let replacement: string | undefined = answered[key];
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       if (replacement === undefined) {
         log(
           `slots: "${issue.idea}" names more than one thing ("${issue.marker}") — ` +
