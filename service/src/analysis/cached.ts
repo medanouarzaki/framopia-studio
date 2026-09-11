@@ -1,3 +1,5 @@
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import path from 'node:path';
 import type { ClientMode } from '@framopia/core';
 import {
   cacheEntryDir,
@@ -25,6 +27,7 @@ import {
   type SlotFingerprintInputs,
 } from './fingerprint.js';
 import { candidateCountFor, runKeywordAnalysis, type KeywordAnalysisResult } from './keywords.js';
+import { reaskSlotIdea } from './slots.js';
 import { imageSlotCountFor, keywordCountFor } from './count.js';
 import { selectKeywords } from './select.js';
 import { planSlots, type SlotSelectionResult } from './slot-select.js';
@@ -229,6 +232,14 @@ export interface CachedSlotOptions {
   log?: (message: string) => void;
   /** Spans this reel has already bought a picture for, as the joined word ids. */
   alreadyBought?: readonly string[];
+  /**
+   * Injected in tests, so the re-ask cannot reach a real model.
+   *
+   * Without this the stranger test in `a-stranger.test.ts` called Gemini for
+   * real the moment its recorded answer held a bad idea — found by it hanging
+   * for five seconds against a live endpoint.
+   */
+  runReask?: typeof reaskSlotIdea;
   /** Injected in tests so a hit can be exercised without an API key. */
   runAnalysis?: (options: {
     apiKey: string;
@@ -256,6 +267,37 @@ export interface CachedSlotResult {
  * `analyseKeywordsCached` exactly, including that a hit costs nothing, writes
  * no ledger line, and is byte-identical only because of the cache.
  */
+/** Where the span of a refused idea is found, so the re-ask names the moment. */
+function spanOf(payload: SlotCachePayload, idea: string): string[] | null {
+  const hit = payload.candidates.find((c) => c.idea === idea);
+  return hit === undefined ? null : [...hit.wordIds];
+}
+
+/**
+ * Re-asked ideas, beside the cached response rather than inside it.
+ *
+ * The response is what the model said and what was paid for; editing it would
+ * lose that. This records what was asked again and what came back, so a re-run
+ * is free and a person can see both.
+ */
+const REASK_FILE = 'reasked-ideas.json';
+
+async function readReasks(ref: { dir: string }): Promise<Record<string, string>> {
+  try {
+    return JSON.parse(await readFile(path.join(ref.dir, REASK_FILE), 'utf8')) as Record<
+      string,
+      string
+    >;
+  } catch {
+    return {};
+  }
+}
+
+async function writeReasks(ref: { dir: string }, answers: Record<string, string>): Promise<void> {
+  await mkdir(ref.dir, { recursive: true });
+  await writeFile(path.join(ref.dir, REASK_FILE), `${JSON.stringify(answers, null, 2)}\n`, 'utf8');
+}
+
 export async function planSlotsCached(options: CachedSlotOptions): Promise<CachedSlotResult> {
   const {
     apiKey,
@@ -268,6 +310,7 @@ export async function planSlotsCached(options: CachedSlotOptions): Promise<Cache
     cacheRoot,
     log = (): void => undefined,
     runAnalysis = runSlotAnalysis,
+    runReask = reaskSlotIdea,
   } = options;
 
   const slotCount = imageSlotCountFor(durationS);
@@ -303,8 +346,86 @@ export async function planSlotsCached(options: CachedSlotOptions): Promise<Cache
     }
     if (payload !== null) {
       log(`cache: hit ${ref.dir}`);
-      return finish(payload, true);
+      return await withRetries(finish(payload, true), payload, true);
     }
+  }
+
+  /**
+   * **One weak idea must not kill the reel.**
+   *
+   * Block 12 session 89: `sora-2`'s analysis returned twelve ideas, eleven of
+   * them fine, and the seventh named a group. The run stopped and nothing was
+   * built. `planSlots` no longer throws for that — it drops the idea and names
+   * it — and this asks the model again for the one it dropped, saying what was
+   * wrong, keeping the eleven.
+   *
+   * **Two attempts in total: the first and one retry.** The bound is about
+   * money, not about how well a second nudge works, which is unmeasured. A run's
+   * price is quoted before it starts from `imageSlotCountFor`; every retry is a
+   * call that was not in that quote, and one retry per refused idea is a worst
+   * case that can be stated in advance. What makes the run safe is not the
+   * retry — it is that **a slot with no usable idea after its retries simply
+   * gets no picture and the run continues**. The retry is a best effort on top
+   * of that.
+   *
+   * Answers are written beside the cached response rather than into it, so the
+   * paid-for original is never edited and a re-run costs nothing.
+   */
+  async function withRetries(
+    selection: CachedSlotResult,
+    payload: SlotCachePayload,
+    cached: boolean,
+  ): Promise<CachedSlotResult> {
+    if (selection.selection.rejected.length === 0) return selection;
+
+    const answered = await readReasks(ref);
+    let current = selection;
+    let spentUsd = 0;
+
+    for (const issue of current.selection.rejected) {
+      const span = spanOf(payload, issue.idea);
+      if (span === null) continue;
+      const key = span.join(' ');
+
+      let replacement: string | undefined = answered[key];
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      if (replacement === undefined) {
+        log(
+          `slots: "${issue.idea}" names more than one thing ("${issue.marker}") — ` +
+            'asking again for this moment',
+        );
+        const again = await runReask({
+          apiKey,
+          words,
+          mode,
+          wordIds: span,
+          idea: issue.idea,
+          marker: issue.marker,
+          videoSha256,
+        });
+        spentUsd += again.costUsd;
+        replacement = again.idea;
+        answered[key] = replacement;
+        await writeReasks(ref, answered);
+      }
+      log(
+        replacement === ''
+          ? `slots: nothing came back for that moment, so it gets no picture`
+          : `slots: it came back as "${replacement}"`,
+      );
+    }
+
+    const amended = payload.candidates.map((candidate) => {
+      const replacement = answered[candidate.wordIds.join(' ')];
+      return replacement === undefined || replacement === ''
+        ? candidate
+        : { ...candidate, idea: replacement };
+    });
+    current = finish({ ...payload, candidates: amended }, cached);
+    for (const issue of current.selection.rejected) {
+      log(`slots: "${issue.idea}" still names more than one thing, so that moment gets no picture`);
+    }
+    return { ...current, costUsd: current.costUsd + spentUsd };
   }
 
   // runSlotAnalysis appends the ledger line itself, at the point of spend.
@@ -330,5 +451,5 @@ export async function planSlotsCached(options: CachedSlotOptions): Promise<Cache
     log(`cache: evicted stale entry ${dir}`);
   }
 
-  return finish(payload, false);
+  return await withRetries(finish(payload, false), payload, false);
 }

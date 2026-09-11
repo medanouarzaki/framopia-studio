@@ -30,6 +30,8 @@ export interface SlotCandidate {
 export interface SlotFailure {
   candidate: SlotCandidate;
   reason:
+    /** The idea named a group rather than a thing; the mode asks for one. */
+    | 'more-than-one-subject'
     | 'unknown-word-id'
     | 'empty-word-ids'
     | 'overlaps-a-selected-slot'
@@ -55,6 +57,12 @@ export interface PlannedSlot {
 export interface SlotSelectionResult {
   slots: PlannedSlot[];
   failures: SlotFailure[];
+  /**
+   * Ideas refused for naming more than one subject, with the word that broke
+   * each. Their slots are not in `slots`; a caller that can ask the model again
+   * uses these to say what was wrong.
+   */
+  rejected: IdeaIssue[];
   requestedCount: number;
   /** Windows the candidates left empty. Reported, never padded. */
   shortfall: number;
@@ -409,26 +417,50 @@ export function planSlots(options: PlanSlotsOptions): SlotSelectionResult {
     };
   });
 
-  // Checked after selection and before anything downstream reads a prompt: a
-  // multi-subject idea contradicts the mode's own invariant and produced three
-  // separate problems on img005 — a gate failure reported as a matte defect,
-  // 47 invented label words, and an unusable matte.
-  const ideaIssues = slots.flatMap((slot, i) =>
-    checkSlotIdea(`slot ${i + 1}`, slot.idea, mode),
-  );
-  if (ideaIssues.length > 0) throw new MultiSubjectIdeaError(ideaIssues);
+  /*
+   * Checked after selection and before anything downstream reads a prompt: a
+   * multi-subject idea contradicts the mode's own invariant and produced three
+   * separate problems on img005 — a gate failure reported as a matte defect,
+   * 47 invented label words, and an unusable matte.
+   *
+   * **It used to throw, and one weak idea among good ones killed the reel.**
+   * Block 12 session 89: Mohamed ran `sora-2`, the model returned twelve ideas,
+   * **eleven were fine** and the seventh was "Assortment of vitamin pills". The
+   * run stopped, nothing was built, and the transcription he had just paid
+   * $0.1479 for led nowhere. A model returning one weak idea among good ones is
+   * ordinary, not exceptional.
+   *
+   * The rule is unchanged — that idea does not become a picture. What changed is
+   * that it is **dropped and named** rather than thrown, so the reel keeps its
+   * other eleven. `rejected` carries the issues out so a caller that can ask the
+   * model again does, and a caller that cannot still gets a usable reel with one
+   * picture fewer.
+   */
+  const rejected = slots.flatMap((slot, i) => checkSlotIdea(`slot ${i + 1}`, slot.idea, mode));
+  const rejectedIdeas = new Set(rejected.map((issue) => issue.idea));
+  const usable = slots.filter((slot) => !rejectedIdeas.has(slot.idea));
+  for (const issue of rejected) {
+    const dropped = slots.find((slot) => slot.idea === issue.idea);
+    if (dropped !== undefined) {
+      failures.push({
+        candidate: { wordIds: dropped.wordIds, idea: dropped.idea },
+        reason: 'more-than-one-subject',
+      });
+    }
+  }
 
   const gaps: number[] = [];
-  for (let i = 1; i < slots.length; i += 1) {
-    gaps.push((slots[i]?.start ?? 0) - (slots[i - 1]?.end ?? 0));
+  for (let i = 1; i < usable.length; i += 1) {
+    gaps.push((usable[i]?.start ?? 0) - (usable[i - 1]?.end ?? 0));
   }
-  const covered = slots.reduce((n, s) => n + (s.end - s.start), 0);
+  const covered = usable.reduce((n, s) => n + (s.end - s.start), 0);
 
   return {
-    slots,
+    slots: usable,
     failures,
+    rejected,
     requestedCount,
-    shortfall: Math.max(0, requestedCount - slots.length),
+    shortfall: Math.max(0, requestedCount - usable.length),
     gaps,
     uncoveredS: Math.max(0, durationS - covered),
   };

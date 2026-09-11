@@ -518,3 +518,84 @@ describe('a bought picture whose span the model re-described', () => {
     expect(out.slots).toEqual([]);
   });
 });
+
+/**
+ * **One weak idea must not kill the reel.**
+ *
+ * Block 12 session 89: Mohamed ran `sora-2`, the model returned twelve ideas,
+ * **eleven were fine** and the seventh was "Assortment of vitamin pills". The run
+ * stopped, nothing was built, and the transcription he had just paid $0.1479 for
+ * led nowhere.
+ *
+ * The rule is unchanged — that idea does not become a picture. What changed is
+ * that `planSlots` drops it and names it instead of throwing, so a caller that
+ * cannot ask the model again still gets a reel with one picture fewer.
+ */
+describe('an idea that names more than one thing', () => {
+  const words: AnalysisWord[] = Array.from({ length: 6 }, (_, i) => ({
+    id: `w${i}`,
+    text: `t${i}`,
+    start: i * 2,
+    end: i * 2 + 0.5,
+    removed: false,
+  }));
+
+  /*
+   * `checkSlotIdea` only applies when the mode actually asks for one subject —
+   * a mode that never says so has not made the claim. Dr Loubna Kfafi's does,
+   * which is why `sora-2` was refused, so this fixture says it too.
+   */
+  const asksForOneSubject = (): ClientMode =>
+    ({
+      ...mode(),
+      imageStyle: {
+        ...mode().imageStyle,
+        stylePrompt: ['one subject, centred and unobstructed', 'a single clear idea'],
+      },
+    }) as ClientMode;
+
+  const plan = (candidates: { wordIds: string[]; idea: string }[]) =>
+    planSlots({
+      candidates,
+      words,
+      mode: asksForOneSubject(),
+      planId: 'p',
+      requestedCount: 4,
+      durationS: 12,
+    });
+
+  it('does not stop the other ideas becoming pictures', () => {
+    const result = plan([
+      { wordIds: ['w0'], idea: 'a single clear thing' },
+      { wordIds: ['w2'], idea: 'Assortment of vitamin pills' },
+      { wordIds: ['w4'], idea: 'another single thing' },
+    ]);
+    expect(result.slots.map((s) => s.idea)).toEqual(['a single clear thing', 'another single thing']);
+  });
+
+  it('names the idea and the word that broke it', () => {
+    const result = plan([{ wordIds: ['w0'], idea: 'Assortment of vitamin pills' }]);
+    expect(result.rejected).toHaveLength(1);
+    expect(result.rejected[0]?.idea).toBe('Assortment of vitamin pills');
+    expect(result.rejected[0]?.marker).toBe('assortment');
+  });
+
+  it('reports it as a refusal like every other, not as a silence', () => {
+    const result = plan([{ wordIds: ['w0'], idea: 'Assortment of vitamin pills' }]);
+    expect(result.failures.map((f) => f.reason)).toContain('more-than-one-subject');
+  });
+
+  /* Every idea unusable is a reel with no pictures, not a reel that never built. */
+  it('returns a usable result even when every idea is refused', () => {
+    const result = plan([
+      { wordIds: ['w0'], idea: 'Assortment of pills' },
+      { wordIds: ['w2'], idea: 'A selection of things' },
+    ]);
+    expect(result.slots).toEqual([]);
+    expect(result.rejected).toHaveLength(2);
+  });
+
+  it('says nothing was rejected when every idea is one thing', () => {
+    expect(plan([{ wordIds: ['w0'], idea: 'a single clear thing' }]).rejected).toEqual([]);
+  });
+});

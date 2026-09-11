@@ -287,3 +287,100 @@ export async function runSlotAnalysis(options: SlotAnalysisOptions): Promise<Slo
     usage,
   };
 }
+
+/**
+ * Asks the model again for one slot's idea, saying what was wrong with the last.
+ *
+ * **The idea is never rewritten in code.** Session 84 refused to do that and was
+ * right: a rewrite hides the stage that needs changing behind an idea nobody
+ * wrote. The model wrote the idea, so the model is asked again — told the span,
+ * told the word that broke it, and told nothing else.
+ *
+ * One span, one idea. It is not the slot prompt with a smaller count: that would
+ * re-choose the moments, and the moment is not what was wrong.
+ */
+export interface ReaskOptions {
+  apiKey: string;
+  words: AnalysisWord[];
+  mode: ClientMode;
+  /** The span whose idea was refused. */
+  wordIds: readonly string[];
+  /** The idea that was refused, quoted back so the model does not repeat it. */
+  idea: string;
+  /** The word that made it more than one subject. */
+  marker: string;
+  videoSha256?: string;
+}
+
+export function buildReaskPrompt(options: Omit<ReaskOptions, 'apiKey' | 'videoSha256'>): string {
+  const { words, wordIds, idea, marker } = options;
+  const said = words
+    .filter((w) => wordIds.includes(w.id))
+    .map((w) => w.text)
+    .join(' ');
+  return `A picture is being made for one moment of a short video.
+
+At this moment she says: "${said}"
+
+The idea written for it was: "${idea}"
+
+That idea cannot be used. "${marker}" makes it more than one thing, and a
+picture here shows ONE thing, centred and unobstructed. A group, a set, an
+assortment, a selection or a plural of the thing is more than one.
+
+Write one new idea for this same moment. One thing a viewer would recognise at a
+glance. If the words name a thing, that thing; if they name no thing, the mood or
+the outcome instead. Do not describe colours, lighting, framing or art style.
+
+Answer with JSON and nothing else:
+{"idea":"..."}`;
+}
+
+/** What one re-ask cost and what came back. Reported, never swallowed. */
+export interface ReaskResult {
+  idea: string;
+  costUsd: number;
+  rawText: string;
+}
+
+export async function reaskSlotIdea(options: ReaskOptions): Promise<ReaskResult> {
+  const { apiKey, mode, videoSha256 } = options;
+  const ai = new GoogleGenAI({ apiKey });
+  const prompt = buildReaskPrompt(options);
+  const request = { model: modelConfig.geminiModel, contents: createUserContent([prompt]) };
+
+  let response: Awaited<ReturnType<typeof ai.models.generateContent>>;
+  try {
+    response = await ai.models.generateContent(request);
+  } catch (error) {
+    throw new AnalysisError(
+      'slots',
+      error instanceof Error ? error.message : String(error),
+      isTransientFailure(error),
+    );
+  }
+  const usage = (response.usageMetadata ?? {}) as GeminiUsage;
+  const rawText = response.text ?? '';
+  const costUsd = computeGeminiCost(usage);
+
+  // At the point of spend, once, never in a wrapper.
+  appendCost({
+    stage: SLOT_LEDGER_STAGE,
+    model: modelConfig.geminiModel,
+    unit: 'run',
+    usd: costUsd,
+    client: mode.id,
+    ...(videoSha256 === undefined ? {} : { video: videoSha256 }),
+    purpose: spendPurposeFor(videoSha256),
+  });
+
+  let idea = '';
+  try {
+    const body = /\{[\s\S]*\}/.exec(rawText);
+    const parsed = JSON.parse(body?.[0] ?? '{}') as { idea?: unknown };
+    if (typeof parsed.idea === 'string') idea = parsed.idea.trim();
+  } catch {
+    idea = '';
+  }
+  return { idea, costUsd, rawText };
+}

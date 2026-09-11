@@ -346,7 +346,10 @@ describe('what the stranger’s ideas become', () => {
    * Chosen from the recording by that shape rather than by index, so it keeps
    * meaning what it says if the recording is ever replaced.
    */
-  function recordedIdeas(words: { id: string; text: string; start: number; end: number }[]): SlotCandidate[] {
+  function recordedIdeas(
+    words: { id: string; text: string; start: number; end: number }[],
+    spoilOne = false,
+  ): SlotCandidate[] {
     const namedAt = words.findIndex((w) => /minutes/i.test(w.text));
     expect(namedAt).toBeGreaterThan(0);
     const named = words[namedAt]!;
@@ -357,23 +360,42 @@ describe('what the stranger’s ideas become', () => {
       FALLBACK_MIN_PICTURE_LIFE_S,
     );
     return [
-      { wordIds: [before.id], idea: 'the result she wants' },
+      {
+        wordIds: [before.id],
+        idea: spoilOne ? 'Assortment of vitamin pills' : 'the result she wants',
+      },
       { wordIds: [named.id], idea: 'the thing she named' },
     ];
   }
 
-  async function planned(requestedCount?: number): Promise<EditPlan> {
+  async function planned(options: { spoilOne?: boolean } = {}): Promise<EditPlan> {
     const planPath = await transcribedPlanPath();
     await planImageSlotsForPlan({
       planPath,
       modeId: CLIENT,
       force: true,
       cacheRoot: path.join(scratch, 'cache'),
+      /*
+       * The slot cache keys on the reel and the mode, not on the answer, so
+       * without this the second case in this file is served the first case's
+       * ideas and asserts nothing. Found exactly that way.
+       */
+      bypassCache: true,
       runCached: (async (opts: Parameters<typeof planSlotsCached>[0]) =>
         await planSlotsCached({
           ...opts,
+          /*
+           * The re-ask is a model call too, and without this the test reached a
+           * live endpoint the moment its recorded answer held a bad idea. It
+           * answers with one clear thing, which is what a model would do.
+           */
+          runReask: async () => ({
+            idea: 'one clear thing instead',
+            costUsd: 0,
+            rawText: '{"idea":"one clear thing instead"}',
+          }),
           runAnalysis: async (inner) => ({
-            candidates: recordedIdeas(inner.words),
+            candidates: recordedIdeas(inner.words, options.spoilOne === true),
             rawText: '',
             promptVersion: 4,
             model: 'a recording, not a model',
@@ -383,7 +405,6 @@ describe('what the stranger’s ideas become', () => {
           }),
         })) as typeof planSlotsCached,
     });
-    void requestedCount;
     return JSON.parse(readFileSync(planPath, 'utf8')) as EditPlan;
   }
 
@@ -406,6 +427,23 @@ describe('what the stranger’s ideas become', () => {
    * screen time, so two ideas in one breath refused each other. Every picture
    * must be on screen at least as long as its entrance.
    */
+  /**
+   * **Session 89.** One unusable idea among good ones stopped the whole run:
+   * `sora-2`'s model answer held twelve ideas, eleven fine and the seventh
+   * naming a group, and nothing was built. The reel must survive it.
+   *
+   * The model's answer is a recording here, so the bad idea is put in
+   * deliberately — which is the only way a gate can rehearse it without waiting
+   * for a model to have a bad day.
+   */
+  it('is not stopped by one idea that names more than one thing', async () => {
+    const plan = await planned({ spoilOne: true });
+    expect(plan.images.slots.length).toBeGreaterThanOrEqual(1);
+    for (const slot of plan.images.slots) {
+      expect(`${slot.id}: ${/assortment/i.test(slot.idea)}`).toBe(`${slot.id}: false`);
+    }
+  });
+
   it('gives every picture longer than its entrance before the next replaces it', async () => {
     const plan = await planned();
     const slots = [...plan.images.slots].sort((a, b) => a.start - b.start);
