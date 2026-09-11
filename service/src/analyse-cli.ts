@@ -37,12 +37,20 @@ async function main(): Promise<void> {
       stage: { type: 'string', default: 'keywords' },
       yes: { type: 'boolean', default: false },
       'no-cache': { type: 'boolean', default: false },
+      /*
+       * The block that guards bought pictures tells the operator to "re-run with
+       * --force", and until Block 12 session 90 this file did not declare it, so
+       * the flag its own message names was rejected as an unknown option and the
+       * only way past the guard was the panel. Declared here so the instruction
+       * is true.
+       */
+      force: { type: 'boolean', default: false },
     },
   });
 
   if (!values.plan || !existsSync(values.plan)) {
     console.error(
-      'Usage: npm run analyse -- --plan <path.editplan.json> [--stage keywords|slots] [--mode <id>] [--keywords auto|propose] [--yes] [--no-cache]',
+      'Usage: npm run analyse -- --plan <path.editplan.json> [--stage keywords|slots] [--mode <id>] [--keywords auto|propose] [--yes] [--no-cache] [--force]',
     );
     process.exitCode = 1;
     return;
@@ -121,6 +129,7 @@ async function main(): Promise<void> {
       planPath: values.plan,
       modeId: mode.id,
       bypassCache,
+      force: values.force ?? false,
       log,
     });
     const { selection } = result.analysis;
