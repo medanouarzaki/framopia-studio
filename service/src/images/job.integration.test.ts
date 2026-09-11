@@ -113,13 +113,25 @@ describe.runIf(runnable)('the image job against the real sidecar', () => {
 
     // The real ledger must not move for a test.
     expect(existsSync(COSTS_PATH) ? readFileSync(COSTS_PATH, 'utf8') : '').toBe(ledgerBefore);
-  /*
-   * Two real BiRefNet cutouts plus OCR. Measured rather than guessed:
-   * **39 s with After Effects idle** (Block 7 session 11), matching Block 4's
-   * 35 s, and **~153 s when AE is caching a comp at ~490% CPU** — one cutout
-   * alone went 18 s idle to 72 s loaded, a 3.9x contention factor. Nothing in
-   * the CV path got slower; the machine did. The bound clears the measured
-   * loaded case with headroom and is deliberately not wider than that.
+  /**
+   * Two real BiRefNet cutouts plus OCR.
+   *
+   * **This bound is a hang detector, not a performance assertion**, and Block 12
+   * session 90 changed it to say so. It was 240 s, derived from the measured
+   * loaded case — 39 s with After Effects idle (Block 7 session 11), ~153 s with
+   * AE caching a comp at ~490% CPU, a 3.9x contention factor — and deliberately
+   * no wider. That derivation is what kept breaking it: **the gate timed this
+   * test out under load in sessions 84, 86 and 89**, three sessions running, and
+   * each time it passed alone. Measured again on 2026-09-11, idle: **58.02 s**.
+   * At 3.9x that is 226 s against a 240 s bound — 6% of headroom, which is not
+   * headroom.
+   *
+   * The two failures are not symmetric. A bound that is too wide costs a slower
+   * report of a sidecar that has genuinely hung, and nothing else. A bound that
+   * is too narrow fails the gate on a machine that was merely busy, and a gate
+   * that cries wolf three sessions in a row is worse than no gate. So this is
+   * now ten minutes: far outside anything contention can produce from a 58 s
+   * job, and far inside "never returns".
    */
-  }, 240_000);
+  }, 600_000);
 });

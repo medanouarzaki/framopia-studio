@@ -24,6 +24,7 @@ import { mapScribeResponse, type ScribeRawResponse } from './transcription/scrib
 import { parseCorrectionResponseText } from './transcription/correction.js';
 import { alignCorrectedOntoDraft } from './transcription/align.js';
 import { planImageSlotsForPlan } from './analysis/job.js';
+import { imageSlotCountFor } from './analysis/count.js';
 import { planSlotsCached } from './analysis/cached.js';
 import { FALLBACK_MIN_PICTURE_LIFE_S } from './analysis/slot-select.js';
 import type { SlotCandidate } from './analysis/slot-select.js';
@@ -458,5 +459,33 @@ describe('what the stranger’s ideas become', () => {
         `${slots[i]!.id}: true`,
       );
     }
+  });
+
+  /**
+   * **Mohamed's ruling of 2026-09-11: the pictures a reel can afford are spread
+   * across its whole length, not taken front to back.**
+   *
+   * **This assertion cannot bite on this fixture and it is written down here
+   * rather than left to be discovered.** The stranger is 1.5 seconds long, so
+   * `imageSlotCountFor` gives it a budget of one, the reel is considered in one
+   * stretch, and "no two bought pictures share a stretch" is true of any single
+   * picture. It is a real assertion of the rule and it is vacuous at this
+   * length.
+   *
+   * Making it bite needs a longer stranger, and the obstacle is not the video —
+   * that is three seconds of ffmpeg — but the transcript: the word timings here
+   * are a recording of a real Scribe answer about these 1.5 seconds, and a
+   * longer reel needs a longer recording, which is a billable call on footage
+   * that does not exist yet. Session 90's report puts that to Mohamed as a
+   * decision rather than spending against it.
+   */
+  it('spreads what it buys across the reel rather than taking it front to back', async () => {
+    const plan = await planned();
+    const bought = plan.images.slots.filter((s) => s.chosenClientPictureId === undefined);
+    const budget = imageSlotCountFor(plan.source.durationS);
+    const stretch = (startS: number): number =>
+      Math.min(budget - 1, Math.floor((startS / plan.source.durationS) * budget));
+    const occupied = bought.map((s) => stretch(s.start));
+    expect(occupied).toEqual([...new Set(occupied)]);
   });
 });
