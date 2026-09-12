@@ -1787,6 +1787,56 @@ describe.skipIf(!built)('a pipeline run', () => {
   });
 });
 
+/**
+ * **He is told where each picture came from, on the screen he judges them on.**
+ *
+ * Mohamed's ruling of 2026-09-12 makes reuse automatic, and automatic is why it
+ * has to be visible: a reused picture was drawn for another reel and chosen
+ * there, so it is not the same kind of thing as a fresh one. The service writes
+ * the sentence; this is the proof it reaches the screen.
+ */
+describe('where the panel says a picture came from', () => {
+  const withOrigins = (): unknown => {
+    const payload = JSON.parse(JSON.stringify(IMAGES)) as {
+      slots: { id: string; origin?: string }[];
+    };
+    payload.slots[0]!.origin =
+      'Already made for sora-1-8bcbfc38, and used again here — this one costs nothing.';
+    payload.slots[1]!.origin = 'One of your own pictures.';
+    return payload;
+  };
+
+  it('names the earlier reel a reused picture was bought for', async () => {
+    const loaded = await loadImages(withOrigins());
+    if (loaded === null) return;
+    await loaded.page.waitForSelector('ol.slots li', { timeout: 5000 });
+    const text = (await loaded.page.textContent('ol.slots')) ?? '';
+    expect(text).toContain(
+      'Already made for sora-1-8bcbfc38, and used again here — this one costs nothing.',
+    );
+    expect(text).toContain('One of your own pictures.');
+    await loaded.page.close();
+  }, 30_000);
+
+  it('says nothing at all about a picture made for this video', async () => {
+    const loaded = await loadImages();
+    if (loaded === null) return;
+    await loaded.page.waitForSelector('ol.slots li', { timeout: 5000 });
+    expect(await loaded.page.$$('p.origin')).toHaveLength(0);
+    await loaded.page.close();
+  }, 30_000);
+
+  it('sends him nowhere and names no command', async () => {
+    const loaded = await loadImages(withOrigins());
+    if (loaded === null) return;
+    await loaded.page.waitForSelector('p.origin', { timeout: 5000 });
+    for (const el of await loaded.page.$$('p.origin')) {
+      expect((await el.textContent()) ?? '').not.toMatch(/npm run|terminal|quit|restart|reopen/i);
+    }
+    await loaded.page.close();
+  }, 30_000);
+});
+
 describe('the image candidate picker', () => {
   it('shows every candidate, including the ones the gate did not like', async () => {
     const loaded = await loadImages();
