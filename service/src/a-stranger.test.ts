@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterEach, afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import {
@@ -489,6 +489,97 @@ describe('what the stranger’s ideas become', () => {
     const occupied = bought.map((s) => stretch(s.start));
     expect(occupied).toEqual([...new Set(occupied)]);
   });
+
+/**
+ * **Mohamed's ruling of 2026-09-12: a picture bought for a client is that
+ * client's.** When the same thing is named in another of their videos it is used
+ * again, automatically and with no prompt — and **never** across clients, because
+ * her picture is in her brand style and must not appear in anyone else's reel.
+ *
+ * Proved on the stranger, whose plans directory is its own scratch folder, so
+ * the store read here holds nothing but what this test put in it.
+ */
+describe('a second reel for the stranger’s client', () => {
+  /** An earlier reel of some client, with one picture already paid for. */
+  function earlierReel(clientId: string, idea: string): string {
+    const file = path.join(scratch, 'plans', 'an-earlier-reel.editplan.json');
+    writeFileSync(
+      file,
+      JSON.stringify({
+        meta: { id: 'an-earlier-reel', createdAt: '', updatedAt: '', appVersion: '0' },
+        clientMode: { id: clientId, version: 1, path: '/m.json' },
+        images: {
+          slots: [
+            {
+              id: 'img001',
+              wordIds: ['x1'],
+              start: 0,
+              end: 1,
+              contextText: 'c',
+              idea,
+              prompt: 'p',
+              negativePrompt: 'n',
+              candidates: [
+                { id: 'img001-c1', path: '/paid/for/once.jpg', cutoutPath: null, cutoutQuality: null },
+              ],
+              chosenCandidateId: null,
+              presentation: null,
+              zoneId: null,
+              templateId: null,
+              status: 'generated',
+            },
+          ],
+        },
+      }),
+    );
+    return file;
+  }
+
+  /*
+   * **Each of these starts from a reel that owns nothing.** Without the second
+   * line the cross-client test passed for the wrong reason: the previous test
+   * had left a reused picture on the stranger's plan, and a re-plan carries a
+   * bought candidate across by word (session 91), so the path was still there
+   * and nothing had crossed clients at all. A guard that can pass for the wrong
+   * reason is the one shape this file exists to avoid.
+   */
+  afterEach(async () => {
+    rmSync(path.join(scratch, 'plans', 'an-earlier-reel.editplan.json'), { force: true });
+    const planPath = await transcribedPlanPath();
+    const plan = JSON.parse(readFileSync(planPath, 'utf8')) as EditPlan;
+    plan.images = { slots: [] };
+    writeFileSync(planPath, JSON.stringify(plan));
+  });
+
+  it('does not buy a second picture of the thing the client already owns', async () => {
+    /*
+     * The idea that is *bought*, not the one her own photograph answers: a slot
+     * she has a labelled picture for never reaches this store, and should not.
+     */
+    earlierReel(CLIENT, 'the result she wants');
+    const plan = await planned();
+    const reused = plan.images.slots.filter((s) => s.reusedFrom !== undefined);
+    expect(reused.map((s) => s.idea)).toEqual(['the result she wants']);
+    expect(reused[0]?.reusedFrom?.reel).toBe('an-earlier-reel');
+    expect(reused[0]?.candidates.map((c) => c.path)).toEqual(['/paid/for/once.jpg']);
+  });
+
+  /**
+   * **The other half, and the one that matters most.** The same idea, the same
+   * disk, the same moment in the same reel — and a different client. Nothing is
+   * reused, and the picture is bought.
+   */
+  it('does buy it for a different client, whose picture it is not', async () => {
+    earlierReel('somebody-else-entirely', 'the result she wants');
+    const plan = await planned();
+    expect(plan.images.slots.filter((s) => s.reusedFrom !== undefined)).toEqual([]);
+    for (const slot of plan.images.slots) {
+      expect(`${slot.id}: ${slot.candidates.map((c) => c.path).join(',')}`).not.toContain(
+        '/paid/for/once.jpg',
+      );
+    }
+  });
+});
 });
 
 /**
