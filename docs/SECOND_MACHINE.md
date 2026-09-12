@@ -23,7 +23,7 @@ the steps, so nothing below surprises you.
 
 **You do not need the videos.** The five test videos are 11.93 GB and they are
 **not part of this setup**. What you need instead is five small files — the Edit
-Plans, 297 KB in total, §11 — which are small enough to send in a message.
+Plans, **308 KB** in total, §11 — which are small enough to send in a message.
 Everything below was measured on 2026-09-07 on a fresh copy with **no video on
 disk at all**.
 
@@ -31,16 +31,20 @@ disk at all**.
 with it: creating a client, correcting any of their details, giving them a
 photograph, giving them their brand colours, removing a client, and attaching
 pictures to one video. All of it measured on a copy holding no video, no saved
-API answers and no cost ledger. The panel's own test suite — 244 checks — passes
-in full in that state.
+API answers and no cost ledger. The panel's own test suite was 244 checks when
+that was written and is **290** on 2026-09-12; on the rehearsal checkout, which
+has no video, no saved API answers and no cost ledger, **285 passed, 2 skipped
+and 3 failed** — the three being the money screen, which has no ledger to draw.
+Everything about making a video passed.
 
 **What arrives with the clone, and what does not.** Since 2026-09-10 a client's
-own pictures come down with the repository: Dr Loubna Kfafi's fourteen are in
-`assets/client-pictures/`, 25.5 MB, and they were **measured** arriving — cloned
-fresh, compared file by file against this machine's by sha256, fourteen
-identical. Her client file names them by a path that was written on the T7, and
-session 61's read-time re-rooting turns each one into a path inside your own
-clone; all fourteen were checked to resolve to a file that exists.
+own pictures come down with the repository: Dr Loubna Kfafi's are in
+`assets/client-pictures/` — **fifteen of them, 26.2 MB**, a fifteenth having been
+added on 2026-09-11 — and they were **measured** arriving: cloned fresh and
+compared file by file against this machine's by sha256. Her client file names
+them by a path that was written on the T7, and session 61's read-time re-rooting
+turns each one into a path inside your own clone; every one was checked to
+resolve to a file that exists.
 
 **A reel that used one still cannot be rebuilt on your machine**, and the
 pictures are no longer the reason. Measured in the rehearsal clone: the client
@@ -50,13 +54,18 @@ the source video, which lives on the T7 and which `.gitignore` excludes by
 extension. Those two are what `npm run backup` is for, and a photograph is
 deliberately not in that set.
 
-**What you cannot do until you have your own key.** Anything that costs money:
+**What you cannot do until the key is in.** Anything that costs money:
 transcribing a video, working out its keywords, and generating pictures. §10 is
-where your key goes. **Nothing else in this document is blocked by it.**
+where the key goes. **Nothing else in this document is blocked by it.**
+
+**The key is not yours alone.** You and Mohamed use the same Google and
+ElevenLabs accounts, so you use the same two keys and you spend the same balance.
+§10a is what that means in practice, and it is worth reading before you generate
+anything.
 
 **One thing to know about the key.** If you forget to replace the example values
-in §10, the tool will not notice at startup — it starts normally and fails at
-the first paid call. `npm run doctor` does notice, and says so plainly, which is
+in §10, the tool will not notice at startup — it starts normally and fails at the
+first paid call. `npm run doctor` does notice and names the placeholders, which is
 why §14 asks you to run it before you begin work.
 
 **What does not build, and is not your fault.** The fifth video, `ground-truth`,
@@ -148,12 +157,25 @@ that is `<repo>` for the rest of this document.
 If someone has already put the folder on a drive for you, plug the drive in and
 `cd` into it instead.
 
-**How big it is**, measured by cloning it from GitHub on 2026-09-05: about
-**22 MB** to download, **53 MB** on disk once checked out. It grows to about
-**262 MB** after §4 and §6. The videos and the caches are deliberately not in it
-— the Edit Plans come in §11 and the saved answers in §12. (An earlier version
-of this document said 254 KB.
-That was the size of the tracked text alone and it was wrong.)
+**How big it is.** Re-measured on 2026-09-12, because this was wrong twice
+before and wrong again by the time anyone checked:
+
+| after | on disk | what was added |
+|---|---|---|
+| §1, checked out | **65 MB** in files, **49 MB** in `.git` | 929 tracked files, including the 15 product pictures at 26 MB |
+| §4, `npm install` | **+168 MB** | 165 entries in `node_modules` |
+| §6, the picture tools | **+822 MB** | the Python environment and, mostly, one segmentation model |
+| **total** | **about 1.1 GB** | |
+
+**Budget 1.1 GB, not the 262 MB an earlier version of this said.** That figure
+predated the product pictures and never counted the segmentation model, although
+§6 has always said the model is about 930 MB — the two numbers contradicted each
+other and the small one was the wrong one. Free disk space is checked in §14 and
+**it is one of the three things most likely to stop you**; see the section at the
+end.
+
+The videos and the caches are deliberately not in it — the Edit Plans come in
+§11 and the saved answers in §12.
 
 ---
 
@@ -165,7 +187,9 @@ Homebrew installs the other tools. Check whether you have it:
 brew --version
 ```
 
-**You should see:** something like `Homebrew 4.x.x`
+**You should see:** a version number — `Homebrew 4.x.x` when this was first
+written, `Homebrew 6.0.22` on 2026-09-12. Any of them is fine; the tool does not
+care which.
 
 If instead it says `command not found`, install it:
 
@@ -417,10 +441,28 @@ send us what it says rather than trying anything else.
 
 ---
 
-## 10. Your API keys
+## 10. The API keys
 
-The tool talks to two paid services. **You need your own keys — never copy
-anyone else's, and they are not in the repository or in any backup.**
+The tool talks to two paid services: Google, for the transcript and the pictures,
+and ElevenLabs, for the sounds.
+
+**You and Mohamed use the same two accounts, so you use the same two keys.** That
+is his decision and it is what makes the next section — about shared spending —
+matter. It also means this step is **not** "go and sign up for your own"; it is
+"get today's key out of the account and type it in here".
+
+> **A key is the password to a billing account, and it is treated like one.**
+>
+> **Get it from the account page yourself, signed in, and type it into the file
+> below.** Do not ask for it in a message and do not accept it in one — not
+> WhatsApp, not email, not a screenshot. A key that has been in a chat is a key
+> that lives in that chat's backups on both phones, forever, and anyone holding
+> it can spend the account's money.
+>
+> The keys are in **no** part of what you were given. They are not in the
+> repository, not in any backup, and not in this document. `.local/config.json`
+> is where yours lives, it never leaves this Mac, and `npm run backup` refuses to
+> copy it to cloud storage.
 
 Make the settings file:
 
@@ -435,26 +477,57 @@ That opens it in TextEdit. Replace the two placeholder values with your own
 keys, and set `machineLabel` to something that identifies this Mac. Save and
 close.
 
-> **Do not skip the editing, and do not trust the check here.**
+> **Do not skip the editing.**
 >
-> Measured on 2026-09-05: if you copy the example across and run `npm run
-> doctor` **without editing it**, the doctor reports
+> **This used to be a trap and is now caught.** Measured on 2026-09-05, copying
+> the example across and running `npm run doctor` without editing it reported
+> `ok the API keys, by presence` — it was checking that keys were *there*, not
+> that they were real. Re-measured on 2026-09-12, the doctor now says:
 >
 > ```
->   ok    the API keys, by presence
->         googleApiKey present (value not shown), elevenLabsApiKey present (value not shown)
+>   MISS  the API keys, by presence and shape
+>         googleApiKey is still the example's placeholder, not a key; elevenLabsApiKey is still the example's placeholder, not a key
+>         fix: open .local/config.json and replace the two placeholder values with your own keys
 > ```
 >
-> It is looking for keys *being there*, not for them being real — the file it
-> found contains `AIzaYourGoogleKey` and `sk_your_elevenlabs_key`. So a green
-> line here does not mean your keys work. You find that out at the first paid
-> call, which fails as not authorised.
+> So the doctor will catch you if you forget. What it still cannot tell is
+> whether a real-shaped key is a *working* key — you find that out at the first
+> paid call, which fails as not authorised.
 >
-> The example also ships `machineLabel` set to `mohameds-macbook`. Change it, or
-> your machine's reports will be filed under his name.
+> The example also ships `machineLabel` set to `mohameds-macbook`. **Change it.**
+> On the rehearsal machine it was left unchanged and the doctor duly wrote
+> `doctor-mohameds-macbook.json` from a checkout that was not his — which is
+> exactly how two machines' reports become impossible to tell apart.
 
 The file is `.local/config.json` and it never leaves the machine: it is excluded
 from the repository, and `npm run backup` refuses to copy it into cloud storage.
+
+---
+
+## 10a. One account, two Macs: what your spending does to his
+
+**There is one Google credit and one ElevenLabs subscription between you.** Every
+transcript you make and every picture you generate comes out of the same balance
+Mohamed's does. If he has $40 of credit left and you spend $3 this afternoon, he
+has $37 — he will not be told, and nothing on his screen will move until he looks
+at the account page.
+
+**Each Mac's cost screen shows only that Mac's spending.** This was measured on
+2026-09-12 rather than assumed:
+
+- the ledger is `.local/costs.jsonl`, written beside the checkout it belongs to;
+- `.local/` is ignored by git — line 1 of `.gitignore` — so it is never pushed;
+- it has **never** been committed in the project's whole history;
+- a fresh machine's doctor reports it absent, and the first billable call creates
+  a new one starting at zero.
+
+So the two are genuinely separate records, and **neither is wrong** — each is a
+true account of what that Mac spent. What neither of them is, is the total. The
+only place the real remaining balance exists is the provider's own account page.
+
+**In practice:** before a big run, say so. After one, say what it cost. The
+number to quote is the one on your own cost screen, and the two of you add them
+up by talking, because nothing in the tool does it for you.
 
 ---
 
@@ -566,21 +639,35 @@ This project is not set up yet, so nothing else will run.
 Then try again. docs/SECOND_MACHINE.md has the whole setup in order.
 ```
 
-**What a fresh clone actually reports**, measured on 2026-09-05 by cloning from
-GitHub and following §1 to §10 with After Effects open: **18 present, 6 absent,
-0 could not be determined**. Every one of the six is expected at this point:
+**What a fresh clone actually reports.** Re-measured on 2026-09-12 on the
+rehearsal checkout, with After Effects open: **17 present, 7 absent, 0 could not
+be determined, of 24.** Every one of the seven is expected at this point:
 
 | what it says is missing | why, and what fixes it |
 |---|---|
-| the API keys | you copied the example in §10 and have not put your own keys in yet |
-| the panel bundle | §9's `npm run panel:build` has not run yet |
+| the API keys | §10 — you have the example's placeholders, not keys |
 | the watermark measurement | §13 — taken on the first video you run |
 | the dialogue loudness records | §13 — the same |
+| the source reels | you do not have them and do not need them; see below |
 | the API cache | §12 — copy it, or let it fill as stages run |
-| the cost ledger | it is written by the first billable call; a new Mac starts its own at zero |
+| the cost ledger | written by the first billable call; a new Mac starts its own at zero |
+| **free disk space, at least 19 GB** | **new since this was last measured** — see below |
 
-Only one thing is listed under *"this machine cannot run the pipeline until these
-are fixed"* on a fresh clone, and it is the API keys.
+An earlier version of this said *18 present, 6 absent* and listed the panel
+bundle. That was measured before the disk-space check existed, and on a checkout
+whose bundle had not been built.
+
+**Three things are now listed** under *"this machine cannot run the pipeline
+until these are fixed"*, where this document used to promise one:
+
+1. **the API keys** — §10, and the real blocker;
+2. **the source reels** — expected, and the one you can ignore. You do not have
+   the 12 GB of test video and you do not need it. It stops only the optional
+   section at the very end of this document;
+3. **free disk space, at least 19 GB** — on the rehearsal Mac this said *17.4 GB
+   free* and failed. **Check this before you start**, because it is the one that
+   will waste an afternoon: the setup itself wants about 1.1 GB (§1), and the
+   19 GB is what running whole videos needs once you are working.
 
 Run it as many times as you like. **When it stops printing "this machine cannot
 run the pipeline until these are fixed", the setup is done.**
@@ -590,15 +677,40 @@ expected: you do not have them and you do not need them. It is the one blocker
 you can ignore, and the only thing it stops is the optional section at the very
 end of this document.
 
-To confirm the code itself is healthy:
+### `npm run check` — and what it will actually do on your Mac
 
 ```
 npm run check
 ```
 
-**You should see:** a lot of test output ending in `check: PASS`.
+**On a Mac set up by this document, this does not pass, and that is not your
+fault.** Measured on 2026-09-12 on the rehearsal checkout: **98 tests failed** —
+2 in `core`, 93 in `service`, 3 in `panel` — and the run stopped at the first
+workspace rather than reaching the end.
+
+**Nothing is wrong with your setup and nothing is wrong with the code.** Every
+one of those tests needs something only the first Mac has: the 12 GB of test
+video, a cost ledger with real spending in it, or a cache of past answers. They
+were written against a machine that has all three, and they do not stand aside
+when it does not — `money.test.ts`, `pipeline.test.ts` and `steps.test.ts` have
+no guard for an absent corpus at all.
+
+**So: do not run `npm run check` as part of your setup, and do not read anything
+into it if you already have.** It is our gate, on our machine, and making it work
+on yours is our job and is not done. `npm run doctor` is the one that tells you
+about *your* Mac, and it is the one to go by.
+
+If you want to see it anyway, the honest expectation is: typecheck and lint pass,
+then the tests fail in large numbers, naming videos and ledgers you do not have.
 
 ### A green run that skipped things is still a green run
+
+**Read this only once `npm run check` passes on your Mac, which today it does
+not** — see the section just above. The skip list below is printed at the *end*
+of a run, and a run that fails never reaches it: on 2026-09-12 the rehearsal
+checkout printed no skip report at all, because the first workspace failed and
+the run stopped there. Everything in this section is still true of a machine
+where the check passes, and it is kept for when yours does.
 
 Just above `check: PASS` there is a short list of anything the check **could not
 look at on your Mac**. It looks like this:
@@ -727,26 +839,136 @@ fifth would only add a failure we already know about.
 
 ## What is not in the repository, and where each thing comes from
 
-Measured on 2026-09-05 by cloning this repository from GitHub into a folder that
-had never held it and listing what was missing. Git carries the code, the documents, the
-**template library**, the **client files**, the **sound effects**, the
-**watermark video** and the **brand logo** — all of that arrives with the clone
-and none of it needs fetching. What does not:
+Re-measured on 2026-09-12 against the repository as it stands.
 
-| what | how big | where you get it |
+**What the clone gives you, with nothing else to do — 65 MB of files, 929 of
+them:**
+
+| what | how big |
+|---|---|
+| the code — `service/`, `panel/`, `core/`, `tools/` | 5.4 MB |
+| **the 15 product pictures** — `assets/client-pictures/` | **26 MB** |
+| the rest of `assets/` — brand, sound effects, the watermark video | 26 MB |
+| the **template library** — `templates/library.aep` and its manifest | 0.6 MB |
+| the **client files** — `modes/` | 40 KB |
+| the documents — `docs/` | 0.5 MB |
+| the session reports and handoffs | 4.5 MB |
+| the benchmark harness and its results | 1.4 MB |
+
+The 15 product pictures arrive with the clone because Mohamed ruled on 2026-09-10
+that they are pushed: the repository is public, deliberately, and they are product
+mockups he made himself. **An earlier version of this table said no client
+photograph is ever copied. That is no longer true of these**, and the rule that
+did not change is the other one — a photograph is never sent to a model or over
+any network call.
+
+**What Mohamed has to hand you, and why git does not carry it:**
+
+| what | how big | why not in git, and do you need it |
 |---|---|---|
-| **the five video plans** — `my files/test videos/*.editplan.json` | **297 KB** | Mohamed. **§11 — this is the one you need.** |
-| **the four source videos** — `my files/test videos/*.mov` | 9.51 GB | Mohamed, on a drive. **Only for the optional last section**, and `ground truth.mov` (2.42 GB) is never needed at all. |
-| **your API keys** — `.local/config.json` | tiny | **Accounts of your own**, at Google and ElevenLabs. Never copy anyone else's. §10. |
-| **the saved answers** — `.local/cache/` | 53 MB | Mohamed. Without it every stage is bought again. §12. |
-| **the cut-out pictures** — `my files/test videos/cutouts/` | 53 MB | Mohamed. §12. |
-| **the installed packages** — `node_modules/` | 168 MB | `npm install`, §4. |
-| **the picture tools and their two models** — `tools/cv/.venv/`, `~/.rembg/` | ~1 GB | `tools/cv/setup.sh`, §6. Downloads them itself. |
-| **the panel bundle** — `panel/dist/panel.js` | 237 KB | `npm run panel:build`, §9. |
-| **the three typefaces** | small | Font files, installed on the Mac itself. §7. |
-| **the watermark measurement and the loudness records** | tiny | **Nothing to fetch** — this Mac measures its own copies. §13. |
-| **the cost ledger** — `.local/costs.jsonl` | tiny | **Nothing to fetch** — yours starts at zero. |
-| **any client photograph** | — | **Never copied.** A client's own picture stays where they put it and is never sent anywhere. |
+| **the five Edit Plans** — `my files/test videos/*.editplan.json` | **308 KB** | Gitignored with the footage they describe. **§11 — this is the one you need.** |
+| **the five source videos** — `my files/test videos/*.mov` | **11.93 GB** | Far too large for git, and never committed. **Only for the optional last section.** |
+| **the API key** | tiny | It is a password. **§10** — you get it from the shared account page yourself and type it in. |
+| **the saved answers** — `.local/cache/` | **271 MB** | Machine-local and gitignored. Without it every stage is bought again. §12. |
+| **the cut-out pictures** — `my files/test videos/cutouts/` | **51 MB** | Derived, and re-derivable for free. §12. |
+
+**And what nobody has to hand you:**
+
+| what | how big | where it comes from |
+|---|---|---|
+| the installed packages — `node_modules/` | 168 MB | `npm install`, §4 |
+| the picture tools and their models — `tools/cv/.venv/` | 822 MB | `tools/cv/setup.sh`, §6 — downloads them itself |
+| the panel bundle — `panel/dist/panel.js` | 237 KB | `npm run panel:build`, §9 |
+| the three typefaces | small | font files, installed on the Mac itself, §7 |
+| the watermark measurement and loudness records | tiny | this Mac measures its own, §13 |
+| the cost ledger — `.local/costs.jsonl` | tiny | yours starts at zero on the first billable call |
+
+### What you can do once you are set up, and what you cannot
+
+**You can make a whole video from the panel** — open one of your own recordings,
+transcribe it, read and fix the words, generate the pictures, and build the
+composition — **and you can do it for any client, including one you add
+yourself.** What you cannot do is reproduce the four reference reels or run
+`npm run golden`, because those need the 11.93 GB of source video you were not
+given; and you cannot see, on your own cost screen, anything Mohamed has spent.
+
+## The three things most likely to stop you
+
+Measured on 2026-09-12 by walking this document again on a checkout of the
+current code. These are in the order you will meet them, and none of them is
+guesswork — each is something that actually happened on the rehearsal.
+
+### 1. You run out of disk before you finish §6
+
+**What you will see**, from `npm run doctor` at §14:
+
+```
+  MISS  free disk space, at least 19 GB
+        17.4 GB free on the volume holding the repo
+```
+
+and, under the blockers,
+
+```
+this machine cannot run the pipeline until these are fixed:
+  ... free disk space, at least 19 GB — free space on the volume holding the repo
+```
+
+**Why it will catch you:** §6 downloads about 930 MB and the whole setup lands at
+about 1.1 GB, which sounds like nothing. The 19 GB is not for the setup — it is
+what running whole videos needs, for sampled frames, masks, cut-outs and built
+files. **Check free space before you start**, not at §14.
+
+**What to do:** free space on the drive holding the folder, then run
+`npm run doctor` again. Nothing needs reinstalling.
+
+### 2. Your first `npm run check` fails, in large numbers
+
+**What you will see:** typecheck and lint pass, then tests fail — **98 of them on
+the rehearsal**, naming videos and ledgers that do not exist on your Mac:
+
+```
+   × the money view > reads the real ledger and reconciles to the cent
+     → ENOENT: no such file or directory, open '.../.local/costs.jsonl'
+   × the hand-made reference declaration > every declared reference is on this disk
+     → expected [ …(4) ] to deeply equal []
+```
+
+**Why it will catch you:** §14 used to promise `check: PASS`, and the section
+after it describes a tidy list of things that were skipped. Neither happens.
+Those tests were written against a machine holding 11.93 GB of test video and a
+real spending history, and they do not stand aside when those are absent.
+
+**What to do: nothing, and do not read it as a fault in your setup.** It is our
+gate on our machine and making it work on yours is our job. **`npm run doctor` is
+the one that describes your Mac** — go by that.
+
+### 3. The panel shows the wrong build after your first `git pull`
+
+**What you will see**, inside the panel, word for word:
+
+> This panel is showing older code than the rest of the tool, so what you see
+> here may not match what it does. Nothing you have made is affected. To put it
+> right, run `npm run panel:build` in a terminal, then close this panel and open
+> it again from Window → Extensions.
+
+**Why it will catch you:** the panel is a file that has to be built, and pulling
+new code does not rebuild it. This will happen every single time you pull, which
+in the first weeks will be often.
+
+**What to do:** exactly what the message says.
+
+```
+cd "<repo>"
+npm run panel:build
+```
+
+Then close the panel and open it again from **Window → Extensions → Framopia
+Studio**. The line goes away. **This is the one message in the whole tool that is
+allowed to name a command**, because the panel cannot rebuild the file it is
+itself running from.
+
+---
 
 ## The steps nobody can do for you
 
@@ -758,12 +980,50 @@ Everything else in this document is a command. These are not:
 | **§7, the three fonts** | Font files are installed by double-clicking, and After Effects has to be restarted afterwards to notice. |
 | **§8, the scripting preference** | It is a checkbox inside After Effects' Preferences, off on every fresh install. Nothing outside the application may set it. |
 | **§9, restarting After Effects** | It reads the extensions folder only when it starts. |
-| **§10, the API keys** | They come from accounts in your name, and the doctor cannot tell a real key from the placeholder. |
-| **§11, the five Edit Plans** | 297 KB that only Mohamed has. Small enough to send in a message. |
-| **§12, the saved answers** | About 106 MB that only Mohamed has, and only saves money. |
-| **the optional last section** | The four videos, 9.51 GB, and After Effects open — only a person can open it. Skip until asked. |
+| **§10, the API key** | It comes off a billing account page, signed in, and is typed in by hand. Nobody can send it to you and nobody should. |
+| **§11, the five Edit Plans** | 308 KB that only Mohamed has. Small enough to send in a message. |
+| **§12, the saved answers** | 271 MB that only Mohamed has, and only saves money. |
+| **the optional last section** | The five videos, 11.93 GB, and After Effects open — only a person can open it. Skip until asked. |
 
 ## How much of this has been rehearsed, and how much has not
+
+### Walked again on 2026-09-12, against the current code
+
+The clone was 39 commits behind and was pulled to `cf152bb` first. Every step was
+then run as written. **What each one does now:**
+
+| step | what happened on 2026-09-12 |
+|---|---|
+| §1 the clone | 65 MB of files, 49 MB of `.git`, **1.1 GB once §4 and §6 are done** — the old figure of 262 MB was wrong |
+| §2 Homebrew | `Homebrew 6.0.22`, where this document said `4.x.x` |
+| §3 Node | `.nvmrc` says `24`, `node --version` says `v24.14.1` — as written |
+| §4 `npm install` | 165 entries, 168 MB — **exactly as this document said** |
+| §5 ffmpeg | `ffmpeg version 8.0.1` — as written |
+| §6 the picture tools | `verify-models.sh` reported `birefnet-general ok` and `selfie-multiclass-256x256 ok`; the environment is **822 MB** |
+| §10 the settings file | the doctor now **names the placeholders** — `googleApiKey is still the example's placeholder, not a key`. This is new, and better than what this document described |
+| §11 the Edit Plans | **308 KB**, not the 297 KB recorded |
+| §14 `npm run doctor` | **17 present, 7 absent, 0 could not be determined, of 24**, and **three** blockers, not one |
+| §14 `npm run check` | **failed: 98 tests**, where this document promised `check: PASS` |
+
+**Still not exercised, and why — these are the steps nobody has yet watched work
+on a machine that did not already have them:**
+
+| step | why not |
+|---|---|
+| §2 Homebrew, §5 ffmpeg | already installed on the rehearsal Mac; a genuinely fresh install of either remains unrehearsed |
+| §7 the three fonts | already installed system-wide. A font check passing here says nothing about a Mac without them |
+| §8 the scripting preference | already switched on, and it is a checkbox inside After Effects that nothing outside may set |
+| §9 `npm run panel:install` | **deliberately not run.** It rewrites the one folder After Effects reads and would have pointed Mohamed's working panel at the rehearsal copy |
+| §10, actually using a key | **deliberately not done.** The only key available is Mohamed's and it must never go into a second checkout. Every paid step below it is therefore unverified |
+| §12, §13 | need a key and a real run, so they follow §10 |
+| the optional last section | needs the 11.93 GB of video, which the rehearsal Mac does not have in that folder |
+
+**A caution about what a rehearsal on this Mac can prove at all.** Six of the
+doctor's 24 checks — After Effects running, the scripting preference, the fonts,
+the extensions folder, the panel bundle and PlayerDebugMode — read the *machine*,
+not the checkout. They all passed on the rehearsal because Mohamed's After
+Effects and Mohamed's installed panel are on this Mac. **On a Mac that has never
+had this tool, they would not**, and nothing here has tested that.
 
 Rehearsed twice on 2026-09-05, the second time **by cloning this repository from
 GitHub** into a folder that had never held it and following this document from
