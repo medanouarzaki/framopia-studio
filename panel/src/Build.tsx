@@ -17,6 +17,7 @@ export function Build({
   disabled,
   disabledReason,
   issues,
+  issuesSummary,
   ready,
   stale,
   onClientLookUpdated,
@@ -31,6 +32,7 @@ export function Build({
   stale: string | null;
   /** Cards the builder will have to squeeze, named rather than counted. */
   issues: string[];
+  issuesSummary?: string;
   /** Called after the video is brought up to the client's current look. */
   onClientLookUpdated?: () => void;
 }): JSX.Element {
@@ -152,8 +154,16 @@ export function Build({
 
       {issues.length === 0 ? null : (
         <details className="quibbles">
+          {/*
+            The service says what these are; the count alone read as a fault and
+            was reported as one. The fallback is the old sentence, for a service
+            older than this panel — and it is deliberately the old words rather
+            than a guess, because only the service knows whether every issue is
+            about length.
+          */}
           <summary>
-            {issues.length} {issues.length === 1 ? 'card is' : 'cards are'} too short to hold
+            {issuesSummary ??
+              `${issues.length} ${issues.length === 1 ? 'card is' : 'cards are'} too short to hold`}
           </summary>
           <ul className="issues">
             {issues.map((issue) => (

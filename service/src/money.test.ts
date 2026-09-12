@@ -400,7 +400,16 @@ describe('a reel’s real cost', () => {
       expect(`${r.reel}: ${String(fromLedger && r.ledgerUsd > 0)}`).toBe(
         `${r.reel}: ${String(fromLedger)}`,
       );
-      if (!fromLedger) expect(`${r.reel}: ${r.ledgerUsd}`).toBe(`${r.reel}: 0`);
+      /*
+       * **`basis` has three values, and this knew about two.** `sora-3` is the
+       * first reel whose ledger total and plan total are exactly equal, which
+       * makes it `both` rather than `ledger` — and this then read it as a reel
+       * costed from the plan whose ledger total had to be zero. Block 12 session
+       * 91. The invariant is the one below: only a reel the ledger knows nothing
+       * about falls back to the plan.
+       */
+      if (r.basis === 'plan') expect(`${r.reel}: ${r.ledgerUsd}`).toBe(`${r.reel}: 0`);
+      else expect(`${r.reel}: ${r.ledgerUsd > 0}`).toBe(`${r.reel}: true`);
     }
     // At least one reel is now costed each way, or this proves nothing.
     expect(knownVideos.size).toBeGreaterThan(0);

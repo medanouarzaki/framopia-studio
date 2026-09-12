@@ -72,6 +72,8 @@ export interface StepState {
    * buildability issue(s)" tells a user a number and nothing they can act on.
    */
   issues?: string[];
+  /** The issue list said in words, because a bare count reads as a fault. */
+  issuesSummary?: string;
 }
 
 export interface PlanSteps {
@@ -210,8 +212,17 @@ export function stepsFor(reelLabel: string, modeId: string): PlanSteps {
     reason: string | null,
     summary: string | null,
     issues: string[] = [],
+    issuesSummary: string | null = null,
   ): void => {
-    steps.push({ id, label: LABELS[id], available, reason, summary, ...(issues.length > 0 ? { issues } : {}) });
+    steps.push({
+      id,
+      label: LABELS[id],
+      available,
+      reason,
+      summary,
+      ...(issues.length > 0 ? { issues } : {}),
+      ...(issuesSummary === null ? {} : { issuesSummary }),
+    });
   };
 
   push('reel', true, null, `${reel.label}${reel.durationS === null ? '' : ` — ${reel.durationS.toFixed(1)}s`}`);
@@ -283,6 +294,7 @@ export function stepsFor(reelLabel: string, modeId: string): PlanSteps {
   let buildReason: string | null = null;
   let buildSummary: string | null = null;
   let buildIssues: string[] = [];
+  let buildIssuesSummary: string | null = null;
   let buildPreview: BuildPreview | undefined;
   const identity = resolveClientIdentity(plan, {});
   const fonts = buildFonts(identity.snapshot ?? mode);
@@ -308,6 +320,31 @@ export function stepsFor(reelLabel: string, modeId: string): PlanSteps {
         : `${i.path}: ${i.message} (short by ${i.shortByS.toFixed(2)}s)`,
     );
 
+    /**
+     * **What these are, in words, because a bare count reads as a fault.**
+     *
+     * The panel showed *"8 cards are too short to hold"* over the list and
+     * nothing else, so Mohamed reported it as a third defect on `sora-3`. It is
+     * not one. A card shorter than its template's entrance plus hold gets the
+     * entrance compressed instead — Block 7 session 9's ruling, that dropping a
+     * word is worse than animating it faster — so every word is still on screen
+     * and the comp is built. `sora-2` had six of these, and he watched it and
+     * liked it.
+     *
+     * It also labelled *every* buildability issue "too short", including
+     * `no templateId assigned`, which is not about length at all.
+     */
+    const shortCards = report.issues.filter((i) => i.shortByS !== undefined).length;
+    buildIssuesSummary =
+      shortCards === report.issues.length && shortCards > 0
+        ? `${shortCards} ${shortCards === 1 ? 'card is' : 'cards are'} shorter than their ` +
+          'animation, so it plays faster on those. Every word is still shown and the ' +
+          'composition is built — nothing here needs fixing.'
+        : report.issues.length > 0
+          ? `${report.issues.length} ${report.issues.length === 1 ? 'thing' : 'things'} to know ` +
+            'about this composition'
+          : null;
+
     buildSummary =
       `Would contain ${willContain.join(', ')}` +
       (willNot.length === 0 ? '' : `; no ${willNot.join(' and no ')}`) +
@@ -330,12 +367,12 @@ export function stepsFor(reelLabel: string, modeId: string): PlanSteps {
       buildAvailable = false;
       buildReason =
         missing.length === 1
-          ? `${missing[0]?.what}. Without it, ${missing[0]?.consequence}. Run: ${missing[0]?.command}`
+          ? `${missing[0]?.what}. Without it, ${missing[0]?.consequence}. To fix it, ${missing[0]?.command}.`
           : `${missing.length} things this reel needs before it can be built correctly.`;
       // Ahead of the clipped holds, not instead of them: these stop the build
       // and those are things to know about a comp that will be made anyway.
       buildIssues = [
-        ...missing.map((m) => `${m.what} — without it, ${m.consequence}. Run: ${m.command}`),
+        ...missing.map((m) => `${m.what} — without it, ${m.consequence}. To fix it, ${m.command}.`),
         ...buildIssues,
       ];
     }
@@ -377,7 +414,7 @@ export function stepsFor(reelLabel: string, modeId: string): PlanSteps {
   } catch (error) {
     buildReason = `The template manifest did not load: ${(error as Error).message}`;
   }
-  push('build', buildAvailable, buildReason, buildSummary, buildIssues);
+  push('build', buildAvailable, buildReason, buildSummary, buildIssues, buildIssuesSummary);
 
   return {
     reel: reel.label,
