@@ -565,6 +565,11 @@ export interface ImageSlotView {
   idea: string;
   presentation: 'cutout' | 'card' | null;
   rendersAsCutout?: boolean;
+  /**
+   * Where this picture came from, in words, when it did not come from this reel.
+   * Optional: a service older than this panel sends none and nothing is shown.
+   */
+  origin?: string;
   nothingIsMeasured?: boolean;
   templateId: string | null;
   zoneId: string | null;

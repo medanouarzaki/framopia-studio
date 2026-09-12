@@ -158,6 +158,12 @@ function Slot({
         </em>
       </p>
       <p className="src">{slot.idea}</p>
+      {/*
+        Where it came from, when it did not come from this reel. Above the
+        gate's own words because it changes how they should be read: a reused
+        picture was judged once already, on another video.
+      */}
+      {slot.origin === undefined ? null : <p className="reason origin">{slot.origin}</p>}
       <p className="reason">
         {slot.rendersAsCutout
           ? 'This one is shown with its background removed, so only the subject appears.'

@@ -96,6 +96,18 @@ export interface ImageSlotView {
    * no other check exists.
    */
   nothingIsMeasured: boolean;
+  /**
+   * **Where this picture came from, in the words the panel shows.**
+   *
+   * He judges these by eye and a reused picture is a different thing from a
+   * fresh one: it was drawn for another reel, chosen there, and is on screen
+   * again because the same thing is named. Mohamed's ruling of 2026-09-12 makes
+   * the reuse automatic, and automatic is exactly why it has to be visible.
+   *
+   * Optional with a default: a service older than the panel sends none, and the
+   * panel then says nothing rather than guessing.
+   */
+  origin?: string;
   templateId: string | null;
   zoneId: string | null;
   candidates: CandidateView[];
@@ -228,6 +240,25 @@ function candidateViewOf(candidate: ImageCandidate, slot: ImageSlot): CandidateV
  * Read through `clientPictureFileFor` so there is not a second copy of that
  * rule — session 4 lost four of five images to exactly that.
  */
+/**
+ * One sentence saying where a picture came from: made for this video, chosen
+ * from his own store, or already paid for on an earlier reel of this client.
+ *
+ * **Plain words, and it names no command and sends him nowhere** — session 91
+ * found eleven messages that did, and `leave-the-panel.test.ts` reads this file
+ * now that it reads the whole service.
+ */
+export function originOf(slot: {
+  chosenClientPictureId?: string;
+  reusedFrom?: { reel: string; planId: string };
+}): string | undefined {
+  if (slot.chosenClientPictureId !== undefined) return 'One of your own pictures.';
+  if (slot.reusedFrom !== undefined) {
+    return `Already made for ${slot.reusedFrom.reel}, and used again here — this one costs nothing.`;
+  }
+  return undefined;
+}
+
 function pictureSlotWillPlace(plan: EditPlan, slot: ImageSlot): string | null {
   try {
     const own = clientPictureFileFor(plan, slot);
@@ -306,6 +337,7 @@ function slotViewOf(
     presentation: slot.presentation,
     rendersAsCutout: rendersAsCutout(slot),
     nothingIsMeasured: nothingIsMeasured(slot),
+    origin: originOf(slot),
     templateId: slot.templateId,
     zoneId: slot.zoneId,
     candidates: slot.candidates.map((c) => candidateViewOf(c, slot)),

@@ -3,7 +3,7 @@ import { copyFileSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { REPO_ROOT } from '@framopia/core';
-import { chooseCandidate, imagesView, imagesViewForPlan, ImageViewError } from './image-view.js';
+import { chooseCandidate, imagesView, imagesViewForPlan, ImageViewError, originOf } from './image-view.js';
 import { readEditPlan } from './editplan/io.js';
 
 const FOOTAGE = path.join(REPO_ROOT, 'my files', 'test videos');
@@ -208,5 +208,41 @@ describe('choosing a candidate', () => {
     expect(JSON.stringify(after.keywords)).toBe(JSON.stringify(before.keywords));
     expect(JSON.stringify(after.sfx)).toBe(JSON.stringify(before.sfx));
     expect(JSON.stringify(after.subtitles)).toBe(JSON.stringify(before.subtitles));
+  });
+});
+
+/**
+ * **He is told where each picture came from**, because Mohamed's ruling of
+ * 2026-09-12 makes reuse automatic and automatic is why it must be visible: a
+ * reused picture was drawn for another reel and judged there.
+ */
+describe('where a picture came from', () => {
+  it('says nothing about a picture made for this video', () => {
+    expect(originOf({})).toBeUndefined();
+  });
+
+  it('names his own store', () => {
+    expect(originOf({ chosenClientPictureId: 'pic014' })).toBe('One of your own pictures.');
+  });
+
+  it('names the reel a reused picture was bought for, and that it is free', () => {
+    expect(originOf({ reusedFrom: { reel: 'sora-1-8bcbfc38', planId: 'x' } })).toBe(
+      'Already made for sora-1-8bcbfc38, and used again here — this one costs nothing.',
+    );
+  });
+
+  /* His own picture outranks a reused one, the same way it outranks a candidate. */
+  it('prefers his own store when a slot somehow has both', () => {
+    expect(
+      originOf({ chosenClientPictureId: 'pic014', reusedFrom: { reel: 'r', planId: 'x' } }),
+    ).toBe('One of your own pictures.');
+  });
+
+  it('names no command and sends him nowhere', () => {
+    const said = [
+      originOf({ chosenClientPictureId: 'pic014' }),
+      originOf({ reusedFrom: { reel: 'sora-1-8bcbfc38', planId: 'x' } }),
+    ].join(' ');
+    expect(said).not.toMatch(/npm run|terminal|quit|restart|reopen/i);
   });
 });
