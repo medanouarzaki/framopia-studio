@@ -27,7 +27,7 @@ export class NoZonesError extends Error {
   constructor(planId: string) {
     super(
       `plan ${planId} carries no zones, so no slot can be placed. Run ` +
-        '`npm run zones -- --reel <label> --write-plan` first.',
+        'press Make the pictures for this video, which looks at it first.',
     );
     this.name = 'NoZonesError';
   }

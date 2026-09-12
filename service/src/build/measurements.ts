@@ -161,7 +161,9 @@ export function ensureWatermarkFacts(
     throw new MeasurementUnavailableError([{
       what: 'the watermark measurement, which did not complete',
       consequence: 'a reel that asks for the mark is built without one',
-      command: `npm run watermark:measure  (it said: ${(proc.stderr ?? '').trim().split('\n').pop() ?? 'nothing'})`,
+      command:
+        'press Make the pictures for this video to take it again' +
+        ` (it said: ${(proc.stderr ?? '').trim().split('\n').pop() ?? 'nothing'})`,
     }]);
   }
 
@@ -171,7 +173,7 @@ export function ensureWatermarkFacts(
     throw new MeasurementUnavailableError([{
       what: 'a usable watermark measurement; the tool ran but left nothing this build can read',
       consequence: 'a reel that asks for the mark is built without one',
-      command: 'npm run watermark:measure',
+      command: 'press Make the pictures for this video to take it again',
     }]);
   }
   log(`watermark: measured, ${written.width}x${written.height}, ${written.frames} frames`);

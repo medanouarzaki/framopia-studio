@@ -123,7 +123,30 @@ describe('a client’s own picture is copied to one place and no other', () => {
         const code = readFileSync(full, 'utf8')
           .replace(/\/\*[\s\S]*?\*\//g, '')
           .replace(/^\s*\/\/.*$/gm, '');
-        if (/copyFileSync|copyFile\(/.test(code) && /picture|photo/i.test(code)) {
+        /*
+         * **The copy and the photograph have to be the same statement.**
+         *
+         * This used to ask whether the file contained a copy *anywhere* and the
+         * word "picture" *anywhere*, and Block 12 session 91 made it say yes to
+         * `frames/sample.ts` — which copies a sampled video frame, and now names
+         * the panel's *Make the pictures* button eighteen lines below it. A file
+         * is not a unit of meaning here; the call is.
+         */
+        const lines = code.split('\n');
+        const copies = lines.some((line) => /copyFileSync\(|copyFile\(/.test(line));
+        const nearAPhotograph = lines.some((line, i) => {
+          if (!/copyFileSync\(|copyFile\(/.test(line)) return false;
+          return lines.slice(Math.max(0, i - 3), i + 4).some((near) => /picture|photo/i.test(near));
+        });
+        /*
+         * The store's own declaration, or the directory it writes into: the two
+         * ways a module could be copying a photograph. Proximity alone is not
+         * enough — `picture-store.ts` copies from `from` to `destination` with
+         * neither word on any line near it — and a file-wide word search is far
+         * too much, which is what made this say yes to `frames/sample.ts`.
+         */
+        const knowsTheStore = /clientPictureStorePath|client-pictures/.test(code);
+        if (copies && (nearAPhotograph || knowsTheStore)) {
           copiers.push(path.relative(REPO_ROOT, full));
         }
       }

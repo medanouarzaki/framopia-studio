@@ -172,8 +172,9 @@ describe('determinism', () => {
 describe('a plan without zones', () => {
   it('is an explicit error naming what to run, not a crash', () => {
     expect(() => solvePlacements(planWith([], [slot('img001', 1, 3, 'card')]))).toThrow(NoZonesError);
+    /* Named as the button that does it, since Block 12 session 91 put it there. */
     expect(() => solvePlacements(planWith([], [slot('img001', 1, 3, 'card')]))).toThrow(
-      /npm run zones/,
+      /Make the pictures/,
     );
   });
 });

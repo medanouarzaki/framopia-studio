@@ -124,7 +124,7 @@ export function authoredEntranceS(audit: AuditComp[], templateId: string): numbe
   if (typeof last !== 'number' || last <= 0) {
     throw new Error(
       `templates/library.audit.json has no opacity ramp on ${templateId}/IMG_MAIN; ` +
-        'run npm run audit:templates',
+        'the template manifest is out of date and has to be audited again',
     );
   }
   return last;
@@ -133,7 +133,9 @@ export function authoredEntranceS(audit: AuditComp[], templateId: string): numbe
 function settled(l: AuditLayer, field: 'position' | 'anchorPoint' | 'scale'): number[] {
   const v = l[field]?.valueAtSampleTime;
   if (!Array.isArray(v)) {
-    throw new Error(`layer "${l.name}" has no audited ${field}; run npm run audit:templates`);
+    throw new Error(
+      `layer "${l.name}" has no audited ${field}; the template manifest is out of date`,
+    );
   }
   return v as number[];
 }
@@ -188,7 +190,9 @@ export function auditedSolid(c: AuditComp, placeholder: string): {
 } {
   const l = layerOf(c, placeholder);
   if (typeof l.width !== 'number') {
-    throw new Error(`layer "${placeholder}" has no audited width; run npm run audit:templates`);
+    throw new Error(
+      `layer "${placeholder}" has no audited width; the template manifest is out of date`,
+    );
   }
   return { width: l.width, scalePercent: settled(l, 'scale')[0] as number };
 }

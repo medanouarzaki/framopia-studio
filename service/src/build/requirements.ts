@@ -155,13 +155,16 @@ export function buildRequirements(
       needed: slots > 0,
       present: disk.faceMasks,
       what: `the face masks for this reel (${slots} images are placed against them)`,
-      // Run pipeline does this now — "Looking at the video" is a stage of it —
-      // so that is named first, because the panel is where this sentence is
-      // read. The two commands stay because they are still what a terminal
-      // runs and they still work.
+      /*
+       * **It named a button that had not existed for five weeks, and then a
+       * terminal.** Session 54 replaced *Run pipeline* with the two jobs Mohamed
+       * names, and neither of them asked for this stage, so the sentence sent
+       * him to a terminal for the only route left. Block 12 session 91 put the
+       * stage into the pictures run, so there is a real control to name.
+       */
       command:
-        'press Run pipeline for this video; from a terminal, ' +
-        'npm run frames -- --reel <label> then npm run segment -- --reel <label>',
+        'press Make the pictures for this video — looking at the video and finding ' +
+        'your face is part of it, on this machine, and costs nothing',
       consequence:
         'every image is placed against the frame instead of your face, which puts a ' +
         '2030 px picture across the speaker on a 2160 px frame',
@@ -181,10 +184,12 @@ export function buildRequirements(
       needed: watermarkEnabled(plan.watermark),
       present: disk.watermarkFacts,
       what: 'the watermark measurement (this reel is set to carry the mark)',
-      // Block 9 session 13 made the pipeline measure the watermark itself, and
-      // this sentence was never brought forward. Same shape as `face-masks`:
-      // the in-panel action first, the terminal command after it.
-      command: 'press Run pipeline for this video; from a terminal, npm run watermark:measure',
+      /*
+       * Block 9 session 13 made the pipeline measure the watermark itself, on the
+       * skip path too, so any run puts it on the plan. The sentence kept naming a
+       * terminal anyway, and a button that no longer exists.
+       */
+      command: 'press Make the pictures for this video — the mark is measured as part of any run',
       consequence: 'no watermark is placed at all, and the comp looks like one that has none',
     },
     {
@@ -196,11 +201,9 @@ export function buildRequirements(
         plan.source.dialoguePeakDbfs !== undefined &&
         plan.source.dialoguePeakDbfs !== null,
       what: `this reel’s dialogue loudness (${sounds} sounds are mixed against it)`,
-      // The pipeline measures loudness itself since Block 9 session 13, on the
-      // skip path too, so a run puts this on the plan without a terminal.
+      /* Measured by any run since Block 9 session 13, the skip path included. */
       command:
-        'press Run pipeline for this video; from a terminal, npm run loudness:measure ' +
-        'then npm run migrate:sfx-placement -- --apply',
+        'press Make the pictures for this video — the loudness is measured as part of any run',
       consequence:
         'the voice is not brought down, and every sound sums past 0 dBFS and clips — ' +
         'the reels run at 0.0 to 0.2 dBFS true peak, so there is no headroom at all',
@@ -210,7 +213,7 @@ export function buildRequirements(
       needed: slots > 0,
       present: needsMode,
       what: 'the client this reel was built for, which decides the card frame colour',
-      command: 'run the pipeline for this reel, or pass --mode <id>',
+      command: 'choose the client for this video, then press Make the pictures again',
       consequence:
         'each card keeps the template’s own frame colour, which measures 1.03:1 against ' +
         'the pictures and disappears',
@@ -220,7 +223,13 @@ export function buildRequirements(
       needed: unknownTemplates.length > 0,
       present: false,
       what: `template ids the manifest does not define: ${[...new Set(unknownTemplates)].join(', ')}`,
-      command: 'npm run migrate:templates-sfx -- --apply',
+      /*
+       * This fires only on a plan made before these template ids existed, and
+       * the fix is a one-off migration over stored plans. There is no control to
+       * press, so it says what is wrong rather than what to type — Block 12
+       * session 91's report lists giving it an in-panel route as open.
+       */
+      command: 'this video was planned before these templates existed, and has to be re-planned',
       consequence:
         'those cards are given an entrance budget of zero, so the short-card rule ' +
         'compresses against nothing',

@@ -288,7 +288,10 @@ export const FINAL_FRAME_NAME = 'frame-final.png';
 export function readFramesManifest(video: VideoIdentity): FramesManifest {
   const manifestPath = framesManifestPath(video);
   if (!existsSync(manifestPath)) {
-    throw new Error(`no frames sampled for ${video.path}; run npm run frames first`);
+    throw new Error(
+      `no frames sampled for ${video.path}; press Make the pictures for this video, ` +
+        'which looks at it first',
+    );
   }
   return JSON.parse(readFileSync(manifestPath, 'utf8')) as FramesManifest;
 }

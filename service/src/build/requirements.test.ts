@@ -33,7 +33,14 @@ describe('what a build requires', () => {
     const missing = missingRequirements(buildRequirements(plan, ABSENT));
     expect(missing.map((m) => m.id)).toContain('face-masks');
     const faces = missing.find((m) => m.id === 'face-masks');
-    expect(faces?.command).toContain('npm run segment');
+    /*
+      * **What to press, not what to type.** This asserted `npm run segment`, and
+      * so pinned the sentence that sent Mohamed to a terminal on `sora-3` — a
+      * reel he had paid $2.5648 for. Block 12 session 91 put the stage into the
+      * pictures run, so there is a control to name.
+      */
+     expect(faces?.command).toContain('Make the pictures');
+     expect(faces?.command).not.toMatch(/npm run|terminal/i);
     expect(faces?.consequence).toContain('2030 px');
   });
 
@@ -130,10 +137,14 @@ describe('what a build requires', () => {
     const plan = await readEditPlan(planPath('test 3'));
     const missing = missingRequirements(buildRequirements(plan, { ...PRESENT, watermarkFacts: false }));
     expect(missing.map((m) => m.id)).toEqual(['watermark-facts']);
-    // The pipeline measures the watermark itself since Block 9 session 13, so
-    // the in-panel action comes first and the terminal command follows it.
-    expect(missing[0]?.command).toContain('press Run pipeline');
-    expect(missing[0]?.command).toContain('npm run watermark:measure');
+    /*
+     * The pipeline measures the watermark itself since Block 9 session 13, so
+     * there was never anything to type. This asserted both the button — one
+     * removed in session 54, so the sentence named a control that did not
+     * exist — and the terminal command after it.
+     */
+    expect(missing[0]?.command).toContain('Make the pictures');
+    expect(missing[0]?.command).not.toMatch(/npm run|terminal/i);
   });
 
   it('does not ask for a watermark measurement when the reel refuses the mark', async () => {

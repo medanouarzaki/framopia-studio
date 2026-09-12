@@ -80,6 +80,80 @@ const NOT_SHOWN_TO_ANYONE = [REBUILD_COMMAND];
  */
 const ALSO_SCANNED = [path.join(SRC, '..', '..', 'core', 'src', 'build-stamp.ts')];
 
+/**
+ * **The service is scanned too, because the panel is a view over it.**
+ *
+ * Block 12 session 91 found a sixth message telling Mohamed to open a terminal —
+ * *"press Run pipeline for this video; from a terminal, npm run frames -- --reel
+ * <label> then npm run segment -- --reel <label>"* — and it had been in the
+ * product, on a real refusal, on a reel he had paid $2.4565 for. This rule did
+ * not catch it for two separate reasons, and both are fixed here.
+ *
+ * The first is that the scan reached `panel/src` and one file of `core`, and the
+ * sentence was in `service/src/build/requirements.ts`. Every sentence a build
+ * requirement carries is rendered verbatim by the panel; so is every message a
+ * stage throws. Being written in the service does not make it less of a thing on
+ * his screen, so the whole service is read now, not the one file this message
+ * happened to sit in.
+ *
+ * The second is below, at `naming their own usage`.
+ *
+ * **`*-cli.ts` is excluded and nothing else is.** A CLI is a terminal program and
+ * its `usage:` line is allowed to say what to type — it is not a panel message
+ * and never reaches one.
+ */
+function serviceSources(): string[] {
+  const root = path.join(SRC, '..', '..', 'service', 'src');
+  const out: string[] = [];
+  const walk = (dir: string): void => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else if (
+        (entry.name.endsWith('.ts') || entry.name.endsWith('.tsx')) &&
+        !entry.name.includes('.test.') &&
+        !entry.name.endsWith('-cli.ts')
+      ) {
+        out.push(full);
+      }
+    }
+  };
+  walk(root);
+  return out;
+}
+
+/**
+ * **Only string literals, because only a string can be shown to anyone.**
+ *
+ * Reading raw source made `const terminal =` in `pipeline.ts` an offender — a
+ * local variable in the retry classifier, which nobody will ever see. A rule
+ * that cries wolf on an identifier gets exemptions bolted onto it until it means
+ * nothing, so it reads the strings and leaves the code alone.
+ */
+function stringLiterals(text: string): string {
+  const found = text.match(/'(?:[^'\\\n]|\\.)*'|"(?:[^"\\\n]|\\.)*"|`(?:[^`\\]|\\.)*`/g);
+  return (found ?? []).join('\n');
+}
+
+/**
+ * **Two things no panel can do, named as what they are.**
+ *
+ * `tools/cv/setup.sh` installs Python, its packages and a segmentation model;
+ * `npm run service:build` compiles the service's own code, which is missing when
+ * that sentence fires. Neither is work a button could be wired to today, so
+ * naming them is the only true sentence available — the same shape as `host.ts`,
+ * where a panel loaded without the Node bridge cannot repair itself by any
+ * means.
+ *
+ * **Both are worth removing rather than living with.** The service can run
+ * `setup.sh`, and a running service can rebuild itself; session 91's report puts
+ * both to Mohamed rather than treating an exemption as the end of the question.
+ */
+const CANNOT_BE_DONE_IN_A_PANEL = [
+  'tools/cv/setup.sh',
+  'Run npm run service:build, then reopen the panel.',
+];
+
 const FORBIDDEN = [
   /quit\s+after\s+effects/i,
   /restart\s+(?:after\s+effects|the\s+service|the\s+panel|the\s+application)/i,
@@ -109,7 +183,11 @@ function joinLiterals(text: string): string {
 /** The allowed sentence removed, so what is left is everything else. */
 function withoutAllowed(text: string): string {
   let out = text;
-  for (const allowed of [...ALLOWED_TO_NAME_A_COMMAND, ...NOT_SHOWN_TO_ANYONE]) {
+  for (const allowed of [
+    ...ALLOWED_TO_NAME_A_COMMAND,
+    ...NOT_SHOWN_TO_ANYONE,
+    ...CANNOT_BE_DONE_IN_A_PANEL,
+  ]) {
     out = out.split(allowed).join('');
   }
   return out;
@@ -120,12 +198,14 @@ function panelSources(): { file: string; text: string }[] {
     .filter((f) => (f.endsWith('.ts') || f.endsWith('.tsx')) && !f.includes('.test.'))
     .filter((f) => !EXEMPT.has(f))
     .map((f) => ({ file: f, full: path.join(SRC, f) }));
-  return [...own, ...ALSO_SCANNED.map((full) => ({ file: path.basename(full), full }))].map(
-    ({ file, full }) => ({
-      file,
-      text: withoutAllowed(joinLiterals(stripComments(readFileSync(full, 'utf8')))),
-    }),
-  );
+  const extra = [...ALSO_SCANNED, ...serviceSources()].map((full) => ({
+    file: path.relative(path.join(SRC, '..', '..'), full),
+    full,
+  }));
+  return [...own, ...extra].map(({ file, full }) => ({
+    file,
+    text: withoutAllowed(stringLiterals(joinLiterals(stripComments(readFileSync(full, 'utf8'))))),
+  }));
 }
 
 describe('no message sends the user out of the panel', () => {
@@ -140,22 +220,28 @@ describe('no message sends the user out of the panel', () => {
     expect(offenders).toEqual([]);
   });
 
-  /*
-   * The panel is a view over the service, and the service's own sentences reach
-   * the screen verbatim. A build requirement may still name a terminal command
-   * — `tools/cv/setup.sh` installs the picture tools and no panel can do that —
-   * but where the panel *can* do the work, the in-panel action comes first.
+  /**
+   * **This test used to protect the sentence it should have refused.**
+   *
+   * It read `requirements.ts` — the only part of the service anything here
+   * looked at — and asserted that a `command:` naming `npm run` must *also* say
+   * `press Run pipeline` or `from a terminal`. It was written to put the
+   * in-panel action first, and what it actually did was make "from a terminal"
+   * a way to pass. So the one file that was read was the one file where the
+   * forbidden words were blessed, and Block 12 session 91's message sat inside
+   * it, conforming.
+   *
+   * There is nothing left to assert separately: `requirements.ts` is scanned
+   * with the rest of the service by the rule above, and a command in it fails
+   * like a command anywhere else.
    */
-  it('puts the in-panel action first in every build requirement that has one', () => {
+  it('tells every build requirement what to press, not what to type', () => {
     const requirements = readFileSync(
       path.join(SRC, '..', '..', 'service', 'src', 'build', 'requirements.ts'),
       'utf8',
     );
-    for (const line of stripComments(requirements).split('\n')) {
-      const isCommand = /command:/.test(line) || /^\s*'press Run pipeline/.test(line);
-      if (!isCommand) continue;
-      if (!/npm run/.test(line)) continue;
-      expect(`${line.trim()}`).toMatch(/press Run pipeline|from a terminal|migrate:templates-sfx/);
-    }
+    expect(
+      withoutAllowed(stringLiterals(joinLiterals(stripComments(requirements)))),
+    ).not.toMatch(/npm run|terminal/i);
   });
 });

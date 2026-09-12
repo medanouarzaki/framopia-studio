@@ -124,7 +124,9 @@ function readSegmentation(video: VideoIdentity): SegmentationRecord[] {
   const file = path.join(reelMasksDir(video), 'segmentation.json');
   const parsed = JSON.parse(readUtf8(file)) as { frames?: SegmentationRecord[] };
   if (!parsed.frames?.length) {
-    throw new Error(`${file} lists no frames; run npm run segment first`);
+    throw new Error(
+      `${file} lists no frames; press Make the pictures for this video, which looks at it first`,
+    );
   }
   return parsed.frames;
 }
