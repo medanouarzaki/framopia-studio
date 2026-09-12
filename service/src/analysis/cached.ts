@@ -75,6 +75,8 @@ export interface CachedKeywordOptions {
   log?: (message: string) => void;
   /** Spans this reel has already bought a picture for, as `wordIds.join(" ")`. */
   alreadyBought?: readonly string[];
+  /** This client's already-paid-for ideas, normalised. Never another's. */
+  ownedIdeas?: ReadonlySet<string>;
   /** Injected in tests so a hit can be exercised without an API key. */
   runAnalysis?: (options: {
     apiKey: string;
@@ -232,6 +234,8 @@ export interface CachedSlotOptions {
   log?: (message: string) => void;
   /** Spans this reel has already bought a picture for, as the joined word ids. */
   alreadyBought?: readonly string[];
+  /** This client's already-paid-for ideas, normalised. Never another's. */
+  ownedIdeas?: ReadonlySet<string>;
   /**
    * Injected in tests, so the re-ask cannot reach a real model.
    *
@@ -327,6 +331,7 @@ export async function planSlotsCached(options: CachedSlotOptions): Promise<Cache
       requestedCount: slotCount,
       durationS,
       alreadyBought: options.alreadyBought,
+      ownedIdeas: options.ownedIdeas,
     }),
     cached,
     costUsd: cached ? 0 : payload.costUsd,

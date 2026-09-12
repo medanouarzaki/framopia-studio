@@ -9,6 +9,7 @@ import {
   type IdeaIssue,
 } from '@framopia/core';
 import type { AnalysisWord } from './types.js';
+import { normaliseIdea } from './client-library.js';
 
 /**
  * A slot every model call must clear before it reaches the plan. Nothing here
@@ -231,6 +232,15 @@ export interface PlanSlotsOptions {
    * slots against a budget of six.
    */
   alreadyBought?: readonly string[];
+  /**
+   * Ideas this client has already paid for, normalised by `normaliseIdea`.
+   *
+   * **One client's, and only ever one client's.** It is read by
+   * `readClientLibrary`, which is given a single client id and filters every
+   * plan by the owner recorded on it. A caller asking as Dr Loubna never holds
+   * K2's entries at all, so there is no row here to read the wrong one out of.
+   */
+  ownedIdeas?: ReadonlySet<string>;
 }
 
 /**
@@ -276,6 +286,7 @@ export interface PlanSlotsOptions {
 export function planSlots(options: PlanSlotsOptions): SlotSelectionResult {
   const { candidates, words, mode, planId, requestedCount, durationS } = options;
   const alreadyBought = new Set(options.alreadyBought ?? []);
+  const ownedIdeas = options.ownedIdeas ?? new Set<string>();
   const minPictureLifeS = options.minPictureLifeS ?? FALLBACK_MIN_PICTURE_LIFE_S;
   const byId = new Map(words.map((w) => [w.id, w]));
   const failures: SlotFailure[] = [];
@@ -342,7 +353,22 @@ export function planSlots(options: PlanSlotsOptions): SlotSelectionResult {
     const named = 'nameWordId' in slot ? (slot as { nameWordId?: string }).nameWordId : undefined;
     if (matchClientPicture(clientPictures(mode), spoken, named) !== null) {
       answeredFree.add(slot.wordIds.join(' '));
+      continue;
     }
+    /*
+     * **A picture this client has already been charged for costs nothing here.**
+     *
+     * Mohamed's ruling of 2026-09-12: a picture bought for a client is theirs,
+     * and is used again when the same thing is named in another of their videos.
+     * It is counted with the client's own photographs rather than with the
+     * budget for the same reason session 86 gave for those — the budget exists
+     * to limit what is **bought**, and this is not bought.
+     *
+     * Asked here, at selection, so the slot is never planned as something to
+     * buy. The set is built by `readClientLibrary` for one client and reaches
+     * this function already narrowed to them; nothing here can widen it.
+     */
+    if (ownedIdeas.has(normaliseIdea(slot.idea))) answeredFree.add(slot.wordIds.join(' '));
   }
 
   /**

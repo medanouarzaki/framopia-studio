@@ -446,6 +446,13 @@ function checkImages(c: Checker, value: unknown, words: Map<string, Rec>): void 
     if (slot.chosenClientPictureId !== undefined) {
       c.string(`${p}.chosenClientPictureId`, slot.chosenClientPictureId);
     }
+    // Optional with a default: absent on every plan written before Block 12
+    // session 92, and on every slot whose pictures were bought for this reel.
+    if (slot.reusedFrom !== undefined && slot.reusedFrom !== null) {
+      const from = slot.reusedFrom as { reel?: unknown; planId?: unknown };
+      c.string(`${p}.reusedFrom.reel`, from.reel);
+      c.string(`${p}.reusedFrom.planId`, from.planId);
+    }
     // Optional with a default: absent on every plan written before Block 8
     // session 30, and on any slot whose choice did not override the gate.
     if (slot.overriddenGateFailures !== undefined) {

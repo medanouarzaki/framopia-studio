@@ -728,3 +728,57 @@ describe('where a reel spends its picture budget', () => {
     expect(out.slots).toHaveLength(4);
   });
 });
+
+/**
+ * **Mohamed, 2026-09-12: a picture bought for a client is that client's, and is
+ * used again automatically when the same thing is named in another of their
+ * videos.**
+ *
+ * The budget exists to limit what is **bought**. A picture already paid for is
+ * not bought, so it is counted with the client's own photographs — session 86's
+ * reasoning, applied to the same kind of thing.
+ */
+describe('an idea this client has already paid for', () => {
+  const words: AnalysisWord[] = [0, 2, 4, 6].map((s, i) => ({
+    id: `w${i}`,
+    text: `t${i}`,
+    start: s,
+    end: s + 0.3,
+    removed: false,
+  }));
+  const candidates = words.map((w, i) => ({ wordIds: [w.id], idea: `idea ${i}` }));
+
+  const plan = (ownedIdeas?: ReadonlySet<string>) =>
+    planSlots({
+      candidates,
+      words,
+      mode: mode(),
+      planId: 'p',
+      requestedCount: 2,
+      durationS: 8,
+      ...(ownedIdeas === undefined ? {} : { ownedIdeas }),
+    });
+
+  it('does not spend the budget, so the reel buys its full count as well', () => {
+    const withoutStore = plan();
+    const withStore = plan(new Set(['idea 0']));
+    expect(withoutStore.slots).toHaveLength(2);
+    expect(withStore.slots.length).toBeGreaterThan(withoutStore.slots.length);
+  });
+
+  it('is placed as well as the pictures the budget buys, not instead of one', () => {
+    const out = plan(new Set(['idea 0']));
+    expect(out.slots.map((s) => s.idea)).toContain('idea 0');
+    /* Two bought on top of the free one. */
+    expect(out.slots).toHaveLength(3);
+  });
+
+  it('is matched on the whole idea, not on a word inside it', () => {
+    const out = plan(new Set(['idea']));
+    expect(out.slots).toHaveLength(2);
+  });
+
+  it('changes nothing when the client owns nothing', () => {
+    expect(JSON.stringify(plan(new Set()))).toBe(JSON.stringify(plan()));
+  });
+});

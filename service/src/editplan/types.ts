@@ -379,6 +379,20 @@ export interface ImageSlot {
    */
   chosenClientPictureId?: string;
   /**
+   * The earlier reel of this same client whose picture this slot reuses.
+   *
+   * **Schema addition, optional with a default.** Absent means the pictures here
+   * were bought for this reel, which is every slot written before Block 12
+   * session 92. Present means the bytes were paid for once already, on the reel
+   * named — Mohamed's ruling of 2026-09-12 that a picture bought for a client is
+   * that client's, and is used again automatically when the same thing is named
+   * in another of their videos.
+   *
+   * It is recorded because he judges these by eye and a reused picture is a
+   * different thing from a fresh one: the panel says which reel it came from.
+   */
+  reusedFrom?: { reel: string; planId: string };
+  /**
    * The word that chose it, when the tool chose rather than a person.
    *
    * **Schema addition, optional with a default.** Absent means either no client

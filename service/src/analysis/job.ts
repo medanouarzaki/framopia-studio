@@ -21,6 +21,8 @@ import { analyseKeywordsCached, planSlotsCached, type CachedKeywordResult, type 
 import { ACTIVE_ANALYSIS_PROMPT_VERSION, parseKeywordResponse } from './keywords.js';
 import { selectTermSpans } from './terms.js';
 import { ACTIVE_SLOT_PROMPT_VERSION } from './slots.js';
+import { fillSlotsFromClientLibrary, readClientLibrary } from './client-library.js';
+import { planPathsForMoney } from '../money-plans.js';
 import {
   fillSlotsFromClientPictures,
   slotsForSpokenPictures,
@@ -371,12 +373,28 @@ export async function planImageSlotsForPlan(
     .filter((slot) => slot.candidates.length > 0)
     .map((slot) => slot.wordIds.join(' '));
 
+  /**
+   * **Every picture this client has already been charged for.**
+   *
+   * Read before selection, because the budget is decided there: a slot naming
+   * something the client already owns must never be planned as something to
+   * buy. Read for **one** client — the one this reel is made for — so the set
+   * handed to selection cannot contain another client's work.
+   */
+  const clientId = plan.clientSnapshot?.id ?? plan.clientMode?.id ?? modeId;
+  const library = readClientLibrary({
+    clientId,
+    planPaths: planPathsForMoney(),
+    excludePlanId: plan.meta.id,
+  });
+
   const analysis = await runCached({
     apiKey: config.googleApiKey,
     videoSha256: plan.source.sha256,
     durationS: plan.source.durationS,
     planId: plan.meta.id,
     alreadyBought,
+    ownedIdeas: new Set(library.keys()),
     words,
     mode,
     bypassCache,
@@ -475,8 +493,21 @@ export async function planImageSlotsForPlan(
    * it whether or not the density rule had room: the picture exists, she said
    * when to use it, and it can never be generated.
    */
+  /*
+   * And the ones this client has already paid for on another reel. After her own
+   * photographs, which are hers outright and cost nothing to begin with; before
+   * anything can be generated, which is the point.
+   */
+  const library_ = fillSlotsFromClientLibrary({ slots: own.slots, library });
+  for (const reuse of library_.reused) {
+    log(
+      `slots: ${reuse.slotId} reuses the picture already bought for ` +
+        `${JSON.stringify(reuse.reel)} — both name ${JSON.stringify(reuse.idea)}`,
+    );
+  }
+
   const spoken = slotsForSpokenPictures({
-    slots: own.slots,
+    slots: library_.slots,
     words: plan.transcript.words,
     mode,
     ownPictures: plan.pictures ?? [],
