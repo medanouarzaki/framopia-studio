@@ -129,6 +129,13 @@ export interface DryRunPlan {
   picturesUsd?: number;
   /** Which stages `wordsUsd` covers. The panel asks for these, never its own list. */
   wordsStages?: string[];
+  /**
+   * Optional because a service older than this panel does not send it, and the
+   * panel must still offer the button. The fallback is `['images']`, which is
+   * what it asked for before session 91 — a reel made against an old service
+   * still needs its masks from somewhere, and the build says so.
+   */
+  picturesStages?: string[];
   /** Whether the subtitles exist yet. Absent means a service older than this panel. */
   wordsDone?: boolean;
   /** True when a stage reuses a transcription made against an older guide. */
@@ -257,6 +264,12 @@ export interface StepState {
   summary: string | null;
   /** Named, not counted: "5 buildability issue(s)" is not actionable. */
   issues?: string[];
+  /**
+   * The issue list said in words. Optional because a service older than this
+   * panel sends none, and then the panel falls back to counting — which is what
+   * it did before Block 12 session 91, and what Mohamed read as a third defect.
+   */
+  issuesSummary?: string;
 }
 
 /**

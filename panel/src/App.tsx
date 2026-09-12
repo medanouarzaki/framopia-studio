@@ -721,6 +721,7 @@ function Panel({
             disabled={buildStep?.available !== true}
             disabledReason={buildStep?.reason ?? null}
             issues={buildStep?.issues ?? []}
+            issuesSummary={buildStep?.issuesSummary}
             onClientLookUpdated={() => {
               if (connection === null || reel === null || mode === null) return;
               void fetchSteps(connection, reel.label, mode.id).then(setPlan, () => undefined);
@@ -1103,6 +1104,13 @@ function RunActions({
       />
 
       {/*
+        **`only` is more than `['images']` and the service decides how much more.**
+        Looking at the video rides with the pictures since Block 12 session 91,
+        because it was in neither of these two buttons and so had no caller at
+        all: `sora-3` was paid for in full and could not be built, its masks
+        never having been made. `redo` stays on the images alone — redoing the
+        look at the video would re-measure every frame for nothing.
+
         `redo` is not optional. The **slot** stage writes
         `pipeline.images.status = 'done'` when it plans the slots, so a plan that
         has never held a picture still records the image stage as done and
@@ -1114,7 +1122,7 @@ function RunActions({
         className="run"
         type="button"
         disabled={!enabled || !subtitlesDone}
-        onClick={() => onRun({ only: ['images'], redo: ['images'] })}
+        onClick={() => onRun({ only: dry.picturesStages ?? ['images'], redo: ['images'] })}
       >
         {running ? 'Working…' : `Make the pictures — about $${pictures.toFixed(2)}`}
       </button>

@@ -63,6 +63,31 @@ export const PIPELINE_STAGES: readonly PipelineStageSpec[] = [
  */
 export const WORDS_STAGE_IDS: readonly PipelineStageId[] = ['transcription', 'analysis'];
 
+/**
+ * The stages that produce **the pictures**: the images themselves, and the look
+ * at the video that decides where each one may sit.
+ *
+ * **`zones` is in here because otherwise nothing asks for it.** There used to be
+ * a single *Run pipeline* button that ran every stage, and it was the only
+ * caller this stage ever had. Session 54 replaced it with the two jobs Mohamed
+ * names — make the subtitles, then make the pictures — and `zones` was left in
+ * neither. Nothing noticed for five weeks because every reel since was run
+ * whole by a session driving `runPipeline` directly.
+ *
+ * Block 12 session 91 is what it cost: `sora-3`, his third real client video,
+ * was made entirely through the panel's own two buttons. Its transcript, its
+ * keywords and its seven pictures were bought for **$2.4565**, its `zones`
+ * stage stayed `pending`, and the build refused — correctly, because without
+ * the masks a 2030 px picture goes across her face on a 2160 px frame. He paid
+ * and had nothing.
+ *
+ * It belongs with the pictures rather than the words for the reason it was left
+ * out of the words: it is free but it takes about half a minute, and nothing
+ * about reading a transcript needs it. A picture cannot be placed without it,
+ * so **a run that buys pictures must end with a reel that can be built.**
+ */
+export const PICTURES_STAGE_IDS: readonly PipelineStageId[] = ['images', 'zones'];
+
 export function stageSpec(id: PipelineStageId): PipelineStageSpec {
   const spec = PIPELINE_STAGES.find((s) => s.id === id);
   if (spec === undefined) throw new Error(`no pipeline stage "${id}"`);

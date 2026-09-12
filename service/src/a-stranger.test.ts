@@ -18,6 +18,7 @@ import { findReelByLabel, listVideosFor } from './catalogue.js';
 import { dryRun } from './dry-run.js';
 import { stepsFor } from './steps.js';
 import { runPipeline } from './pipeline.js';
+import { PICTURES_STAGE_IDS, PIPELINE_STAGES, WORDS_STAGE_IDS } from './pipeline-stages.js';
 import { transcribeVideo } from './transcription/job.js';
 import { transcribeHybridCached } from './transcription/cached.js';
 import { mapScribeResponse, type ScribeRawResponse } from './transcription/scribe.js';
@@ -487,5 +488,54 @@ describe('what the stranger’s ideas become', () => {
       Math.min(budget - 1, Math.floor((startS / plan.source.durationS) * budget));
     const occupied = bought.map((s) => stretch(s.start));
     expect(occupied).toEqual([...new Set(occupied)]);
+  });
+});
+
+/**
+ * **A reel that reaches the end of a run must have everything the build needs,
+ * or the run must say which stage failed.**
+ *
+ * Block 12 session 91. `sora-3` went through both of the panel's buttons, both
+ * reported done, $2.4565 was spent, and the build refused: the free local stage
+ * that finds her face was in neither button's list and so had no caller at all.
+ * Nothing anywhere said a stage had been missed, because none had failed —
+ * one had simply never been asked for.
+ *
+ * The stranger cannot run the real look at the video: it is a flat colour with
+ * no face in it and the sidecar would have nothing to segment. So this asserts
+ * the two halves that do not need one — that the buttons between them ask for
+ * every stage a build depends on, and that a stage which fails is named.
+ */
+describe('what the stranger has after a run', () => {
+  it('has had every stage asked for by the two buttons between them', () => {
+    const asked = new Set([...WORDS_STAGE_IDS, ...PICTURES_STAGE_IDS]);
+    const everyStageBeforeTheBuild = PIPELINE_STAGES.map((s) => s.id).filter((id) => id !== 'build');
+    expect([...everyStageBeforeTheBuild].filter((id) => !asked.has(id))).toEqual([]);
+  });
+
+  it('is told which stage failed when one does, rather than reaching the end', async () => {
+    let last: { stages: { id: string; state: string }[] } | null = null;
+    const failed = await runPipeline({
+      reel: label,
+      modeId: CLIENT,
+      only: ['transcription'],
+      /* The plan already exists by now, so without this the stage skips. */
+      redo: ['transcription'],
+      cacheRoot: path.join(scratch, 'cache'),
+      stages: {
+        transcribe: (async () => {
+          throw new Error('the transcriber could not be reached');
+        }) as never,
+      },
+      preflight: () => undefined,
+      measure: async () => undefined,
+      onProgress: (p) => {
+        last = p as unknown as typeof last;
+      },
+    }).catch((error: unknown) => error as Error);
+
+    expect((failed as Error).message).toContain('the transcriber could not be reached');
+    const named = (last as unknown as typeof last)?.stages.filter((s) => s.state === 'failed') ?? [];
+    expect(named.map((s) => s.id)).toEqual(['transcription']);
   });
 });

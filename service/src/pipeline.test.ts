@@ -10,9 +10,11 @@ import {
   PipelineCeilingError,
   PipelineError,
   runPipeline,
+  type PipelineProgress,
   type PipelineStageImpl,
 } from './pipeline.js';
-import { PIPELINE_STAGES } from './pipeline-stages.js';
+import { PICTURES_STAGE_IDS, PIPELINE_STAGES } from './pipeline-stages.js';
+import { dryRun } from './dry-run.js';
 import { DEFAULT_CEILING_USD } from './images/config.js';
 import { readEditPlan } from './editplan/io.js';
 
@@ -600,5 +602,71 @@ describe('running one stage on its own', () => {
       expect(stage.reason).toBe('not part of this run');
     }
     expect(ledgerSha()).toBe(before);
+  });
+});
+
+/**
+ * **A run that buys pictures must end with a reel that can be built.**
+ *
+ * Block 12 session 91. `sora-3` was the first reel made entirely through the
+ * panel's own two buttons, and it could not be built: `zones` — the free local
+ * look at the video that finds her face — was in neither button's stage list,
+ * because the only control that ever asked for it was the single *Run pipeline*
+ * button session 54 removed. Nothing noticed for five weeks because every reel
+ * since was run whole by a session driving `runPipeline` directly. The bill was
+ * $2.4565 and the reel was unbuildable.
+ */
+describe('the stages the pictures button asks for', () => {
+  it('includes the look at the video, so a paid reel ends buildable', () => {
+    expect(PICTURES_STAGE_IDS).toContain('zones');
+  });
+
+  it('is what the dry run hands the panel, not a copy the panel keeps', async () => {
+    const dry = await dryRun('vitasilk', 'k2-syndicalia');
+    expect(dry.picturesStages).toEqual([...PICTURES_STAGE_IDS]);
+  });
+
+  /*
+   * The stage is free and local, and it can still fail — a missing model, an
+   * unreadable frame, a sidecar that dies. When it does, the run must stop and
+   * say so. A run that swallowed this would hand back a reel that looks finished
+   * and is not, which is the same outcome as never running it at all.
+   */
+  it('stops the run and names the cause when the look at the video fails', async () => {
+    const zones = vi.fn(async () => {
+      throw new Error('the segmentation model could not be loaded');
+    }) as unknown as PipelineStageImpl['zones'];
+
+    await expect(
+      runPipeline({
+        ...fakeHooks(),
+        reel: 'vitasilk',
+        modeId: 'k2-syndicalia',
+        redo: ['zones'],
+        stages: fakeStages({ zones }),
+      }),
+    ).rejects.toThrow('the segmentation model could not be loaded');
+  });
+
+  it('does not report that stage as done when it failed', async () => {
+    const zones = vi.fn(async () => {
+      throw new Error('the segmentation model could not be loaded');
+    }) as unknown as PipelineStageImpl['zones'];
+    let last: PipelineProgress | null = null;
+
+    await runPipeline({
+      ...fakeHooks(),
+      reel: 'vitasilk',
+      modeId: 'k2-syndicalia',
+      redo: ['zones'],
+      stages: fakeStages({ zones }),
+      onProgress: (p) => {
+        last = p;
+      },
+    }).catch(() => undefined);
+
+    const stage = (last as unknown as PipelineProgress | null)?.stages.find((s) => s.id === 'zones');
+    expect(stage?.state).toBe('failed');
+    expect(stage?.error?.cause).toContain('the segmentation model could not be loaded');
   });
 });

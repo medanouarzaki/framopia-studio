@@ -11,7 +11,12 @@ import { findReelByLabel, listModes } from './catalogue.js';
 import { knownVideos, rememberVideo } from './videos.js';
 import { resolveKeywordEntry, resolveSlotEntry } from './analysis/resolve-entry.js';
 import { imageSlotCountFor } from './analysis/count.js';
-import { PIPELINE_STAGES, WORDS_STAGE_IDS, type PipelineStageId } from './pipeline-stages.js';
+import {
+  PICTURES_STAGE_IDS,
+  PIPELINE_STAGES,
+  WORDS_STAGE_IDS,
+  type PipelineStageId,
+} from './pipeline-stages.js';
 import { resolveTranscriptionEntry } from './transcription/resolve-entry.js';
 import { IMAGE_CACHE_STAGE } from './images/cache.js';
 import { imageFingerprintInputs, imageFingerprintOf } from './images/fingerprint.js';
@@ -136,6 +141,13 @@ export interface DryRunPlan {
    * rather than holding its own copy of what "the words" means.
    */
   wordsStages: string[];
+  /**
+   * Which stages the pictures button asks for, for the same reason as
+   * `wordsStages` — and because since Block 12 session 91 it is more than the
+   * one anybody would guess. `zones` rides with the pictures so that a run
+   * which buys them ends with a reel that can actually be built.
+   */
+  picturesStages: string[];
   /**
    * Whether the subtitles exist yet.
    *
@@ -559,9 +571,10 @@ export async function dryRun(reelLabel: string, modeId: string): Promise<DryRunP
       .filter((s) => WORDS_STAGE_IDS.includes(s.id as PipelineStageId))
       .reduce((sum, s) => sum + (s.estimateUsd ?? 0), 0),
     picturesUsd: stages
-      .filter((s) => s.id === 'images')
+      .filter((s) => PICTURES_STAGE_IDS.includes(s.id as PipelineStageId))
       .reduce((sum, s) => sum + (s.estimateUsd ?? 0), 0),
     wordsStages: [...WORDS_STAGE_IDS],
+    picturesStages: [...PICTURES_STAGE_IDS],
     wordsDone: stages
       .filter((s) => WORDS_STAGE_IDS.includes(s.id as PipelineStageId))
       .every((s) => s.status === 'done'),

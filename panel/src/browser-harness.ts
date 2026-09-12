@@ -289,6 +289,7 @@ export function stubRoutes(
       modeName: 'K2 Syndicalia', modeVersion: 6, planPath: '/v/p.json', spentUsd: 1.550444,
       stages: [], estimateUsd: 0, reusesOlderGuide: false,
       wordsUsd: 0, picturesUsd: 0, wordsStages: ['transcription', 'analysis'],
+      picturesStages: ['images', 'zones'],
       watermark: true, watermarkSize: 'medium',
       watermarkWidthsPx: { small: 216, medium: 324, large: 432 },
       mismatch: realMismatch(),
