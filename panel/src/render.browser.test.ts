@@ -3484,7 +3484,14 @@ describe('running the words without the pictures', () => {
       const posted = (await page.evaluate('window.__posted')) as {
         params: { only?: string[]; redo?: string[] };
       }[];
-      expect(posted[0]?.params.only).toEqual(['images']);
+      /*
+       * **The button asks for the look at the video too, and the service says
+       * so.** This asserted `['images']`, which is what left `zones` with no
+       * caller at all: Block 12 session 91 found `sora-3` paid for in full and
+       * unbuildable, its masks never made. `redo` stays on the images alone —
+       * redoing the look at the video would re-measure every frame for nothing.
+       */
+      expect(posted[0]?.params.only).toEqual(['images', 'zones']);
       expect(posted[0]?.params.redo).toEqual(['images']);
       expect(loaded.uncaught).toEqual([]);
     } finally {
