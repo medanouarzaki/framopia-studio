@@ -43,6 +43,7 @@ import { formatUsd, SPEND_SOFT_ALARM_USD, spendLevel } from './spend.js';
 import {
   causeWords,
   money as toTheCent,
+  queueNews,
   runStateWords,
   spendsMoney,
   stageName,
@@ -197,6 +198,18 @@ function Panel({
    * one press, and a run he started is something he chose to start.
    */
   const [moment, setMoment] = useState<'choose' | 'run' | 'build'>('choose');
+  /**
+   * **Whether he has seen how the queue ended.**
+   *
+   * Block 13 session 98. The news on *2. Make* clears when he has looked at it
+   * and not a moment before — Block 12 session 94's queue vanished without a
+   * summary and left him with nothing, and a badge that cleared on a timer would
+   * be the same mistake wearing a different hat. Reading it is what dismisses it.
+   *
+   * It is set when he is standing on Make and the queue has finished; a queue
+   * still running keeps saying so, because that news is not stale.
+   */
+  const [queueNewsSeen, setQueueNewsSeen] = useState(false);
 
   const check = useCallback(async () => {
     setService({ kind: 'starting' });
@@ -456,6 +469,16 @@ function Panel({
   }, [connection, queueJobId]);
 
   /*
+   * **Reading it is what dismisses it.** He is on Make and the queue has ended,
+   * so the news on the step has done its job. The summary in the pane itself
+   * stays — that is session 94's rule and this does not touch it.
+   */
+  useEffect(() => {
+    const detail = queueJob?.detail as { done?: boolean } | undefined;
+    if (moment === 'run' && detail?.done === true) setQueueNewsSeen(true);
+  }, [moment, queueJob]);
+
+  /*
    * A finished run changes what the plan supports, so the rail has to be told.
    * This is where `cacheProvenance` first reaches the screen from real data.
    */
@@ -582,6 +605,15 @@ function Panel({
     );
   }
 
+
+  /*
+   * The queue's news, or nothing once he has read it. Session 98: `queueNews`
+   * decides the words and the tone; this decides whether there is anything left
+   * to say.
+   */
+  const queueDetail = queueJob?.detail as unknown as Parameters<typeof queueNews>[0];
+  const rawNews = queueNews(queueDetail ?? null);
+  const news = rawNews !== null && rawNews.tone !== 'working' && queueNewsSeen ? null : rawNews;
   return (
     <div className="app">
       <Brand logoSrc={logoSrc} service={service} />
@@ -622,6 +654,15 @@ function Panel({
               onClick={() => setMoment(id)}
             >
               {label}
+              {/*
+                The queue's news, on the step it belongs to. Nothing moves him and
+                nothing animates — he may be reading a transcript. Session 98.
+              */}
+              {id !== 'run' || news === null ? null : (
+                <span className={`news ${news.tone}`} title={news.said}>
+                  {news.short}
+                </span>
+              )}
             </button>
           ))}
         </nav>
@@ -740,27 +781,21 @@ function Panel({
 
         {moment !== 'run' ? null : (
           <>
-        <section className="cost">
-          <h2>Cost</h2>
-          {/*
-           * The whole history is one press away from the screen where the money
-           * is spent, which is where the question gets asked.
-           */}
-          <button type="button" className="ghost seemoney" onClick={() => setShowMoney(true)}>
-            {money === null
-              ? 'See everything spent'
-              : `See everything spent — $${money.totalUsd.toFixed(2)} so far`}
-          </button>
-          {reel === null ? null : <Spend reel={reel} />}
-          {dry === null ? null : <DryRun plan={dry} />}
-          {dryError === null ? null : (
-            <p className="say" role="status">
-              {dryError}
-            </p>
-          )}
-        </section>
 
         <section className="do">
+          {/*
+            **Two groups of controls, and a heading each.** Block 13 session 98.
+            Make carried four controls in the same shape: *Make the subtitles*,
+            *Make the pictures*, *Add … to the list* and *Make these N videos*.
+            Colour already separated spending from free; nothing separated *this
+            video* from *the list*, and the queue's own heading made the
+            difference look like an accident rather than a choice.
+
+            One heading, matching the one the queue already has. Session 97 said
+            it was one heading away from reading better, and this is it — no
+            control moved and no wording changed.
+          */}
+          <h2>This video</h2>
           {/*
             * **Above the buttons that bill.** Session 75 found a reel built in
             * another client's colours; by the time a composition exists the
@@ -893,6 +928,8 @@ function Panel({
                         (id) => {
                           setQueueJobId(id);
                           setQueueItems([]);
+                          /* A new queue is new news, however the last one ended. */
+                          setQueueNewsSeen(false);
                         },
                         (error: Error) => {
                           setQueueError(error.message);
@@ -923,6 +960,44 @@ function Panel({
                 });
               }}
             />
+          )}
+        </section>
+
+        {/*
+         * **The accounting comes after the work.** Block 13 session 98.
+         *
+         * Mohamed opened Make and read *See everything spent — $36.25 so far*,
+         * then *$3.4025 spent on this video*, then *soft alarm $2.00*, then four
+         * stage rows, before reaching a single button. He came to Make to make
+         * something, not to read his accounts.
+         *
+         * **The primary money figure is the one on the button** — *Make the
+         * pictures — about $2.17* — because that is the figure attached to the
+         * decision he is about to take, and it is the only one he acts on. What
+         * is left here is the history: what this video has cost so far, the
+         * alarm, and the way through to the full cost screen. All of it still on
+         * Make, none of it in front of the work.
+         *
+         * Nothing in the block changed — not a word, not a figure, not a route.
+         * It is the same section, further down.
+         */}
+        <section className="cost">
+          <h2>Cost</h2>
+          {/*
+           * The whole history is one press away from the screen where the money
+           * is spent, which is where the question gets asked.
+           */}
+          <button type="button" className="ghost seemoney" onClick={() => setShowMoney(true)}>
+            {money === null
+              ? 'See everything spent'
+              : `See everything spent — $${money.totalUsd.toFixed(2)} so far`}
+          </button>
+          {reel === null ? null : <Spend reel={reel} />}
+          {dry === null ? null : <DryRun plan={dry} />}
+          {dryError === null ? null : (
+            <p className="say" role="status">
+              {dryError}
+            </p>
           )}
         </section>
 

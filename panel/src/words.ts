@@ -188,3 +188,72 @@ export function causeWords(cause: string | null | undefined): string {
 export function spendsMoney(estimateUsd: number | null | undefined): boolean {
   return typeof estimateUsd === 'number' && estimateUsd > 0;
 }
+
+export interface QueueNews {
+  /** Short enough to sit on a step, which is a third of a 420 px panel. */
+  short: string;
+  /** The same thing said properly, for a screen reader and a tooltip. */
+  said: string;
+  /** `working`, `good` or `warn`. Never the accent — that means money. */
+  tone: 'working' | 'good' | 'warn';
+}
+
+/**
+ * **What the steps say about a queue he is not looking at.**
+ *
+ * Block 13 session 98. Session 97 chose never to move him between screens — being
+ * carried off mid-sentence is worse than one press — and the consequence was that
+ * two hours of unattended work could finish in silence while he was on Choose or
+ * had the panel shut. The step carries the news instead, so nothing moves and
+ * nothing is lost.
+ *
+ * **Running, finished-clean and finished-with-failures are three different pieces
+ * of news** and they read differently: a queue that ended with a video failed is
+ * not the same as one that ended clean, and he should not have to open it to find
+ * out which.
+ *
+ * **The tone is never the accent.** Red means *this spends money* — Mohamed's
+ * screens have one colour with one meaning — so a failure is `warn`, the amber
+ * already declared in `panel.css`, and never the red that a paid button uses.
+ *
+ * Returns `null` when there is nothing to say, which is most of the time.
+ */
+export function queueNews(queue: {
+  items: { outcome: 'done' | 'failed' | 'stopped' | 'not-reached' }[];
+  done: boolean;
+  stopped: boolean;
+} | null): QueueNews | null {
+  if (queue === null) return null;
+  const total = queue.items.length;
+  if (total === 0) return null;
+  const done = queue.items.filter((i) => i.outcome === 'done').length;
+  const failed = queue.items.filter((i) => i.outcome === 'failed').length;
+
+  if (!queue.done) {
+    const finished = queue.items.filter((i) => i.outcome !== 'not-reached').length;
+    return {
+      short: `${String(finished)}/${String(total)}`,
+      said: `Making videos — ${String(finished)} of ${String(total)} so far.`,
+      tone: 'working',
+    };
+  }
+  if (failed > 0) {
+    return {
+      short: `${String(failed)} failed`,
+      said: `${String(done)} ready to build, ${String(failed)} did not finish.`,
+      tone: 'warn',
+    };
+  }
+  if (queue.stopped) {
+    return {
+      short: 'stopped',
+      said: `You stopped the queue. ${String(done)} ready to build.`,
+      tone: 'warn',
+    };
+  }
+  return {
+    short: `${String(done)} ready`,
+    said: `${String(done)} ${done === 1 ? 'video is' : 'videos are'} ready to build.`,
+    tone: 'good',
+  };
+}

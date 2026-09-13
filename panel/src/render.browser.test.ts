@@ -177,8 +177,9 @@ describe.skipIf(!built)('the built panel in a real browser', () => {
         expect(headings).toEqual([
           'Client',
           'Video',
-          'Cost',
+          'This video',
           'Make several videos',
+          'Cost',
           'Build',
           'Change something first',
         ]);
@@ -186,9 +187,15 @@ describe.skipIf(!built)('the built panel in a real browser', () => {
         expect(switcher).toEqual(['1. Choose', '2. Make', '3. Build']);
         expect(headings).toEqual(['Client', 'Video']);
         await onScreen(page, 'run');
+        /*
+         * Session 98: the work first, the accounting after. He read three money
+         * figures and four stage rows before reaching a button, and the two
+         * this-video controls had no heading where the queue's two had one.
+         */
         expect(await page.locator('section > h2').allTextContents()).toEqual([
-          'Cost',
+          'This video',
           'Make several videos',
+          'Cost',
         ]);
         await onScreen(page, 'build');
         expect(await page.locator('section > h2').allTextContents()).toEqual([

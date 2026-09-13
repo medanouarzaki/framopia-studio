@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  queueNews,
   causeWords,
   money,
   runStateWords,
@@ -195,5 +196,84 @@ describe('a cause that is already in his words', () => {
     expect(said).toContain('segment_person');
     expect(said).toContain('killed by SIGABRT');
     expect(said).toContain('wrote nothing');
+  });
+});
+
+/**
+ * **The step carries the news, because nothing moves him.**
+ *
+ * Block 13 session 98. Session 97 ruled the panel never carries him between
+ * screens, and the consequence was that a two-hour queue could finish in silence
+ * while he was on Choose or had the panel shut.
+ */
+describe('what a step says about a queue', () => {
+  const q = (
+    outcomes: ('done' | 'failed' | 'stopped' | 'not-reached')[],
+    done: boolean,
+    stopped = false,
+  ) => ({ items: outcomes.map((outcome) => ({ outcome })), done, stopped });
+
+  it('says nothing when there is no queue, and nothing about an empty one', () => {
+    expect(queueNews(null)).toBeNull();
+    expect(queueNews(q([], true))).toBeNull();
+  });
+
+  it('counts how far a running queue has got', () => {
+    const news = queueNews(q(['done', 'done', 'not-reached', 'not-reached'], false));
+    expect(news?.short).toBe('2/4');
+    expect(news?.tone).toBe('working');
+    expect(news?.said).toBe('Making videos — 2 of 4 so far.');
+  });
+
+  /* Finished clean and finished with a failure are different news. */
+  it('says how many are ready when it ends clean', () => {
+    const news = queueNews(q(['done', 'done', 'done'], true));
+    expect(news?.short).toBe('3 ready');
+    expect(news?.tone).toBe('good');
+    expect(news?.said).toBe('3 videos are ready to build.');
+  });
+
+  it('leads with the failures when there are any', () => {
+    const news = queueNews(q(['done', 'failed', 'done'], true));
+    expect(news?.short).toBe('1 failed');
+    expect(news?.tone).toBe('warn');
+    expect(news?.said).toBe('2 ready to build, 1 did not finish.');
+  });
+
+  it('says he stopped it, rather than calling it finished', () => {
+    const news = queueNews(q(['done', 'stopped', 'not-reached'], true, true));
+    expect(news?.short).toBe('stopped');
+    expect(news?.tone).toBe('warn');
+  });
+
+  it('counts one video as one video', () => {
+    expect(queueNews(q(['done'], true))?.said).toBe('1 video is ready to build.');
+  });
+
+  /**
+   * **Never the accent.** Red means *this spends money* and has exactly one
+   * meaning on his screens, so a failed video is amber and never red.
+   */
+  it('never asks for the colour that means money', () => {
+    for (const news of [
+      queueNews(q(['done', 'done'], false)),
+      queueNews(q(['done', 'done'], true)),
+      queueNews(q(['failed'], true)),
+      queueNews(q(['stopped'], true, true)),
+    ]) {
+      expect(`${news?.short ?? ''}: ${news?.tone ?? ''}`).not.toContain('accent');
+      expect(['working', 'good', 'warn']).toContain(news?.tone);
+    }
+  });
+
+  it('names no command and sends him nowhere', () => {
+    const all = [
+      queueNews(q(['done', 'failed'], true)),
+      queueNews(q(['done'], false)),
+      queueNews(q(['stopped'], true, true)),
+    ]
+      .map((n) => `${n?.short ?? ''} ${n?.said ?? ''}`)
+      .join(' ');
+    expect(all).not.toMatch(/npm run|terminal|quit|restart|reopen|relaunch/i);
   });
 });

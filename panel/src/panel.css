@@ -917,3 +917,21 @@ button.run.free:hover:enabled { border-color: #3a4049; }
   background: var(--panel); border-color: var(--text); color: var(--text);
 }
 .moments button.moment:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+/*
+ * **The queue's news, on the step it belongs to.** Block 13 session 98.
+ *
+ * Session 97 chose never to move him between screens, so two hours of unattended
+ * work could finish in silence. This is how the step says otherwise.
+ *
+ * **Never the accent.** Red means *this spends money* and has one meaning on his
+ * screens, so a failed video is the amber already declared above, never red.
+ * Nothing animates: he may be reading a transcript while a queue runs.
+ */
+.moments button.moment .news {
+  display: block; margin-top: 3px;
+  font-size: 0.86em; font-weight: 600; font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+.moments button.moment .news.good { color: var(--ok); }
+.moments button.moment .news.warn { color: var(--warn); }
