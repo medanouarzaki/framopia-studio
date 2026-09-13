@@ -152,9 +152,22 @@ describe.skipIf(!built)('the built panel in a real browser', () => {
        * One screen in the order he works in. Client comes before Video from
        * session 43: the client is what decides which videos there are, so
        * asking for the video first asked a question out of order.
+       *
+       * **Make several videos** sits after Cost and before the after-the-fact
+       * edits, added in Block 13 session 94. That is where it belongs in the
+       * order he works: he picks a client, picks a video, sees what one costs —
+       * and only then is "and four more like it" a question he can ask. Putting
+       * it earlier would ask him to plan a batch before he had seen the price of
+       * one.
        */
       const headings = await page.locator('section > h2').allTextContents();
-      expect(headings).toEqual(['Client', 'Video', 'Cost', 'Change something first']);
+      expect(headings).toEqual([
+        'Client',
+        'Video',
+        'Cost',
+        'Make several videos',
+        'Change something first',
+      ]);
     } finally {
       await page.close();
     }

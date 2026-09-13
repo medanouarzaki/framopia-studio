@@ -15,6 +15,7 @@ import {
   type Connection,
 } from './service.js';
 import { Build } from './Build.js';
+import { Queue, type QueueView } from './Queue.js';
 import { ClientCard } from './ClientCard.js';
 import { NewClient } from './NewClient.js';
 import { Readiness } from './Readiness.js';
@@ -37,6 +38,7 @@ const HEARTBEAT_MS = 5000;
 /** How often to ask the service how the run is going. Chosen, not measured. */
 const JOB_POLL_MS = 1000;
 import { runGate } from './run-gate.js';
+import { startQueue, stopQueue } from './service.js';
 import { formatUsd, SPEND_SOFT_ALARM_USD, spendLevel } from './spend.js';
 import type {
   ClientMode,
@@ -158,6 +160,20 @@ function Panel({
   const [jobId, setJobId] = useState<string | null>(null);
   const [job, setJob] = useState<PipelineJob | null>(null);
   const [startError, setStartError] = useState<string | null>(null);
+  /**
+   * **The queue he is building up, and the one that is running.**
+   *
+   * Mohamed's ruling of 2026-09-13: he adds videos to a list, the list runs one
+   * at a time while he is away, and it stops before building. The list is held
+   * here because it is a thing he is assembling on screen; the **run** is not —
+   * that is a job in the service, which is what lets him close this and come
+   * back to it.
+   */
+  const [queueItems, setQueueItems] = useState<{ reel: string; mode: string }[]>([]);
+  const [queueJobId, setQueueJobId] = useState<string | null>(null);
+  const [queueJob, setQueueJob] = useState<PipelineJob | null>(null);
+  const [queueStopping, setQueueStopping] = useState(false);
+  const [queueError, setQueueError] = useState<string | null>(null);
 
   const check = useCallback(async () => {
     setService({ kind: 'starting' });
@@ -384,6 +400,37 @@ function Panel({
       clearInterval(timer);
     };
   }, [connection, jobId]);
+
+  /*
+   * **The queue is polled the same way a single run is**, and for the same
+   * reason: the service owns it. Closing this panel stops the polling, not the
+   * queue — when he opens it again the job is still there to be read.
+   */
+  useEffect(() => {
+    if (connection === null || queueJobId === null) return;
+    let live = true;
+    const tick = (): void => {
+      void fetchJob(connection, queueJobId).then(
+        (next) => {
+          if (!live) return;
+          setQueueJob(next);
+          if (next.status === 'done' || next.status === 'error') {
+            setQueueJobId(null);
+            setQueueStopping(false);
+          }
+        },
+        () => {
+          /* A poll that fails is not a queue that failed; the next tick retries. */
+        },
+      );
+    };
+    tick();
+    const timer = setInterval(tick, JOB_POLL_MS);
+    return () => {
+      live = false;
+      clearInterval(timer);
+    };
+  }, [connection, queueJobId]);
 
   /*
    * A finished run changes what the plan supports, so the rail has to be told.
@@ -727,6 +774,112 @@ function Panel({
               void fetchSteps(connection, reel.label, mode.id).then(setPlan, () => undefined);
             }}
           />
+        </section>
+
+        {/*
+         * **The queue: many videos, one at a time, while he is away.**
+         *
+         * Mohamed's ruling of 2026-09-13. He adds videos to a list and it runs
+         * everything that costs money and takes time — the words, the pictures
+         * and the look at the video — for each of them in turn, and **stops
+         * before building**. Building is free, takes three seconds, and is where
+         * he looks at what was made, so it stays with him.
+         *
+         * The list is assembled from the picker above, one video at a time,
+         * because that picker already knows how to find a client's videos and a
+         * second way of choosing them would be a second thing to keep right.
+         */}
+        <section className="pane">
+          <h2>Make several videos</h2>
+          {queueJob === null || queueJob.detail === undefined ? (
+            <>
+              <p className="faint">
+                Add videos here and they will be made one after another, without you
+                watching. The compositions are left for you to build yourself.
+              </p>
+              <button
+                className="run"
+                type="button"
+                disabled={
+                  reel === null ||
+                  mode === null ||
+                  queueItems.some((q) => q.reel === reel.label)
+                }
+                onClick={() => {
+                  if (reel === null || mode === null) return;
+                  setQueueItems([...queueItems, { reel: reel.label, mode: mode.id }]);
+                }}
+              >
+                {reel === null
+                  ? 'Choose a video first'
+                  : queueItems.some((q) => q.reel === reel.label)
+                    ? `${reel.label} is already in the list`
+                    : `Add ${reel.label} to the list`}
+              </button>
+              {queueItems.length === 0 ? null : (
+                <>
+                  <ul className="facts">
+                    {queueItems.map((q, i) => (
+                      <li key={q.reel}>
+                        <span className="k">
+                          {i + 1}. {q.reel}
+                        </span>
+                        <span className="v">
+                          <button
+                            type="button"
+                            className="linky"
+                            onClick={() =>
+                              setQueueItems(queueItems.filter((x) => x.reel !== q.reel))
+                            }
+                          >
+                            take it out
+                          </button>
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                  <button
+                    className="run"
+                    type="button"
+                    disabled={connection === null || queueJobId !== null}
+                    onClick={() => {
+                      if (connection === null) return;
+                      setQueueError(null);
+                      void startQueue(connection, queueItems).then(
+                        (id) => {
+                          setQueueJobId(id);
+                          setQueueItems([]);
+                        },
+                        (error: Error) => {
+                          setQueueError(error.message);
+                        },
+                      );
+                    }}
+                  >
+                    {`Make these ${String(queueItems.length)} videos`}
+                  </button>
+                </>
+              )}
+              {queueError === null ? null : (
+                <p className="reason" role="alert">
+                  {queueError}
+                </p>
+              )}
+            </>
+          ) : (
+            <Queue
+              view={queueJob.detail as unknown as QueueView}
+              stopping={queueStopping}
+              onStop={() => {
+                if (connection === null || queueJobId === null) return;
+                setQueueStopping(true);
+                void stopQueue(connection, queueJobId).catch((error: Error) => {
+                  setQueueStopping(false);
+                  setQueueError(error.message);
+                });
+              }}
+            />
+          )}
         </section>
 
         {/*

@@ -686,6 +686,47 @@ export async function startPipeline(
   return body.id;
 }
 
+/**
+ * Starts a queue: several videos, each with its own client, run one at a time.
+ *
+ * The same `/jobs` route a single video takes, so the work lives in the service
+ * and outlives the panel — Mohamed can close After Effects and the queue keeps
+ * going. Block 13 session 94.
+ */
+export async function startQueue(
+  connection: Connection,
+  items: readonly { reel: string; mode: string }[],
+): Promise<string> {
+  const res = await fetch(`http://127.0.0.1:${connection.port}/jobs`, {
+    method: 'POST',
+    headers: { 'x-service-token': connection.token, 'content-type': 'application/json' },
+    body: JSON.stringify({ type: 'queue', params: { items } }),
+  });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as Partial<ServiceError>;
+    throw new Error(body.cause ?? body.error ?? serviceTrouble(res.status));
+  }
+  const body = (await res.json()) as { id?: string };
+  if (typeof body.id !== 'string') throw new Error('the queue started but cannot be followed');
+  return body.id;
+}
+
+/**
+ * Asks a running queue to stop. It finishes the video it is holding and stops
+ * there, because half a stage is worth nothing and that video is already paid
+ * for.
+ */
+export async function stopQueue(connection: Connection, id: string): Promise<void> {
+  const res = await fetch(
+    `http://127.0.0.1:${connection.port}/jobs/${encodeURIComponent(id)}/stop`,
+    { method: 'POST', headers: { 'x-service-token': connection.token } },
+  );
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as Partial<ServiceError>;
+    throw new Error(body.cause ?? body.error ?? serviceTrouble(res.status));
+  }
+}
+
 export async function fetchJob(connection: Connection, id: string): Promise<PipelineJob> {
   return await getJson<PipelineJob>(connection, `/jobs/${encodeURIComponent(id)}`);
 }

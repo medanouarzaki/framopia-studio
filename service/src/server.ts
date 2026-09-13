@@ -49,6 +49,9 @@ import {
 } from './keyword-view.js';
 // Imported for their side effect: registering the pipeline and build job runners.
 import './pipeline.js';
+/* Registers the queue job runner, the same way the pipeline registers its own. */
+import './queue.js';
+import { stopQueue } from './queue.js';
 import './build/job.js';
 import { health } from './health.js';
 import { addPayment, correctPayment, moneyView, removePayment, setCap, setCredit } from './money.js';
@@ -778,6 +781,23 @@ export function createApp(token: string): http.Server {
           }
           throw err;
         }
+        return;
+      }
+
+      /*
+       * **Stopping a queue.** It sets a flag the runner reads between videos —
+       * it does not abandon the video it is holding, because that video has been
+       * paid for and half a stage is worth nothing. Block 13 session 94.
+       */
+      const stopMatch = /^\/jobs\/([^/]+)\/stop$/.exec(url.pathname);
+      if (req.method === 'POST' && stopMatch !== null) {
+        const id = stopMatch[1] as string;
+        if (getJob(id) === undefined) {
+          sendJson(res, 404, { error: 'no such job' });
+          return;
+        }
+        stopQueue(id);
+        sendJson(res, 200, { stopping: true });
         return;
       }
 

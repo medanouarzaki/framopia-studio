@@ -19,6 +19,7 @@ import { dryRun } from './dry-run.js';
 import { stepsFor } from './steps.js';
 import { runPipeline } from './pipeline.js';
 import { PICTURES_STAGE_IDS, PIPELINE_STAGES, WORDS_STAGE_IDS } from './pipeline-stages.js';
+import { queueSummary, runQueue } from './queue.js';
 import { transcribeVideo } from './transcription/job.js';
 import { transcribeHybridCached } from './transcription/cached.js';
 import { mapScribeResponse, type ScribeRawResponse } from './transcription/scribe.js';
@@ -630,3 +631,42 @@ describe('what the stranger has after a run', () => {
     expect(named.map((s) => s.id)).toEqual(['transcription']);
   });
 });
+
+/**
+ * **A queue of two, where the first fails, still finishes the second.**
+ *
+ * Mohamed's ruling of 2026-09-13 is that the queue runs unattended and he comes
+ * back to it — so a queue that stops at the first failure wastes the whole time
+ * he was away, which is the only thing it exists to save. Block 12 session 91 is
+ * the near miss this guards: a stage failed there while the run reported `done`.
+ *
+ * The money boundary is `runOne`, which is injected, so this costs nothing and
+ * still runs the real queue: the ordering, the outcomes, the retry bound and the
+ * summary he reads are all the shipped code.
+ */
+describe('a queue the stranger is in', () => {
+  it('finishes the second video when the first fails, and says which failed', async () => {
+    const ran: string[] = [];
+    const out = await runQueue({
+      items: [
+        { reel: 'a video that will fail', modeId: CLIENT },
+        { reel: label, modeId: CLIENT },
+      ],
+      runOne: async (queued) => {
+        ran.push(queued.reel);
+        if (queued.reel !== label) throw new Error('ENOENT: no such file or directory');
+        return { spentUsd: 0 };
+      },
+    });
+
+    /* Both were attempted, in order, and the stranger is the one that finished. */
+    expect(ran).toEqual(['a video that will fail', label]);
+    expect(out.items.map((i) => i.outcome)).toEqual(['failed', 'done']);
+    expect(out.done).toBe(true);
+
+    const said = queueSummary(out);
+    expect(said.headline).toBe('1 video is ready to build. 1 did not finish.');
+    expect(said.lines[0]?.needsHim).toBe(true);
+    expect(said.lines[1]?.said).toBe('Ready to build.');
+  });
+})
