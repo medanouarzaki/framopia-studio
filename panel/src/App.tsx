@@ -183,6 +183,20 @@ function Panel({
   const [queueJob, setQueueJob] = useState<PipelineJob | null>(null);
   const [queueStopping, setQueueStopping] = useState(false);
   const [queueError, setQueueError] = useState<string | null>(null);
+  /**
+   * **Which of the three screens he is on.**
+   *
+   * Block 13 session 97. The panel was six sections in one 1288 px scroll inside
+   * a 900 px window, and the queue — the thing he asked for — began at 990 px,
+   * where he never found it. Choosing, making and building are three different
+   * acts and they looked identical.
+   *
+   * **It opens on Choose**, because nothing else can be answered until a client
+   * and a video are picked, and it does not move him on its own afterwards:
+   * being carried to another screen by a background poll finishing is worse than
+   * one press, and a run he started is something he chose to start.
+   */
+  const [moment, setMoment] = useState<'choose' | 'run' | 'build'>('choose');
 
   const check = useCallback(async () => {
     setService({ kind: 'starting' });
@@ -584,6 +598,37 @@ function Panel({
         />
 
         {/*
+         * **Where he is, and what is left.**
+         *
+         * A position rather than a status word. All three are always pressable:
+         * going back to change the client after a run is something he does, and
+         * a step that refuses to be opened cannot explain itself. What a screen
+         * he cannot use yet says is its own business — Build says what is
+         * missing, which is more use than a disabled tab.
+         */}
+        <nav className="moments" aria-label="Steps">
+          {(
+            [
+              ['choose', '1. Choose'],
+              ['run', '2. Make'],
+              ['build', '3. Build'],
+            ] as const
+          ).map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              className={`moment ${moment === id ? 'here' : ''}`}
+              aria-current={moment === id ? 'step' : undefined}
+              onClick={() => setMoment(id)}
+            >
+              {label}
+            </button>
+          ))}
+        </nav>
+
+        {moment !== 'choose' ? null : (
+          <>
+        {/*
          * Client first: it is what decides which videos there are to choose
          * from, so asking for the video first asked a question out of order.
          */}
@@ -690,6 +735,11 @@ function Panel({
         </section>
 
         {/* The only thing on this screen he cannot undo, so it stays prominent. */}
+          </>
+        )}
+
+        {moment !== 'run' ? null : (
+          <>
         <section className="cost">
           <h2>Cost</h2>
           {/*
@@ -751,7 +801,6 @@ function Panel({
           )}
           {job === null ? null : <RunProgress job={job} />}
 
-          {mode === null ? null : <FontsNote mode={mode} />}
           {dry === null || dry.planPath === null ? null : (
             <WatermarkToggle
               enabled={dry.watermark}
@@ -769,20 +818,6 @@ function Panel({
               }}
             />
           )}
-          <Build
-            connection={connection}
-            preview={plan?.build}
-            ready={reel !== null && mode !== null}
-            stale={staleLine}
-            disabled={buildStep?.available !== true}
-            disabledReason={buildStep?.reason ?? null}
-            issues={buildStep?.issues ?? []}
-            issuesSummary={buildStep?.issuesSummary}
-            onClientLookUpdated={() => {
-              if (connection === null || reel === null || mode === null) return;
-              void fetchSteps(connection, reel.label, mode.id).then(setPlan, () => undefined);
-            }}
-          />
         </section>
 
         {/*
@@ -896,6 +931,47 @@ function Panel({
          * back and change the one thing that bothered him. These are that
          * third move, and nothing more.
          */}
+          </>
+        )}
+
+        {moment !== 'build' ? null : (
+          <>
+        {/*
+         * **Build is its own section, and it sits after the queue.**
+         *
+         * Block 13 session 97. It was the bottom of `section.do`, the same block
+         * as the buttons that spend — so looking at what was made and paying for
+         * it read as one act. `.buildpane` is a `div` inside `Build.tsx`, not a
+         * section, so this wrapper is what the Build screen is made of.
+         *
+         * **The order matters more than it looks.** Everything above this line
+         * is the Make screen and everything from here is Build, so the queue
+         * being above it is what puts the queue on Make. Session 96 put the
+         * queue outside a gate and it rendered on every screen.
+         *
+         * The fonts note comes with it: it says which typefaces the composition
+         * will be set in, which is a fact about what is about to be made, and
+         * its own test has always been called *surfaces at Build*.
+         */}
+        <section className="buildpane-section">
+          <h2>Build</h2>
+          {mode === null ? null : <FontsNote mode={mode} />}
+          <Build
+            connection={connection}
+            preview={plan?.build}
+            ready={reel !== null && mode !== null}
+            stale={staleLine}
+            disabled={buildStep?.available !== true}
+            disabledReason={buildStep?.reason ?? null}
+            issues={buildStep?.issues ?? []}
+            issuesSummary={buildStep?.issuesSummary}
+            onClientLookUpdated={() => {
+              if (connection === null || reel === null || mode === null) return;
+              void fetchSteps(connection, reel.label, mode.id).then(setPlan, () => undefined);
+            }}
+          />
+        </section>
+
         <section className="change">
           <h2>Change something first</h2>
           <div className="three">
@@ -918,6 +994,8 @@ function Panel({
             })}
           </div>
         </section>
+          </>
+        )}
       </main>
     </div>
   );

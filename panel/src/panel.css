@@ -894,3 +894,26 @@ button.run.free {
   background: var(--panel-2); border-color: var(--line); color: var(--text);
 }
 button.run.free:hover:enabled { border-color: #3a4049; }
+
+/*
+ * **Three screens, and where he is in them.** Block 13 session 97.
+ *
+ * A position rather than a status word: he can see there are three steps, which
+ * one he is on, and that the others are one press away. Built from the tokens
+ * declared at the top of this file — session 70's cards, borders and greys — so
+ * there is no second visual language and nothing to install.
+ */
+.moments {
+  display: flex; gap: 6px; margin: 0 0 14px;
+  border-bottom: 1px solid var(--line); padding-bottom: 10px;
+}
+.moments button.moment {
+  flex: 1; padding: 8px 6px; font-size: 0.78em; font-weight: 600;
+  background: var(--panel-2); border: 1px solid var(--line); color: var(--muted);
+  border-radius: 6px; cursor: pointer;
+}
+.moments button.moment:hover { border-color: #3a4049; color: var(--text); }
+.moments button.moment.here {
+  background: var(--panel); border-color: var(--text); color: var(--text);
+}
+.moments button.moment:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }

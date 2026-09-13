@@ -179,6 +179,7 @@ describe.skipIf(!built)('the built panel in a real browser', () => {
           'Video',
           'Cost',
           'Make several videos',
+          'Build',
           'Change something first',
         ]);
       } else {
