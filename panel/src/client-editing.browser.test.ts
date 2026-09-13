@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { chromium, type Browser, type Page } from 'playwright';
-import { HANDSHAKE, INDEX, built, stubHost, stubRoutes, stepsThrough } from './browser-harness.js';
+import {
+  onScreen, HANDSHAKE, INDEX, built, stubHost, stubRoutes, stepsThrough } from './browser-harness.js';
 
 /**
  * **Everything this session added, clicked in the real built panel.**
@@ -156,6 +157,7 @@ async function open(
     await page.waitForSelector('main.editor', { timeout: 5000 });
   } else {
     await page.selectOption('select[aria-label="Client"]', SAVED_CLIENT.id);
+    await onScreen(page, 'choose');
     await page.waitForSelector('.clientcard', { timeout: 5000 });
   }
   return { page, uncaught };
@@ -508,6 +510,7 @@ describe.skipIf(!built)('pictures for one video', () => {
     await page.waitForSelector('section.video', { timeout: 10_000 });
     await page.selectOption('select[aria-label="Video"]', 'vitasilk');
     await page.selectOption('select[aria-label="Client"]', SAVED_CLIENT.id);
+    await onScreen(page, 'build');
     await page.click('section.change .opener:has-text("Pictures")');
     await page.waitForSelector('main.editor', { timeout: 5000 });
     return { page, uncaught };

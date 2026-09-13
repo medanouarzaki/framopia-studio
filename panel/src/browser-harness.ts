@@ -400,3 +400,94 @@ export function stepsThrough(upTo: string): unknown[] {
     summary: i <= cut ? `${labels[id]} summary from the plan` : null,
   }));
 }
+
+/**
+ * **Which of the panel's screens a test is asserting on.**
+ *
+ * Block 13 session 95 built Choose, Make and Build — three screens instead of
+ * one 1288 px scroll — measured them at 705, 781 and 656 px, and **reverted
+ * them**, because the browser tests encode *everything is on one page* in their
+ * loaders. Four rounds of teaching each loader to navigate went 24 → 20 → 58 →
+ * 51 failures and did not converge.
+ *
+ * This is the one way to say it, and it is deliberately **correct under both
+ * panels**:
+ *
+ * - While the panel is one page there is no switcher, so there is nothing to
+ *   press — and the anchor below is on screen already.
+ * - Once the screens land there is a switcher, it is pressed, and the anchor is
+ *   on screen because pressing it put it there.
+ *
+ * So a test converted today does not move again in session 97, which is the
+ * whole point of doing this separately.
+ */
+export type Screen = 'choose' | 'run' | 'build';
+
+/**
+ * **The section that proves you are on a screen**, chosen so that each exists in
+ * both panels: `section.video` is the video picker, `section.cost` is the money
+ * and the run buttons, `section.change` is the editors. None of them moves
+ * between the one-page panel and the three-screen one — only which of them is
+ * rendered at a time does.
+ */
+const ANCHOR: Record<Screen, string> = {
+  choose: 'section.video',
+  run: 'section.cost',
+  build: 'section.change',
+};
+
+const ORDER: Record<Screen, number> = { choose: 1, run: 2, build: 3 };
+
+interface DrivablePage {
+  $: (selector: string) => Promise<unknown>;
+  click: (selector: string, options?: { timeout?: number }) => Promise<void>;
+  waitForSelector: (
+    selector: string,
+    options?: { timeout?: number; state?: 'visible' },
+  ) => Promise<unknown>;
+  $eval: <T>(selector: string, fn: (el: Element) => T) => Promise<T>;
+}
+
+/**
+ * Puts the panel on `screen` and **proves it got there**.
+ *
+ * The proof is the point. Block 11 session 69 shipped a test that passed over
+ * hidden text, because `textContent` returns what is display:none — so this does
+ * not merely wait for the anchor to exist, it asks the browser whether the
+ * element is actually being rendered. A test that declares the wrong screen
+ * fails here, loudly, rather than asserting against something nobody can see.
+ */
+export async function onScreen(page: DrivablePage, screen: Screen): Promise<void> {
+  const switcher = await page.$('nav.moments');
+  if (switcher !== null && switcher !== undefined) {
+    await page.click(`nav.moments button.moment:nth-of-type(${String(ORDER[screen])})`, {
+      timeout: 10_000,
+    });
+  }
+  const anchor = ANCHOR[screen];
+  /*
+   * **Shorter than a test's own bound on purpose.** At 10 s this outlived the
+   * 5 s default and a test that was looking at the wrong screen reported only
+   * "Test timed out", which says nothing about why. At 4 s the helper fails
+   * first and says which screen and which anchor — the panel is already loaded
+   * by the time anything calls this, so the wait is for a press to take effect,
+   * not for a page to arrive.
+   */
+  try {
+    await page.waitForSelector(anchor, { timeout: 4_000, state: 'visible' });
+  } catch {
+    throw new Error(
+      `the panel is not showing the ${screen} screen: ${anchor} never became visible`,
+    );
+  }
+  const shown = await page.$eval(anchor, (el) =>
+    typeof (el as HTMLElement).checkVisibility === 'function'
+      ? (el as HTMLElement).checkVisibility()
+      : (el as HTMLElement).offsetParent !== null,
+  );
+  if (!shown) {
+    throw new Error(
+      `the panel is not showing the ${screen} screen: ${anchor} is in the page but not visible`,
+    );
+  }
+}

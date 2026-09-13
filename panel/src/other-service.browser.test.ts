@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { chromium, type Browser, type Page } from 'playwright';
 import {
+  onScreen,
   HANDSHAKE,
   HEALTHY_PAYLOAD,
   INDEX,
@@ -74,6 +75,7 @@ describe.skipIf(!built)('a second background service', () => {
     const loaded = await open(OTHER);
     if (loaded === null) return;
     try {
+      await onScreen(loaded.page, 'run');
       await loaded.page.waitForSelector('.otherservice', { timeout: 15_000 });
       const said = await loaded.page.$eval('.otherservice .said', (p) => ({
         text: p.textContent ?? '',
@@ -93,6 +95,7 @@ describe.skipIf(!built)('a second background service', () => {
     const loaded = await open(OTHER);
     if (loaded === null) return;
     try {
+      await onScreen(loaded.page, 'run');
       await loaded.page.waitForSelector('.otherservice', { timeout: 15_000 });
       const asked = await loaded.page.evaluate(() =>
         ((window as { __asked?: string[] }).__asked ?? []).filter(

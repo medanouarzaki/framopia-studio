@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { chromium, type Browser, type Page } from 'playwright';
 import {
+  onScreen,
   HANDSHAKE,
   INDEX,
   built,
@@ -64,6 +65,7 @@ async function open(): Promise<{ page: Page; uncaught: string[] } | null> {
   await page.waitForSelector('section.video', { timeout: 15_000 });
   await page.selectOption('select[aria-label="Video"]', 'vitasilk');
   await page.selectOption('select[aria-label="Client"]', 'k2-syndicalia');
+  await onScreen(page, 'run');
   await page.waitForSelector('.wrongclient', { timeout: 15_000 });
   return { page, uncaught };
 }

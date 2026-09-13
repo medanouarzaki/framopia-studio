@@ -1,7 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { chromium, type Browser, type Page } from 'playwright';
 import { usdExact } from './Money.js';
-import { HANDSHAKE, INDEX, built, realMoney, stubHost, stubRoutes } from './browser-harness.js';
+import {
+  onScreen, HANDSHAKE, INDEX, built, realMoney, stubHost, stubRoutes } from './browser-harness.js';
 
 /**
  * **The money screen, in the real panel, on the real ledger.**
@@ -41,6 +42,7 @@ async function open(): Promise<{ page: Page; uncaught: string[] } | null> {
   await page.addInitScript(stubHost(HANDSHAKE));
   await page.addInitScript(stubRoutes([], 'transcription'));
   await page.goto(`file://${INDEX}`);
+  await onScreen(page, 'run');
   await page.waitForSelector('button.seemoney', { timeout: 15_000 });
   await page.click('button.seemoney');
   await page.waitForSelector('.moneybanner', { timeout: 15_000 });

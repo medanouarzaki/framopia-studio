@@ -17,6 +17,7 @@ import { chromium, type Browser, type ConsoleMessage, type Page } from 'playwrig
  * without needing After Effects.
  */
 import {
+  onScreen,
   HANDSHAKE,
   HEALTHY_PAYLOAD,
   INDEX,
@@ -160,14 +161,40 @@ describe.skipIf(!built)('the built panel in a real browser', () => {
        * it earlier would ask him to plan a batch before he had seen the price of
        * one.
        */
+      /*
+       * **One screen at a time, since Block 13 session 97.**
+       *
+       * The panel was six sections in one 1288 px scroll inside a 900 px window,
+       * and the queue began at 990 px where he never found it. It opens on
+       * Choose — the client and the video, and nothing else — and the other two
+       * are one press away. Written so it reads the same whether the switcher is
+       * there or not: with one page it sees every heading at once, and that is
+       * the state this asserts when `nav.moments` is absent.
+       */
+      const switcher = await page.locator('nav.moments button.moment').allTextContents();
       const headings = await page.locator('section > h2').allTextContents();
-      expect(headings).toEqual([
-        'Client',
-        'Video',
-        'Cost',
-        'Make several videos',
-        'Change something first',
-      ]);
+      if (switcher.length === 0) {
+        expect(headings).toEqual([
+          'Client',
+          'Video',
+          'Cost',
+          'Make several videos',
+          'Change something first',
+        ]);
+      } else {
+        expect(switcher).toEqual(['1. Choose', '2. Make', '3. Build']);
+        expect(headings).toEqual(['Client', 'Video']);
+        await onScreen(page, 'run');
+        expect(await page.locator('section > h2').allTextContents()).toEqual([
+          'Cost',
+          'Make several videos',
+        ]);
+        await onScreen(page, 'build');
+        expect(await page.locator('section > h2').allTextContents()).toEqual([
+          'Build',
+          'Change something first',
+        ]);
+      }
     } finally {
       await page.close();
     }
@@ -259,6 +286,8 @@ describe.skipIf(!built)('the built panel in a real browser', () => {
     if (loaded === null) return;
     const { page } = loaded;
     try {
+      /* Session 96: the run buttons are on the Make screen, wherever that is. */
+      await onScreen(page, 'run');
       // The first of the two run buttons, whatever it is called this month.
       const run = page.locator('button.run').first();
       expect(await run.isDisabled()).toBe(true);
@@ -394,6 +423,7 @@ async function loadFlow(
   await page.waitForSelector('section.video', { timeout: 10_000 });
   await page.selectOption('select[aria-label="Video"]', 'vitasilk');
   await page.selectOption('select[aria-label="Client"]', 'k2-syndicalia');
+  await onScreen(page, 'build');
   await page.waitForSelector('section.change .opener', { timeout: 10_000 });
   return { page, uncaught };
 }
@@ -847,6 +877,7 @@ async function loadImages(payload: unknown = IMAGES): Promise<Loaded | null> {
   await page.waitForSelector('section.video', { timeout: 10_000 });
   await page.selectOption('select[aria-label="Video"]', 'vitasilk');
   await page.selectOption('select[aria-label="Client"]', 'k2-syndicalia');
+  await onScreen(page, 'build');
   await page.click('section.change .opener:nth-child(3)');
   await page.waitForSelector('main.editor', { timeout: 5000 });
   return { page, uncaught };
@@ -928,6 +959,7 @@ describe.skipIf(!built)('after a run', () => {
       await page.waitForSelector('section.video', { timeout: 10_000 });
       await page.selectOption('select[aria-label="Video"]', 'vitasilk');
       await page.selectOption('select[aria-label="Client"]', 'k2-syndicalia');
+      await onScreen(page, 'build');
       await page.waitForSelector('section.change .opener', { timeout: 10_000 });
 
       const before = await page.$$eval('section.change .opener', (els) =>
@@ -942,6 +974,7 @@ describe.skipIf(!built)('after a run', () => {
           return Object.assign({}, s, { available: true, reason: null });
         });
       `);
+      await onScreen(page, 'run');
       await page.click('button.run');
       await page.waitForFunction(
         () =>
@@ -1042,6 +1075,7 @@ describe.skipIf(!built)('the transcript editor', () => {
     await page.waitForSelector('section.video', { timeout: 10_000 });
     await page.selectOption('select[aria-label="Video"]', 'vitasilk');
     await page.selectOption('select[aria-label="Client"]', 'k2-syndicalia');
+    await onScreen(page, 'build');
     await page.click('section.change .opener:nth-child(1)');
     /*
      * The screen opens on Read since session 31 — a word-a-row list is what
@@ -1084,6 +1118,7 @@ describe.skipIf(!built)('the transcript editor', () => {
     await page.waitForSelector('section.video', { timeout: 10_000 });
     await page.selectOption('select[aria-label="Video"]', 'vitasilk');
     await page.selectOption('select[aria-label="Client"]', 'k2-syndicalia');
+    await onScreen(page, 'build');
     await page.click('section.change .opener:nth-child(1)');
     try {
       await page.waitForSelector('.readview .readline', { timeout: 5000 });
@@ -1390,6 +1425,7 @@ describe.skipIf(!built)('the keyword picker', () => {
     await page.waitForSelector('section.video', { timeout: 10_000 });
     await page.selectOption('select[aria-label="Video"]', 'vitasilk');
     await page.selectOption('select[aria-label="Client"]', 'k2-syndicalia');
+    await onScreen(page, 'build');
     await page.click('section.change .opener:nth-child(2)');
     await page.waitForSelector('main h2', { timeout: 5000 });
     return { page, uncaught };
@@ -1567,6 +1603,8 @@ describe.skipIf(!built)('focus', () => {
   it('still shows a visible ring, so focus is not simply removed', async () => {
     const loaded = await loadFlow('build', 'build');
     if (loaded === null) return;
+    /* Session 96: the pickers are on the Choose screen. */
+    await onScreen(loaded.page, 'choose');
     const ring = await loaded.page.evaluate(() => {
       const el = document.querySelector('select[aria-label="Client"]') as HTMLSelectElement;
       const before = getComputedStyle(el).borderTopColor;
@@ -1594,6 +1632,8 @@ describe.skipIf(!built)('the cost block and the run', () => {
     await page.waitForSelector('section.video', { timeout: 10_000 });
     await page.selectOption('select[aria-label="Video"]', 'vitasilk');
     await page.selectOption('select[aria-label="Client"]', 'k2-syndicalia');
+    /* Session 96: the cost block and the stage rows are on the Make screen. */
+    await onScreen(page, 'run');
     await page.waitForFunction(
       () =>
         (document.querySelector('main') as HTMLElement).textContent?.includes(
@@ -1627,6 +1667,7 @@ describe.skipIf(!built)('the cost block and the run', () => {
   it('renders the same verdict in the cost block and in the run', async () => {
     const loaded = await loadBoth();
     if (loaded === null) return;
+    await onScreen(loaded.page, 'run');
     await loaded.page.click('button.run');
     await loaded.page.waitForFunction(
       () =>
@@ -1684,6 +1725,7 @@ describe.skipIf(!built)('a pipeline run', () => {
     await page.waitForSelector('section.video', { timeout: 10_000 });
     await page.selectOption('select[aria-label="Video"]', 'vitasilk');
     await page.selectOption('select[aria-label="Client"]', 'k2-syndicalia');
+    await onScreen(page, 'run');
     await page.click('button.run');
     await page.waitForFunction(
       () =>
@@ -1806,9 +1848,12 @@ describe.skipIf(!built)('a pipeline run', () => {
   it('survives opening an editor and coming back', async () => {
     const loaded = await loadRun('running');
     if (loaded === null) return;
+    await onScreen(loaded.page, 'build');
     await loaded.page.click('section.change .opener:nth-child(2)');
     expect(await loaded.page.textContent('main.editor h2')).toBe('Emphasis');
     await loaded.page.click('button.back');
+    /* Session 96: coming back from an editor, the stage rows are on Make. */
+    await onScreen(loaded.page, 'run');
     await loaded.page.waitForSelector('section.do', { timeout: 5000 });
     const text = (await loaded.page.textContent('main')) ?? '';
     expect(text).toContain('Choosing what to emphasise and what to picture');
@@ -2214,6 +2259,7 @@ describe.skipIf(!built)('watermark size', () => {
     const loaded = await loadFlow('build', 'build');
     if (loaded === null) return;
     try {
+      await onScreen(loaded.page, 'run');
       await loaded.page.waitForSelector('.watermark .sizes', { timeout: 5000 });
       const labels = await loaded.page.$$eval('.watermark .sizes button', (els) =>
         els.map((e) => `${e.textContent ?? ''}|${e.getAttribute('aria-pressed') ?? ''}`),
@@ -2233,6 +2279,7 @@ describe.skipIf(!built)('watermark size', () => {
     const loaded = await loadFlow('build', 'build');
     if (loaded === null) return;
     try {
+      await onScreen(loaded.page, 'run');
       await loaded.page.waitForSelector('.watermark .sizes', { timeout: 5000 });
       await loaded.page.click('.watermark .sizes button:nth-child(3)');
       await loaded.page.waitForFunction(
@@ -2260,6 +2307,7 @@ describe.skipIf(!built)('watermark size', () => {
     );
     if (loaded === null) return;
     try {
+      await onScreen(loaded.page, 'run');
       await loaded.page.waitForSelector('.watermark', { timeout: 5000 });
       expect(await loaded.page.$$('.watermark .sizes button')).toHaveLength(0);
       expect(await loaded.page.$$('.watermark input[type="checkbox"]')).toHaveLength(1);
@@ -2316,6 +2364,7 @@ describe.skipIf(!built)('the Build step', () => {
     );
     if (loaded === null) return null;
     // Build and the main screen are one screen now.
+    await onScreen(loaded.page, 'build');
     await loaded.page.waitForSelector('.buildpane', { timeout: 5000 });
     return loaded;
   }
@@ -2352,6 +2401,7 @@ describe.skipIf(!built)('the Build step', () => {
     );
     if (loaded === null) return;
     try {
+      await onScreen(loaded.page, 'build');
       await loaded.page.waitForSelector('.buildpane', { timeout: 5000 });
       const text = (await loaded.page.textContent('.buildpane')) ?? '';
       expect(text).toContain('K2 Syndicalia has changed since');
@@ -2486,6 +2536,7 @@ describe.skipIf(!built)('the Build step', () => {
     );
     if (loaded === null) return;
     try {
+      await onScreen(loaded.page, 'build');
       await loaded.page.waitForSelector('.buildpane', { timeout: 5000 });
       const text = (await loaded.page.textContent('.buildpane')) ?? '';
       expect(text).toContain('This reel has no edit plan yet');
@@ -2504,6 +2555,7 @@ describe.skipIf(!built)('the Build step', () => {
     );
     if (loaded === null) return;
     try {
+      await onScreen(loaded.page, 'build');
       await loaded.page.waitForSelector('.buildpane', { timeout: 5000 });
       const text = (await loaded.page.textContent('.buildpane')) ?? '';
       expect(text).toContain('There is nothing to build for this video yet');
@@ -2560,6 +2612,7 @@ describe.skipIf(!built)('a reel that is not ready to build', () => {
     );
     if (loaded === null) return null;
     // Build and the main screen are one screen now.
+    await onScreen(loaded.page, 'build');
     await loaded.page.waitForSelector('.buildpane', { timeout: 5000 });
     return loaded;
   }
@@ -2585,6 +2638,8 @@ describe.skipIf(!built)('a reel that is not ready to build', () => {
     const loaded = await openBuild(MISSING);
     if (loaded === null) return;
     try {
+      /* Session 96: Build is its own screen, wherever the panel puts it. */
+      await onScreen(loaded.page, 'build');
       expect(
         await loaded.page.$eval('button.build-now', (b) => (b as HTMLButtonElement).disabled),
       ).toBe(true);
@@ -2601,6 +2656,7 @@ describe.skipIf(!built)('a reel that is not ready to build', () => {
     if (loaded === null) return;
     try {
       // Build and the main screen are one screen now.
+      await onScreen(loaded.page, 'build');
       await loaded.page.waitForSelector('.buildpane', { timeout: 5000 });
       expect(await loaded.page.$$('.buildpane .card.missing')).toHaveLength(0);
       expect(
@@ -2678,6 +2734,7 @@ describe.skipIf(!built)('Build before anything is picked', () => {
     if (loaded === null) return;
     try {
       await loaded.page.waitForSelector('.dot.healthy', { timeout: 15_000 });
+      await onScreen(loaded.page, 'build');
       const pane = (await loaded.page.textContent('.buildpane')) ?? '';
       expect(pane).not.toContain('older than the Build control');
       expect(pane).toContain('Choose a client and a video');
@@ -2700,6 +2757,7 @@ describe.skipIf(!built)('what a client looks like', () => {
     const loaded = await loadFlow('build', 'build');
     if (loaded === null) return;
     try {
+      await onScreen(loaded.page, 'choose');
       await loaded.page.waitForSelector('.clientcard', { timeout: 5000 });
       const card = (await loaded.page.textContent('section.client')) ?? '';
       expect(card).toContain('Cosmetic clinic, Casablanca');
@@ -2722,6 +2780,7 @@ describe.skipIf(!built)('what a client looks like', () => {
     const loaded = await loadFlow('build', 'build');
     if (loaded === null) return;
     try {
+      await onScreen(loaded.page, 'choose');
       await loaded.page.waitForSelector('.clientcard .chip', { timeout: 5000 });
       const colours = await loaded.page.$$eval('.clientcard .chip', (els) =>
         els.map((e) => getComputedStyle(e).backgroundColor),
@@ -2744,6 +2803,7 @@ describe.skipIf(!built)('what a client looks like', () => {
     const loaded = await loadFlow('build', 'build');
     if (loaded === null) return;
     try {
+      await onScreen(loaded.page, 'choose');
       await loaded.page.waitForSelector('.clientcard', { timeout: 5000 });
       const card = (await loaded.page.textContent('.clientcard')) ?? '';
       expect(card).toContain('a mix of languages');
@@ -2763,6 +2823,7 @@ describe.skipIf(!built)('what a client looks like', () => {
     );
     if (loaded === null) return;
     try {
+      await onScreen(loaded.page, 'choose');
       await loaded.page.waitForSelector('section.client', { timeout: 5000 });
       expect(await loaded.page.$$('.clientcard')).toHaveLength(0);
       expect(loaded.uncaught).toEqual([]);
@@ -2791,6 +2852,7 @@ describe.skipIf(!built)('Browse, when the host has a dialog', () => {
     const loaded = await loadFlow('build', 'build');
     if (loaded === null) return;
     try {
+      await onScreen(loaded.page, 'choose');
       expect(await loaded.page.getByRole('button', { name: 'Browse…' }).count()).toBe(0);
       expect(await loaded.page.$$('input.browse')).toHaveLength(0);
       const video = (await loaded.page.textContent('section.video')) ?? '';
@@ -2811,6 +2873,7 @@ describe.skipIf(!built)('Browse, when the host has a dialog', () => {
     );
     if (loaded === null) return;
     try {
+      await onScreen(loaded.page, 'choose');
       expect(await loaded.page.getByRole('button', { name: 'Browse…' }).count()).toBe(1);
       // Nothing to paste into any more: Refresh and Browse, and that is all.
       expect(await loaded.page.$$('input.browse')).toHaveLength(0);
@@ -3463,17 +3526,20 @@ describe('a saved client’s own photographs', () => {
     if (loaded === null) return;
     try {
       const page = loaded.page;
+      await onScreen(page, 'choose');
       await page.waitForSelector('.clientcard .ownphotos', { timeout: 5000 });
       expect((await page.textContent('.clientcard .ownphotos')) ?? '').toContain('None yet.');
       await page.evaluate(`window.__picked = ${JSON.stringify(LOGO)};`);
       await page.click('.clientcard .ownphotos button.choose');
       await page.fill('.clientcard .ownphotos input[aria-label="What is it?"]', 'the clinic');
       await page.click('.clientcard .addphoto button.ghost:not(.choose)');
+      await onScreen(page, 'choose');
       await page.waitForSelector('.clientcard .ownphotos ul.photos li', { timeout: 5000 });
       expect((await page.textContent('.clientcard .ownphotos ul.photos')) ?? '').toContain(
         'the clinic',
       );
       await page.click('.clientcard button[aria-label="Forget the clinic"]');
+      await onScreen(page, 'choose');
       await page.waitForSelector('.clientcard .ownphotos ul.photos li', {
         state: 'detached',
         timeout: 5000,
@@ -3533,6 +3599,7 @@ describe('running the words without the pictures', () => {
     if (loaded === null) return;
     try {
       const page = loaded.page;
+      await onScreen(page, 'run');
       await page.waitForSelector('.partrun button', { timeout: 5000 });
       const label = (await page.textContent('.partrun button')) ?? '';
       expect(label).toContain('Make the subtitles');
@@ -3569,6 +3636,7 @@ describe('running the words without the pictures', () => {
     if (loaded === null) return;
     try {
       const page = loaded.page;
+      await onScreen(page, 'run');
       await page.waitForSelector('.partrun button', { timeout: 5000 });
       const pictures = page.locator('.partrun button').nth(1);
       expect((await pictures.textContent()) ?? '').toContain('Make the pictures');
@@ -3605,7 +3673,8 @@ describe('running the words without the pictures', () => {
     if (loaded === null) return;
     try {
       const page = loaded.page;
-      await page.waitForSelector('button.run', { timeout: 5000 });
+      await onScreen(page, 'run');
+      await page.waitForSelector('.partrun button.run', { timeout: 5000 });
       expect(await page.locator('.partrun button').count()).toBe(2);
       const said = (await page.textContent('.partrun')) ?? '';
       expect(said).toContain('Make the subtitles again — nothing to pay');
@@ -3625,10 +3694,17 @@ describe('running the words without the pictures', () => {
     );
     if (loaded === null) return;
     try {
-      await loaded.page.waitForSelector('button.run', { timeout: 5000 });
+      await onScreen(loaded.page, 'run');
+      await loaded.page.waitForSelector('section.do button.run', { timeout: 5000 });
       // One control that does everything, rather than two guessed ones.
       expect(await loaded.page.locator('.partrun').count()).toBe(0);
-      expect((await loaded.page.textContent('button.run')) ?? '').toContain('Make this video');
+      /*
+       * Scoped to `section.do`: the queue's own controls are `button.run` too,
+       * and they sit beside these on the Make screen. Session 96.
+       */
+      expect((await loaded.page.textContent('section.do button.run')) ?? '').toContain(
+        'Make this video',
+      );
       expect(loaded.uncaught).toEqual([]);
     } finally {
       await loaded.page.close();

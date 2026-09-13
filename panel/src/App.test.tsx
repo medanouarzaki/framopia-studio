@@ -68,6 +68,52 @@ async function render(host: PanelHost, over: Partial<AvailableEnv> = {}): Promis
   });
 }
 
+/**
+ * **Which of the panel's screens this test is asserting on.**
+ *
+ * The jsdom twin of `onScreen` in `browser-harness.ts`, and the same contract:
+ * correct while the panel is one page, correct once Block 13 session 97 splits
+ * it into Choose, Make and Build. There is no switcher today, so there is
+ * nothing to press and the anchor is already rendered; there will be one, and
+ * then pressing it is what puts the anchor on screen.
+ *
+ * **It checks the anchor is really being rendered**, not merely present in the
+ * tree — session 69 shipped a test that passed over hidden text, because
+ * `textContent` returns what `display: none` is hiding, and `text()` below is
+ * exactly that kind of read. `offsetParent` is always null under jsdom, so this
+ * asks the computed style instead, up the ancestor chain.
+ */
+const SCREEN_ANCHOR = {
+  choose: 'section.video',
+  run: 'section.cost',
+  build: 'section.change',
+} as const;
+
+async function goTo(screen: keyof typeof SCREEN_ANCHOR): Promise<void> {
+  const order = { choose: 1, run: 2, build: 3 }[screen];
+  const nav = document.querySelector('nav.moments');
+  if (nav !== null) {
+    const button = nav.querySelectorAll('button.moment')[order - 1];
+    if (button === undefined) throw new Error(`the panel has no ${screen} screen to press`);
+    await act(async () => {
+      (button as HTMLButtonElement).click();
+    });
+  }
+  const anchor = document.querySelector(SCREEN_ANCHOR[screen]);
+  if (anchor === null) {
+    throw new Error(
+      `the panel is not showing the ${screen} screen: ${SCREEN_ANCHOR[screen]} is not in the page`,
+    );
+  }
+  for (let el: Element | null = anchor; el !== null; el = el.parentElement) {
+    if (window.getComputedStyle(el as HTMLElement).display === 'none') {
+      throw new Error(
+        `the panel is not showing the ${screen} screen: ${SCREEN_ANCHOR[screen]} is hidden`,
+      );
+    }
+  }
+}
+
 async function renderEnv(env: HostEnvironment): Promise<void> {
   await act(async () => {
     root.render(<App detect={() => env} />);
@@ -220,6 +266,12 @@ describe('the pickers', () => {
       select('Video').dispatchEvent(new Event('change', { bubbles: true }));
     });
 
+    /*
+     * Session 96: the picker is on Choose and the cost is on Make, so the move
+     * happens between them — this test straddles two screens and says so.
+     */
+    await goTo('run');
+
     /* Session 95: money is to the cent — $1.5504 is a figure he cannot act on. */
     expect(text()).toContain('$1.55');
     expect(text()).toContain('spent on this video so far');
@@ -234,6 +286,10 @@ describe('the pickers', () => {
       select('Video').dispatchEvent(new Event('change', { bubbles: true }));
     });
 
+    /* Session 96: this asserts on the run screen. */
+
+    await goTo('run');
+
     expect(text()).toContain('not run yet');
     expect(text()).toContain('No edit plan yet');
   });
@@ -244,6 +300,10 @@ describe('the Run control', () => {
     vi.stubGlobal('fetch', vi.fn().mockReturnValue(new Promise(() => undefined)));
     await render(hostThatAnswers());
 
+    /* Session 96: this asserts on the run screen. */
+
+    await goTo('run');
+
     expect(runButton().disabled).toBe(true);
     expect(text()).toContain('Waiting for the companion service to answer.');
   });
@@ -251,6 +311,10 @@ describe('the Run control', () => {
   it('asks for a video before anything else once the service is up', async () => {
     vi.stubGlobal('fetch', serviceFetch());
     await render(hostThatAnswers());
+
+    /* Session 96: this asserts on the run screen. */
+
+    await goTo('run');
 
     expect(runButton().disabled).toBe(true);
     expect(text()).toContain('Pick a video.');
@@ -264,6 +328,10 @@ describe('the Run control', () => {
     vi.stubGlobal('fetch', serviceFetch());
     await render(hostThatAnswers());
 
+    /* Session 96: this asserts on the run screen. */
+
+    await goTo('run');
+
     expect(text()).not.toContain('Run pipeline');
     expect(runButton().textContent).toContain('Make');
   });
@@ -275,6 +343,10 @@ describe('the Run control', () => {
       select('Video').value = 'vitasilk';
       select('Video').dispatchEvent(new Event('change', { bubbles: true }));
     });
+
+    /* Session 96: this asserts on the run screen. */
+
+    await goTo('run');
 
     expect(text()).toContain('Pick a client mode.');
   });
@@ -673,6 +745,8 @@ describe('the dry run', () => {
     });
 
     /* Session 95: the stages are named as jobs, not as machinery. */
+    /* Session 96: this asserts on the run screen. */
+    await goTo('run');
     expect(text()).toContain('Writing down the words');
     // The plan says which client it belongs to, so a build need not be told.
     expect(text()).toContain('Made for k2-syndicalia');
@@ -744,6 +818,10 @@ describe('the dry run', () => {
       select('Client').value = 'k2-syndicalia';
       select('Client').dispatchEvent(new Event('change', { bubbles: true }));
     });
+
+    /* Session 96: this asserts on the run screen. */
+
+    await goTo('run');
 
     expect(text()).toContain('About $0.18');
     expect(text()).not.toContain('nothing to pay');
@@ -875,6 +953,10 @@ describe('the fonts gate', () => {
       select('Client').dispatchEvent(new Event('change', { bubbles: true }));
     });
 
+    /* Session 96: this asserts on the build screen. */
+
+    await goTo('build');
+
     expect(text()).toContain('has no fonts of its own yet');
     expect(text()).toContain('Inter Semi-Bold');
     expect(text()).toContain('Almarai Bold');
@@ -892,6 +974,10 @@ describe('the fonts gate', () => {
       select('Client').value = 'k2-syndicalia';
       select('Client').dispatchEvent(new Event('change', { bubbles: true }));
     });
+
+    /* Session 96: this asserts on the build screen. */
+
+    await goTo('build');
 
     expect(text()).not.toContain('has no fonts of its own yet');
   });
@@ -928,6 +1014,8 @@ describe('the node match', () => {
     const other = { ...healthy, node: { path: '/other/node', source: 'homebrew', version: 'v22.1.0' } };
     vi.stubGlobal('fetch', serviceFetch({ health: other }));
     await render(hostThatAnswers());
+    /* Session 96: this asserts on the run screen. */
+    await goTo('run');
     expect(text()).toContain('Pick a video.');
   });
 });

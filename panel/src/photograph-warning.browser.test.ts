@@ -1,7 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import path from 'node:path';
 import { chromium, type Browser, type Page } from 'playwright';
-import { HANDSHAKE, INDEX, REPO, built, stubHost, stubRoutes, stepsThrough } from './browser-harness.js';
+import {
+  onScreen, HANDSHAKE, INDEX, REPO, built, stubHost, stubRoutes, stepsThrough } from './browser-harness.js';
 
 /**
  * **A client's own photograph, too small for the space, in the real panel.**
@@ -137,6 +138,7 @@ async function open(view: Record<string, unknown>): Promise<Loaded | null> {
   await page.waitForSelector('section.video', { timeout: 10_000 });
   await page.selectOption('select[aria-label="Video"]', 'vitasilk');
   await page.selectOption('select[aria-label="Client"]', 'k2-syndicalia');
+  await onScreen(page, 'build');
   await page.click('section.change .opener:has-text("Pictures")');
   await page.waitForSelector('main.editor', { timeout: 5000 });
   return { page, uncaught };

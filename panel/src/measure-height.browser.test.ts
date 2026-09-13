@@ -3,7 +3,7 @@ import { chromium, type Browser } from 'playwright';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { stubHost, HANDSHAKE } from './browser-harness.js';
+import { stubHost, HANDSHAKE, onScreen } from './browser-harness.js';
 
 /**
  * **A ruler, not a rule.**
@@ -75,7 +75,30 @@ describe.skipIf(!built)('how tall the panel is', () => {
         );
       }
     };
-    show('the one scroll', rows);
+    const sections = async (): Promise<typeof rows> =>
+      await page.evaluate(() => {
+        const out: { name: string; top: number; height: number }[] = [];
+        for (const s of Array.from(document.querySelectorAll('section'))) {
+          const h2 = s.querySelector('h2');
+          const r = s.getBoundingClientRect();
+          out.push({
+            name: h2?.textContent ?? '(no heading)',
+            top: Math.round(r.top + window.scrollY),
+            height: Math.round(r.height),
+          });
+        }
+        return out;
+      });
+
+    const split = (await page.$('nav.moments')) !== null;
+    if (!split) {
+      show('the one scroll', rows);
+    } else {
+      for (const screen of ['choose', 'run', 'build'] as const) {
+        await onScreen(page, screen);
+        show(screen, await sections());
+      }
+    }
 
     expect(rows.length).toBeGreaterThan(1);
     await page.close();
