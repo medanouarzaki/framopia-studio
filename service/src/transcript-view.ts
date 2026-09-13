@@ -211,7 +211,23 @@ export function questionCountsOf(plan: EditPlan): CorpusCounts {
     overlong: plan.transcript.words.filter(
       (w) => !w.removed && [...w.text.replace(/[.,?!؟،]$/u, '')].length >= OVERLONG_WORD_CHARS,
     ).length,
-    clipped: report.issues.filter((i) => i.shortByS !== undefined).length,
+    /*
+     * **Subtitle cards only, because that is what the question asks about.**
+     *
+     * This counted every element whose hold is clipped, and the view beside it
+     * counts only the ones that resolve to a subtitle group — so the corpus
+     * figure and the sum of the per-reel figures disagreed the moment any other
+     * kind of element was clipped. Block 13 session 93: `sora-5` is the first
+     * reel in the project's history with a clipped **keyword**, two of them, and
+     * it made the corpus say 54 where the reels summed to 52.
+     *
+     * The question on screen is *"Cards whose hold is clipped"* and its
+     * instances are card ids and card text, so the narrower figure is the right
+     * one and this is what moved.
+     */
+    clipped: report.issues.filter(
+      (i) => i.shortByS !== undefined && /^subtitles\.groups\[/.test(i.path),
+    ).length,
     splitTerm: splitArabicRuns(plan, cardOf).length,
   };
 }

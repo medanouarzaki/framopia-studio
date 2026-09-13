@@ -7,6 +7,7 @@ import { listReels } from './catalogue.js';
 import {
   editCard,
   editWord,
+  questionCountsOf,
   OVERLONG_WORD_CHARS,
   scriptVariantOf,
   transcriptView,
@@ -14,6 +15,7 @@ import {
   TranscriptViewError,
 } from './transcript-view.js';
 import { readEditPlan } from './editplan/io.js';
+import type { EditPlan } from './editplan/types.js';
 
 const FOOTAGE = path.join(REPO_ROOT, 'my files', 'test videos');
 const LEDGER = path.join(REPO_ROOT, '.local', 'costs.jsonl');
@@ -453,5 +455,49 @@ describe('the script toggle', () => {
     expect(word?.sourceText).toBe('五');
     expect(word?.script).toBe('latin');
     expect(view.words.every((w) => !/[一-鿿]/.test(w.text))).toBe(true);
+  });
+});
+
+
+/**
+ * **A clipped keyword is not a clipped card**, and the two counts on screen must
+ * agree about that.
+ *
+ * Block 13 session 93. The corpus figure counted every element whose hold is
+ * clipped; the per-reel view counted only the ones that resolve to a subtitle
+ * group. Nothing noticed for the whole project's life because no reel had ever
+ * had a clipped keyword — until `sora-5`, which has two, and made the corpus say
+ * 54 where the reels summed to 52.
+ *
+ * The question on screen is *"Cards whose hold is clipped"* and its instances are
+ * card ids and card text, so cards is what it counts. This pins the rule against
+ * a plan built here, rather than against whichever reels happen to be on the
+ * disk that day.
+ */
+describe('what counts as a clipped card', () => {
+  /* One card and one keyword, both too short for the floor their template needs. */
+  const planWithBoth = (): EditPlan =>
+    ({
+      transcript: {
+        words: [
+          { id: 'w1', text: 'a', start: 0, end: 0.01, removed: false },
+          { id: 'w2', text: 'b', start: 1, end: 1.01, removed: false },
+        ],
+      },
+      subtitles: {
+        groups: [
+          { id: 'g1', wordIds: ['w1'], start: 0, end: 0.01, templateId: 'sub_pop', supersededBy: null },
+        ],
+      },
+      keywords: {
+        mode: 'auto',
+        items: [{ id: 'k1', wordIds: ['w2'], start: 1, end: 1.01, templateId: 'kw_slam' }],
+      },
+      images: { slots: [] },
+      sfx: { events: [] },
+    }) as unknown as EditPlan;
+
+  it('counts the card and not the keyword', () => {
+    expect(questionCountsOf(planWithBoth()).clipped).toBe(1);
   });
 });
