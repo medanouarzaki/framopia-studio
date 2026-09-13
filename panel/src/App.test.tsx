@@ -220,7 +220,8 @@ describe('the pickers', () => {
       select('Video').dispatchEvent(new Event('change', { bubbles: true }));
     });
 
-    expect(text()).toContain('$1.5504');
+    /* Session 95: money is to the cent — $1.5504 is a figure he cannot act on. */
+    expect(text()).toContain('$1.55');
     expect(text()).toContain('spent on this video so far');
     expect(text()).toContain('soft alarm $2.00');
   });
@@ -671,14 +672,17 @@ describe('the dry run', () => {
       select('Client').dispatchEvent(new Event('change', { bubbles: true }));
     });
 
-    expect(text()).toContain('Transcribe and correct');
+    /* Session 95: the stages are named as jobs, not as machinery. */
+    expect(text()).toContain('Writing down the words');
     // The plan says which client it belongs to, so a build need not be told.
     expect(text()).toContain('Made for k2-syndicalia');
     // Read off `provenance`, never off `status`: a stage the plan calls done
     // can still bill, which is the defect this replaced.
-    expect(text()).toContain('free, reusing an earlier run');
-    expect(text()).toContain('will run, about $1.55');
-    expect(text()).toContain('will run, about $0.18');
+    /* Session 95: "free, reusing an earlier run" says what it costs him instead. */
+    expect(text()).toContain('Already paid for — nothing to pay');
+    /* Session 95: "will run, about $1.55" became "About $1.55". */
+    expect(text()).toContain('About $1.55');
+    expect(text()).toContain('About $0.18');
     expect(text()).toContain('about $1.73');
     expect(text()).toContain('the most it could cost, not what it will');
     expect(text()).toContain('nothing is charged');
@@ -741,7 +745,7 @@ describe('the dry run', () => {
       select('Client').dispatchEvent(new Event('change', { bubbles: true }));
     });
 
-    expect(text()).toContain('will run, about $0.18');
+    expect(text()).toContain('About $0.18');
     expect(text()).not.toContain('nothing to pay');
   });
 });

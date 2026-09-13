@@ -1597,7 +1597,7 @@ describe.skipIf(!built)('the cost block and the run', () => {
     await page.waitForFunction(
       () =>
         (document.querySelector('main') as HTMLElement).textContent?.includes(
-          'Keywords and image slots',
+          'Choosing what to emphasise and what to picture',
         ) === true,
       undefined,
       { timeout: 5000 },
@@ -1613,8 +1613,9 @@ describe.skipIf(!built)('the cost block and the run', () => {
     const loaded = await loadBoth();
     if (loaded === null) return;
     const text = (await loaded.page.textContent('main')) ?? '';
+    /* Session 95: "already done" now says what it costs him. */
     expect(text).not.toContain('to run');
-    expect(text).toContain('already done');
+    expect(text).toContain('Already done — nothing to pay');
     await loaded.page.close();
   });
 
@@ -1654,8 +1655,12 @@ describe.skipIf(!built)('the cost block and the run', () => {
       expect(ran, `no run row for "${label}"`).toBeDefined();
       // Both sides were reworded in session 41; the pin is that they agree on
       // whether the stage runs, not on the word they happen to use for it.
-      const estimateSkips = estimate.includes('already done') || estimate.includes('free,');
-      const runSkips = (ran ?? '').includes('skipped');
+      /*
+       * Both sides were reworded in session 41 and again in session 95; the pin
+       * is that they agree on whether the stage runs, not on the word each uses.
+       */
+      const estimateSkips = estimate.includes('nothing to pay');
+      const runSkips = (ran ?? '').includes('Nothing to do') || (ran ?? '').includes('nothing to pay');
       expect(runSkips, `"${label}": estimate said "${estimate}", run said "${ran}"`).toBe(
         estimateSkips,
       );
@@ -1681,7 +1686,10 @@ describe.skipIf(!built)('a pipeline run', () => {
     await page.selectOption('select[aria-label="Client"]', 'k2-syndicalia');
     await page.click('button.run');
     await page.waitForFunction(
-      () => (document.querySelector('main') as HTMLElement).textContent?.includes('Transcribe and correct') === true,
+      () =>
+        (document.querySelector('main') as HTMLElement).textContent?.includes(
+          'Writing down the words',
+        ) === true,
       undefined,
       { timeout: 5000 },
     );
@@ -1692,11 +1700,22 @@ describe.skipIf(!built)('a pipeline run', () => {
     const loaded = await loadRun('running');
     if (loaded === null) return;
     const text = (await loaded.page.textContent('main')) ?? '';
-    for (const label of ['Transcribe and correct', 'Keywords and image slots', 'Generate images', 'Looking at the video']) {
+    /*
+      * **Session 95: the stages are named as jobs.** `Transcribe and correct`,
+      * `Keywords and image slots`, `Generate images` and `Looking at the video`
+      * are what the code calls them; these are what he would call them.
+      */
+    for (const label of [
+      'Writing down the words',
+      'Choosing what to emphasise and what to picture',
+      'Drawing the pictures',
+      'Finding you in the picture',
+    ]) {
       expect(text, label).toContain(label);
     }
-    expect(text).toContain('running…');
-    expect(text).toContain('waiting');
+    /* `running…` and `waiting` were a word and an ellipsis standing in for a position. */
+    expect(text).toContain('Doing this now');
+    expect(text).toContain('Still to do');
     await loaded.page.close();
   });
 
@@ -1705,7 +1724,8 @@ describe.skipIf(!built)('a pipeline run', () => {
     const loaded = await loadRun('running');
     if (loaded === null) return;
     const text = (await loaded.page.textContent('main')) ?? '';
-    expect(text).toContain('skipped');
+    /* Session 95: `skipped` read as a fault; it is good news and now says so. */
+    expect(text).toContain('Nothing to do');
     expect(text).toContain('reusing an older guide');
     await loaded.page.close();
   });
@@ -1719,7 +1739,7 @@ describe.skipIf(!built)('a pipeline run', () => {
     const loaded = await loadRun('looking');
     if (loaded === null) return;
     const text = (await loaded.page.textContent('main')) ?? '';
-    expect(text).toContain('Looking at the video');
+    expect(text).toContain('Finding you in the picture');
     expect(text).toContain('Finding you in the picture — frame 24 of 53');
     // A field name is not a label, and neither is a word from the codebase.
     expect(text).not.toContain('segmentation');
@@ -1728,12 +1748,22 @@ describe.skipIf(!built)('a pipeline run', () => {
     await loaded.page.close();
   });
 
-  it('shows a failed stage’s cause as it came, not a summary', async () => {
+  /**
+   * **This asserted the opposite, and session 95 reversed it.**
+   *
+   * It required the stage's cause on screen *as it came* — the reasoning being
+   * that a summary loses what actually happened. Mohamed then read one: *"1 slot
+   * idea(s) depict more than one subject: slot 7"*, and it is the example he
+   * quoted back when he asked for the panel to talk to him in his words. The
+   * cause is still what decides the sentence; it is no longer the sentence.
+   */
+  it('shows a failed stage’s cause in his words, not as it came', async () => {
     const loaded = await loadRun('failed');
     if (loaded === null) return;
     const text = (await loaded.page.textContent('main')) ?? '';
-    expect(text).toContain('the model returned 503 Service Unavailable');
-    expect(text).toContain('worth trying again');
+    expect(text).not.toContain('the model returned 503 Service Unavailable');
+    expect(text).toContain('was busy and turned it away');
+    expect(text).toContain('Try it again');
     await loaded.page.close();
   });
 
@@ -1781,8 +1811,9 @@ describe.skipIf(!built)('a pipeline run', () => {
     await loaded.page.click('button.back');
     await loaded.page.waitForSelector('section.do', { timeout: 5000 });
     const text = (await loaded.page.textContent('main')) ?? '';
-    expect(text).toContain('Keywords and image slots');
-    expect(text).toContain('running…');
+    expect(text).toContain('Choosing what to emphasise and what to picture');
+    /* Session 95: `running…` is a word standing in for a position. */
+    expect(text).toContain('Doing this now');
     await loaded.page.close();
   });
 
@@ -3577,8 +3608,8 @@ describe('running the words without the pictures', () => {
       await page.waitForSelector('button.run', { timeout: 5000 });
       expect(await page.locator('.partrun button').count()).toBe(2);
       const said = (await page.textContent('.partrun')) ?? '';
-      expect(said).toContain('Make the subtitles again — about $0.00');
-      expect(said).toContain('Make the pictures — about $0.00');
+      expect(said).toContain('Make the subtitles again — nothing to pay');
+      expect(said).toContain('Make the pictures — nothing to pay');
       expect(loaded.uncaught).toEqual([]);
     } finally {
       await loaded.page.close();

@@ -17,6 +17,15 @@ export function spendLevel(spentUsd: number | null): SpendLevel {
   return spentUsd >= SPEND_SOFT_ALARM_USD ? 'alarm' : 'normal';
 }
 
+/**
+ * **Money to the cent.** This was four decimal places — `$3.4025` — and appeared
+ * in three places on one screen. The cent is the unit he acts in. Block 13
+ * session 95.
+ *
+ * The grand total on the money screen keeps its full precision and is formatted
+ * in `Money.tsx`, not here: that figure reconciles with the ledger, and a
+ * rounded total that does not add up is worse than a long one.
+ */
 export function formatUsd(spentUsd: number | null): string {
-  return spentUsd === null ? 'not run yet' : `$${spentUsd.toFixed(4)}`;
+  return spentUsd === null ? 'not run yet' : `$${spentUsd.toFixed(2)}`;
 }

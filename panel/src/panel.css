@@ -881,3 +881,16 @@ section.client .say, section.video .say { margin: 8px 0 0; color: var(--muted); 
 .otherservice.done .said { color: var(--muted); }
 
 .leavesout { margin: 2px 0 0; color: var(--warn); font-size: 0.75em; line-height: 1.5; }
+
+/*
+ * **Red means this spends money, and nothing else.** Block 13 session 95.
+ *
+ * `button.run` is the accent red whatever it does, so *Make the pictures — about
+ * $2.17* and *Make the subtitles again — about $0.00* were identical. One of them
+ * spends two dollars. A control that costs nothing is the same shape and weight
+ * and is not red.
+ */
+button.run.free {
+  background: var(--panel-2); border-color: var(--line); color: var(--text);
+}
+button.run.free:hover:enabled { border-color: #3a4049; }

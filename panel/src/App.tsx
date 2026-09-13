@@ -40,6 +40,15 @@ const JOB_POLL_MS = 1000;
 import { runGate } from './run-gate.js';
 import { startQueue, stopQueue } from './service.js';
 import { formatUsd, SPEND_SOFT_ALARM_USD, spendLevel } from './spend.js';
+import {
+  causeWords,
+  money as toTheCent,
+  runStateWords,
+  spendsMoney,
+  stageName,
+  willDoWords,
+  type RunState,
+} from './words.js';
 import type {
   ClientMode,
   DryRunPlan,
@@ -1156,11 +1165,10 @@ function FontsNote({ mode }: { mode: ClientMode }): JSX.Element | null {
  * the two service functions against each other and none of them looked at this
  * string.
  */
+/** Session 95: his words, and the money to the cent. See `words.ts`. */
 function stageWord(stage: DryRunStage): string {
-  if (stage.action === 'skip') return 'already done';
-  if (stage.provenance === 'compatible') return 'free, reusing an earlier run';
-  if (stage.action === 'reuse') return 'free, already paid for';
-  return stage.estimateUsd === null ? 'will run' : `will run, about $${stage.estimateUsd.toFixed(2)}`;
+  if (stage.provenance === 'compatible') return 'Already paid for — nothing to pay';
+  return willDoWords({ action: stage.action, estimateUsd: stage.estimateUsd });
 }
 
 function stageTone(stage: DryRunStage): string {
@@ -1234,17 +1242,22 @@ function RunActions({
 
   return (
     <div className="partrun">
+      {/*
+        **Red means this spends money.** Both of these were the accent red, and
+        *Make the subtitles again — about $0.00* is free. Same shape, same
+        weight, no colour. Session 95.
+      */}
       <button
-        className="run"
+        className={`run ${spendsMoney(words) ? '' : 'free'}`}
         type="button"
         disabled={!enabled}
         onClick={() => onRun({ only: wordStages })}
       >
         {running
           ? 'Working…'
-          : subtitlesDone
-            ? `Make the subtitles again — about $${words.toFixed(2)}`
-            : `Make the subtitles — about $${words.toFixed(2)}`}
+          : `${subtitlesDone ? 'Make the subtitles again' : 'Make the subtitles'} — ${
+              spendsMoney(words) ? `about ${toTheCent(words)}` : 'nothing to pay'
+            }`}
       </button>
       <p className="faint">
         The subtitles, the words to emphasise, and the ideas for the pictures. Read them and fix
@@ -1272,12 +1285,16 @@ function RunActions({
         the cache, so redoing the stage re-bills nothing that exists.
       */}
       <button
-        className="run"
+        className={`run ${spendsMoney(pictures) ? '' : 'free'}`}
         type="button"
         disabled={!enabled || !subtitlesDone}
         onClick={() => onRun({ only: dry.picturesStages ?? ['images'], redo: ['images'] })}
       >
-        {running ? 'Working…' : `Make the pictures — about $${pictures.toFixed(2)}`}
+        {running
+          ? 'Working…'
+          : `Make the pictures — ${
+              spendsMoney(pictures) ? `about ${toTheCent(pictures)}` : 'nothing to pay'
+            }`}
       </button>
       <CapWarning
         estimateUsd={pictures}
@@ -1308,7 +1325,7 @@ function DryRun({ plan }: { plan: DryRunPlan }): JSX.Element {
       <ul className="facts">
         {plan.stages.map((stage) => (
           <li key={stage.id}>
-            <span className="k">{stage.label}</span>
+            <span className="k">{stageName(stage.id, stage.label)}</span>
             <span className={`v ${stageTone(stage)}`} title={stage.note}>
               {stageWord(stage)}
             </span>
@@ -1392,7 +1409,7 @@ function RunProgress({ job }: { job: PipelineJob }): JSX.Element {
       <ul className="facts">
         {detail.stages.map((stage) => (
           <li key={stage.id}>
-            <span className="k">{stage.label}</span>
+            <span className="k">{stageName(stage.id, stage.label)}</span>
             <span className={`v ${stageToneOf(stage.state)}`} title={stage.reason ?? stage.label}>
               {stageWordOf(stage)}
               {stage.reason === null ? null : <em className="where">{stage.reason}</em>}
@@ -1403,10 +1420,16 @@ function RunProgress({ job }: { job: PipelineJob }): JSX.Element {
           </li>
         ))}
       </ul>
+      {/*
+        **The raw cause never reaches him.** This printed the stage error
+        verbatim — *"1 slot idea(s) depict more than one subject: slot 7"* is the
+        one he quoted back. `causeWords` turns each cause the tool can produce
+        into one sentence saying what happened and one thing to do, and returns a
+        sentence rather than the raw text for one nobody has written words for.
+      */}
       {detail.error === null ? null : (
         <p className="reason" role="status">
-          {detail.error.cause}
-          {detail.error.retryable ? ' It is worth trying again.' : ''}
+          {causeWords(detail.error.cause)}
         </p>
       )}
       <div className="spend" style={{ marginTop: 12 }}>
@@ -1430,12 +1453,10 @@ function RunProgress({ job }: { job: PipelineJob }): JSX.Element {
   );
 }
 
+/** Session 95: `skipped`, `waiting` and `failed` said nothing he could act on. */
 function stageWordOf(stage: PipelineStageReport): string {
-  if (stage.state === 'done') return stage.costUsd > 0 ? `done, ${formatUsd(stage.costUsd)}` : 'done';
-  if (stage.state === 'skipped') return 'skipped';
-  if (stage.state === 'failed') return 'failed';
-  if (stage.state === 'running') return 'running…';
-  return 'waiting';
+  if (stage.state === 'done') return stage.costUsd > 0 ? `Done — ${toTheCent(stage.costUsd)}` : 'Done';
+  return runStateWords(stage.state as RunState, stage.reason);
 }
 
 function stageToneOf(state: PipelineStageReport['state']): string {
