@@ -299,3 +299,58 @@ am recording the discrepancy rather than explaining it away.
   and the only one available is Mohamed's.
 - **No installer yet, deliberately.** The path is now walked and written down;
   wrapping it is the next question, not this one.
+
+---
+
+## Addendum, 2026-09-13: the gate after this report was committed
+
+**Section 7 above is incomplete, and this corrects it.** The `check: PASS` it
+records was real, but the run made *after* committing the report failed, twice,
+and the report had already been written. What followed:
+
+**A leaked process of my own.** `npm run check` runs under vitest, and one of the
+runs killed by a timeout orphaned its `esbuild --service` helper: pid 8318,
+reparented to `launchd`, **33 CPU-hours burned at ~270% CPU over 18 hours.** It
+was still spinning when this session resumed. It was not Mohamed's service — his
+is pid 27950 and was untouched throughout — and it was cleared. Session 78's rule
+is that nothing may leak a process; this leaked one, and it is the reason two
+gate runs behaved erratically, including one that died with `EXIT=138` (SIGBUS)
+when the T7 briefly dropped out under the load.
+
+**A real defect underneath it.** On a quiet machine one failure survived:
+
+```
+   × per-reel and corpus counts > sums every reel it knows to the corpus figures
+     → expected 54 to be 52 // Object.is equality
+```
+
+`questionCountsOf` counted **every** element whose hold is clipped; the per-reel
+view beside it counts only those resolving to a subtitle group. The two agreed
+for the project's whole life because no reel had ever had a clipped keyword.
+**`sora-5` — one of the videos Mohamed made during this session — has two**,
+`keywords.items[6]` and `[9]`, and the corpus figure went to 54 where the twelve
+reels summed to 52.
+
+Fixed in `df52c30`: the question is *"Cards whose hold is clipped"* and its
+instances are card ids and card text, so cards is what it counts. Proved by
+mutation, reproducing the gate's own line:
+
+```
+   × per-reel and corpus counts > sums every reel it knows to the corpus figures
+     → expected 54 to be 52 // Object.is equality
+   × what counts as a clipped card > counts the card and not the keyword
+     → expected 2 to be 1 // Object.is equality
+```
+
+One test added, `what counts as a clipped card > counts the card and not the
+keyword`, pinned against a plan built in the test rather than against whichever
+reels are on the disk that day. **Service 1548 → 1549.**
+
+**Then: `npm run check` exit 0, `check: PASS`; `npm run golden` PASS, 4 of 4,
+17,174 fields; pushed, `origin/main..main` = 0.**
+
+**And the ledger moved again, still not by me:** 258 at this report's writing,
+**278** by the time the session resumed, his last line at 2026-09-12T20:07:04Z.
+He also added **seven photographs** to Dr Loubna — `pic016` to `pic022` — and his
+client file now names 22 where the repository holds 15. **Those are his and are
+left uncommitted**, exactly as found.
