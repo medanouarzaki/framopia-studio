@@ -17,9 +17,13 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
+  PALETTE_MEANING,
+  STANDARD_FONTS,
+  clientDefaults,
   loadMode,
   mismatchSentence,
   mismatchedClient,
+  paletteRolesInDisplayOrder,
   reattachSentence,
   type ClientFolder,
   byClient,
@@ -251,6 +255,164 @@ export function realMismatch(): Record<string, unknown> | null {
   };
 }
 
+/**
+ * **The clients exactly as they are on this disk**, shaped the way the service's
+ * `/modes` route shapes them.
+ *
+ * Block 13 session 102 needed the panel's real height, and the stub's client is
+ * one line of nothing: no palette, no photographs, no *Change their details*.
+ * Dr Loubna Kfafi has four colours, three typefaces and twenty-two photographs,
+ * and the card that draws them is what sits between the two decisions on Choose.
+ * A height measured without her is a height of a panel nobody uses.
+ *
+ * Nothing here is invented: `loadMode` reads her file, and the four derivations
+ * below are `listModes`' own, kept in the same order so the shapes cannot drift
+ * apart without one of them being obviously wrong. Nothing is written.
+ */
+export function realClients(): Record<string, unknown>[] {
+  const out: Record<string, unknown>[] = [];
+  for (const id of ['k2-syndicalia', 'dr-loubna-kfafi']) {
+    let mode;
+    try {
+      mode = loadMode(id);
+    } catch {
+      continue;
+    }
+    const d = clientDefaults(mode);
+    const entry: Record<string, unknown> = {
+      id: mode.id,
+      name: mode.name,
+      version: mode.version,
+      fontsStatus: mode.fonts.status,
+      fontsResolved: mode.fonts.status === 'set',
+      hasFolder: mode.videoFolder !== undefined,
+      look: {
+        palette: paletteRolesInDisplayOrder().map((role) => ({
+          role,
+          hex: mode.palette[role],
+          what: PALETTE_MEANING[role],
+        })),
+        fonts:
+          mode.fonts.status === 'set'
+            ? { latin: mode.fonts.latin, arabic: mode.fonts.arabic, standard: false }
+            : { ...STANDARD_FONTS, standard: true },
+        logoPath: mode.logoPath ?? null,
+      },
+      standards: {
+        language: d.language,
+        videoShape: d.videoShape,
+        watermark: d.watermark,
+        subtitleBaselineY: d.subtitleBaselineY,
+        chosen: Object.entries(d.source)
+          .filter(([, from]) => from === 'client')
+          .map(([field]) => field),
+      },
+      /*
+       * `onThisMachine` is answered without touching the file: the measurement
+       * must not depend on whether his external drive happens to be mounted, and
+       * a photograph is never read by anything in a test.
+       */
+      pictures: (mode.pictures ?? []).map((p) => ({ ...p, onThisMachine: true })),
+      editable: {
+        name: mode.name,
+        ...(mode.about === undefined ? {} : { about: mode.about }),
+        ...(mode.videoFolder === undefined ? {} : { videoFolder: mode.videoFolder }),
+        ...(mode.logoPath === undefined ? {} : { logoPath: mode.logoPath }),
+        ...(mode.language === undefined ? {} : { language: mode.language }),
+        ...(mode.videoShape === undefined ? {} : { videoShape: mode.videoShape }),
+        ...(mode.subtitleBaselineY === undefined
+          ? {}
+          : { subtitleBaselineY: mode.subtitleBaselineY }),
+        ...(mode.watermarkByDefault === undefined
+          ? {}
+          : { watermarkByDefault: mode.watermarkByDefault }),
+        ...(mode.fonts.status === 'set'
+          ? {
+              fonts: {
+                latin: mode.fonts.latin,
+                arabic: mode.fonts.arabic,
+                ...(mode.fonts.emphasis === undefined ? {} : { emphasis: mode.fonts.emphasis }),
+              },
+            }
+          : {}),
+      },
+      folderLeavesOut: null,
+    };
+    if (mode.about !== undefined) entry.about = mode.about;
+    out.push(entry);
+  }
+  return out;
+}
+
+/** The four stages of a video that has been run all the way through. */
+export function stagesAllDone(): Record<string, unknown>[] {
+  return [
+    ['transcription', 'Writing down the words'],
+    ['analysis', 'Choosing the pictures'],
+    ['images', 'Drawing the pictures'],
+    ['zones', 'Looking at the video'],
+  ].map(([id, label]) => ({
+    id,
+    label,
+    status: 'done',
+    provenance: 'cache',
+    entryId: `${id}-1`,
+    estimateUsd: 0,
+    action: 'skip',
+    note: 'Already done, nothing to pay',
+  }));
+}
+
+/**
+ * **His panel, with his data**: the real clients, a video that has been run all
+ * the way through, and the real ledger. What a height measured here reports is a
+ * height he could point at on his own screen.
+ */
+export function realPanelRoutes(): string {
+  const clients = realClients();
+  const her = clients.find((c) => c.id === 'dr-loubna-kfafi') ?? clients[0];
+  const name = (her?.name as string | undefined) ?? 'K2 Syndicalia';
+  const id = (her?.id as string | undefined) ?? 'k2-syndicalia';
+  return stubRoutes(stepsThrough('build'), 'build', {
+    modes: { modes: clients },
+    reels: {
+      reels: [
+        'Dr Loubna Kfafi/September Content/Exports/sora.mov',
+        'Dr Loubna Kfafi/September Content/Exports/sculptra-explainer.mov',
+        'Dr Loubna Kfafi/September Content/Exports/botox-myths.mov',
+        'Dr Loubna Kfafi/September Content/Exports/skin-booster.mov',
+      ].map((label, i) => ({
+        label,
+        present: true,
+        durationS: 25.7 + i,
+        planPath: `/v/p${String(i)}.json`,
+        spentUsd: 3.4025,
+      })),
+    },
+    dry: {
+      reel: 'Dr Loubna Kfafi/September Content/Exports/sora.mov',
+      videoPath: '/v/sora.mov',
+      modeId: id,
+      modeName: name,
+      modeVersion: 1,
+      planPath: '/v/p0.json',
+      spentUsd: 3.4025,
+      stages: stagesAllDone(),
+      estimateUsd: 0,
+      reusesOlderGuide: false,
+      wordsUsd: 0,
+      picturesUsd: 0,
+      wordsStages: ['transcription', 'analysis'],
+      picturesStages: ['images', 'zones'],
+      watermark: true,
+      watermarkSize: 'medium',
+      watermarkWidthsPx: { small: 216, medium: 324, large: 432 },
+      planClientMode: { id, version: 1 },
+      mismatch: null,
+    },
+  });
+}
+
 export function stubRoutes(
   steps: unknown,
   resumeAt: string,
@@ -457,6 +619,48 @@ interface DrivablePage {
  * element is actually being rendered. A test that declares the wrong screen
  * fails here, loudly, rather than asserting against something nobody can see.
  */
+/**
+ * **Opens the reference a screen keeps behind one press, and proves it opened.**
+ *
+ * Block 13 session 102 put the client card and the watermark control behind
+ * `<details class="quibbles">`: reference, not decision. Measured with his own
+ * data the client card alone is 3500 px of a 900 px panel, sitting between the
+ * two decisions Choose exists for.
+ *
+ * This is the companion to `onScreen`, and it is written the same way — **correct
+ * whether or not the thing is behind a disclosure**. A test that needs to see the
+ * card asks for it; if there is no disclosure it is already open, and if there is
+ * one it gets pressed. So a test converted today does not move again when the
+ * next session collapses something else.
+ *
+ * The proof matters as much as the press: `checkVisibility()` rather than a
+ * selector match, because a closed `<details>` still has every word of its
+ * contents in the page — Block 11 session 69's lesson, and the reason these
+ * thirteen tests failed loudly this session instead of passing over hidden text.
+ */
+export async function openReference(page: DrivablePage, inside: string): Promise<void> {
+  /*
+   * **Pressed, not forced open.** One of these is a controlled `<details>` whose
+   * open state React owns, so setting the DOM property would be undone on the
+   * next render — and a test that reaches past the control is not testing what he
+   * does. This marks the summary, presses it, and takes the mark off again.
+   */
+  const needsPressing = await page.$eval(inside, (el) => {
+    const box = el.closest('details');
+    if (box === null) return false;
+    if (box.open) return false;
+    box.querySelector('summary')?.setAttribute('data-openme', '');
+    return true;
+  });
+  if (needsPressing) {
+    await page.click('summary[data-openme]', { timeout: 4_000 });
+    await page.$eval(inside, (el) =>
+      el.closest('details')?.querySelector('summary')?.removeAttribute('data-openme'),
+    );
+  }
+  await page.waitForSelector(inside, { timeout: 4_000, state: 'visible' });
+}
+
 export async function onScreen(page: DrivablePage, screen: Screen): Promise<void> {
   const switcher = await page.$('nav.moments');
   if (switcher !== null && switcher !== undefined) {

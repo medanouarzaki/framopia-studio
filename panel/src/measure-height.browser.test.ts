@@ -3,7 +3,14 @@ import { chromium, type Browser } from 'playwright';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { stubHost, stubFetch, HEALTHY_PAYLOAD, HANDSHAKE, onScreen } from './browser-harness.js';
+import {
+  stubHost,
+  stubFetch,
+  HEALTHY_PAYLOAD,
+  HANDSHAKE,
+  onScreen,
+  realPanelRoutes,
+} from './browser-harness.js';
 
 /**
  * **A ruler, not a rule.**
@@ -123,4 +130,110 @@ describe.skipIf(!built)('how tall the panel is', () => {
     expect(rows.length).toBeGreaterThan(1);
     await page.close();
   }, 60_000);
+});
+
+/**
+ * **The same ruler, with his data in the panel.**
+ *
+ * Block 13 session 102. Every figure the ruler above has reported since session
+ * 95 is a figure of an *empty* panel: no client chosen, so no card; no video, so
+ * no stages and no cost; no queue. His own Choose screen carries Dr Loubna
+ * Kfafi's four colours, three typefaces, a watermark control, twenty-two
+ * photographs and *Change their details* — between the two decisions he came to
+ * take.
+ *
+ * **Both measurements are kept, named.** The stub one is the floor: what the
+ * panel costs before anyone uses it. This one is what he sees. They answer
+ * different questions and neither replaces the other.
+ */
+describe.skipIf(!built)('how tall the panel is with his own data', () => {
+  /**
+   * **Only with the service answering, and that is not an omission.**
+   *
+   * The stub ruler above measures both states because the difference between them
+   * — 71 px of readiness against 129 px of retry and attempt count — is the error
+   * session 99 found in every height sessions 95 to 98 reported. But his data
+   * *comes from the service*: with it unreachable there is no client, no video
+   * and no queue, so "his data, service not answering" is the empty panel the
+   * ruler above already measures. Measuring it twice under two names would be
+   * inventing a second figure for one thing.
+   */
+  it('measures every screen as he meets it', async () => {
+    if (browser === undefined) return;
+    const page = await browser.newPage({ viewport: { width: 420, height: 900 } });
+    await page.addInitScript(stubHost(HANDSHAKE));
+    await page.addInitScript(realPanelRoutes());
+    await page.goto(`file://${INDEX}`);
+    await page.waitForSelector('header.brand', { timeout: 10_000 });
+
+    /* Chosen, not stubbed: this is the sequence he performs. */
+    await onScreen(page, 'choose');
+    await page.selectOption('select[aria-label="Client"]', 'dr-loubna-kfafi');
+    await page.waitForTimeout(300);
+    await page.selectOption(
+      'select[aria-label="Video"]',
+      'Dr Loubna Kfafi/September Content/Exports/sora.mov',
+    );
+    await page.waitForTimeout(600);
+
+    const measure = async (label: string): Promise<number> => {
+      const rows = await page.evaluate(() => {
+        const out: { name: string; top: number; height: number }[] = [];
+        for (const s of Array.from(document.querySelectorAll('section'))) {
+          if (!s.checkVisibility()) continue;
+          const h2 = s.querySelector('h2');
+          const r = s.getBoundingClientRect();
+          out.push({
+            name: h2?.textContent ?? '(no heading)',
+            top: Math.round(r.top + window.scrollY),
+            height: Math.round(r.height),
+          });
+        }
+        return out;
+      });
+      const bottom = Math.max(...rows.map((r) => r.top + r.height));
+      console.log(
+        `\n  == ${label} — HIS DATA (service answering): ` +
+          `content ends at ${String(bottom)}px of a 900px panel`,
+      );
+      for (const r of rows) {
+        console.log(
+          `     ${r.name.padEnd(26)} top ${String(r.top).padStart(5)}px  height ${String(r.height).padStart(5)}px`,
+        );
+      }
+      return bottom;
+    };
+
+    await onScreen(page, 'choose');
+    const choose = await measure('choose');
+
+    await onScreen(page, 'run');
+    /* Four videos in the list, which is how he uses it while he is away. */
+    for (const label of [
+      'Dr Loubna Kfafi/September Content/Exports/sculptra-explainer.mov',
+      'Dr Loubna Kfafi/September Content/Exports/botox-myths.mov',
+      'Dr Loubna Kfafi/September Content/Exports/skin-booster.mov',
+    ]) {
+      await onScreen(page, 'choose');
+      await page.selectOption('select[aria-label="Video"]', label);
+      await page.waitForTimeout(250);
+      await onScreen(page, 'run');
+      const add = await page.$('section.pane button.run');
+      if (add !== null) await add.click();
+      await page.waitForTimeout(120);
+    }
+    await onScreen(page, 'run');
+    const run = await measure('run');
+
+    await onScreen(page, 'build');
+    const build = await measure('build');
+
+    console.log(
+      `\n  == HIS DATA (service answering), past the 900px fold: choose ${String(choose - 900)}px, ` +
+        `run ${String(run - 900)}px, build ${String(build - 900)}px`,
+    );
+
+    expect(choose).toBeGreaterThan(0);
+    await page.close();
+  }, 120_000);
 });

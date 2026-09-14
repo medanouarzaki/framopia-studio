@@ -1,5 +1,7 @@
 import type { JSX } from 'react';
 import { shortLabels } from './video-names.js';
+import { Sentence } from './Sentence.js';
+import { WAYS_THERE } from './words.js';
 
 /**
  * **What he comes back to.**
@@ -47,10 +49,13 @@ export function Queue({
   view,
   onStop,
   stopping,
+  onGoTo,
 }: {
   view: QueueView;
   onStop: () => void;
   stopping: boolean;
+  /** Takes him to the screen the finished-queue sentence names. */
+  onGoTo?: (screen: 'choose' | 'run' | 'build') => void;
 }): JSX.Element {
   const running = view.runningIndex === null ? null : view.items[view.runningIndex];
   /*
@@ -105,9 +110,18 @@ export function Queue({
             ))}
           </ul>
           <p className="faint">{view.summary.spentSaid}</p>
-          <p className="faint">
-            Pick a video above and build it, the same way you always do.
-          </p>
+          {/*
+            **The next thing, where the news is.** Block 13 session 102. A queue
+            finishes and this is what he reads — and the picker it names is not
+            above, it is on Choose, behind a tab. The sentence is unchanged;
+            *Pick a video* takes him there.
+          */}
+          <Sentence
+            className="faint"
+            text="Pick a video above and build it, the same way you always do."
+            phrase={WAYS_THERE.pickAVideo}
+            onPress={() => onGoTo?.('choose')}
+          />
         </>
       ) : null}
 

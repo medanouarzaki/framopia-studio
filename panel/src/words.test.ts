@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  aroundPhrase,
+  WAYS_THERE,
   finishedWords,
   serviceDownWords,
   triedWords,
@@ -395,5 +397,65 @@ describe('a video that has already been run', () => {
     expect(finishedWords(done()) ?? '').not.toMatch(/npm run|terminal|quit|restart|reopen/i);
     /* Build is a step in this panel, so naming it is the next thing, not an exit. */
     expect(finishedWords(done()) ?? '').toContain('Build');
+  });
+});
+
+describe('a sentence that names a place carries the way there', () => {
+  /**
+   * **The sentence is settled; only one span of it is pressable.** Block 13
+   * session 102. `words.ts` is where the wording lives and it has not been
+   * touched — so the proof that nothing was reworded is that the three pieces
+   * put back together are the sentence, character for character.
+   */
+  it('gives back exactly the sentence it was handed', () => {
+    const said = 'Everything for this video is made. Go to Build to put the composition together.';
+    const split = aroundPhrase(said, WAYS_THERE.build);
+    expect(split).not.toBeNull();
+    expect((split?.before ?? '') + (split?.phrase ?? '') + (split?.after ?? '')).toBe(said);
+  });
+
+  it('finds the phrase where it really is, not at the start', () => {
+    const split = aroundPhrase('Everything for this video is made. Go to Build to put the composition together.', WAYS_THERE.build);
+    expect(split?.before).toBe('Everything for this video is made. ');
+    expect(split?.phrase).toBe('Go to Build');
+    expect(split?.after).toBe(' to put the composition together.');
+  });
+
+  /*
+   * A phrase that is not in its sentence is the failure mode that matters: a
+   * sentence reworded without its phrase updated would lose its way there
+   * silently. The caller renders plain prose, which is what it was before.
+   */
+  it('says so rather than guessing when the phrase is not in the sentence', () => {
+    expect(aroundPhrase('There is nothing to build for this video yet.', WAYS_THERE.build)).toBeNull();
+  });
+
+  /**
+   * **Every phrase the panel makes pressable is still in its sentence.**
+   *
+   * This is the test that goes red when session 103 rewords one of these six and
+   * does not move its phrase. The sentences are quoted here exactly as the panel
+   * renders them; two of them are `words.ts`' own and are read from it.
+   */
+  it('every way there is still inside the sentence it belongs to', () => {
+    const finished = finishedWords([{ status: 'done' }]) ?? '';
+    const noFolder = nothingYetWords('no-folder').next;
+    const noVideos = nothingYetWords('videos').next;
+    const pairs: [string, string][] = [
+      [finished, WAYS_THERE.build],
+      [noFolder, WAYS_THERE.theirCard],
+      [noVideos, WAYS_THERE.aDifferentFolder],
+      [
+        'Choose a client and a video above, and this will say what the composition will contain.',
+        WAYS_THERE.clientAndVideo,
+      ],
+      [
+        'Nothing yet. Press Run pipeline above, and this will say what the composition will contain.',
+        WAYS_THERE.runIt,
+      ],
+      ['Pick a video above and build it, the same way you always do.', WAYS_THERE.pickAVideo],
+    ];
+    const lost = pairs.filter(([said, phrase]) => aroundPhrase(said, phrase) === null);
+    expect(lost).toEqual([]);
   });
 });

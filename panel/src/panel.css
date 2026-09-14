@@ -524,6 +524,27 @@ button.ghost {
 .quibbles { margin-top: 10px; color: var(--muted); font-size: 0.85em; }
 .quibbles summary { cursor: pointer; }
 
+/*
+ * **A way there, inside the sentence that names the place.** Block 13 session
+ * 102, from Mohamed's words: *"when I click a button, the next button I'm going
+ * to click on should be near to it."*
+ *
+ * It carries no colour of its own — colour in this panel means *this spends
+ * money*, and nothing behind one of these does. Underlined and in the text's own
+ * colour, inside prose that is muted, which is what separates it from the prose
+ * without shouting.
+ *
+ * `.linky` already existed as the queue's *take it out* and had no rule at all,
+ * so it drew as a native grey button in the middle of a list. This is that rule.
+ */
+.linky {
+  display: inline; padding: 0; margin: 0;
+  background: none; border: 0; border-radius: 0;
+  color: var(--text); font: inherit; text-align: left;
+  text-decoration: underline; text-underline-offset: 2px; cursor: pointer;
+}
+.linky:hover { color: var(--text); }
+
 /* Video actions: Refresh, a path to open, and Open. */
 .videoactions { display: flex; gap: 8px; margin-top: 10px; align-items: center; }
 .videoactions .ghost { margin-top: 0; flex: 0 0 auto; }

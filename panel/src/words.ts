@@ -360,3 +360,48 @@ export function finishedWords(stages: readonly { status: string }[]): string | n
   if (!stages.every((s) => s.status === 'done')) return null;
   return 'Everything for this video is made. Go to Build to put the composition together.';
 }
+
+/**
+ * **Splits a settled sentence around a phrase, so the phrase can be pressed.**
+ *
+ * Block 13 session 102. Mohamed: *"when I click a button, the next button I'm
+ * going to click on should be near to it."* Six sentences in this panel name a
+ * place — *Go to Build*, *on their card above*, *Choose a client and a video
+ * above* — and a place he has to go and find is the opposite of a target under
+ * the pointer that is already there.
+ *
+ * **This changes no wording.** The sentence is settled; what changes is that one
+ * span of it is a control. `before + phrase + after` is the sentence, character
+ * for character, and a test asserts exactly that for every phrase the panel
+ * makes pressable — so a sentence that is reworded without its phrase being
+ * updated goes red rather than silently losing its way there.
+ *
+ * Returns `null` when the phrase is not in the sentence, which is what a caller
+ * renders as plain text: a missing way through is better than a broken one.
+ */
+export function aroundPhrase(
+  sentence: string,
+  phrase: string,
+): { before: string; phrase: string; after: string } | null {
+  const at = sentence.indexOf(phrase);
+  if (at === -1) return null;
+  return {
+    before: sentence.slice(0, at),
+    phrase,
+    after: sentence.slice(at + phrase.length),
+  };
+}
+
+/**
+ * The phrases this panel turns into a way there, one per sentence that names a
+ * place. Named here rather than at each call site so the test that proves they
+ * are still in their sentences has one list to walk.
+ */
+export const WAYS_THERE = {
+  build: 'Go to Build',
+  theirCard: 'Open their card',
+  aDifferentFolder: 'set a different folder on their card',
+  clientAndVideo: 'Choose a client and a video',
+  runIt: 'Press Run pipeline',
+  pickAVideo: 'Pick a video',
+} as const;

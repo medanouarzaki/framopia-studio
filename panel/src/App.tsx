@@ -51,7 +51,8 @@ import {
   type RunState,
 } from './words.js';
 import { shortLabels } from './video-names.js';
-import { finishedWords, nothingYetWords } from './words.js';
+import { finishedWords, nothingYetWords, WAYS_THERE } from './words.js';
+import { Sentence } from './Sentence.js';
 import type {
   ClientMode,
   DryRunPlan,
@@ -200,6 +201,22 @@ function Panel({
    * one press, and a run he started is something he chose to start.
    */
   const [moment, setMoment] = useState<'choose' | 'run' | 'build'>('choose');
+  /**
+   * **Reference is not decision.** Block 13 session 102.
+   *
+   * Picking a client and picking a video are two decisions, and the whole client
+   * card sat between them — four colours, three typefaces, a watermark control,
+   * twenty-two photographs and *Change their details*. Measured with his own data
+   * it is **3500 px of a 900 px panel**, and he reads none of it while choosing a
+   * video.
+   *
+   * It is reference, so it goes behind one press, the way Build's *What else it
+   * will use* already works. Held here rather than left to the browser because
+   * the two sentences that say *on their card* have to be able to open it — a
+   * sentence that names a place he cannot get to from it is what this session is
+   * about.
+   */
+  const [cardOpen, setCardOpen] = useState(false);
   /**
    * **Whether he has seen how the queue ended.**
    *
@@ -729,7 +746,19 @@ function Panel({
             </p>
           )}
           {mode === null ? null : (
-            <ClientCard client={mode} connection={connection} onModes={setModes} />
+            <details
+              className="quibbles clientref"
+              open={cardOpen}
+              onToggle={(e) => setCardOpen((e.currentTarget as HTMLDetailsElement).open)}
+            >
+              {/*
+                What is behind it, named — not *More*. He opens this to check a
+                colour, change a photograph or correct a detail, and the summary
+                says all three so he never has to open it to find out.
+              */}
+              <summary>{`${mode.name}’s colours, type, photographs and details`}</summary>
+              <ClientCard client={mode} connection={connection} onModes={setModes} />
+            </details>
           )}
         </section>
 
@@ -789,10 +818,24 @@ function Panel({
             Two different reasons and two different next things: no folder set on
             the client, or a folder with nothing in it.
           */}
-          {mode === null || reels.length > 0 ? null : (
-            <p className="say" role="status">
-              {nothingYetWords(videoNote.folder === null ? 'no-folder' : 'videos').next}
-            </p>
+          {/*
+            **And a way to the card, not just its name.** Block 13 session 102.
+            Both of these say *on their card* — and since the card went behind a
+            disclosure one line up, naming it without opening it would be worse
+            than it was. The sentences are `words.ts`' own and unchanged.
+          */}
+          {mode === null || reels.length > 0 ? null : videoNote.folder === null ? (
+            <Sentence
+              text={nothingYetWords('no-folder').next}
+              phrase={WAYS_THERE.theirCard}
+              onPress={() => setCardOpen(true)}
+            />
+          ) : (
+            <Sentence
+              text={nothingYetWords('videos').next}
+              phrase={WAYS_THERE.aDifferentFolder}
+              onPress={() => setCardOpen(true)}
+            />
           )}
           {videoNote.folder === null ? null : (
             <p className="faint">From {videoNote.folder}</p>
@@ -845,10 +888,19 @@ function Panel({
             as they are: re-running is legitimate, and session 90's spreading came
             out of a re-plan.
           */}
+          {/*
+            **And a way there, not just the name of one.** Block 13 session 102.
+            Mohamed: *"when I click a button, the next button I'm going to click
+            on should be near to it."* This sentence named Build and left him to
+            find the tab. The words are unchanged — *Go to Build* is now the
+            control that goes there, under the pointer that is already reading it.
+          */}
           {dry === null || finishedWords(dry.stages) === null ? null : (
-            <p className="say" role="status">
-              {finishedWords(dry.stages)}
-            </p>
+            <Sentence
+              text={finishedWords(dry.stages) ?? ''}
+              phrase={WAYS_THERE.build}
+              onPress={() => setMoment('build')}
+            />
           )}
           {/*
             * **Above the buttons that bill.** Session 75 found a reel built in
@@ -890,7 +942,23 @@ function Panel({
           )}
           {job === null ? null : <RunProgress job={job} />}
 
+          {/*
+            **A setting, not an action, and it was standing in the path.** Block
+            13 session 102. This sat between the two buttons that spend and the
+            queue — the two things he presses one after the other — so the next
+            target was never where the last one was, which is Mohamed's own
+            complaint about the panel.
+ 
+            It is not deleted and not moved off Make: it is behind the same one
+            press Build uses, at the foot of the block rather than through the
+            middle of it. **Where it really belongs is Build**, beside *What else
+            it will use*, which already states the watermark this composition
+            gets — the report says so; moving a control between screens is a
+            larger change than a layout pass.
+          */}
           {dry === null || dry.planPath === null ? null : (
+            <details className="quibbles watermarkref">
+              <summary>The watermark on this video</summary>
             <WatermarkToggle
               enabled={dry.watermark}
               size={dry.watermarkSize}
@@ -906,6 +974,7 @@ function Panel({
                 setDry({ ...dry, watermarkSize: size });
               }}
             />
+            </details>
           )}
         </section>
 
@@ -1005,6 +1074,7 @@ function Panel({
             <Queue
               view={queueJob.detail as unknown as QueueView}
               stopping={queueStopping}
+              onGoTo={setMoment}
               onStop={() => {
                 if (connection === null || queueJobId === null) return;
                 setQueueStopping(true);
@@ -1047,7 +1117,29 @@ function Panel({
               : `See everything spent — $${money.totalUsd.toFixed(2)} so far`}
           </button>
           {reel === null ? null : <Spend reel={reel} />}
-          {dry === null ? null : <DryRun plan={dry} />}
+          {/*
+            **Four rows of the same fact.** Block 13 session 102, and the brief's
+            own question. *Writing down the words — Already done, nothing to pay*,
+            four times over, is 150 px saying one thing: this video is done. And
+            since session 101 there is a sentence at the top of Make that says
+            exactly that, in one line.
+ 
+            So the rows go behind one press **only when everything is done**. While
+            anything is still to run they are the decision — which stages will
+            cost money, and what each will do — and they stay in full view, as
+            they do during a run, when they are what he is watching. Nothing is
+            deleted: the summary says how many rows are behind it.
+          */}
+          {dry === null ? null : finishedWords(dry.stages) === null ? (
+            <DryRun plan={dry} />
+          ) : (
+            <details className="quibbles stagesref">
+              <summary>
+                {`What was done — all ${String(dry.stages.length)} steps`}
+              </summary>
+              <DryRun plan={dry} />
+            </details>
+          )}
           {dryError === null ? null : (
             <p className="say" role="status">
               {dryError}
@@ -1098,6 +1190,7 @@ function Panel({
               if (connection === null || reel === null || mode === null) return;
               void fetchSteps(connection, reel.label, mode.id).then(setPlan, () => undefined);
             }}
+            onGoTo={setMoment}
           />
         </section>
 

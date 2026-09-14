@@ -2,6 +2,8 @@ import { savedOutputNote, savedOutputSentence } from '@framopia/core/saved-outpu
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { fetchBuildJob, startBuild, updateClientLook, type Connection } from './service.js';
 import { shortLabel } from './video-names.js';
+import { Sentence } from './Sentence.js';
+import { WAYS_THERE } from './words.js';
 import type { BuildJob, BuildPreview, BuildProgress } from './types.js';
 
 /**
@@ -22,6 +24,7 @@ export function Build({
   ready,
   stale,
   onClientLookUpdated,
+  onGoTo,
 }: {
   connection: Connection | null;
   preview: BuildPreview | undefined;
@@ -36,6 +39,11 @@ export function Build({
   issuesSummary?: string;
   /** Called after the video is brought up to the client's current look. */
   onClientLookUpdated?: () => void;
+  /**
+   * Takes him to the screen a sentence here names. Optional: a caller that does
+   * not offer one gets the sentence as plain prose, which is what it was.
+   */
+  onGoTo?: (screen: 'choose' | 'run' | 'build') => void;
 }): JSX.Element {
   const [job, setJob] = useState<BuildJob | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -105,13 +113,32 @@ export function Build({
         an instruction to leave the panel, for a state that is simply "not yet".
       */}
       {preview === undefined ? (
-        <p className="note" role="status">
-          {!ready
-            ? 'Choose a client and a video above, and this will say what the composition will contain.'
-            : disabledReason !== null
-              ? `${disabledReason} Press Run pipeline above, and this will say what the composition will contain.`
-              : (stale ?? 'There is nothing to build for this video yet.')}
-        </p>
+        /*
+          **The way there, inside the sentence.** Block 13 session 102. Both of
+          these say *above* — and since session 97 neither thing is above: the
+          pickers are on Choose and Run is on Make, two presses away through a
+          tab he has to find. The sentence is unchanged; *Choose a client and a
+          video* and *Press Run pipeline* are now the control that takes him.
+        */
+        !ready ? (
+          <Sentence
+            className="note"
+            text="Choose a client and a video above, and this will say what the composition will contain."
+            phrase={WAYS_THERE.clientAndVideo}
+            onPress={() => onGoTo?.('choose')}
+          />
+        ) : disabledReason !== null ? (
+          <Sentence
+            className="note"
+            text={`${disabledReason} Press Run pipeline above, and this will say what the composition will contain.`}
+            phrase={WAYS_THERE.runIt}
+            onPress={() => onGoTo?.('run')}
+          />
+        ) : (
+          <p className="note" role="status">
+            {stale ?? 'There is nothing to build for this video yet.'}
+          </p>
+        )
       ) : (
         <BuildPreviewCard
           preview={preview}

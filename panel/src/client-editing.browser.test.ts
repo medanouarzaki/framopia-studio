@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { chromium, type Browser, type Page } from 'playwright';
 import {
-  onScreen, HANDSHAKE, INDEX, built, stubHost, stubRoutes, stepsThrough } from './browser-harness.js';
+  onScreen, openReference, HANDSHAKE, INDEX, built, stubHost, stubRoutes, stepsThrough } from './browser-harness.js';
 
 /**
  * **Everything this session added, clicked in the real built panel.**
@@ -167,7 +167,14 @@ async function open(
   } else {
     await page.selectOption('select[aria-label="Client"]', SAVED_CLIENT.id);
     await onScreen(page, 'choose');
-    await page.waitForSelector('.clientcard', { timeout: 5000 });
+    /*
+     * **The card is reference and lives behind one press.** Block 13 session 102
+     * measured it at 3500 px with his real data, sitting between picking a client
+     * and picking a video. Nothing about what it holds or what it does has
+     * changed — every assertion below is the one it always made — so these tests
+     * open it and go on, the way he does.
+     */
+    await openReference(page, '.clientcard');
   }
   return { page, uncaught };
 }

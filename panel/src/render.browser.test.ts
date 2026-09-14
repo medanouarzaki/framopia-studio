@@ -18,6 +18,7 @@ import { chromium, type Browser, type ConsoleMessage, type Page } from 'playwrig
  */
 import {
   onScreen,
+  openReference,
   HANDSHAKE,
   HEALTHY_PAYLOAD,
   INDEX,
@@ -2291,6 +2292,14 @@ describe.skipIf(!built)('watermark size', () => {
     if (loaded === null) return;
     try {
       await onScreen(loaded.page, 'run');
+      /*
+        **Reference lives behind one press since Block 13 session 102.** The card
+        is 3500 px with his real data and sat between the two decisions on Choose;
+        the watermark control stood between the run buttons and the queue. What
+        each holds and does is unchanged — these assertions are the ones they
+        always made — so they open it and carry on, as he does.
+      */
+      await openReference(loaded.page, '.watermark');
       await loaded.page.waitForSelector('.watermark .sizes', { timeout: 5000 });
       const labels = await loaded.page.$$eval('.watermark .sizes button', (els) =>
         els.map((e) => `${e.textContent ?? ''}|${e.getAttribute('aria-pressed') ?? ''}`),
@@ -2311,6 +2320,14 @@ describe.skipIf(!built)('watermark size', () => {
     if (loaded === null) return;
     try {
       await onScreen(loaded.page, 'run');
+      /*
+        **Reference lives behind one press since Block 13 session 102.** The card
+        is 3500 px with his real data and sat between the two decisions on Choose;
+        the watermark control stood between the run buttons and the queue. What
+        each holds and does is unchanged — these assertions are the ones they
+        always made — so they open it and carry on, as he does.
+      */
+      await openReference(loaded.page, '.watermark');
       await loaded.page.waitForSelector('.watermark .sizes', { timeout: 5000 });
       await loaded.page.click('.watermark .sizes button:nth-child(3)');
       await loaded.page.waitForFunction(
@@ -2339,6 +2356,14 @@ describe.skipIf(!built)('watermark size', () => {
     if (loaded === null) return;
     try {
       await onScreen(loaded.page, 'run');
+      /*
+        **Reference lives behind one press since Block 13 session 102.** The card
+        is 3500 px with his real data and sat between the two decisions on Choose;
+        the watermark control stood between the run buttons and the queue. What
+        each holds and does is unchanged — these assertions are the ones they
+        always made — so they open it and carry on, as he does.
+      */
+      await openReference(loaded.page, '.watermark');
       await loaded.page.waitForSelector('.watermark', { timeout: 5000 });
       expect(await loaded.page.$$('.watermark .sizes button')).toHaveLength(0);
       expect(await loaded.page.$$('.watermark input[type="checkbox"]')).toHaveLength(1);
@@ -2846,8 +2871,21 @@ describe.skipIf(!built)('what a client looks like', () => {
     if (loaded === null) return;
     try {
       await onScreen(loaded.page, 'choose');
+      /*
+        **Reference lives behind one press since Block 13 session 102**, and this
+        read the section's whole `textContent` — which returns what `display:none`
+        is hiding, Block 11 session 69's trap. It reads only what is actually
+        drawn now, which is a stronger assertion than the one it replaces: what it
+        checks is unchanged.
+      */
+      await openReference(loaded.page, '.clientcard');
       await loaded.page.waitForSelector('.clientcard', { timeout: 5000 });
-      const card = (await loaded.page.textContent('section.client')) ?? '';
+      const card = await loaded.page.$$eval('section.client *', (els) =>
+        els
+          .filter((e) => (e as HTMLElement).checkVisibility())
+          .map((e) => e.textContent ?? '')
+          .join(' '),
+      );
       expect(card).toContain('Cosmetic clinic, Casablanca');
       expect(card).toContain('the frame around a picture');
       expect(card).toContain('Inter Semi-Bold');
@@ -2869,6 +2907,12 @@ describe.skipIf(!built)('what a client looks like', () => {
     if (loaded === null) return;
     try {
       await onScreen(loaded.page, 'choose');
+      /*
+        **Reference lives behind one press since Block 13 session 102.** The card
+        is 3500 px with his real data, between the two decisions Choose exists
+        for. What it holds and what it does are unchanged.
+      */
+      await openReference(loaded.page, '.clientcard');
       await loaded.page.waitForSelector('.clientcard .chip', { timeout: 5000 });
       const colours = await loaded.page.$$eval('.clientcard .chip', (els) =>
         els.map((e) => getComputedStyle(e).backgroundColor),
@@ -2892,6 +2936,14 @@ describe.skipIf(!built)('what a client looks like', () => {
     if (loaded === null) return;
     try {
       await onScreen(loaded.page, 'choose');
+      /*
+        **Reference lives behind one press since Block 13 session 102.** The card
+        is 3500 px with his real data and sat between the two decisions on Choose;
+        the watermark control stood between the run buttons and the queue. What
+        each holds and does is unchanged — these assertions are the ones they
+        always made — so they open it and carry on, as he does.
+      */
+      await openReference(loaded.page, '.clientcard');
       await loaded.page.waitForSelector('.clientcard', { timeout: 5000 });
       const card = (await loaded.page.textContent('.clientcard')) ?? '';
       expect(card).toContain('a mix of languages');
@@ -3462,6 +3514,14 @@ describe.skipIf(!built)('setting up a client', () => {
     if (loaded === null) return;
     try {
       const page = loaded.page;
+      /*
+        **Reference lives behind one press since Block 13 session 102.** The card
+        is 3500 px with his real data and sat between the two decisions on Choose;
+        the watermark control stood between the run buttons and the queue. What
+        each holds and does is unchanged — these assertions are the ones they
+        always made — so they open it and carry on, as he does.
+      */
+      await openReference(page, '.ownphotos');
       await page.waitForSelector('.ownphotos', { timeout: 5000 });
       expect((await page.textContent('.ownphotos')) ?? '').toContain('None yet.');
       // Nothing can be added until both halves are there.
@@ -3615,6 +3675,12 @@ describe('a saved client’s own photographs', () => {
     try {
       const page = loaded.page;
       await onScreen(page, 'choose');
+      /*
+        **Reference lives behind one press since Block 13 session 102.** The card
+        is 3500 px with his real data, between the two decisions Choose exists
+        for. What it holds and what it does are unchanged.
+      */
+      await openReference(page, '.clientcard');
       await page.waitForSelector('.clientcard .ownphotos', { timeout: 5000 });
       expect((await page.textContent('.clientcard .ownphotos')) ?? '').toContain('None yet.');
       await page.evaluate(`window.__picked = ${JSON.stringify(LOGO)};`);
@@ -3622,6 +3688,7 @@ describe('a saved client’s own photographs', () => {
       await page.fill('.clientcard .ownphotos input[aria-label="What is it?"]', 'the clinic');
       await page.click('.clientcard .addphoto button.ghost:not(.choose)');
       await onScreen(page, 'choose');
+      await openReference(page, '.clientcard');
       await page.waitForSelector('.clientcard .ownphotos ul.photos li', { timeout: 5000 });
       expect((await page.textContent('.clientcard .ownphotos ul.photos')) ?? '').toContain(
         'the clinic',
