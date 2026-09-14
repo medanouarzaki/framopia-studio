@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { SOFT_ENLARGEMENT_PERCENT, fitByLongEdge } from '@framopia/core';
-import { softPictureWarning, pictureShapeWarning } from './soft-picture.js';
+import { softPictureWarning, croppedPictureNote } from './soft-picture.js';
 
 /**
  * **The line the build really printed.**
@@ -80,39 +80,57 @@ describe('what the build says about a picture too small for its space', () => {
 });
 
 /**
- * **The sentence the build prints about a picture of the wrong shape.**
+ * **Rewritten by Block 13 session 108.**
  *
- * Block 13 session 107, written here for the reason session 59's is: a line
- * nobody has seen printed is a line that might not print.
+ * Session 107 wrote this to assert a sentence describing a problem — *238px of
+ * the 1080px card shows above and below it*. Mohamed ruled fill, so nothing
+ * shows beside the picture any more and the same condition produces a note about
+ * what was cut. What it holds is unchanged: the size, which way the picture is
+ * long, no jargon, no command, no threat to refuse — and it now also asserts the
+ * sentence says his original is untouched.
  */
-describe('what the build says about a picture that is not square', () => {
-  it('names the shape, the size and how much card shows, without jargon', () => {
-    const said = pictureShapeWarning({
+describe('what the build says when it crops a photograph to fill its frame', () => {
+  it('names the shape, the size and how much was cut, without jargon', () => {
+    const said = croppedPictureNote({
       elementId: 'img003',
       sourceWidth: 1200,
       sourceHeight: 630,
       shape: 'wider than it is tall',
-      bandPx: 238,
-      cardPx: 1080,
+      lostFraction: 1 - (630 * 630) / (1200 * 630),
+      made: true,
     });
     expect(said).toBe(
-      'warning [img003]: this picture is 1200x630px, wider than it is tall, and the frame it ' +
-        'goes in is square. It is placed whole and nothing is cut off, so 238px of the 1080px ' +
-        'card shows above and below it.',
+      'img003: this picture is 1200x630px, wider than it is tall, and the frame it goes in is ' +
+        'square, so 48% of it is cropped off the sides to fill the frame. The square copy is ' +
+        'made and kept beside the original, which is untouched.',
     );
-    /* No command, no percentage, and it does not threaten to refuse. */
+    /* No command, and it does not threaten to refuse. */
     expect(said).not.toMatch(/npm |terminal|refus/i);
   });
 
-  it('says which sides the card shows on when the picture is the tall way', () => {
-    const said = pictureShapeWarning({
+  it('says which sides were cut when the picture is the tall way', () => {
+    const said = croppedPictureNote({
       elementId: 'img001',
       sourceWidth: 4776,
       sourceHeight: 6432,
       shape: 'taller than it is wide',
-      bandPx: 129,
-      cardPx: 1080,
+      lostFraction: 1 - (4776 * 4776) / (4776 * 6432),
+      made: true,
     });
-    expect(said).toContain('129px of the 1080px card shows each side of it');
+    expect(said).toContain('cropped off the top and the bottom');
+  });
+
+  /** A second build finds the copy and says so rather than claiming it made one. */
+  it('does not claim to have made a copy that was already there', () => {
+    const said = croppedPictureNote({
+      elementId: 'img002',
+      sourceWidth: 1000,
+      sourceHeight: 665,
+      shape: 'wider than it is tall',
+      lostFraction: 0.335,
+      made: false,
+    });
+    expect(said).toContain('the one made earlier');
+    expect(said).not.toContain('made and kept');
   });
 });

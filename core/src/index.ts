@@ -106,6 +106,8 @@ export {
   type ClientPictureMatch,
   fitByLongEdge,
   bandBesideAPicture,
+  squareCropOf,
+  croppedPicturePath,
   SOFT_ENLARGEMENT_PERCENT,
 } from './client-pictures.js';
 export { DOCS_DIR, LOCAL_DIR, REPO_ROOT, ROOT_PACKAGE_JSON } from './paths.js';

@@ -301,11 +301,20 @@ describe.skipIf(!built)('a photograph chosen by hand from the picker', () => {
  * a single one and the panel said nothing before he spent.
  */
 describe.skipIf(!built)('a photograph that is not square', () => {
-  const WIDE = { shape: 'wider than it is tall' as const, leavesABand: true };
-  const TALL = { shape: 'taller than it is wide' as const, leavesABand: true };
-  const SQUARE = { shape: 'square' as const, leavesABand: false };
+  /*
+   * **Rewritten by Block 13 session 108.** Session 107 asserted a sentence that
+   * described a problem — *there will be bare frame beside it* — because a
+   * non-square photograph was fitted whole into a square frame. Mohamed ruled
+   * fill, so the same condition now produces an action: the photograph is
+   * cropped. What these hold is unchanged — it says which way the picture is
+   * long, it says nothing about a square one, it names no command — and one
+   * assertion is added, that it tells him his own file is not changed.
+   */
+  const WIDE = { shape: 'wider than it is tall' as const, willBeCropped: true, lostFraction: 0.475 };
+  const TALL = { shape: 'taller than it is wide' as const, willBeCropped: true, lostFraction: 0.26 };
+  const SQUARE = { shape: 'square' as const, willBeCropped: false, lostFraction: 0 };
 
-  it('says there will be bare frame beside it, and still shows the photograph', async () => {
+  it('says the sides will be cropped off, and still shows the photograph', async () => {
     const loaded = await open(
       viewWith([slot('img001', { chosenClientPictureId: 'pic001', shape: WIDE })]),
     );
@@ -314,9 +323,11 @@ describe.skipIf(!built)('a photograph that is not square', () => {
       await picturesSettled(loaded.page);
       const text = (await loaded.page.textContent('main.editor')) ?? '';
       expect(text).toContain('wider than it is tall');
-      expect(text).toContain('bare frame beside it');
-      /* It warns; it does not refuse. */
-      expect(text).toContain('It is still placed and nothing is cut off');
+      expect(text).toContain('the sides will be cropped off to fill the frame');
+      /* It describes; it does not refuse. */
+      expect(text).toContain('The picture above is what will be used');
+      /* And it says the thing he most needs to hear about his own photograph. */
+      expect(text).toContain('Your own file is not changed');
 
       /* The photograph is on screen and really drew, as with the soft warning. */
       const shown = await picturesOnScreen(loaded.page);
@@ -349,6 +360,8 @@ describe.skipIf(!built)('a photograph that is not square', () => {
       const text = (await loaded.page.textContent('main.editor')) ?? '';
       expect(text).toContain('taller than it is wide');
       expect(text).not.toContain('wider than it is tall');
+      /* A tall picture loses its top and bottom, not its sides. */
+      expect(text).toContain('top and bottom will be cropped off');
     } finally {
       await loaded.page.close();
     }
@@ -370,7 +383,7 @@ describe.skipIf(!built)('a photograph that is not square', () => {
     try {
       await picturesSettled(loaded.page);
       const text = (await loaded.page.textContent('main.editor')) ?? '';
-      expect(text).not.toContain('bare frame beside it');
+      expect(text).not.toContain('cropped off to fill the frame');
       expect(await loaded.page.locator('p.reason.soft').count()).toBe(0);
     } finally {
       await loaded.page.close();

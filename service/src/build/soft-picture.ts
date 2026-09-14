@@ -27,32 +27,35 @@ export function softPictureWarning(options: {
 }
 
 /**
- * What the build says about a picture that is not the shape of its frame.
+ * What the build says when it crops a photograph to fill its frame.
  *
- * **Beside `softPictureWarning`, in the same shape and for the same reason.**
- * Block 13 session 107: a photograph that is not square is fitted whole into a
- * square box — which crops nothing, and is right — and then sits on a square card
- * with bare card above and below it. None of the six non-square photographs on
- * this disk is enlarged past 200%, so the warning session 59 built never fires on
- * any of them and the build said nothing at all.
+ * **Session 107 wrote this sentence to describe a problem; Mohamed's ruling of
+ * fill turned it into a description of an action.** It said *the frame it goes in
+ * is square … so 238px of the 1080px card shows above and below it*. Nothing
+ * shows beside it any more — the picture is cropped to fill the frame — so what
+ * is worth saying is what was cut off.
  *
- * **It warns and it does not refuse**, which is Mohamed's ruling of 2026-09-05
- * about the other warning and the only one there is. Whether the answer should be
- * to fit, to fill or to refuse is his; this says what is happening.
+ * **It is a note, not a warning.** Nothing went wrong and nothing is being
+ * refused; a thing happened to his photograph and he is told which and how much.
+ * The original is untouched and the sentence says so, because "cropped" and
+ * "damaged my file" are one word apart in anyone's head.
  */
-export function pictureShapeWarning(options: {
+export function croppedPictureNote(options: {
   elementId: string;
   sourceWidth: number;
   sourceHeight: number;
   shape: 'square' | 'wider than it is tall' | 'taller than it is wide';
-  bandPx: number;
-  cardPx: number;
+  lostFraction: number;
+  /** False when the square copy was already there from an earlier build. */
+  made: boolean;
 }): string {
-  const { elementId, sourceWidth, sourceHeight, shape, bandPx, cardPx } = options;
-  const where = shape === 'taller than it is wide' ? 'each side of' : 'above and below';
+  const { elementId, sourceWidth, sourceHeight, shape, lostFraction, made } = options;
+  const lost = Math.round(lostFraction * 100);
+  const sides = shape === 'taller than it is wide' ? 'the top and the bottom' : 'the sides';
   return (
-    `warning [${elementId}]: this picture is ${sourceWidth}x${sourceHeight}px, ${shape}, ` +
-    `and the frame it goes in is square. It is placed whole and nothing is cut off, so ` +
-    `${bandPx.toFixed(0)}px of the ${cardPx}px card shows ${where} it.`
+    `${elementId}: this picture is ${sourceWidth}x${sourceHeight}px, ${shape}, and the frame it ` +
+    `goes in is square, so ${String(lost)}% of it is cropped off ${sides} to fill the frame. ` +
+    `The square copy is ${made ? 'made and kept' : 'the one made earlier'} beside the original, ` +
+    'which is untouched.'
   );
 }

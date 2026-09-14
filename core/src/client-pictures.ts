@@ -274,6 +274,116 @@ export function bandBesideAPicture(options: {
 }
 
 /**
+ * **Where a square crop falls in a photograph that is not square.**
+ *
+ * Block 13 session 108, on Mohamed's ruling of fill: a photograph is cropped to
+ * fill its square frame rather than shown whole with bare frame beside it.
+ *
+ * **Centre, and it is measured rather than assumed.** The obvious worry is that a
+ * product sitting to one side is cut out by a centre crop, and the CV sidecar
+ * already finds a person in a frame — so session 108 ran it over the six
+ * non-square photographs on this disk before choosing:
+ *
+ * ```
+ * pic017  person covers 45.1%   person-aware crop would shift the centre  68px
+ * pic018  person covers 86.3%                                              0px
+ * pic019  person covers 80.6%                                              0px
+ * pic021  person covers 70.6%                                              0px
+ * pic022  person covers 52.8%                                              0px
+ * pic016  person covers  1.2%                                            512px
+ * ```
+ *
+ * On five of the six a person-aware crop **is** the centre crop, because the
+ * person fills so much of the frame that the mask's own centre is the frame's.
+ * The one case where it would move the crop a long way is the one where it found
+ * almost nothing — and where the mask it returned did not even match the file's
+ * shape. It is a selfie segmenter; it is confident about a speaker facing a
+ * camera and silent about a product on a table, which is exactly the case the
+ * worry is about.
+ *
+ * So the sidecar cannot help, an honest default beats a clever guess, and the
+ * real protection against a bad crop is not a better rule but **seeing it before
+ * spending** — which is what the panel now shows.
+ *
+ * **It holds for a photograph the tool has never seen** because it reads nothing
+ * but two numbers and is fitted to nothing: the same arithmetic for a portrait,
+ * a panorama and a square.
+ */
+export function squareCropOf(options: { sourceWidth: number; sourceHeight: number }): {
+  /** Left edge of the crop, in the source's own pixels. */
+  x: number;
+  /** Top edge of the crop, in the source's own pixels. */
+  y: number;
+  /** The side of the square, which is the source's short edge. */
+  side: number;
+  /** What the crop throws away, as a fraction of the source. */
+  lostFraction: number;
+} {
+  const { sourceWidth, sourceHeight } = options;
+  if (sourceWidth <= 0 || sourceHeight <= 0) {
+    throw new Error('a picture needs a width and a height');
+  }
+  const side = Math.min(sourceWidth, sourceHeight);
+  /*
+   * Floor, so the crop never asks for a pixel past the edge on an odd
+   * difference — a half-pixel of asymmetry nobody can see against a rectangle
+   * that would not fit.
+   */
+  return {
+    x: Math.floor((sourceWidth - side) / 2),
+    y: Math.floor((sourceHeight - side) / 2),
+    side,
+    lostFraction: 1 - (side * side) / (sourceWidth * sourceHeight),
+  };
+}
+
+/**
+ * **Where the cropped copy of a photograph lives.**
+ *
+ * Beside the original in the one store a photograph may be written to, so
+ * session 62's rule and session 83's push to GitHub both carry it with nothing
+ * further to do.
+ *
+ * **Nothing can collide.** The owner is a client's id or a video's directory
+ * name, as for the original; the picture id is unique within its owner; and the
+ * source's own sha256 is in the name. So:
+ *
+ * - two clients cannot collide — different directory;
+ * - two photographs cannot collide — different picture id;
+ * - **the same photograph is cropped once** — the name is a function of the
+ *   bytes, so a build that finds the file finds the crop it would have made;
+ * - **replacing the photograph remakes the crop** — different bytes, different
+ *   sha, a name that is not on disk yet.
+ *
+ * **The frame is deliberately not in the key.** The crop is to a square at the
+ * source's full resolution, and every square box wants the same square; only a
+ * template that stopped being square would invalidate it, and that would change
+ * `bandBesideAPicture` first.
+ *
+ * **Nothing is ever deleted.** A superseded crop keeps its own name and stays
+ * beside the new one — a file in this store is a user asset whatever made it.
+ */
+export function croppedPicturePath(options: {
+  repoRoot: string;
+  owner: string;
+  pictureId: string;
+  /** The sha256 of the source file's bytes, full length. */
+  sourceSha256: string;
+  extension: string;
+}): string {
+  const { repoRoot, owner, pictureId, sourceSha256, extension } = options;
+  if (sourceSha256.trim().length < 16) {
+    throw new Error('a cropped picture is named after the bytes it was made from');
+  }
+  return clientPictureStorePath({
+    repoRoot,
+    owner,
+    pictureId: `${pictureId}-square-${sourceSha256.slice(0, 16)}`,
+    extension,
+  });
+}
+
+/**
  * The words in a picture's label.
  *
  * **The one place a label is read as words**, so the client screen, the

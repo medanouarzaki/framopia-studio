@@ -592,7 +592,12 @@ export interface ImageSlotView {
    * Absent means a service older than this panel, which cannot say — and then
    * nothing is claimed either way.
    */
-  shape?: { shape: 'square' | 'wider than it is tall' | 'taller than it is wide'; leavesABand: boolean } | null;
+  shape?: {
+    shape: 'square' | 'wider than it is tall' | 'taller than it is wide';
+    /** Whether it will be cropped to fill its square frame. Session 108. */
+    willBeCropped: boolean;
+    lostFraction: number;
+  } | null;
   buildsWithReason: string;
 }
 
@@ -608,9 +613,25 @@ export interface ImagesView {
    * absent list is not an empty one — the panel shows nothing rather than
    * saying the client has none.
    */
-  clientPictures?: { id: string; path: string; description: string; label?: string }[];
+  clientPictures?: {
+    id: string;
+    path: string;
+    description: string;
+    label?: string;
+    /**
+     * The square copy, when this photograph will be cropped to fill its frame.
+     * Absent on a square one, and on a service older than Block 13 session 108.
+     */
+    squarePath?: string;
+  }[];
   /** Pictures attached to this reel alone. Absent means a service older than this panel. */
-  videoPictures?: { id: string; path: string; description: string; label?: string }[];
+  videoPictures?: {
+    id: string;
+    path: string;
+    description: string;
+    label?: string;
+    squarePath?: string;
+  }[];
   source: {
     clientMode: string | null;
     clientModeVersion: number | null;

@@ -259,7 +259,18 @@ function ClientPictures({
       <ul className="owned">
         {pictures.map((picture) => (
           <li key={picture.id} className={picture.id === chosen ? 'chosen' : ''}>
-            <img className="shot" src={fileUrl(picture.path)} alt={picture.description} />
+            {/*
+              **The square copy where there is one**, so what he is looking at is
+              what will be built. Block 13 session 108, Mohamed's ruling of fill: a
+              photograph that is not square is cropped, and a picker showing the
+              uncropped original would be showing him something the reel will never
+              contain. A square photograph has no copy and draws exactly as before.
+            */}
+            <img
+              className="shot"
+              src={fileUrl(picture.squarePath ?? picture.path)}
+              alt={picture.description}
+            />
             <span className="what">{picture.description}</span>
             <button
               type="button"
@@ -326,12 +337,13 @@ function TooSmall({ slot }: { slot: ImageSlotView }): JSX.Element | null {
  * to tune it, and the thing he can act on is whether to crop the photograph.
  */
 function WrongShape({ slot }: { slot: ImageSlotView }): JSX.Element | null {
-  if (slot.shape?.leavesABand !== true) return null;
+  if (slot.shape?.willBeCropped !== true) return null;
+  const sides = slot.shape.shape === 'taller than it is wide' ? 'top and bottom' : 'sides';
   return (
     <p className="reason soft" role="status">
-      This photograph is {slot.shape.shape} and the frame it goes in is square, so there will be
-      bare frame beside it. It is still placed and nothing is cut off — a square crop of the same
-      photograph would fill the frame.
+      This photograph is {slot.shape.shape} and the frame it goes in is square, so the {sides} will
+      be cropped off to fill the frame. The picture above is what will be used. Your own file is
+      not changed.
     </p>
   );
 }

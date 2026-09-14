@@ -15,6 +15,7 @@ import {
   loudestBoundOffsetDb,
   fitByLongEdge,
   bandBesideAPicture,
+  isInClientPictureStore,
   loadSfxIndex,
   loadTemplateManifest,
   parseHexColour,
@@ -26,7 +27,8 @@ import {
 import { edgeLuminance, flattenCutout } from '../images/sidecar.js';
 import { reelMasksDir } from '../frames/segment.js';
 import { ClientPictureError, clientPictureFileFor } from './client-picture.js';
-import { softPictureWarning, pictureShapeWarning } from './soft-picture.js';
+import { softPictureWarning, croppedPictureNote } from './soft-picture.js';
+import { squareCopyOf } from '../clients/crop.js';
 import { videoOf } from '../video-identity.js';
 import { readEditPlan, writeEditPlan } from '../editplan/io.js';
 import { buildRecordFor } from './build-record.js';
@@ -127,6 +129,56 @@ function clientPictureFor(
 }
 
 const chosenIds: string[] = [];
+
+/**
+ * The square copy of one of the client's own pictures, or the picture itself
+ * when it is already square.
+ *
+ * **The threshold is session 107's**, which is the margin the template already
+ * draws around a square picture, asked of the audit. Below it nothing happens at
+ * all: no crop, no copy, no warning.
+ */
+function squareIfNeeded(picture: { path: string; id: string }, slotId: string): string {
+  const comp = audit.find((x) => x.name === 'img_float');
+  if (comp === undefined) return picture.path;
+  let src;
+  try {
+    src = imageSize(picture.path);
+  } catch {
+    // Bytes this project's own reader cannot measure: place it as it is.
+    return picture.path;
+  }
+  const band = bandBesideAPicture({
+    boxPx: auditedSolid(comp, 'IMG_MAIN').width,
+    cardPx: auditedSolid(comp, 'CARD').width,
+    sourceWidth: src.width,
+    sourceHeight: src.height,
+  });
+  if (!band.leavesABand) return picture.path;
+
+  /*
+   * **The owner is where the original already sits.** Session 62 copies a
+   * photograph into `assets/client-pictures/<owner>/`, so the directory it is in
+   * *is* its owner — a client's id, or a video's own directory name for a picture
+   * attached to the reel. Reading it off the path rather than re-deriving it means
+   * the crop cannot land under a different owner than the picture it came from.
+   */
+  const owner = isInClientPictureStore(REPO_ROOT, picture.path)
+    ? path.basename(path.dirname(picture.path))
+    : (plan.clientMode?.id ?? 'unowned');
+  const copy = squareCopyOf({ sourcePath: picture.path, owner, pictureId: picture.id });
+  console.log(
+    croppedPictureNote({
+      elementId: slotId,
+      sourceWidth: src.width,
+      sourceHeight: src.height,
+      shape: band.shape,
+      lostFraction: copy.lostFraction,
+      made: copy.made,
+    }),
+  );
+  return copy.path;
+}
 function candidateFileFor(slotId: string): { path: string; id: string } | null {
   const slot = plan.images.slots.find((s) => s.id === slotId);
   if (slot === undefined) return null;
@@ -144,7 +196,17 @@ function candidateFileFor(slotId: string): { path: string; id: string } | null {
         ? 'the client’s own picture'
         : `the client’s own picture, for the spoken word ${JSON.stringify(slot.chosenClientPictureWord)}`;
     chosenIds.push(`${slotId}:${picture.id} (${why})`);
-    return { path: picture.path, id: picture.id };
+    /*
+     * **Cropped to fill its frame, on Mohamed's ruling of fill.** Block 13
+     * session 108. The frame is square and his photograph may not be; session
+     * 107 measured a 1200x630 leaving 238px of bare card above and below.
+     *
+     * The original is read and never written. What is placed is a square copy
+     * beside it, made once and named after the source's own bytes. A picture
+     * already square is not copied at all and reaches the build exactly as it
+     * did — which is every picture the tool generates.
+     */
+    return { path: squareIfNeeded(picture, slotId), id: picture.id };
   }
 
   const choice = buildChoiceFor(slot);
@@ -618,29 +680,6 @@ for (const e of built.elements) {
         sourceHeight: src.height,
         boxPx: solid.width,
         enlargementPercent: fit.enlargementPercent,
-      }),
-    );
-  }
-  /*
-   * **And the same for a picture that is not the shape of its frame.** Block 13
-   * session 107. The card is asked of the audit beside the box, so the yardstick
-   * is the template's own margin rather than a number written down here.
-   */
-  const band = bandBesideAPicture({
-    boxPx: solid.width,
-    cardPx: auditedSolid(c, 'CARD').width,
-    sourceWidth: src.width,
-    sourceHeight: src.height,
-  });
-  if (band.leavesABand) {
-    console.log(
-      pictureShapeWarning({
-        elementId: e.id,
-        sourceWidth: src.width,
-        sourceHeight: src.height,
-        shape: band.shape,
-        bandPx: band.bandPx,
-        cardPx: auditedSolid(c, 'CARD').width,
       }),
     );
   }

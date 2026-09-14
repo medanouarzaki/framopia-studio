@@ -1,6 +1,14 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { REPO_ROOT, fitByLongEdge, bandBesideAPicture, type AuditComp } from '@framopia/core';
+import {
+  REPO_ROOT,
+  fitByLongEdge,
+  bandBesideAPicture,
+  isInClientPictureStore,
+  squareCropOf,
+  type AuditComp,
+} from '@framopia/core';
+import { squareCopyOf } from './clients/crop.js';
 import { findReelByLabel, listReels } from './catalogue.js';
 import { readEditPlan, writeEditPlan } from './editplan/io.js';
 import { dryRun } from './dry-run.js';
@@ -155,7 +163,17 @@ export interface ImageSlotView {
    * this panel sends nothing and the panel says nothing, which is the honest
    * answer rather than a claim the picture is fine.
    */
-  shape?: { shape: 'square' | 'wider than it is tall' | 'taller than it is wide'; leavesABand: boolean } | null;
+  shape?: {
+    shape: 'square' | 'wider than it is tall' | 'taller than it is wide';
+    /**
+     * Whether this picture will be cropped to fill its square frame. Named for
+     * what happens rather than for the measurement behind it — Mohamed's ruling
+     * of fill, Block 13 session 108.
+     */
+    willBeCropped: boolean;
+    /** What the crop takes off, 0..1, so the panel can say roughly how much. */
+    lostFraction: number;
+  } | null;
 }
 
 export interface ImagesView {
@@ -185,7 +203,20 @@ export interface ImagesView {
    * is what a slot wants is the judgement the image-prompt defect is about, and
    * that is Block 9 — he chooses, from pictures he described himself.
    */
-  clientPictures: { id: string; path: string; description: string; label?: string }[];
+  clientPictures: {
+    id: string;
+    path: string;
+    description: string;
+    label?: string;
+    /**
+     * The square copy, when this photograph will be cropped to fill its frame.
+     *
+     * **So he sees the crop before he spends, not in After Effects.** Block 13
+     * session 108, Mohamed's ruling of fill. Absent when the photograph is
+     * already square, which is when nothing is cropped and nothing is copied.
+     */
+    squarePath?: string;
+  }[];
   /**
    * Pictures attached to this reel alone.
    *
@@ -193,7 +224,13 @@ export interface ImagesView {
    * that is the order the matcher searches: a picture put on one video is the
    * more specific statement.
    */
-  videoPictures: { id: string; path: string; description: string; label?: string }[];
+  videoPictures: {
+    id: string;
+    path: string;
+    description: string;
+    label?: string;
+    squarePath?: string;
+  }[];
   /** Every image is drawn in a card frame, whatever the gate said. */
   cardFrameForced: boolean;
 }
@@ -328,10 +365,54 @@ function shapeOf(file: string | null): ImageSlotView['shape'] {
       sourceWidth: src.width,
       sourceHeight: src.height,
     });
-    return { shape: band.shape, leavesABand: band.leavesABand };
+    const crop = squareCropOf({ sourceWidth: src.width, sourceHeight: src.height });
+    return {
+      shape: band.shape,
+      willBeCropped: band.leavesABand,
+      lostFraction: band.leavesABand ? crop.lostFraction : 0,
+    };
   } catch {
     // Bytes this project's own reader cannot measure: saying nothing is right.
     return null;
+  }
+}
+
+/**
+ * A picture, with its square copy when it will be cropped.
+ *
+ * **Made here, so the panel can draw it.** Cropping at preview time rather than
+ * at build time is the point: he sees what will be used before he presses
+ * anything that spends, and the build then finds the copy already there.
+ *
+ * A failure is silent by design — a picture whose bytes this project cannot read
+ * is placed as it always was, and a preview is not the place to stop a person.
+ */
+function withSquareCopy<T extends { id: string; path: string }>(
+  picture: T,
+  clientId: string,
+): T & { squarePath?: string } {
+  const solid = cardSolid();
+  const card = cardFrame();
+  if (solid === null || card === null || !existsSync(picture.path)) return picture;
+  try {
+    const src = imageSize(picture.path);
+    const band = bandBesideAPicture({
+      boxPx: solid.width,
+      cardPx: card.width,
+      sourceWidth: src.width,
+      sourceHeight: src.height,
+    });
+    if (!band.leavesABand) return picture;
+    const owner = isInClientPictureStore(REPO_ROOT, picture.path)
+      ? path.basename(path.dirname(picture.path))
+      : clientId;
+    return { ...picture, squarePath: squareCopyOf({
+      sourcePath: picture.path,
+      owner,
+      pictureId: picture.id,
+    }).path };
+  } catch {
+    return picture;
   }
 }
 
@@ -467,8 +548,10 @@ async function viewOf(plan: EditPlan, planPath: string, reelLabel: string): Prom
     generationEstimateUsd,
     generationNote,
     reelSpentUsd: plan.costs.spentByStage?.['images'] ?? null,
-    clientPictures: pictures,
-    videoPictures: (plan.pictures ?? []).map((p) => ({ ...p })),
+    clientPictures: pictures.map((p) => withSquareCopy(p, plan.clientMode?.id ?? 'unowned')),
+    videoPictures: (plan.pictures ?? []).map((p) =>
+      withSquareCopy({ ...p }, plan.clientMode?.id ?? 'unowned'),
+    ),
     source: {
       clientMode: plan.clientMode?.id ?? null,
       clientModeVersion: plan.clientMode?.version ?? null,
