@@ -76,7 +76,11 @@ async function getHealth(port: number, signal: AbortSignal): Promise<HealthPaylo
  * whether the thing he wanted is missing or the tool is out of step.
  */
 function serviceTrouble(status: number): string {
-  if (status === 404) return 'there is nothing here for this reel yet';
+  /*
+   * Session 101: one name for one thing. The panel says *video* everywhere else —
+   * 48 readable strings to this one — and *reel* is what the code calls it.
+   */
+  if (status === 404) return 'there is nothing here for this video yet';
   if (status === 401 || status === 403) {
     return (
       'the panel is using an old connection to the companion service — use Try again in the ' +

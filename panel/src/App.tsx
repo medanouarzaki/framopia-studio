@@ -51,7 +51,7 @@ import {
   type RunState,
 } from './words.js';
 import { shortLabels } from './video-names.js';
-import { nothingYetWords } from './words.js';
+import { finishedWords, nothingYetWords } from './words.js';
 import type {
   ClientMode,
   DryRunPlan,
@@ -834,6 +834,22 @@ function Panel({
             control moved and no wording changed.
           */}
           <h2>This video</h2>
+          {/*
+            **The state he meets daily.** Block 13 session 101: a video that has
+            been run showed four rows of *Already done — nothing to pay* and two
+            buttons at *nothing to pay*, and read as though nothing had happened.
+
+            One line, and only when there is genuinely nothing left to do. It
+            counts nothing — Build says what the composition contains, in one
+            place — and it names the one next thing. The buttons below stay exactly
+            as they are: re-running is legitimate, and session 90's spreading came
+            out of a re-plan.
+          */}
+          {dry === null || finishedWords(dry.stages) === null ? null : (
+            <p className="say" role="status">
+              {finishedWords(dry.stages)}
+            </p>
+          )}
           {/*
             * **Above the buttons that bill.** Session 75 found a reel built in
             * another client's colours; by the time a composition exists the

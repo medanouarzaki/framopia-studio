@@ -288,13 +288,13 @@ export function serviceDownWords(cause: string | null | undefined, retryable: bo
     return said;
   }
   if (/\bfetch failed\b|Failed to fetch|ECONNREFUSED|ECONNRESET|socket hang up|not answering/i.test(said)) {
-    return 'The background helper has not answered yet. It usually starts on its own.';
+    return 'The companion service has not answered yet. It usually starts on its own.';
   }
   if (/ENOENT|EACCES|spawn|not built|cannot find/i.test(said)) {
-    return 'The background helper could not be started on this Mac.';
+    return 'The companion service could not be started on this Mac.';
   }
-  if (retryable) return 'The background helper stopped answering. It usually clears on its own.';
-  return 'The background helper cannot start, and trying again will not help.';
+  if (retryable) return 'The companion service stopped answering. It usually clears on its own.';
+  return 'The companion service cannot start, and trying again will not help.';
 }
 
 /**
@@ -337,4 +337,26 @@ export function nothingYetWords(what: 'clients' | 'videos' | 'no-folder'): {
     said: 'No videos in this client’s folder.',
     next: 'Put a video in it and press Refresh, or set a different folder on their card above.',
   };
+}
+
+/**
+ * **A video that is finished should say so.**
+ *
+ * Block 13 session 101, and the state he meets every day. A video that has been
+ * run shows four rows of *Already done — nothing to pay* and two buttons at
+ * *nothing to pay*. Every word is true and together they read as though nothing
+ * is there — the tool describing its own idleness rather than his finished work.
+ *
+ * **It does not list what the composition contains.** Build already says that, in
+ * one place, and a fifth place that counts cards would be four places too many.
+ * This says the one thing the counts do not: it is done, and the next thing is to
+ * build it.
+ *
+ * Returns `null` whenever anything is still to do, which is when the buttons and
+ * the rows are the right thing to read.
+ */
+export function finishedWords(stages: readonly { status: string }[]): string | null {
+  if (stages.length === 0) return null;
+  if (!stages.every((s) => s.status === 'done')) return null;
+  return 'Everything for this video is made. Go to Build to put the composition together.';
 }

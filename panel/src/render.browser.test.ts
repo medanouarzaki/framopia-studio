@@ -2455,7 +2455,12 @@ describe.skipIf(!built)('the Build step', () => {
       expect(text).toContain('the client recorded on the plan');
       expect(text).toContain('68 subtitle cards');
       expect(text).toContain('3 emphasised keywords');
-      expect(text).toContain('5 images');
+      /*
+       * Session 101: one name for one thing. Build said *images* where the whole
+       * panel says *pictures* — 28 readable strings against two — and session 95
+       * had already settled the stage itself as *Drawing the pictures*.
+       */
+      expect(text).toContain('5 pictures');
       expect(text).toContain('4 sounds');
       expect(text).toContain('Watermark medium, 324 × 363 px');
       expect(text).toContain('Inter Semi-Bold');

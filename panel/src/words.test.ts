@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  finishedWords,
   serviceDownWords,
   triedWords,
   nothingYetWords,
@@ -287,14 +288,14 @@ describe('what a step says about a queue', () => {
 describe('when the companion service is not answering', () => {
   it('says what happened and that it usually fixes itself', () => {
     expect(serviceDownWords('connect ECONNREFUSED', true)).toBe(
-      'The background helper has not answered yet. It usually starts on its own.',
+      'The companion service has not answered yet. It usually starts on its own.',
     );
     expect(serviceDownWords('fetch failed', true)).toContain('usually starts on its own');
   });
 
   it('says plainly when trying again will not help', () => {
     expect(serviceDownWords('something nobody has words for', false)).toBe(
-      'The background helper cannot start, and trying again will not help.',
+      'The companion service cannot start, and trying again will not help.',
     );
   });
 
@@ -357,5 +358,42 @@ describe('when there is nothing there yet', () => {
       .join(' ');
     expect(all).not.toContain('/Volumes');
     expect(all).not.toMatch(/npm run|terminal|quit|restart|reopen/i);
+  });
+});
+
+/**
+ * **A video that is finished should say so** — the state he meets every day.
+ * Block 13 session 101.
+ */
+describe('a video that has already been run', () => {
+  const done = (n = 4) => Array.from({ length: n }, () => ({ status: 'done' }));
+
+  it('says it is made, and names the one next thing', () => {
+    expect(finishedWords(done())).toBe(
+      'Everything for this video is made. Go to Build to put the composition together.',
+    );
+  });
+
+  it('says nothing while anything is still to do', () => {
+    expect(finishedWords([...done(3), { status: 'pending' }])).toBeNull();
+    expect(finishedWords([{ status: 'running' }])).toBeNull();
+    expect(finishedWords([])).toBeNull();
+  });
+
+  /*
+   * Build already says what the composition will contain, in one place. A fifth
+   * place that counts cards would be four too many.
+   */
+  it('counts nothing', () => {
+    const said = finishedWords(done()) ?? '';
+    expect(said).not.toMatch(/\d/);
+    expect(said).not.toContain('card');
+    expect(said).not.toContain('picture');
+  });
+
+  it('names no command and sends him nowhere outside the panel', () => {
+    expect(finishedWords(done()) ?? '').not.toMatch(/npm run|terminal|quit|restart|reopen/i);
+    /* Build is a step in this panel, so naming it is the next thing, not an exit. */
+    expect(finishedWords(done()) ?? '').toContain('Build');
   });
 });

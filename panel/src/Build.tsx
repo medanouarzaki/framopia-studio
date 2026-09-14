@@ -197,7 +197,12 @@ function BuildPreviewCard({
   const parts = [
     `${preview.subtitleCards} subtitle cards`,
     `${preview.keywords} emphasised ${preview.keywords === 1 ? 'keyword' : 'keywords'}`,
-    `${preview.images} ${preview.images === 1 ? 'image' : 'images'}`,
+    /*
+     * Session 101: one name for one thing. Everything else on his screen says
+     * *picture* — 28 readable strings against these two — and session 95 settled
+     * the stage itself as *Drawing the pictures*.
+     */
+    `${preview.images} ${preview.images === 1 ? 'picture' : 'pictures'}`,
     `${preview.sfxEvents} ${preview.sfxEvents === 1 ? 'sound' : 'sounds'}`,
   ];
   return (

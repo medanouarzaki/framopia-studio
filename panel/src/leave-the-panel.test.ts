@@ -78,7 +78,7 @@ const NOT_SHOWN_TO_ANYONE = [REBUILD_COMMAND];
  * with the sentence, but it was not being protected either, and an exemption
  * for a case the rule cannot see is not an exemption.
  */
-const ALSO_SCANNED = [path.join(SRC, '..', '..', 'core', 'src', 'build-stamp.ts')];
+const ALSO_SCANNED: string[] = [];
 
 /**
  * **The service is scanned too, because the panel is a view over it.**
@@ -103,7 +103,24 @@ const ALSO_SCANNED = [path.join(SRC, '..', '..', 'core', 'src', 'build-stamp.ts'
  * and never reaches one.
  */
 function serviceSources(): string[] {
-  const root = path.join(SRC, '..', '..', 'service', 'src');
+  return [...sourcesUnder('service'), ...sourcesUnder('core')];
+}
+
+/**
+ * **`core/` is scanned too, since Block 13 session 101.**
+ *
+ * Session 91 widened this rule from `panel/src` to the whole service, and it
+ * stopped at core's doorstep — one file, `build-stamp.ts`, named explicitly.
+ * Session 100 then found `NODE_NOT_FOUND_HELP` in `core/src/node-path.ts`
+ * telling Mohamed to run `which node` in a terminal, **on his screen**, with
+ * nothing catching it. An exemption for a case the rule cannot see is not an
+ * exemption, and neither is a scan that stops one directory short of a message.
+ *
+ * Same terms as the service: every `.ts` that is not a test and not a `*-cli.ts`,
+ * because a CLI is a terminal program and its `usage:` line may say what to type.
+ */
+function sourcesUnder(workspace: 'service' | 'core'): string[] {
+  const root = path.join(SRC, '..', '..', workspace, 'src');
   const out: string[] = [];
   const walk = (dir: string): void => {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -152,6 +169,60 @@ function stringLiterals(text: string): string {
 const CANNOT_BE_DONE_IN_A_PANEL = [
   'tools/cv/setup.sh',
   'Run npm run service:build, then reopen the panel.',
+  /*
+   * **Re-auditing the template library.** Block 13 session 101, when the scan
+   * reached `core/`. These reach his screen through `health.templates.issues`,
+   * and the only cure is driving a script over `templates/library.aep` with
+   * After Effects open — a maintenance operation on a developer artefact that no
+   * panel performs and that Mohamed has never had reason to run. Same shape as
+   * `setup.sh` above: naming the command is the only true sentence available.
+   *
+   * They stay listed here rather than allowed silently, so that if the panel ever
+   * can re-audit, this is where someone finds out the sentences were waiting.
+   */
+  'Re-run: npm run audit:templates (After Effects must be open)',
+  'Re-run: npm run audit:templates',
+  're-run npm run audit:templates',
+];
+
+/**
+ * **`readBy` is documentation inside a data structure, not a sentence.**
+ *
+ * `core/src/references.ts` records which command reads each hand-made reference
+ * file — `npm run bench:tag`, `npm run align:score`. The field is declared,
+ * populated, and **read by nothing**: no screen, no log, no error. It is a note to
+ * whoever opens the file next.
+ *
+ * The same judgement session 91 made about `REBUILD_COMMAND`, which the panel
+ * *runs* and never renders. Removing these before matching keeps the rule about
+ * sentences on screen, which is what it was written about.
+ */
+const NOT_SHOWN_TO_ANYONE_EITHER = [
+  'npm run bench:tag, and the WER scorers through the tagged form',
+  'npm run align:score, and the transcription cache eviction guard',
+];
+
+/**
+ * **The one that is a ruling, not a fix: `NODE_NOT_FOUND_HELP`.**
+ *
+ * It reaches his screen, and it says *"`which node` in a terminal prints the path
+ * — then reopen the panel."* Block 13 session 100 found it; session 101's brief
+ * asked whether the panel can fix it, and the answer is **not without building
+ * something**.
+ *
+ * The panel runs inside After Effects and starts the companion service by
+ * spawning Node. When `resolveNodePath` finds none, there is no service to ask
+ * and nothing to repair — the panel could in principle offer a file chooser and
+ * write the path into `.local/config.json`, which is a new control, a new write
+ * and a validation step, not a rewording. **Mohamed has to rule on that**, and
+ * until he does the existing sentence is the only true help available, so it is
+ * named here and left exactly as it is.
+ */
+const A_RULING_MOHAMED_HAS_NOT_MADE = [
+  'No Node interpreter could be found. After Effects starts from the Finder and does not ' +
+    'inherit your shell PATH, so a Node installed through nvm is invisible to it. Add ' +
+    '{"nodePath": "/absolute/path/to/node"} to .local/config.json — `which node` in a terminal ' +
+    'prints the path — then reopen the panel.',
 ];
 
 const FORBIDDEN = [
@@ -187,6 +258,8 @@ function withoutAllowed(text: string): string {
     ...ALLOWED_TO_NAME_A_COMMAND,
     ...NOT_SHOWN_TO_ANYONE,
     ...CANNOT_BE_DONE_IN_A_PANEL,
+    ...NOT_SHOWN_TO_ANYONE_EITHER,
+    ...A_RULING_MOHAMED_HAS_NOT_MADE,
   ]) {
     out = out.split(allowed).join('');
   }

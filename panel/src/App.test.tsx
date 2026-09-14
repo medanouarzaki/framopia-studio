@@ -215,7 +215,8 @@ describe('service state', () => {
 
     /* What he reads, by element rather than by scraping the screen. */
     const said = container.querySelector('.readiness > p.say')?.textContent ?? '';
-    expect(said).toBe('The background helper has not answered yet. It usually starts on its own.');
+    /* Session 101: one name for one thing — the panel says *companion service*. */
+    expect(said).toBe('The companion service has not answered yet. It usually starts on its own.');
     expect(said).not.toContain('ECONNREFUSED');
 
     /* And the machine's own words, inside the disclosure and not in front of him. */

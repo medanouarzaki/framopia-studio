@@ -312,11 +312,51 @@ describe('what he comes back to', () => {
     expect(hard.lines[0]?.said).toContain('trying it again would fail the same way');
   });
 
-  it('quotes what the failure actually said', async () => {
+  /**
+   * **This asked for the stage error verbatim, and session 101 took it off.**
+   *
+   * It was written in session 94 so he could say what happened, and what it
+   * actually produced was *"It said: re-generating would discard editor work on 8
+   * slot(s): img002 (a candidate was chosen (img002-c2)); …"* — the message
+   * sessions 98 and 100 both named and neither could reach. The refusal is
+   * unchanged; only what he reads about it.
+   */
+  it('says why it stopped in his words, and never quotes the stage error', async () => {
     const s = await ran(async () => {
       throw new Error('the model returned 503 Service Unavailable');
     });
-    expect(s.lines[0]?.said).toContain('the model returned 503 Service Unavailable');
+    expect(s.lines[0]?.said).not.toContain('503');
+    expect(s.lines[0]?.said).toContain('the connection failed');
+  });
+
+  /* The one he actually hit: a video he had already chosen pictures for. */
+  it('says plainly when his own choices are what stopped it', async () => {
+    const s = await ran(async () => {
+      throw new Error(
+        're-generating would discard editor work on 8 slot(s): img002 (a candidate was ' +
+          'chosen (img002-c2)); img003 (a candidate was chosen (img003-c2))',
+      );
+    });
+    const said = s.lines[0]?.said ?? '';
+    expect(said).toContain('You have already chosen pictures for this one');
+    expect(said).not.toContain('img002');
+    expect(said).not.toContain('slot(s)');
+  });
+
+  it('never puts the stage error in front of him, whatever it is', async () => {
+    for (const cause of [
+      'ENOENT: no such file or directory, open /x/y',
+      'there is no video called "sora-9" any more',
+      'the ceiling would be crossed',
+      'TypeError: cannot read properties of undefined',
+    ]) {
+      const s = await ran(async () => {
+        throw new Error(cause);
+      });
+      expect(`${cause.slice(0, 18)}: ${(s.lines[0]?.said ?? '').includes(cause)}`).toBe(
+        `${cause.slice(0, 18)}: false`,
+      );
+    }
   });
 
   it('says plainly when a video was never started', async () => {

@@ -296,6 +296,42 @@ export interface QueueSummary {
  * found eleven messages that did, and `leave-the-panel.test.ts` reads the whole
  * service now, so a command in here fails the gate.
  */
+/**
+ * **Why a video in the queue stopped, in his words.**
+ *
+ * Block 13 session 101. This clause used to be `It said: ${cause}` — the stage
+ * error appended verbatim — so a video he had already curated came back as
+ * *"It said: re-generating would discard editor work on 8 slot(s): img002 (a
+ * candidate was chosen (img002-c2)); img003 (a candidate was chosen
+ * (img003-c2)); …"*. Block 12 session 94 shipped it; session 98 named it and
+ * could not reach it; session 100 named it again.
+ *
+ * **The refusal is untouched.** Same condition, same outcome, same stage error —
+ * only what he reads about it. A cause nobody has written words for gets a
+ * sentence rather than the raw text, because a message that ends in a
+ * stack-shaped fragment reads as a crash whatever the first half said.
+ */
+function whyItStopped(cause: string | null | undefined): string {
+  const said = (cause ?? '').trim();
+  if (said === '') return 'It did not say why.';
+  if (/discard editor work|would discard/i.test(said)) {
+    return 'You have already chosen pictures for this one, and making it again would throw those away.';
+  }
+  if (/no video called|there is no reel/i.test(said)) {
+    return 'That video is not on this Mac any more.';
+  }
+  if (/ceiling|would be crossed|budget exceeded/i.test(said)) {
+    return 'It would have cost more than the limit set for one video, so nothing was spent.';
+  }
+  if (/ENOENT|no such file|does not exist/i.test(said)) {
+    return 'A file it needed was not where it expected — if the drive is unplugged, plug it in.';
+  }
+  if (/not authori[sz]ed|API key|invalid key/i.test(said)) {
+    return 'The key for the paid services was not accepted.';
+  }
+  return 'It stopped before finishing.';
+}
+
 export function queueSummary(progress: QueueProgress): QueueSummary {
   const done = progress.items.filter((i) => i.outcome === 'done');
   const failed = progress.items.filter((i) => i.outcome === 'failed');
@@ -336,13 +372,12 @@ export function queueSummary(progress: QueueProgress): QueueSummary {
      * all of them: the network coming back and a picture budget being refused are
      * not the same problem and do not have the same answer.
      */
-    const cause = item.error?.cause ?? 'something went wrong and it did not say what';
     const retryable = item.error?.retryable === true;
     const said = retryable
       ? `Did not finish — the connection failed, and it was tried ${String(item.attempts)} times. ` +
-        `Nothing was lost. Add it to a queue again when you are back online. It said: ${cause}`
+        'Nothing was lost. Add it to a queue again when you are back online.'
       : `Did not finish, and trying it again would fail the same way. ` +
-        `Nothing you have already paid for is lost. It said: ${cause}`;
+        `Nothing you have already paid for is lost. ${whyItStopped(item.error?.cause)}`;
     return { reel: item.reel, said, needsHim: true };
   });
 
