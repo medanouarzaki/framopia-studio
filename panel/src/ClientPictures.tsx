@@ -94,6 +94,20 @@ export function ClientPictures({
       {pictures.length === 0 ? (
         <p className="hint">None yet.</p>
       ) : (
+        <>
+        {/*
+          **A label belongs to the group, not to every member.** Block 13 session
+          106. With his twenty-two photographs this said *Use it when someone
+          says…* twenty-two times and *Used whenever one of these is spoken.*
+          twenty-two times — forty-four lines of the same two sentences, in the
+          largest block in the panel.
+
+          It is said once, here, over the grid it names. Each card keeps only what
+          differs: the photograph, its name, its words, and the way to forget it.
+          Nothing is lost — the paragraph two lines above already explains what the
+          words do, and every input still carries its own name for a screen reader.
+        */}
+        <span className="colourhead photoshead">Use it when someone says…</span>
         <ul className="photos">
           {pictures.map((picture) => (
             <li key={picture.key}>
@@ -148,6 +162,7 @@ export function ClientPictures({
             </li>
           ))}
         </ul>
+        </>
       )}
 
       {pictures.length === 0 ? null : (
@@ -280,18 +295,28 @@ function SavedLabel({
 }): JSX.Element {
   const [draft, setDraft] = useState(label);
   const changed = draft.trim() !== label.trim();
+  /*
+   * **What is left is what differs.** Block 13 session 106.
+   *
+   * The visible `<span>Use it when someone says…</span>` above the field and the
+   * `<em>` beneath it were the same words on all twenty-two cards. The label is
+   * said once over the grid; the sentence under it restated the paragraph at the
+   * head of the section, which is still there and is still the only place it needs
+   * to be said.
+   *
+   * **The input keeps its own name.** `aria-label` says *Use ejal40 when someone
+   * says…* per photograph, which is more than the visible label ever gave a screen
+   * reader, so nothing about naming this field got worse by making it quiet.
+   */
   return (
     <span className="saidwhen">
-      <label className="field stacked">
-        <span>Use it when someone says…</span>
-        <input
-          type="text"
-          aria-label={`Use ${description} when someone says…`}
-          value={draft}
-          disabled={busy}
-          onChange={(e) => setDraft(e.target.value)}
-        />
-      </label>
+      <input
+        type="text"
+        aria-label={`Use ${description} when someone says…`}
+        value={draft}
+        disabled={busy}
+        onChange={(e) => setDraft(e.target.value)}
+      />
       {changed ? (
         <button
           type="button"
@@ -302,13 +327,7 @@ function SavedLabel({
         >
           {busy ? 'Saving…' : 'Save these words'}
         </button>
-      ) : (
-        <em className="hint">
-          {label.trim() === ''
-            ? 'No words yet, so this photo is chosen by hand.'
-            : 'Used whenever one of these is spoken.'}
-        </em>
-      )}
+      ) : null}
     </span>
   );
 }

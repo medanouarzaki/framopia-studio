@@ -7,6 +7,8 @@ import {
   stubHost,
   realPanelRoutes,
   onScreen,
+  hisPanelAt,
+  WIDTHS,
 } from './browser-harness.js';
 
 /**
@@ -22,12 +24,6 @@ import {
  * the width he actually has, and at two narrower ones, because a CEP panel can be
  * dragged to a third of his window and his partner's will be whatever it is.
  */
-export const WIDTHS = [
-  ['his window', 1500],
-  ['a middle width', 900],
-  ['narrow', 380],
-] as const;
-
 let browser: Browser | undefined;
 beforeAll(async () => {
   if (built) browser = await chromium.launch();
@@ -35,23 +31,6 @@ beforeAll(async () => {
 afterAll(async () => {
   await browser?.close();
 }, 120_000);
-
-export async function hisPanelAt(b: Browser, width: number): Promise<Page> {
-  const page = await b.newPage({ viewport: { width, height: 900 } });
-  await page.addInitScript(stubHost(HANDSHAKE));
-  await page.addInitScript(realPanelRoutes());
-  await page.goto(`file://${INDEX}`);
-  await page.waitForSelector('header.brand', { timeout: 10_000 });
-  await onScreen(page, 'choose');
-  await page.selectOption('select[aria-label="Client"]', 'dr-loubna-kfafi');
-  await page.waitForTimeout(300);
-  await page.selectOption(
-    'select[aria-label="Video"]',
-    'Dr Loubna Kfafi/September Content/Exports/sora.mov',
-  );
-  await page.waitForTimeout(600);
-  return page;
-}
 
 describe.skipIf(!built)('how much of its width the panel uses', () => {
   it('measures every control and block against the space it is given', async () => {

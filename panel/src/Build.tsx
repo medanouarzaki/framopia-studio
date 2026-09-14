@@ -214,6 +214,19 @@ export function Build({
   );
 }
 
+/**
+ * The file a path ends in, for a sentence that is about the file rather than the
+ * folders above it. The whole path stays on the element's `title`.
+ *
+ * Both separators, because a path the service sends is whatever the host uses,
+ * and a trailing separator answers with the segment before it rather than with
+ * nothing.
+ */
+function fileNameOf(full: string): string {
+  const parts = full.split(/[/\\]/).filter((p) => p !== '');
+  return parts[parts.length - 1] ?? full;
+}
+
 function BuildPreviewCard({
   preview,
   connection,
@@ -236,11 +249,22 @@ function BuildPreviewCard({
   ];
   return (
     <div className="card">
-      <p className="detail" title={preview.reel}>
-        {shortLabel(preview.reel, [preview.reel])}, for {preview.modeName} — the client recorded
-        on {preview.modeSource}.
-      </p>
-      <p className="detail">Will contain {parts.join(', ')}.</p>
+      {/*
+        **Laid out by what they are, not by how many there are.** Block 13 session
+        106. Session 105 put four sentences in a two-by-two grid, which paired the
+        video's name with what it will contain and the output path with the word
+        *free* — four facts sharing a space rather than a layout.
+
+        Two of them say **what this composition is**: which video, for which client,
+        and what will be in it. They belong together and they lead.
+      */}
+      <div className="what-it-is">
+        <p className="detail" title={preview.reel}>
+          {shortLabel(preview.reel, [preview.reel])}, for {preview.modeName} — the client recorded
+          on {preview.modeSource}.
+        </p>
+        <p className="detail">Will contain {parts.join(', ')}.</p>
+      </div>
       {/*
         **This was seven paragraphs and he read none of them.** Block 13 session
         99. Every sentence was true; together they were a wall in front of a
@@ -257,14 +281,30 @@ function BuildPreviewCard({
         disclosure Build already uses for its short-card notes, so this is not a
         second way of hiding things.
       */}
-      <p className="detail">
-        Writes {preview.outputPath}, replacing what is there.
-      </p>
       {/*
-        Every other control in this panel that runs something can spend money,
-        so saying nothing about cost would itself be read as a cost.
+        And two say **what pressing the button does**: it overwrites, and it costs
+        nothing. They belong together and they come last, next to the button.
       */}
-      <p className="detail">Building is free. It calls nothing and bills nothing.</p>
+      <div className="what-it-does">
+        {/*
+          **The warning stays; ninety characters of path do not.** Session 99 kept
+          this in front of him because *replacing what is there* is a warning, and
+          it printed
+          `/Volumes/T7 Shield/…/.local/build/sora-1-8bcbfc38-full.aep` to deliver
+          it — a path that wrapped to two lines and that he does not read before
+          building. The sentence is unchanged and the file is still named; the
+          folders it sits in are on the element's title, where the panel already
+          keeps a video's full label since session 102.
+        */}
+        <p className="detail" title={preview.outputPath}>
+          Writes {fileNameOf(preview.outputPath)}, replacing what is there.
+        </p>
+        {/*
+          Every other control in this panel that runs something can spend money,
+          so saying nothing about cost would itself be read as a cost.
+        */}
+        <p className="detail">Building is free. It calls nothing and bills nothing.</p>
+      </div>
       <details className="quibbles">
         <summary>What else it will use</summary>
         <p className="detail">

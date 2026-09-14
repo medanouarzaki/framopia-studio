@@ -160,7 +160,13 @@ describe.skipIf(!built)('how tall the panel is with his own data', () => {
    */
   it('measures every screen as he meets it', async () => {
     if (browser === undefined) return;
-    const page = await browser.newPage({ viewport: { width: 420, height: 900 } });
+    /*
+     * **At his width.** Block 13 session 106: session 105 taught the block ruler
+     * below to render at 1500 px and left this one at 420, then put figures from
+     * both in one table — so *Choose 545* and *Build 589* were 420 px readings
+     * printed beside a 1500 px one. Both rulers render at his width now.
+     */
+    const page = await browser.newPage({ viewport: { width: 1500, height: 900 } });
     await page.addInitScript(stubHost(HANDSHAKE));
     await page.addInitScript(realPanelRoutes());
     await page.goto(`file://${INDEX}`);
@@ -432,7 +438,7 @@ describe.skipIf(!built)('what each block of Make and Build costs', () => {
 
     /* Nothing chosen: the empty state session 102 grew by 26 px. */
     if (browser === undefined) return;
-    const empty = await browser.newPage({ viewport: { width: 420, height: 900 } });
+    const empty = await browser.newPage({ viewport: { width: 1500, height: 900 } });
     await empty.addInitScript(stubHost(HANDSHAKE));
     await empty.addInitScript(realPanelRoutes());
     await empty.goto(`file://${INDEX}`);

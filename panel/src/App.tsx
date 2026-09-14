@@ -53,6 +53,7 @@ import {
 import { shortLabels } from './video-names.js';
 import { finishedWords, nothingYetWords, WAYS_THERE } from './words.js';
 import { Sentence } from './Sentence.js';
+import { useRoom, ROOM_FOR_TWO } from './panel-room.js';
 import type {
   ClientMode,
   DryRunPlan,
@@ -217,6 +218,13 @@ function Panel({
    * about.
    */
   const [cardOpen, setCardOpen] = useState(false);
+  /*
+   * **The panel's own width, not the window's.** Block 13 session 106; the reason
+   * is in `panel-room.ts` and in `docs/ARCHITECTURE.md`. Every width-dependent
+   * rule in `panel.css` keys off the `wide` class this sets, so there is one
+   * measurement and one number.
+   */
+  const room = useRoom<HTMLElement>();
   /**
    * **Whether he has seen how the queue ended.**
    *
@@ -648,7 +656,15 @@ function Panel({
     <div className="app">
       <Brand service={service} />
 
-      <main>
+      {/*
+        `wide` is the measured panel, `on-…` is the screen: two independent groups
+        sit side by side on Make and two related choices do on Choose, and the grid
+        those need is not the same grid. Neither class changes what anything does.
+      */}
+      <main
+        ref={room.ref}
+        className={`on-${moment}${room.width !== null && room.width >= ROOM_FOR_TWO ? ' wide' : ''}`}
+      >
         <Readiness
           state={service}
           attempt={attempt}
@@ -703,7 +719,7 @@ function Panel({
          * Client first: it is what decides which videos there are to choose
          * from, so asking for the video first asked a question out of order.
          */}
-        <section className="client">
+        <section className={`client${cardOpen ? ' open' : ''}`}>
           <h2>Client</h2>
           <label className="field">
             <select

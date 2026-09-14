@@ -646,9 +646,13 @@ button.link {
    * base rule gives every `button` `width: 100%`, so *Details* filled the
    * readiness line and wrapped onto a row of its own with 200 px of nothing
    * beside it. It is a word at the end of a line, and now it is sized like one.
+   *
+   * Session 106 took `margin-left: auto` off it for the same reason the ghost
+   * button above lost it: pushed to the far end it was a word with a void between
+   * it and the thing it belongs to.
    */
   width: auto; flex: 0 0 auto;
-  margin-left: auto; padding: 0; background: none; border: none;
+  padding: 0; background: none; border: none;
   color: var(--muted); font: inherit; font-size: var(--t-second); font-weight: 600;
   letter-spacing: 0.01em; cursor: pointer; text-decoration: none;
 }
@@ -705,11 +709,18 @@ button.ghost {
  * row opens, with no transition — nothing in this panel animates.
  */
 .quibbles {
-  /* The rule above a disclosure row is a lid, and a lid a metre long is a line. */
-  max-width: var(--w-prose);
   margin-top: var(--s-tight); color: var(--muted); font-size: var(--t-second);
 }
 .quibbles > summary {
+  /*
+   * **The lid is capped, not what is under it.** A rule a metre long is a line,
+   * so the row keeps its measure — but session 105 put this cap on the whole
+   * `<details>`, which squeezed the client card and its twenty-two photographs
+   * into 622 px with the rest of the panel empty beside them. Prose inside a
+   * disclosure is capped by the prose rules already; a grid of photographs is not
+   * prose and should have the room it is given.
+   */
+  max-width: var(--w-prose);
   display: flex; align-items: center; gap: 9px;
   padding: var(--s-tight) 0 0; border-top: 1px solid var(--line);
   font-weight: 600; letter-spacing: 0.01em; color: var(--muted);
@@ -799,16 +810,51 @@ section.client .say, section.video .say { margin: 8px 0 0; color: var(--muted); 
 /* What a client looks like: swatches, their type, their logo, one line. */
 .clientcard { margin-top: 10px; }
 .clientcard .about { margin: 0 0 10px; color: var(--text); }
-.clientcard ul.swatches { display: flex; gap: 8px; list-style: none; margin: 0; padding: 0; }
-.clientcard ul.swatches li { flex: 1 1 0; min-width: 0; display: grid; gap: 4px; }
+/*
+ * **Four swatches, four descriptions of four, two, four and four lines.** Block 13
+ * session 106: a flex row sized each column to the space left over, so *behind a
+ * cut-out picture* took two lines and *the deeper of the two frame colours* took
+ * four, and the block ended ragged.
+ *
+ * Equal tracks give every description the same measure, and aligning the rows to
+ * the start of the grid rather than stretching them means the four read as one
+ * block whatever the text does.
+ */
+.clientcard ul.swatches {
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--s-tight); list-style: none; margin: 0; padding: 0; align-items: start;
+}
+.clientcard ul.swatches li {
+  min-width: 0; display: grid; gap: 4px; align-content: start;
+}
 .clientcard .chip {
   display: block; height: 26px; border-radius: 5px; border: 1px solid var(--line);
 }
 .clientcard ul.swatches .what {
   color: var(--faint); font-size: var(--t-micro); line-height: 1.35; overflow-wrap: anywhere;
 }
-.clientcard .typesample { margin-top: 10px; }
-.clientcard .typesample p { margin: 0; font-size: var(--t-title); color: var(--text); }
+/*
+ * **They are specimens, and they read as two unrelated headings.** Block 13
+ * session 106: *Inter Semi-Bold* set large on the left and *Almarai Bold* set
+ * large and right-aligned, each drawn in its own face — which is the point — but
+ * with nothing saying they are samples rather than titles.
+ *
+ * One strip, on the panel's own quiet ground, with the two faces side by side and
+ * each set in the face it names. The size is the title step because a specimen has
+ * to be big enough to judge; what changes is that it now sits in something.
+ */
+.clientcard .typesample {
+  margin-top: var(--s-tight);
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-tight);
+  padding: var(--s-tight) 10px;
+  background: var(--panel-2); border: 1px solid var(--line); border-radius: 7px;
+}
+.clientcard .typesample p {
+  margin: 0; font-size: var(--t-title); color: var(--text);
+  min-width: 0; overflow-wrap: anywhere; line-height: 1.3;
+}
+/* The note that they are the standard pair belongs under both, not beside one. */
+.clientcard .typesample .hint { grid-column: 1 / -1; margin: 0; }
 .clientcard .hint {
   margin: 6px 0 0; color: var(--faint); font-size: var(--t-second); font-style: normal;
 }
@@ -891,12 +937,31 @@ section.client .say, section.video .say { margin: 8px 0 0; color: var(--muted); 
 
 /* The client's own photographs, on both client screens. */
 .ownphotos { display: grid; gap: 8px; margin-top: 12px; }
+/*
+ * **Twenty-two photographs, and the grid says so.** Block 13 session 106: a flex
+ * wrap with `flex: 0 1 120px` let the last row stretch its cards to fill the line,
+ * so the block was ragged at the bottom. A grid of fixed tracks fills whatever
+ * width there is, and every card is the same size.
+ */
 .ownphotos ul.photos {
-  display: flex; flex-wrap: wrap; gap: 10px; list-style: none; margin: 0; padding: 0;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+  gap: var(--s-tight); list-style: none; margin: 0; padding: 0;
 }
 .ownphotos ul.photos li {
-  flex: 0 1 120px; display: grid; gap: 6px; padding: 6px;
+  display: grid; gap: 5px; padding: 6px; align-content: start;
   border: 1px solid var(--line); border-radius: 8px;
+}
+/* The label the grid carries once, not twenty-two times. */
+.ownphotos .photoshead { margin-top: var(--s-tight); }
+.ownphotos ul.photos li > * { min-width: 0; }
+.ownphotos ul.photos .saidwhen { display: grid; gap: 5px; min-width: 0; }
+/*
+ * **A bare `<input>` is twenty characters wide by default**, which is wider than
+ * the track it sits in — the label wrapper that used to constrain it went with the
+ * twenty-two repeats. Told its width, it fits.
+ */
+.ownphotos ul.photos input {
+  width: 100%; min-width: 0; padding: 5px 7px; font-size: var(--t-second);
 }
 .ownphotos img.shot {
   width: 100%; height: 84px; object-fit: contain;
@@ -1186,46 +1251,96 @@ button.run.free:hover:enabled { border-color: #3a4049; }
  * service-down state was 211 px, a third of the panel, for something that usually
  * clears on its own. Uses the tokens already declared above.
  */
-.readiness .line button.ghost { margin-top: 0; margin-left: auto; width: auto; flex: 0 0 auto; }
+/*
+ * **They sat at opposite ends of the band.** Block 13 session 106: `margin-left:
+ * auto` pushed the control to the far end of the readiness line, so *Ready* and
+ * *Details* were as far apart as the line was wide with nothing in between. The
+ * word and the way to its detail belong to each other; the line is capped and they
+ * now sit one gap apart, at the left, where the eye already is.
+ */
+.readiness .line button.ghost { margin-top: 0; width: auto; flex: 0 0 auto; }
 .readiness .quibbles { margin-top: 8px; }
 
 /*
- * **Above 820 px, the things that belong together sit together.**
+ * **The panel measures itself, because a media query would measure the screen.**
  *
- * Block 13 session 105. The one breakpoint in the panel, and everything else is a
- * cap — so the layout changes with the window rather than jumping between two of
- * them. Below 820 px not one of these rules applies and the panel is exactly the
- * single column it has always been, which is what makes the narrow case safe: it
- * is not a second layout, it is the absence of this one.
+ * Block 13 session 106. `docs/ARCHITECTURE.md`: *"A docked CEP panel's window is
+ * the size of the screen while its panel is a column wide, so a media query lays
+ * out for the wrong thing. Any future responsive rule has to measure the panel,
+ * not the viewport."* Session 105 laid the pickers out behind a width query on the
+ * window. Docked at 420 px on a 1920 px screen that query is **true**, so it would
+ * have paired two 460 px fields inside a 420 px column — on his machine, and on no
+ * test, because a test viewport and a test panel are the same thing.
+ *
+ * A container query is the right tool and CEP 12's Chromium 99 has none — it is on
+ * the capability denylist beside `:has()`. So `panel-room.ts` measures `<main>`
+ * with a `ResizeObserver` and puts `wide` on it, and `on-choose`, `on-run` and
+ * `on-build` name the screen: two related choices and two independent groups do
+ * not want the same grid.
+ *
+ * Everything else is a cap, so the panel still changes continuously with its own
+ * width. This is the one threshold, and below it none of these rules applies.
  */
-@media (min-width: 820px) {
-  /*
-   * **Picking a client and picking a video are two halves of one decision**, and
-   * they were two stacked full-width dropdowns with a heading and a disclosure
-   * between them. Everything else in `main` still spans, so no other section moves
-   * and no screen gains a column it did not ask for.
-   */
-  /*
-   * The first column is exactly a field wide, not half the window. Two equal
-   * halves of 1460 px put the two pickers **284 px apart** — further from each
-   * other than the 88 px they were when stacked, which is the opposite of what
-   * pairing them is for. At a field's width they sit one column-gap apart.
-   */
-  main { grid-template-columns: var(--w-field) minmax(0, 1fr); column-gap: var(--s-section); }
-  main > * { grid-column: 1 / -1; }
-  main > section.client, main > section.video { grid-column: auto; }
+main.wide { column-gap: var(--s-section); }
 
-  /*
-   * **Four sentences were four paragraphs down a metre-wide page.** What the build
-   * will contain, where it writes, that it replaces what is there, and that it is
-   * free — four facts he reads at once, in two columns. The disclosure rows and
-   * anything that shouts stay across both, because they are not part of the four.
-   */
-  .buildpane .card {
-    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
-    column-gap: var(--s-section); row-gap: var(--s-tight); align-items: start;
-  }
-  .buildpane .card > details,
-  .buildpane .card > .clientlook,
-  .buildpane .card.missing > * { grid-column: 1 / -1; }
+/*
+ * **Choose: the two halves of one decision.** The first column is exactly a field
+ * wide, not half the panel — two equal halves put the pickers 284 px apart, which
+ * is further than the 88 px they were when stacked.
+ */
+main.wide.on-choose { grid-template-columns: var(--w-field) minmax(0, 1fr); }
+main.wide.on-choose > * { grid-column: 1 / -1; }
+main.wide.on-choose > section.client,
+main.wide.on-choose > section.video { grid-column: auto; }
+
+/*
+ * **And the card takes the whole panel when it is open.** It is the largest block
+ * in the tool — his twenty-two photographs — and inside the picker's column it was
+ * drawn 460 px wide with a thousand pixels empty beside it. Open, it is the subject
+ * of the screen rather than a footnote to a dropdown.
+ */
+main.wide.on-choose > section.client.open { grid-column: 1 / -1; }
+
+/*
+ * **Make: two independent groups.** *This video* and *Make several videos* are not
+ * two halves of one thing — session 98 gave each its own heading for that reason —
+ * so they sit beside each other, and the accounting stays underneath both, where
+ * session 98 put it.
+ */
+main.wide.on-run { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+main.wide.on-run > * { grid-column: 1 / -1; }
+main.wide.on-run > section.do,
+main.wide.on-run > section.pane { grid-column: auto; }
+
+/*
+ * **Build: the composition, and the third act beside it.** *Change something
+ * first* is what he does after looking at the build, and it is independent of it.
+ */
+main.wide.on-build { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+main.wide.on-build > * { grid-column: 1 / -1; }
+main.wide.on-build > section.buildpane-section,
+main.wide.on-build > section.change { grid-column: auto; }
+
+/*
+ * **Four sentences were four paragraphs down a metre-wide page.** What the build
+ * will contain, where it writes, that it replaces what is there, and that it is
+ * free. The disclosure rows and anything that shouts stay across both.
+ */
+/*
+ * **Two groups, not four cells.** Block 13 session 106. What the composition *is*
+ * on the left, what pressing the button *does* on the right — each a pair of
+ * sentences that belong to each other, rather than a two-by-two grid pairing a
+ * video's name with an output path.
+ */
+main.wide .buildpane .card {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: var(--s-section); row-gap: var(--s-tight); align-items: start;
 }
+main.wide .buildpane .card > details,
+main.wide .buildpane .card > .clientlook,
+main.wide .buildpane .card.missing > * { grid-column: 1 / -1; }
+.buildpane .card .what-it-is,
+.buildpane .card .what-it-does { display: grid; gap: var(--s-tight); align-content: start; }
+.buildpane .card .what-it-is .detail,
+.buildpane .card .what-it-does .detail { margin-top: 0; }
+

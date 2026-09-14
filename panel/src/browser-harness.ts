@@ -13,6 +13,7 @@
  * them lose it. A test that needs this harness now gets its own file and its
  * own browser rather than crowding theirs.
  */
+import type { Browser, Page } from 'playwright';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -672,6 +673,42 @@ export async function openReference(page: DrivablePage, inside: string): Promise
   }
   await page.waitForSelector(inside, { timeout: 4_000, state: 'visible' });
 }
+
+/**
+ * **His panel, at a width you choose.**
+ *
+ * Block 13 session 106 moved this out of `width.browser.test.ts`. It lived there
+ * and two test files imported it — and importing a test module makes vitest
+ * register that module's `describe` blocks a second time, so nine width tests ran
+ * twice and the suite's own count was inflated by nine. A shared helper belongs in
+ * the harness; a test file exports nothing.
+ *
+ * The width is a parameter because every ruler this project wrote before session
+ * 105 rendered at 420 px while his window is roughly 1500.
+ */
+export async function hisPanelAt(browser: Browser, width: number): Promise<Page> {
+  const page = await browser.newPage({ viewport: { width, height: 900 } });
+  await page.addInitScript(stubHost(HANDSHAKE));
+  await page.addInitScript(realPanelRoutes());
+  await page.goto(`file://${INDEX}`);
+  await page.waitForSelector('header.brand', { timeout: 10_000 });
+  await onScreen(page, 'choose');
+  await page.selectOption('select[aria-label="Client"]', 'dr-loubna-kfafi');
+  await page.waitForTimeout(300);
+  await page.selectOption(
+    'select[aria-label="Video"]',
+    'Dr Loubna Kfafi/September Content/Exports/sora.mov',
+  );
+  await page.waitForTimeout(600);
+  return page;
+}
+
+/** The three widths this panel is measured at: his, a middle one, and docked. */
+export const WIDTHS = [
+  ['his window', 1500],
+  ['a middle width', 900],
+  ['narrow', 380],
+] as const;
 
 export async function onScreen(page: DrivablePage, screen: Screen): Promise<void> {
   const switcher = await page.$('nav.moments');

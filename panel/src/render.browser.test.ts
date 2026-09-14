@@ -981,7 +981,7 @@ async function overflowing(page: Page): Promise<string[]> {
  */
 describe.skipIf(!built)('the layout', () => {
   it('is one column when docked, one pair when wide, and never overflows', async () => {
-    for (const width of [380, 420, 700, 819, 820, 1200, 1500, 1920]) {
+    for (const width of [380, 420, 700, 819, 820, 860, 1200, 1500, 1920]) {
       const loaded = await load({
         files: { ...HANDSHAKE, ...SERVICE_BUILT },
         fetch: 'healthy',
@@ -992,10 +992,27 @@ describe.skipIf(!built)('the layout', () => {
       try {
         await page.waitForSelector('.dot.healthy', { timeout: 15_000 });
         /*
-         * 819 and 820 are on purpose: a breakpoint is where a layout is most
+         * **Measured against the panel, not the viewport.** Block 13 session 106.
+         * This read `width < 820` off the browser window — which is exactly the
+         * mistake `docs/ARCHITECTURE.md` warns about, because a docked CEP panel's
+         * window is the size of the screen while its panel is a column wide. At a
+         * viewport of 820 the panel is 780 after `main`'s padding, and one column
+         * is the right answer.
+         *
+         * 819, 820 and 860 are on purpose: a threshold is where a layout is most
          * likely to be wrong, and a test that steps over it never looks at it.
          */
-        expect(await columnCount(page), `at ${width}px`).toBe(width < 820 ? 1 : 2);
+        const panel = await page.evaluate(() => {
+          const main = document.querySelector('main');
+          if (main === null) return 0;
+          const cs = getComputedStyle(main);
+          return Math.round(
+            main.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight),
+          );
+        });
+        expect(await columnCount(page), `panel ${panel}px at viewport ${width}px`).toBe(
+          panel < 820 ? 1 : 2,
+        );
         /* Only the two pickers pair; every other section still spans. */
         const spans = await page.evaluate(() => {
           const main = document.querySelector('main');
@@ -1013,8 +1030,8 @@ describe.skipIf(!built)('the layout', () => {
             .filter((s) => Math.round(s.getBoundingClientRect().width) < full - 1)
             .map((s) => `section.${String(s.className).split(' ')[0]}`);
         });
-        expect(spans.sort(), `at ${width}px`).toEqual(
-          width < 820 ? [] : ['section.client', 'section.video'],
+        expect(spans.sort(), `panel ${panel}px at viewport ${width}px`).toEqual(
+          panel < 820 ? [] : ['section.client', 'section.video'],
         );
         expect(await overflowing(page), `at ${width}px`).toEqual([]);
       } finally {
@@ -2560,7 +2577,22 @@ describe.skipIf(!built)('the Build step', () => {
       expect(text).toContain('4 sounds');
       expect(text).toContain('Watermark medium, 324 × 363 px');
       expect(text).toContain('Inter Semi-Bold');
-      expect(text).toContain('/repo/.local/build/vitasilk-full.aep');
+      /*
+       * **Rewritten by Block 13 session 106.** It asserted the whole output path
+       * was printed. The sentence is unchanged and the warning it carries —
+       * *replacing what is there* — is unchanged; what it no longer does is spend
+       * ninety characters and two wrapped lines naming folders he does not read
+       * before pressing Build. The file is named, and the full path is on the
+       * element's `title`, which is where session 102 already keeps a video's
+       * full label.
+       *
+       * This asserts both halves, which is more than it asserted before.
+       */
+      expect(text).toContain('Writes vitasilk-full.aep, replacing what is there.');
+      expect(text).not.toContain('/repo/.local/build/');
+      expect(
+        await loaded.page.$eval('.buildpane .what-it-does .detail', (e) => e.getAttribute('title')),
+      ).toBe('/repo/.local/build/vitasilk-full.aep');
       expect(text).toContain('Building is free');
       // A field name is not a label.
       expect(text).not.toContain('planPath');
