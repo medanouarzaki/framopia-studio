@@ -38,7 +38,7 @@ const HEARTBEAT_MS = 5000;
 /** How often to ask the service how the run is going. Chosen, not measured. */
 const JOB_POLL_MS = 1000;
 import { runGate } from './run-gate.js';
-import { startQueue, stopQueue } from './service.js';
+import { startQueue, stopQueue, fetchJobs } from './service.js';
 import { formatUsd, SPEND_SOFT_ALARM_USD, spendLevel } from './spend.js';
 import {
   causeWords,
@@ -174,6 +174,11 @@ function Panel({
   const [jobId, setJobId] = useState<string | null>(null);
   const [job, setJob] = useState<PipelineJob | null>(null);
   const [startError, setStartError] = useState<string | null>(null);
+  /*
+   * True from the press until a job exists. Session 109: without it the run
+   * controls were live during the request that starts them. See `running` below.
+   */
+  const [starting, setStarting] = useState(false);
   /**
    * **The queue he is building up, and the one that is running.**
    *
@@ -187,6 +192,21 @@ function Panel({
   const [queueJobId, setQueueJobId] = useState<string | null>(null);
   const [queueJob, setQueueJob] = useState<PipelineJob | null>(null);
   const [queueStopping, setQueueStopping] = useState(false);
+  /**
+   * **Coming back.** Block 14 session 109, and session 101's oldest open item.
+   *
+   * A queue keeps running while the panel is shut, and until now nothing could
+   * ask what was running: the job id lived in React state and died with the
+   * panel. He came back to a screen saying nothing had happened, while the
+   * service was still spending his money.
+   *
+   * On arrival the panel asks the service what it has been doing and adopts the
+   * most recent queue — running or finished — so the first thing he sees is what
+   * he asked for and what became of it, rather than being made to remember.
+   */
+  const [adopted, setAdopted] = useState(false);
+  /* The same window, on the control that starts a whole list of them. */
+  const [queueStarting, setQueueStarting] = useState(false);
   const [queueError, setQueueError] = useState<string | null>(null);
   /**
    * **Which of the three screens he is on.**
@@ -481,6 +501,27 @@ function Panel({
    * queue — when he opens it again the job is still there to be read.
    */
   useEffect(() => {
+    if (connection === null || adopted) return;
+    setAdopted(true);
+    void fetchJobs(connection).then(
+      (jobs) => {
+        const queue = jobs.find((j) => j.type === 'queue');
+        if (queue === undefined) return;
+        /*
+         * Adopted whatever state it is in. A finished one is the summary he came
+         * back for; a running one starts the poll that was lost with the panel.
+         */
+        setQueueJobId(queue.id);
+        setQueueNewsSeen(false);
+      },
+      () => {
+        /* A service older than this route, or one that is not answering. Nothing
+           is claimed: the panel behaves exactly as it did before. */
+      },
+    );
+  }, [connection, adopted]);
+
+  useEffect(() => {
     if (connection === null || queueJobId === null) return;
     let live = true;
     const tick = (): void => {
@@ -526,10 +567,31 @@ function Panel({
     void fetchDryRun(connection, reel.label, mode.id).then(setDry, () => undefined);
   }, [job?.status, connection, reel, mode]);
 
-  const running = job !== null && (job.status === 'running' || job.status === 'pending');
+  /**
+   * **Pressed twice, fast.** Block 14 session 109.
+   *
+   * `running` was read off the job alone, and `onRun` set the job to `null` and
+   * *then* started the pipeline asynchronously — so between the press and the
+   * first poll the button was enabled and the money not yet spent. Two presses
+   * inside that window bought the pictures **twice**, measured: the audit's
+   * counter saw `starts: 2` on both run controls and on the queue.
+   *
+   * `Build.tsx` has always had this right — `setStarting(true)` runs before the
+   * `await` — and this is that shape. The flag is set synchronously, so the second
+   * press meets a disabled button however slow the service is, and it clears when
+   * a job actually arrives rather than when the request returns.
+   */
+  useEffect(() => {
+    /* A job exists, so `job` is the truth now and the flag has done its work. */
+    if (job !== null) setStarting(false);
+  }, [job]);
+  const running = starting || (job !== null && (job.status === 'running' || job.status === 'pending'));
   const gate = runGate({ service, reel, mode, running });
   const onRun = (part?: { only?: string[]; redo?: string[] }): void => {
     if (connection === null || reel === null || mode === null) return;
+    /* A second call does nothing at all, whatever the button happens to look like. */
+    if (running) return;
+    setStarting(true);
     setStartError(null);
     setJob(null);
     void startPipeline(connection, reel.label, mode.id, part).then(
@@ -538,6 +600,7 @@ function Panel({
       },
       (error: Error) => {
         setStartError(error.message);
+        setStarting(false);
       },
     );
   };
@@ -1025,19 +1088,22 @@ function Panel({
                   <button
                     className="run"
                     type="button"
-                    disabled={connection === null || queueJobId !== null}
+                    disabled={connection === null || queueJobId !== null || queueStarting}
                     onClick={() => {
-                      if (connection === null) return;
+                      if (connection === null || queueStarting) return;
+                      setQueueStarting(true);
                       setQueueError(null);
                       void startQueue(connection, queueItems).then(
                         (id) => {
                           setQueueJobId(id);
+                          setQueueStarting(false);
                           setQueueItems([]);
                           /* A new queue is new news, however the last one ended. */
                           setQueueNewsSeen(false);
                         },
                         (error: Error) => {
                           setQueueError(error.message);
+                          setQueueStarting(false);
                         },
                       );
                     }}

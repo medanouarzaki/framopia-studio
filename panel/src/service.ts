@@ -741,6 +741,33 @@ export async function fetchJob(connection: Connection, id: string): Promise<Pipe
   return await getJson<PipelineJob>(connection, `/jobs/${encodeURIComponent(id)}`);
 }
 
+/** One job as the service lists it, which is less than `GET /jobs/:id` returns. */
+export interface ListedJob {
+  id: string;
+  type: string;
+  status: 'pending' | 'running' | 'done' | 'error';
+  progress: number;
+  startedAt: string | null;
+  finishedAt: string | null;
+  detail: unknown;
+}
+
+/**
+ * **Everything this service has been asked to do, newest first.**
+ *
+ * Block 14 session 109. A queue outlives the panel — the work is the service's —
+ * but the panel held its job id in React state, so closing it mid-queue meant
+ * coming back to a screen that said nothing had ever happened while the service
+ * was still spending. This is how a returning panel finds its own work again.
+ *
+ * A service older than this route answers 404, and the panel then behaves exactly
+ * as it did before: it knows about a queue only if it started one this session.
+ */
+export async function fetchJobs(connection: Connection): Promise<ListedJob[]> {
+  const answer = await getJson<{ jobs?: ListedJob[] }>(connection, '/jobs');
+  return answer.jobs ?? [];
+}
+
 /**
  * Build the reel. The service spawns the same CLI a terminal would, which
  * drives the running After Effects; this returns as soon as the job exists.

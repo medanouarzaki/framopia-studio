@@ -4,7 +4,7 @@ import http, { type IncomingMessage, type ServerResponse } from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { REPO_ROOT, loadMode, modePathFor, snapshotOfMode } from '@framopia/core';
-import { createJob, getJob, UnknownJobTypeError } from './jobs.js';
+import { createJob, getJob, listJobs, UnknownJobTypeError } from './jobs.js';
 import { readEditPlan, writeEditPlan } from './editplan/io.js';
 import { clearManualZone, ManualZoneError, setManualZone } from './frames/plan-zones.js';
 import { chooseCandidate, imagesView, ImageViewError } from './image-view.js';
@@ -754,6 +754,29 @@ export function createApp(token: string): http.Server {
           if (!(error instanceof KeywordViewError)) throw error;
           sendJson(res, 400, serviceError('keywords', error.message, false));
         }
+        return;
+      }
+
+      /*
+       * **What this service has been asked to do, newest first.** Block 14
+       * session 109. A queue outlives the panel, and until now nothing could ask
+       * what was running — so closing the panel mid-queue meant coming back to a
+       * screen that said nothing had happened while money was still being spent.
+       *
+       * Read-only, free, and it starts nothing.
+       */
+      if (req.method === 'GET' && url.pathname === '/jobs') {
+        sendJson(res, 200, {
+          jobs: listJobs().map((j) => ({
+            id: j.id,
+            type: j.type,
+            status: j.status,
+            progress: j.progress,
+            startedAt: j.startedAt ?? null,
+            finishedAt: j.finishedAt ?? null,
+            detail: j.detail ?? null,
+          })),
+        });
         return;
       }
 
