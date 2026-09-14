@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { SOFT_ENLARGEMENT_PERCENT, fitByLongEdge } from '@framopia/core';
-import { softPictureWarning } from './soft-picture.js';
+import { softPictureWarning, pictureShapeWarning } from './soft-picture.js';
 
 /**
  * **The line the build really printed.**
@@ -76,5 +76,43 @@ describe('what the build says about a picture too small for its space', () => {
     const at = fitByLongEdge({ boxPx: 1000, templateScalePercent: 100, sourceWidth: 500, sourceHeight: 500 });
     expect(at.enlargementPercent).toBe(SOFT_ENLARGEMENT_PERCENT);
     expect(at.tooEnlarged).toBe(false);
+  });
+});
+
+/**
+ * **The sentence the build prints about a picture of the wrong shape.**
+ *
+ * Block 13 session 107, written here for the reason session 59's is: a line
+ * nobody has seen printed is a line that might not print.
+ */
+describe('what the build says about a picture that is not square', () => {
+  it('names the shape, the size and how much card shows, without jargon', () => {
+    const said = pictureShapeWarning({
+      elementId: 'img003',
+      sourceWidth: 1200,
+      sourceHeight: 630,
+      shape: 'wider than it is tall',
+      bandPx: 238,
+      cardPx: 1080,
+    });
+    expect(said).toBe(
+      'warning [img003]: this picture is 1200x630px, wider than it is tall, and the frame it ' +
+        'goes in is square. It is placed whole and nothing is cut off, so 238px of the 1080px ' +
+        'card shows above and below it.',
+    );
+    /* No command, no percentage, and it does not threaten to refuse. */
+    expect(said).not.toMatch(/npm |terminal|refus/i);
+  });
+
+  it('says which sides the card shows on when the picture is the tall way', () => {
+    const said = pictureShapeWarning({
+      elementId: 'img001',
+      sourceWidth: 4776,
+      sourceHeight: 6432,
+      shape: 'taller than it is wide',
+      bandPx: 129,
+      cardPx: 1080,
+    });
+    expect(said).toContain('129px of the 1080px card shows each side of it');
   });
 });

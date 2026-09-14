@@ -6,6 +6,7 @@ import {
   SOFT_ENLARGEMENT_PERCENT,
   clientPictureStorePath,
   fitByLongEdge,
+  bandBesideAPicture,
   isInClientPictureStore,
 } from '@framopia/core';
 
@@ -302,5 +303,83 @@ describe('a picture too small for the space it is given', () => {
     expect(fit.enlargementPercent).toBeCloseTo(500, 9);
     expect(fit.scalePercent).toBeCloseTo(500, 9);
     expect(fit.tooEnlarged).toBe(true);
+  });
+});
+
+/**
+ * **A picture that is not the shape of its frame.**
+ *
+ * Block 13 session 107. The audited card comp: `IMG_MAIN` is 1000 px and `CARD`
+ * behind it is 1080 px, so the design already shows 40 px of card around a square
+ * picture. A band at least that thick is a departure from what the template looks
+ * like when it is given the shape it was built for.
+ */
+describe('bare card beside a picture that is not square', () => {
+  const frame = { boxPx: 1000, cardPx: 1080 };
+
+  /**
+   * **The half that is not in doubt**, and the half every picture the tool makes
+   * depends on: all 152 generated pictures on this disk are 2048 x 2048.
+   */
+  it('says nothing at all about a square picture', () => {
+    const band = bandBesideAPicture({ ...frame, sourceWidth: 2048, sourceHeight: 2048 });
+    expect(band).toEqual({
+      bandPx: 0,
+      templateMarginPx: 40,
+      shape: 'square',
+      leavesABand: false,
+    });
+  });
+
+  /** And nothing about one that is a hair off square, which the brief names. */
+  it('says nothing about a picture that is 1:1.01', () => {
+    const band = bandBesideAPicture({ ...frame, sourceWidth: 1010, sourceHeight: 1000 });
+    expect(band.leavesABand).toBe(false);
+    /* 1010:1000 leaves 5px against a 40px margin — a twentieth of what is already there. */
+    expect(Math.round(band.bandPx)).toBe(5);
+  });
+
+  /** The threshold is the template's own margin, so it lands where geometry puts it. */
+  it('starts saying so exactly where the band matches the margin the template draws', () => {
+    /* short/long = 920/1000 gives a 40px band, which is the margin itself. */
+    expect(bandBesideAPicture({ ...frame, sourceWidth: 1000, sourceHeight: 920 }).leavesABand).toBe(
+      true,
+    );
+    expect(bandBesideAPicture({ ...frame, sourceWidth: 1000, sourceHeight: 921 }).leavesABand).toBe(
+      false,
+    );
+  });
+
+  /**
+   * **His six**, measured off this disk on 2026-09-15. Every one of them leaves a
+   * band and not one of them is enlarged past 200%, which is why the warning
+   * session 59 built never fired on any of them.
+   */
+  it.each([
+    ['pic016', 6000, 4000, 'wider than it is tall', 167],
+    ['pic017', 1200, 630, 'wider than it is tall', 238],
+    ['pic018', 1100, 643, 'wider than it is tall', 208],
+    ['pic019', 4776, 6432, 'taller than it is wide', 129],
+    ['pic021', 1000, 665, 'wider than it is tall', 168],
+    ['pic022', 740, 494, 'wider than it is tall', 166],
+  ])('reports the band on %s', (_name, w, h, shape, bandPx) => {
+    const band = bandBesideAPicture({ ...frame, sourceWidth: w as number, sourceHeight: h as number });
+    expect(band.shape).toBe(shape);
+    expect(band.leavesABand).toBe(true);
+    expect(Math.round(band.bandPx)).toBe(bandPx);
+    /* And none of them is soft, so nothing else in the tool says a word. */
+    expect(
+      fitByLongEdge({
+        boxPx: 1000,
+        templateScalePercent: 100,
+        sourceWidth: w as number,
+        sourceHeight: h as number,
+      }).tooEnlarged,
+    ).toBe(false);
+  });
+
+  /** A picture with no pixels is not a shape question; it is a broken file. */
+  it('refuses a picture with no width or height, as the fit does', () => {
+    expect(() => bandBesideAPicture({ ...frame, sourceWidth: 0, sourceHeight: 100 })).toThrow();
   });
 });

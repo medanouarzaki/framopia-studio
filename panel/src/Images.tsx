@@ -176,6 +176,7 @@ function Slot({
 
       <Where slot={slot} />
       <TooSmall slot={slot} />
+      <WrongShape slot={slot} />
 
       <ClientPictures slot={slot} view={view} onChoose={onChoose} />
 
@@ -303,6 +304,34 @@ function TooSmall({ slot }: { slot: ImageSlotView }): JSX.Element | null {
     <p className="reason soft" role="status">
       This picture is small for the space it fills, so it will look soft. It is still placed —
       a bigger version of the same picture would look sharper.
+    </p>
+  );
+}
+
+/**
+ * **The same warning, in the same place, for the shape instead of the size.**
+ *
+ * Block 13 session 107. Mohamed reported that a photograph he adds which is not
+ * square looks bad in the result, and the panel said nothing: every generated
+ * picture is 2048 x 2048, the frame is square, and a photograph that is not gets
+ * fitted whole with bare card above and below it. None of the six non-square
+ * photographs on his disk is enlarged past 200%, so session 59's warning never
+ * fired on one.
+ *
+ * It sits beside the slot, before any button that spends, exactly where
+ * `TooSmall` sits. It warns and it does not refuse, and it says nothing at all
+ * about a square picture — which is every picture the tool makes.
+ *
+ * No numbers on screen, for session 59's reason: a figure here would invite him
+ * to tune it, and the thing he can act on is whether to crop the photograph.
+ */
+function WrongShape({ slot }: { slot: ImageSlotView }): JSX.Element | null {
+  if (slot.shape?.leavesABand !== true) return null;
+  return (
+    <p className="reason soft" role="status">
+      This photograph is {slot.shape.shape} and the frame it goes in is square, so there will be
+      bare frame beside it. It is still placed and nothing is cut off — a square crop of the same
+      photograph would fill the frame.
     </p>
   );
 }

@@ -14,6 +14,7 @@ import {
   dialogueAttenuationDb,
   loudestBoundOffsetDb,
   fitByLongEdge,
+  bandBesideAPicture,
   loadSfxIndex,
   loadTemplateManifest,
   parseHexColour,
@@ -25,7 +26,7 @@ import {
 import { edgeLuminance, flattenCutout } from '../images/sidecar.js';
 import { reelMasksDir } from '../frames/segment.js';
 import { ClientPictureError, clientPictureFileFor } from './client-picture.js';
-import { softPictureWarning } from './soft-picture.js';
+import { softPictureWarning, pictureShapeWarning } from './soft-picture.js';
 import { videoOf } from '../video-identity.js';
 import { readEditPlan, writeEditPlan } from '../editplan/io.js';
 import { buildRecordFor } from './build-record.js';
@@ -617,6 +618,29 @@ for (const e of built.elements) {
         sourceHeight: src.height,
         boxPx: solid.width,
         enlargementPercent: fit.enlargementPercent,
+      }),
+    );
+  }
+  /*
+   * **And the same for a picture that is not the shape of its frame.** Block 13
+   * session 107. The card is asked of the audit beside the box, so the yardstick
+   * is the template's own margin rather than a number written down here.
+   */
+  const band = bandBesideAPicture({
+    boxPx: solid.width,
+    cardPx: auditedSolid(c, 'CARD').width,
+    sourceWidth: src.width,
+    sourceHeight: src.height,
+  });
+  if (band.leavesABand) {
+    console.log(
+      pictureShapeWarning({
+        elementId: e.id,
+        sourceWidth: src.width,
+        sourceHeight: src.height,
+        shape: band.shape,
+        bandPx: band.bandPx,
+        cardPx: auditedSolid(c, 'CARD').width,
       }),
     );
   }

@@ -75,6 +75,7 @@ function slot(id: string, over: Record<string, unknown> = {}): Record<string, un
     buildsWithReason: 'no candidates',
     candidates: [],
     enlargement: null,
+    shape: null,
     ...over,
   };
 }
@@ -285,6 +286,92 @@ describe.skipIf(!built)('a photograph chosen by hand from the picker', () => {
       expect(text).toContain('This picture goes in the comp instead of a made one');
       expect(text).toContain('Using this');
       expect(loaded.uncaught).toEqual([]);
+    } finally {
+      await loaded.page.close();
+    }
+  }, 30_000);
+});
+
+/**
+ * **A photograph that is not the shape of its frame.**
+ *
+ * Block 13 session 107. Mohamed reported that one he adds which is not square is
+ * used as it is and looks bad. Six of his twenty-two are not square, and not one
+ * of them is enlarged past 200% — so the warning session 59 built never fired on
+ * a single one and the panel said nothing before he spent.
+ */
+describe.skipIf(!built)('a photograph that is not square', () => {
+  const WIDE = { shape: 'wider than it is tall' as const, leavesABand: true };
+  const TALL = { shape: 'taller than it is wide' as const, leavesABand: true };
+  const SQUARE = { shape: 'square' as const, leavesABand: false };
+
+  it('says there will be bare frame beside it, and still shows the photograph', async () => {
+    const loaded = await open(
+      viewWith([slot('img001', { chosenClientPictureId: 'pic001', shape: WIDE })]),
+    );
+    if (loaded === null) return;
+    try {
+      await picturesSettled(loaded.page);
+      const text = (await loaded.page.textContent('main.editor')) ?? '';
+      expect(text).toContain('wider than it is tall');
+      expect(text).toContain('bare frame beside it');
+      /* It warns; it does not refuse. */
+      expect(text).toContain('It is still placed and nothing is cut off');
+
+      /* The photograph is on screen and really drew, as with the soft warning. */
+      const shown = await picturesOnScreen(loaded.page);
+      expect(shown.length).toBeGreaterThan(0);
+
+      /*
+       * **No numbers in the sentence itself** — session 59's reason: a figure
+       * would invite him to tune it, and what he can act on is whether to crop.
+       * Read off the warning, not off the whole editor, which legitimately shows
+       * the slot's own size in pixels a line below.
+       */
+      const warning = (await loaded.page.textContent('p.reason.soft')) ?? '';
+      expect(warning).not.toMatch(/\d/);
+      for (const word of ['terminal', 'npm run', 'restart']) {
+        expect(`${word}: ${text.toLowerCase().includes(word)}`).toBe(`${word}: false`);
+      }
+      expect(loaded.uncaught).toEqual([]);
+    } finally {
+      await loaded.page.close();
+    }
+  }, 30_000);
+
+  it('says which way it is long, so the sentence matches the picture', async () => {
+    const loaded = await open(
+      viewWith([slot('img001', { chosenClientPictureId: 'pic001', shape: TALL })]),
+    );
+    if (loaded === null) return;
+    try {
+      await picturesSettled(loaded.page);
+      const text = (await loaded.page.textContent('main.editor')) ?? '';
+      expect(text).toContain('taller than it is wide');
+      expect(text).not.toContain('wider than it is tall');
+    } finally {
+      await loaded.page.close();
+    }
+  }, 30_000);
+
+  /**
+   * **The half that is not in doubt.** Every picture the tool makes is 2048 x
+   * 2048, and this must say nothing about any of them — nor about a service too
+   * old to have measured the shape at all.
+   */
+  it.each([
+    ['a square photograph', SQUARE],
+    ['a service that cannot say', null],
+  ])('says nothing about %s', async (_name, shape) => {
+    const loaded = await open(
+      viewWith([slot('img001', { chosenClientPictureId: 'pic002', shape })]),
+    );
+    if (loaded === null) return;
+    try {
+      await picturesSettled(loaded.page);
+      const text = (await loaded.page.textContent('main.editor')) ?? '';
+      expect(text).not.toContain('bare frame beside it');
+      expect(await loaded.page.locator('p.reason.soft').count()).toBe(0);
     } finally {
       await loaded.page.close();
     }

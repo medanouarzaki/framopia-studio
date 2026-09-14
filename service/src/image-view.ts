@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { REPO_ROOT, fitByLongEdge, type AuditComp } from '@framopia/core';
+import { REPO_ROOT, fitByLongEdge, bandBesideAPicture, type AuditComp } from '@framopia/core';
 import { findReelByLabel, listReels } from './catalogue.js';
 import { readEditPlan, writeEditPlan } from './editplan/io.js';
 import { dryRun } from './dry-run.js';
@@ -148,6 +148,14 @@ export interface ImageSlotView {
    * catches in the one place that should refuse.
    */
   enlargement: { percent: number; tooEnlarged: boolean } | null;
+  /**
+   * Whether the picture leaves bare card beside it, and which way it is long.
+   *
+   * **Optional with a default**, like every schema addition: a service older than
+   * this panel sends nothing and the panel says nothing, which is the honest
+   * answer rather than a claim the picture is fine.
+   */
+  shape?: { shape: 'square' | 'wider than it is tall' | 'taller than it is wide'; leavesABand: boolean } | null;
 }
 
 export interface ImagesView {
@@ -301,6 +309,32 @@ function enlargementOf(file: string | null): ImageSlotView['enlargement'] {
   }
 }
 
+/**
+ * Whether that picture leaves bare card beside it, or null when it cannot be said.
+ *
+ * The card is asked of the audit exactly as the box is, so the panel and the build
+ * use one yardstick — the template's own margin — and cannot drift apart.
+ */
+function shapeOf(file: string | null): ImageSlotView['shape'] {
+  if (file === null || !existsSync(file)) return null;
+  const solid = cardSolid();
+  const card = cardFrame();
+  if (solid === null || card === null) return null;
+  try {
+    const src = imageSize(file);
+    const band = bandBesideAPicture({
+      boxPx: solid.width,
+      cardPx: card.width,
+      sourceWidth: src.width,
+      sourceHeight: src.height,
+    });
+    return { shape: band.shape, leavesABand: band.leavesABand };
+  } catch {
+    // Bytes this project's own reader cannot measure: saying nothing is right.
+    return null;
+  }
+}
+
 /** Read once; the audit does not change while the service is up. */
 let cardSolidCache: { width: number; scalePercent: number } | null | undefined;
 function cardSolid(): { width: number; scalePercent: number } | null {
@@ -315,6 +349,28 @@ function cardSolid(): { width: number; scalePercent: number } | null {
     cardSolidCache = null;
   }
   return cardSolidCache;
+}
+
+/**
+ * The card behind the picture, read the same way and cached the same way.
+ *
+ * Block 13 session 107: the yardstick for "is that band worth mentioning" is the
+ * margin the template already draws around a square picture, which is this minus
+ * the box. Asked of the audit so nothing here remembers 1080.
+ */
+let cardFrameCache: { width: number; scalePercent: number } | null | undefined;
+function cardFrame(): { width: number; scalePercent: number } | null {
+  if (cardFrameCache !== undefined) return cardFrameCache;
+  try {
+    const audit = JSON.parse(
+      readFileSync(path.join(REPO_ROOT, 'templates', 'library.audit.json'), 'utf8'),
+    ) as { comps: AuditComp[] };
+    const comp = audit.comps.find((c) => c.name === CARD_TEMPLATE);
+    cardFrameCache = comp === undefined ? null : auditedSolid(comp, 'CARD');
+  } catch {
+    cardFrameCache = null;
+  }
+  return cardFrameCache;
 }
 
 /*
@@ -348,6 +404,7 @@ function slotViewOf(
     buildsWith: choice.candidateId,
     buildsWithReason: choice.reason,
     enlargement: enlargementOf(pictureSlotWillPlace(plan, slot)),
+    shape: shapeOf(pictureSlotWillPlace(plan, slot)),
   };
 }
 

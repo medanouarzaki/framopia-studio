@@ -587,6 +587,12 @@ export interface ImageSlotView {
    * this panel, or a picture whose size could not be read.
    */
   enlargement?: { percent: number; tooEnlarged: boolean } | null;
+  /**
+   * Whether the picture leaves bare card beside it. Block 13 session 107.
+   * Absent means a service older than this panel, which cannot say — and then
+   * nothing is claimed either way.
+   */
+  shape?: { shape: 'square' | 'wider than it is tall' | 'taller than it is wide'; leavesABand: boolean } | null;
   buildsWithReason: string;
 }
 

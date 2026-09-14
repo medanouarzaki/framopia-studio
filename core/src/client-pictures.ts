@@ -199,6 +199,81 @@ export function fitByLongEdge(options: {
 }
 
 /**
+ * **How much bare card a picture of the wrong shape leaves, and whether that is
+ * worth saying.**
+ *
+ * Block 13 session 107. Mohamed reported that a photograph he adds which is not
+ * square is used as it is and looks bad. Measured: **every one of the 152
+ * generated pictures on this disk is 2048 x 2048**, and six of his own
+ * twenty-two are not square — 6000x4000, 1200x630, 1100x643, 4776x6432,
+ * 1000x665 and 740x494.
+ *
+ * Nothing was wrong with the placement. `fitByLongEdge` already puts the whole
+ * picture inside the box and crops nothing, which is the right thing to do with
+ * a photograph a doctor chose. What nobody had noticed is what the picture sits
+ * **on**: the audited card comp is 1200 px, the `IMG_MAIN` box is 1000 px and
+ * the `CARD` behind it is 1080 px. A 1200x630 photograph draws 1000x525 and
+ * leaves **278 px of bare card above it and 278 px below**, inside a visible
+ * square frame. That is what looks bad, and today he is told nothing: none of
+ * the six is enlarged past the 200% that `tooEnlarged` watches.
+ *
+ * **The yardstick is the template's own margin, not a number anyone chose.**
+ * With a square picture the design already shows `(cardPx - boxPx) / 2` of card
+ * all round — 40 px here. A band thinner than that cannot read as wrong, because
+ * the design already draws one that thick. A band at least that thick is a
+ * departure from what the template looks like when it is given the shape it was
+ * built for. Both figures are asked of the audit by the callers, so this follows
+ * the template rather than remembering it.
+ *
+ * **It computes; it does not decide.** Nothing here refuses, and whether the
+ * answer should be to fit, to fill or to refuse is Mohamed's ruling — the
+ * samples for it are in `.local/evidence/session-107-shape/`.
+ */
+export function bandBesideAPicture(options: {
+  /** The placeholder's box in the template, in pixels — `IMG_MAIN`. */
+  boxPx: number;
+  /** The card behind it, in pixels — `CARD`. */
+  cardPx: number;
+  sourceWidth: number;
+  sourceHeight: number;
+}): {
+  /** How far the picture is from filling the box, on each side of its short axis. */
+  bandPx: number;
+  /** The card the design already shows around a square picture. */
+  templateMarginPx: number;
+  /** Which way the picture is longer, in his words rather than in ratios. */
+  shape: 'square' | 'wider than it is tall' | 'taller than it is wide';
+  /** True when the band is at least as thick as the margin the template draws. */
+  leavesABand: boolean;
+} {
+  const { boxPx, cardPx, sourceWidth, sourceHeight } = options;
+  if (sourceWidth <= 0 || sourceHeight <= 0) {
+    throw new Error('a picture needs a width and a height');
+  }
+  const long = Math.max(sourceWidth, sourceHeight);
+  const short = Math.min(sourceWidth, sourceHeight);
+  const bandPx = (boxPx - (boxPx * short) / long) / 2;
+  const templateMarginPx = Math.max(0, (cardPx - boxPx) / 2);
+  const shape =
+    sourceWidth === sourceHeight
+      ? 'square'
+      : sourceWidth > sourceHeight
+        ? 'wider than it is tall'
+        : 'taller than it is wide';
+  return {
+    bandPx,
+    templateMarginPx,
+    shape,
+    /*
+     * A square picture leaves no band at all, so it is untouched by this whatever
+     * the template's margin is — which is the half of the answer that is not in
+     * doubt, and the half every generated picture depends on.
+     */
+    leavesABand: bandPx > 0 && bandPx >= templateMarginPx,
+  };
+}
+
+/**
  * The words in a picture's label.
  *
  * **The one place a label is read as words**, so the client screen, the
