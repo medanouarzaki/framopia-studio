@@ -50,6 +50,7 @@ import {
   willDoWords,
   type RunState,
 } from './words.js';
+import { shortLabels } from './video-names.js';
 import type {
   ClientMode,
   DryRunPlan,
@@ -350,6 +351,17 @@ function Panel({
   }, [loadVideos]);
 
   const reel = reels.find((r) => r.label === reelLabel) ?? null;
+  /**
+   * **What a row calls each video**, shortened against the others on screen.
+   *
+   * Block 13 session 99. His labels average 44 characters and differ in their
+   * last four, so a list of fifteen is fifteen near-identical strings. The stored
+   * label is untouched — Block 12 session 81 made it carry its folder always and
+   * plans, cache keys and routes all hold it. This is only what a row reads, with
+   * the whole label a hover away.
+   */
+  const shownName = shortLabels(reels.map((r) => r.label));
+  const nameOf = (label: string): string => shownName.get(label) ?? label;
   const mode = modes.find((m) => m.id === modeId) ?? null;
 
   /* What a run would do, before anything is paid for. It spends nothing. */
@@ -720,8 +732,8 @@ function Panel({
             >
               <option value="">{reels.length === 0 ? 'No videos found' : 'Choose a video…'}</option>
               {reels.map((r) => (
-                <option key={r.label} value={r.label}>
-                  {r.label}
+                <option key={r.label} value={r.label} title={r.label}>
+                  {nameOf(r.label)}
                   {r.durationS === null ? '' : ` — ${r.durationS.toFixed(1)}s`}
                 </option>
               ))}
@@ -892,16 +904,16 @@ function Panel({
                 {reel === null
                   ? 'Choose a video first'
                   : queueItems.some((q) => q.reel === reel.label)
-                    ? `${reel.label} is already in the list`
-                    : `Add ${reel.label} to the list`}
+                    ? `${nameOf(reel.label)} is already in the list`
+                    : `Add ${nameOf(reel.label)} to the list`}
               </button>
               {queueItems.length === 0 ? null : (
                 <>
                   <ul className="facts">
                     {queueItems.map((q, i) => (
                       <li key={q.reel}>
-                        <span className="k">
-                          {i + 1}. {q.reel}
+                        <span className="k" title={q.reel}>
+                          {i + 1}. {nameOf(q.reel)}
                         </span>
                         <span className="v">
                           <button

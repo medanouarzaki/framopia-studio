@@ -3,7 +3,7 @@ import { chromium, type Browser } from 'playwright';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { stubHost, HANDSHAKE, onScreen } from './browser-harness.js';
+import { stubHost, stubFetch, HEALTHY_PAYLOAD, HANDSHAKE, onScreen } from './browser-harness.js';
 
 /**
  * **A ruler, not a rule.**
@@ -37,6 +37,14 @@ describe.skipIf(!built)('how tall the panel is', () => {
     if (browser === undefined) return;
     const page = await browser.newPage({ viewport: { width: 420, height: 900 } });
     await page.addInitScript(stubHost(HANDSHAKE));
+    /*
+     * **With the service answering**, which is how he uses it. Block 13 session
+     * 99: every height reported from session 95 to 98 was measured with the
+     * service unreachable, and that branch of the readiness block is 211 px of
+     * error, retry button and attempt count. Healthy it is one line. The figures
+     * those sessions reported were true of a panel that was not working.
+     */
+    await page.addInitScript(stubFetch('healthy', HEALTHY_PAYLOAD));
 
     await page.goto(`file://${INDEX}`);
     await page.waitForSelector('header.brand', { timeout: 10_000 });

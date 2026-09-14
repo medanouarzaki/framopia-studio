@@ -4,7 +4,9 @@ import {
   built,
   INDEX,
   HANDSHAKE,
+  HEALTHY_PAYLOAD,
   stubHost,
+  stubFetch,
   stubRoutes,
   stepsThrough,
   onScreen,
@@ -122,6 +124,13 @@ describe.skipIf(!built)('the three screens', () => {
   /**
    * **Nothing he needs is below the fold**, which is the whole reason for the
    * split. Measured against the 900 px the panel actually gets.
+   *
+   * **This is the worst case on purpose.** `open()` leaves the companion service
+   * unreachable, and that branch of the readiness block is 211 px of error, retry
+   * button and attempt count, where a healthy service is one line of 71 px. If it
+   * fits with the service down it fits when it is up — and Block 13 session 99
+   * measured the difference, because every height reported from session 95 to 98
+   * was taken in this state: Choose 705 → 566, Make 816 → 676, Build 656 → 516.
    */
   it('fits every screen inside the panel', async () => {
     const page = await open();
@@ -384,4 +393,35 @@ describe.skipIf(!built)('the news a step carries', () => {
     expect(await newsOn(page)).toBeNull();
     await page.close();
   }, 40_000);
+
+  /**
+   * **And fits with the service answering, which is how he uses it.**
+   *
+   * The test above is the worst case; this is the ordinary one. It exists because
+   * the "84 px of room" session 98 flagged on Make was 224 px all along, and the
+   * difference was a readiness block showing an error nobody had noticed the
+   * measurements were taken against.
+   */
+  it('fits every screen with the service answering, with room to spare', async () => {
+    if (browser === undefined) return;
+    const page = await browser.newPage({ viewport: { width: 420, height: 900 } });
+    await page.addInitScript(stubHost(HANDSHAKE));
+    await page.addInitScript(stubFetch('healthy', HEALTHY_PAYLOAD));
+    await page.goto(`file://${INDEX}`);
+    await page.waitForSelector('nav.moments', { timeout: 10_000 });
+
+    for (const screen of ['choose', 'run', 'build'] as const) {
+      await onScreen(page, screen);
+      const bottom = await page.$$eval('section', (els) =>
+        Math.max(
+          ...els
+            .filter((el) => (el as HTMLElement).checkVisibility())
+            .map((el) => el.getBoundingClientRect().bottom + window.scrollY),
+        ),
+      );
+      /* Comfortably, not barely: a hundred pixels of headroom on every screen. */
+      expect(`${screen}: ${Math.round(bottom) <= 800}`).toBe(`${screen}: true`);
+    }
+    await page.close();
+  }, 30_000);
 });

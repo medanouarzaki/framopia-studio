@@ -1,4 +1,5 @@
 import type { JSX } from 'react';
+import { shortLabels } from './video-names.js';
 
 /**
  * **What he comes back to.**
@@ -52,6 +53,14 @@ export function Queue({
   stopping: boolean;
 }): JSX.Element {
   const running = view.runningIndex === null ? null : view.items[view.runningIndex];
+  /*
+   * **Shortened against the queue's own rows**, not against the picker's — these
+   * are the videos he put in the list, and telling them apart from each other is
+   * what a row here has to do. Block 13 session 99. The stored label is what is
+   * shown on hover and what everything else still uses.
+   */
+  const shownName = shortLabels(view.items.map((i) => i.reel));
+  const nameOf = (reel: string): string => shownName.get(reel) ?? reel;
 
   return (
     <div className="card queue">
@@ -70,7 +79,7 @@ export function Queue({
           <p className="reason" role="status">
             {running === undefined || running === null
               ? 'Starting.'
-              : `Working on ${running.reel}. You can close this and come back — it keeps going.`}
+              : `Working on ${nameOf(running.reel)}. You can close this and come back — it keeps going.`}
           </p>
           <p className="faint">
             Spent so far: ${view.spentUsd.toFixed(2)}.
@@ -90,7 +99,7 @@ export function Queue({
           <ul className="facts">
             {view.summary.lines.map((line) => (
               <li key={line.reel}>
-                <span className="k">{line.reel}</span>
+                <span className="k" title={line.reel}>{nameOf(line.reel)}</span>
                 <span className={`v ${line.needsHim ? 'warn' : 'ok'}`}>{line.said}</span>
               </li>
             ))}
@@ -108,7 +117,7 @@ export function Queue({
           .filter((i) => i.outcome !== 'not-reached')
           .map((item) => (
             <li key={item.reel}>
-              <span className="k">{item.reel}</span>
+              <span className="k" title={item.reel}>{nameOf(item.reel)}</span>
               <span className="v">
                 {[
                   howLong(item),

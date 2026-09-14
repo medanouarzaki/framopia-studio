@@ -2468,6 +2468,58 @@ describe.skipIf(!built)('the Build step', () => {
     }
   }, 30_000);
 
+  /**
+   * **Build was seven paragraphs and he read none of them.**
+   *
+   * Block 13 session 99. What he is deciding is whether this is the composition
+   * he wants, so four facts stay in front of him — the video and the client, what
+   * it will contain, that it **replaces what is there**, and that it costs nothing
+   * — and the watermark, the typefaces and which of the client's looks it uses go
+   * behind one press.
+   *
+   * **Nothing was deleted and nothing was reworded.** M2 of this session's
+   * mutations un-grouped them again and no test noticed, which is why this one
+   * exists.
+   */
+  it('puts four facts in front of him and the rest behind one press', async () => {
+    const loaded = await openBuild();
+    if (loaded === null) return;
+    try {
+      await onScreen(loaded.page, 'build');
+      /* What is on screen without opening anything. */
+      /*
+       * Visible ones only, which is the whole point: a closed `details` still has
+       * its paragraphs in the page, and Block 11 session 69 shipped a test that
+       * read exactly that kind of hidden text as if it were on screen.
+       */
+      const shown = await loaded.page.$$eval('.buildpane p.detail', (els) =>
+        els.filter((e) => (e as HTMLElement).checkVisibility()).map((e) => e.textContent ?? ''),
+      );
+      expect(shown).toHaveLength(4);
+      expect(shown[1] ?? '').toContain('Will contain');
+      expect(shown[2] ?? '').toContain('replacing what is there');
+      expect(shown[3] ?? '').toContain('Building is free');
+
+      /* And the rest is there, closed, named, and not hidden from him. */
+      const hidden = await loaded.page.$$eval('.buildpane details.quibbles p.detail', (els) =>
+        els.map((e) => e.textContent ?? ''),
+      );
+      expect(hidden.join(' ')).toContain('Watermark');
+      expect(hidden.join(' ')).toContain('Type set in');
+      expect(await loaded.page.textContent('.buildpane details.quibbles summary')).toBe(
+        'What else it will use',
+      );
+      /* Closed to begin with: none of its own paragraphs is being rendered. */
+      const openAtFirst = await loaded.page.$eval(
+        '.buildpane details.quibbles',
+        (el) => (el as HTMLDetailsElement).open,
+      );
+      expect(openAtFirst).toBe(false);
+    } finally {
+      await loaded.page.close();
+    }
+  }, 30_000);
+
   it('names the file it wrote, and does not offer to open it', async () => {
     const loaded = await openBuild('done');
     if (loaded === null) return;

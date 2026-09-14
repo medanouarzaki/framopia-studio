@@ -1,6 +1,7 @@
 import { savedOutputNote, savedOutputSentence } from '@framopia/core/saved-output';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { fetchBuildJob, startBuild, updateClientLook, type Connection } from './service.js';
+import { shortLabel } from './video-names.js';
 import type { BuildJob, BuildPreview, BuildProgress } from './types.js';
 
 /**
@@ -201,28 +202,27 @@ function BuildPreviewCard({
   ];
   return (
     <div className="card">
-      <p className="detail">
-        {preview.reel}, for {preview.modeName} — the client recorded on {preview.modeSource}.
+      <p className="detail" title={preview.reel}>
+        {shortLabel(preview.reel, [preview.reel])}, for {preview.modeName} — the client recorded
+        on {preview.modeSource}.
       </p>
       <p className="detail">Will contain {parts.join(', ')}.</p>
-      <p className="detail">
-        {preview.watermark === null
-          ? 'No watermark on this video.'
-          : `Watermark ${preview.watermark.size}, ` +
-            `${preview.watermark.widthPx} × ${preview.watermark.heightPx} px.`}
-      </p>
-      <p className="detail">
-        Type set in {preview.fonts.latin} and {preview.fonts.arabic}
-        {preview.fonts.emphasis === undefined || preview.fonts.emphasis === preview.fonts.latin
-          ? ''
-          : `, with ${preview.fonts.emphasis} for emphasised words`}
-        {preview.fonts.globalFallback ? ', the standard pair' : ''}.
-      </p>
-      <ClientLook
-        preview={preview}
-        connection={connection}
-        onClientLookUpdated={onClientLookUpdated}
-      />
+      {/*
+        **This was seven paragraphs and he read none of them.** Block 13 session
+        99. Every sentence was true; together they were a wall in front of a
+        button.
+
+        What he is deciding is whether this is the composition he wants, so what
+        stays in front of him is the video and the client, what it will contain,
+        that it **replaces what is there**, and that it costs nothing. The rest —
+        the watermark, the typefaces, which of the client's looks it uses — are
+        facts he checks when he has a reason to, and they are one press away.
+
+        **Nothing is deleted and nothing is reworded.** Session 95 settled every
+        sentence; these are the same sentences, grouped. `.quibbles` is the
+        disclosure Build already uses for its short-card notes, so this is not a
+        second way of hiding things.
+      */}
       <p className="detail">
         Writes {preview.outputPath}, replacing what is there.
       </p>
@@ -231,6 +231,27 @@ function BuildPreviewCard({
         so saying nothing about cost would itself be read as a cost.
       */}
       <p className="detail">Building is free. It calls nothing and bills nothing.</p>
+      <details className="quibbles">
+        <summary>What else it will use</summary>
+        <p className="detail">
+          {preview.watermark === null
+            ? 'No watermark on this video.'
+            : `Watermark ${preview.watermark.size}, ` +
+              `${preview.watermark.widthPx} × ${preview.watermark.heightPx} px.`}
+        </p>
+        <p className="detail">
+          Type set in {preview.fonts.latin} and {preview.fonts.arabic}
+          {preview.fonts.emphasis === undefined || preview.fonts.emphasis === preview.fonts.latin
+            ? ''
+            : `, with ${preview.fonts.emphasis} for emphasised words`}
+          {preview.fonts.globalFallback ? ', the standard pair' : ''}.
+        </p>
+        <ClientLook
+          preview={preview}
+          connection={connection}
+          onClientLookUpdated={onClientLookUpdated}
+        />
+      </details>
     </div>
   );
 }
