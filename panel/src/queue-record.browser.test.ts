@@ -370,10 +370,10 @@ describe.skipIf(!built)('the record while a queue is running', () => {
       window.fetch = (url, init) => {
         const u = String(url).split('?')[0];
         const isPost = init !== undefined && String(init.method ?? '').toUpperCase() === 'POST';
-        if (!isPost && /\/queues$/.test(u)) {
+        if (!isPost && /queues$/.test(u)) {
           return Promise.resolve({ ok: true, json: () => Promise.resolve(window.__queues) });
         }
-        if (!isPost && /\/jobs$/.test(u)) {
+        if (!isPost && /jobs$/.test(u)) {
           return Promise.resolve({ ok: true, json: () => Promise.resolve(window.__listed) });
         }
         return real(url, init);
