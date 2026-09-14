@@ -273,6 +273,14 @@ registerJobRunner(QUEUE_JOB_TYPE, async (params, job) => {
     return { reel, modeId };
   });
 
+  /*
+   * What the record does not yet know, when the disk will not take it. Null while
+   * the record is being written, which is almost always.
+   */
+  let notRecorded: { since: string; spentUsd: number; why: string } | null = null;
+  let lastRecordedAt = job.startedAt ?? new Date().toISOString();
+  let lastRecordedSpendUsd = 0;
+
   return await runQueue({
     items,
     shouldStop: () => stopped.has(job.id),
@@ -297,8 +305,31 @@ registerJobRunner(QUEUE_JOB_TYPE, async (params, job) => {
           progress,
           ...(progress.done ? { summary: queueSummary(progress) } : {}),
         });
-      } catch {
-        // Evidence, not a dependency.
+        notRecorded = null;
+      } catch (error) {
+        /*
+         * **It keeps working, and it stops being silent.** Block 14 session 111.
+         *
+         * Session 110 made this failure non-fatal on purpose — a disk problem must
+         * not stop work that is being paid for — and then measured the consequence
+         * and reported it: *the queue keeps spending and stops recording silently.*
+         * Silence was the wrong half of the trade.
+         *
+         * The queue still does not stop. What changes is that the failure travels
+         * with the progress the panel is already polling, so he sees it on the next
+         * refresh rather than discovering a gap in the record afterwards — and it
+         * carries **what has been spent since the record was last written**, so the
+         * money is on his screen even when it is not on his disk.
+         */
+        notRecorded = {
+          since: lastRecordedAt,
+          spentUsd: progress.spentUsd - lastRecordedSpendUsd,
+          why: error instanceof Error ? error.message : String(error),
+        };
+      }
+      if (notRecorded === null) {
+        lastRecordedAt = new Date().toISOString();
+        lastRecordedSpendUsd = progress.spentUsd;
       }
       /*
        * The summary rides along with the progress once it is finished, so the
@@ -306,7 +337,9 @@ registerJobRunner(QUEUE_JOB_TYPE, async (params, job) => {
        * A second copy of "is this worth trying again" in a React bundle is a
        * second place for it to drift.
        */
-      job.detail = progress.done ? { ...progress, summary: queueSummary(progress) } : progress;
+      job.detail = progress.done
+        ? { ...progress, summary: queueSummary(progress), notRecorded }
+        : { ...progress, notRecorded };
     },
     runOne: async (item, _attempt, onStage) => {
       const result = await runPipeline({

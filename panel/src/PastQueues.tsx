@@ -1,6 +1,6 @@
 import type { JSX } from 'react';
 import { shortLabels } from './video-names.js';
-import type { QueueRecordView } from './service.js';
+import { videosLeftIn, type QueueRecordView } from './service.js';
 
 /**
  * **Every queue that has run, kept forever.**
@@ -55,7 +55,20 @@ export function whatBecameOfIt(record: QueueRecordView): string {
  * The record, under the queue it belongs to: the recent ones in view, the rest
  * behind the one disclosure this panel uses.
  */
-export function PastQueues({ records }: { records: QueueRecordView[] }): JSX.Element | null {
+export function PastQueues({
+  records,
+  onResume,
+  resuming,
+}: {
+  records: QueueRecordView[];
+  /**
+   * Carries on a queue the record shows unfinished. Block 14 session 111: session
+   * 110 kept everything a resume needs and had nothing that acted on it.
+   */
+  onResume?: (record: QueueRecordView) => void;
+  /** The queue being carried on, so its control cannot be pressed twice. */
+  resuming?: string | null;
+}): JSX.Element | null {
   if (records.length === 0) return null;
   const recent = records.slice(0, IN_VIEW);
   const older = records.slice(IN_VIEW);
@@ -65,7 +78,35 @@ export function PastQueues({ records }: { records: QueueRecordView[] }): JSX.Ele
       <span className="k" title={record.progress.items.map((i) => shown.get(i.reel) ?? i.reel).join(', ')}>
         {whenItRan(record.startedAt)}
       </span>
-      <span className="v">{whatBecameOfIt(record)}</span>
+      <span className="v">
+        {whatBecameOfIt(record)}
+        {/*
+          **Carry on where it stopped.** Only on a queue that did not finish and
+          still has videos that never ran. It runs those and no others, so nothing
+          already paid for is bought again — proved for real at Block 14 session
+          111: a queue of two stopped after the first, the record named exactly the
+          one left, and carrying on ran that alone for $0.0000.
+ 
+          **Two guards, and both are needed.** The `disabled` below stops the
+          second press; the `resuming` check in the handler stops a press that
+          arrives another way. Session 111 removed them one at a time: taking the
+          handler's guard alone left the test green, which is how it learned that a
+          test passing is not the same as a guard working.
+        */}
+        {onResume === undefined || videosLeftIn(record).length === 0 || record.progress.done
+          ? null
+          : (
+            <button
+              type="button"
+              className="chip"
+              disabled={resuming !== null && resuming !== undefined}
+              aria-label={`Carry on ${whenItRan(record.startedAt)}`}
+              onClick={() => onResume(record)}
+            >
+              {resuming === record.id ? 'Starting…' : 'Carry on'}
+            </button>
+          )}
+      </span>
     </li>
   );
   return (

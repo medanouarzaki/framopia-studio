@@ -1,11 +1,13 @@
 import { describe, expect, it, beforeEach, afterEach } from 'vitest';
-import { existsSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import {
+  canResume,
   listQueueRecords,
   queueRecordDir,
   unfinishedQueues,
+  videosToResume,
   writeQueueRecord,
   type QueueRecord,
 } from './queue-record.js';
@@ -113,5 +115,101 @@ describe('a queue’s record on disk', () => {
     const back = listQueueRecords(root)[0];
     expect(back?.progress.items[0]).toMatchObject({ reel: 'one', outcome: 'done', spentUsd: 1.2 });
     expect(back?.progress.items[1]).toMatchObject({ reel: 'two', outcome: 'not-reached' });
+  });
+});
+
+/**
+ * **What a resume would run, and what it would leave alone.**
+ *
+ * Block 14 session 111. Session 110 kept everything a resume needs and had nothing
+ * that acted on it; this is the rule that acts on it.
+ */
+describe('carrying on a queue that did not finish', () => {
+  function mixed(): QueueRecord {
+    return {
+      id: 'q1',
+      startedAt: '2026-09-15T10:00:00.000Z',
+      finishedAt: null,
+      progress: {
+        items: [
+          { reel: 'paid', modeId: 'c', outcome: 'done', spentUsd: 1.2, attempts: 1,
+            startedAt: '2026-09-15T10:00:00.000Z', finishedAt: '2026-09-15T10:26:00.000Z' },
+          { reel: 'broke', modeId: 'c', outcome: 'failed', spentUsd: 0, attempts: 2,
+            startedAt: '2026-09-15T10:26:00.000Z', finishedAt: '2026-09-15T10:31:00.000Z' },
+          { reel: 'held', modeId: 'c', outcome: 'stopped', spentUsd: 0, attempts: 0,
+            startedAt: null, finishedAt: null },
+          { reel: 'never', modeId: 'c', outcome: 'not-reached', spentUsd: 0, attempts: 0,
+            startedAt: null, finishedAt: null },
+        ],
+        runningIndex: null, spentUsd: 1.2, done: false, stopped: true,
+      },
+    };
+  }
+
+  /** **It picks up where it stopped**, and the record is how it knows. */
+  it('runs what never ran, and nothing that did', () => {
+    expect(videosToResume(mixed())).toEqual([
+      { reel: 'held', modeId: 'c' },
+      { reel: 'never', modeId: 'c' },
+    ]);
+  });
+
+  /** **Nothing paid for is bought again.** The whole point of keeping the record. */
+  it('leaves out the video that was paid for', () => {
+    expect(videosToResume(mixed()).map((i) => i.reel)).not.toContain('paid');
+  });
+
+  /**
+   * **A failed video is left to its own control.** It has one press in the summary,
+   * bounded by the two attempts the queue respects; sweeping it into a resume would
+   * route around that bound.
+   */
+  it('leaves a failed video to the control that is bounded', () => {
+    expect(videosToResume(mixed()).map((i) => i.reel)).not.toContain('broke');
+  });
+
+  it('keeps the order the queue had', () => {
+    expect(videosToResume(mixed()).map((i) => i.reel)).toEqual(['held', 'never']);
+  });
+
+  it('says there is nothing to carry on when every video ran', () => {
+    const record = mixed();
+    for (const item of record.progress.items) item.outcome = 'done';
+    expect(canResume(record)).toBe(false);
+    expect(videosToResume(record)).toEqual([]);
+  });
+
+  /** Read back off the disk, which is where a resume finds it after a restart. */
+  it('answers the same from a record read off the disk', () => {
+    writeQueueRecord(mixed(), root);
+    const back = listQueueRecords(root)[0];
+    expect(back).toBeDefined();
+    if (back === undefined) return;
+    expect(videosToResume(back).map((i) => i.reel)).toEqual(['held', 'never']);
+    expect(unfinishedQueues(root).map((r) => r.id)).toEqual(['q1']);
+  });
+});
+
+/**
+ * **The disk that will not take it.** Block 14 session 111.
+ *
+ * Made to fail for real rather than simulated: the directory is replaced by a
+ * *file*, so `mkdirSync` cannot create it and the write genuinely throws — which is
+ * what an unmounted drive does to this code path.
+ */
+describe('when the record cannot be written', () => {
+  it('throws, rather than reporting a success it did not have', () => {
+    const blocked = mkdtempSync(path.join(tmpdir(), 'framopia-blocked-'));
+    mkdirSync(path.join(blocked, '.local'), { recursive: true });
+    /* A file where the directory needs to be: mkdir -p cannot get past it. */
+    writeFileSync(path.join(blocked, '.local', 'queues'), 'not a directory', 'utf8');
+    expect(() =>
+      writeQueueRecord(
+        { id: 'q1', startedAt: '2026-09-15T10:00:00.000Z', finishedAt: null,
+          progress: { items: [], runningIndex: null, spentUsd: 0, done: false, stopped: false } },
+        blocked,
+      ),
+    ).toThrow();
+    rmSync(blocked, { recursive: true, force: true });
   });
 });

@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { REPO_ROOT } from '@framopia/core';
-import type { QueueProgress, QueueSummary } from './queue.js';
+import type { QueueItem, QueueProgress, QueueSummary } from './queue.js';
 
 /**
  * **Where a queue's record lives, and why it is not in a cache.**
@@ -99,4 +99,32 @@ export function listQueueRecords(repoRoot = REPO_ROOT): QueueRecord[] {
  */
 export function unfinishedQueues(repoRoot = REPO_ROOT): QueueRecord[] {
   return listQueueRecords(repoRoot).filter((r) => r.finishedAt === null && !r.progress.done);
+}
+
+/**
+ * **The videos a resume would still run, in the order it would run them.**
+ *
+ * Block 14 session 111. Session 110 made the record permanent and proved a fresh
+ * process can read what a killed one left; this is the question that record was
+ * kept to answer.
+ *
+ * **It picks up where it stopped, and it knows because the record says so.** Every
+ * item carries its own outcome, written after the video that produced it: `done` is
+ * paid for and finished, `stopped` is the one the queue was holding when he stopped
+ * it — which never ran — and `not-reached` is everything after. So the ones to run
+ * again are precisely the ones that are not `done`, in their original order.
+ *
+ * **A `failed` video is deliberately not here.** It has its own control in the
+ * summary — session 110's one press — bounded by the two attempts the queue
+ * respects. Sweeping it into a resume would route around that bound.
+ */
+export function videosToResume(record: Pick<QueueRecord, 'progress'>): QueueItem[] {
+  return record.progress.items
+    .filter((item) => item.outcome === 'not-reached' || item.outcome === 'stopped')
+    .map((item) => ({ reel: item.reel, modeId: item.modeId }));
+}
+
+/** Whether there is anything left to run at all. */
+export function canResume(record: Pick<QueueRecord, 'progress' | 'finishedAt'>): boolean {
+  return videosToResume(record).length > 0;
 }

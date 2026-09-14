@@ -769,11 +769,29 @@ export interface QueueRecordView {
   startedAt: string;
   finishedAt: string | null;
   progress: {
-    items: { reel: string; outcome: string; spentUsd: number }[];
+    items: { reel: string; modeId?: string; outcome: string; spentUsd: number }[];
     spentUsd: number;
     done: boolean;
     stopped: boolean;
   };
+}
+
+/**
+ * **The videos a resume would still run**, read off the record.
+ *
+ * Block 14 session 111. `done` is paid for and finished; `stopped` is the one the
+ * queue was holding when he stopped it, which never ran; `not-reached` is
+ * everything after. A `failed` one is left alone — it has its own control, bounded
+ * by the two attempts the queue respects, and sweeping it in here would route
+ * around that bound.
+ *
+ * The same rule as the service's `videosToResume`, and the panel needs its own
+ * because it decides whether to offer the control at all.
+ */
+export function videosLeftIn(record: QueueRecordView): { reel: string; mode: string }[] {
+  return record.progress.items
+    .filter((i) => i.outcome === 'not-reached' || i.outcome === 'stopped')
+    .map((i) => ({ reel: i.reel, mode: i.modeId ?? '' }));
 }
 
 /**

@@ -39,6 +39,14 @@ export interface QueueItemView {
 
 export interface QueueView {
   items: QueueItemView[];
+  /**
+   * Set when the record could not be written — the drive went away mid-queue.
+   *
+   * **Optional with a default.** Block 14 session 111: session 110 measured that a
+   * queue keeps spending and stops recording when the disk will not take it, and
+   * said so. This is that failure reaching his screen instead of only the report.
+   */
+  notRecorded?: { since: string; spentUsd: number; why: string } | null;
   runningIndex: number | null;
   spentUsd: number;
   done: boolean;
@@ -139,6 +147,23 @@ export function Queue({
             : `${String(view.items.length)} video${view.items.length === 1 ? '' : 's'}`}
         </em>
       </p>
+
+      {/*
+        **The record could not be written, and he is told while it is happening.**
+        Block 14 session 111. The queue does not stop — a disk problem must not kill
+        work that is being paid for, which is session 110's trade and it stands —
+        but what has been spent since the last successful write is on screen, so
+        the money is not lost with the record.
+ 
+        Not the accent: nothing here is a thing that spends. Session 95's rule.
+      */}
+      {view.notRecorded == null ? null : (
+        <p className="reason warn" role="status">
+          This queue is still running, but it cannot write to the disk, so what it
+          does is not being recorded. ${view.notRecorded.spentUsd.toFixed(2)} has
+          been spent since the record was last saved — write that down.
+        </p>
+      )}
 
       {/* While it runs: what it is on, and what has been spent so far. */}
       {view.done ? null : (

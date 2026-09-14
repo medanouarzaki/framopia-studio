@@ -40,6 +40,7 @@ const JOB_POLL_MS = 1000;
 import { runGate } from './run-gate.js';
 import { startQueue, stopQueue, fetchJobs, fetchQueues, type QueueRecordView } from './service.js';
 import { PastQueues } from './PastQueues.js';
+import { videosLeftIn } from './service.js';
 import { formatUsd, SPEND_SOFT_ALARM_USD, spendLevel } from './spend.js';
 import {
   causeWords,
@@ -216,6 +217,8 @@ function Panel({
    * the one on disk rather than one this panel remembers.
    */
   const [queueRecords, setQueueRecords] = useState<QueueRecordView[]>([]);
+  /* Which unfinished queue is being carried on, so its control cannot go twice. */
+  const [resuming, setResuming] = useState<string | null>(null);
   const [queueError, setQueueError] = useState<string | null>(null);
   /**
    * **Which of the three screens he is on.**
@@ -1190,7 +1193,28 @@ function Panel({
           */}
           {queueJob !== null && queueJob.detail !== undefined &&
           (queueJob.detail as unknown as QueueView).done === false ? null : (
-            <PastQueues records={queueRecords} />
+            <PastQueues
+              records={queueRecords}
+              resuming={resuming}
+              onResume={(record) => {
+                if (connection === null || resuming !== null) return;
+                const left = videosLeftIn(record);
+                if (left.length === 0) return;
+                setResuming(record.id);
+                setQueueError(null);
+                void startQueue(connection, left).then(
+                  (id) => {
+                    setQueueJobId(id);
+                    setQueueNewsSeen(false);
+                    setResuming(null);
+                  },
+                  (error: Error) => {
+                    setQueueError(error.message);
+                    setResuming(null);
+                  },
+                );
+              }}
+            />
           )}
         </section>
 

@@ -411,3 +411,104 @@ describe.skipIf(!built)('the record while a queue is running', () => {
     await page.close();
   }, 60_000);
 });
+
+/**
+ * **Carrying on a queue that did not finish.**
+ *
+ * Block 14 session 111. Session 110 kept everything a resume needs and had nothing
+ * that acted on it. Proved for real against the live service as well as here:
+ * a queue of `test-1` and `vitasilk` was stopped after the first, the record named
+ * exactly `vitasilk`, and the resume ran that one alone — **$0.0000, the ledger at
+ * 294 records before and after.**
+ */
+describe.skipIf(!built)('carrying on a queue from the record', () => {
+  function unfinished(items: unknown[]): string {
+    return `
+      window.__queues = { queues: [{ id: 'q-old', startedAt: '2026-09-15T10:00:00Z',
+        finishedAt: null, progress: { items: ${JSON.stringify(items)}, spentUsd: 1.2,
+        done: false, stopped: true } }] };
+      window.__starts = 0;
+      const real = window.fetch;
+      window.fetch = (url, init) => {
+        const u = String(url).split('?')[0];
+        const isPost = init !== undefined && String(init.method ?? '').toUpperCase() === 'POST';
+        if (!isPost && /queues$/.test(u)) {
+          return Promise.resolve({ ok: true, json: () => Promise.resolve(window.__queues) });
+        }
+        if (isPost && u.indexOf('/jobs') !== -1) {
+          window.__starts += 1;
+          window.__lastBody = init.body;
+          return new Promise((go) => setTimeout(() => go({ ok: true, json: () => Promise.resolve({ id: 'q-new' }) }), 350));
+        }
+        return real(url, init);
+      };
+    `;
+  }
+
+  const MIXED = [
+    { reel: 'sora-1', modeId: 'k2-syndicalia', outcome: 'done', spentUsd: 1.2 },
+    { reel: 'sora-2', modeId: 'k2-syndicalia', outcome: 'stopped', spentUsd: 0 },
+    { reel: 'sora-3', modeId: 'k2-syndicalia', outcome: 'not-reached', spentUsd: 0 },
+  ];
+
+  async function withRecord(items: unknown[]): Promise<Page | null> {
+    if (browser === undefined) return null;
+    const page = await browser.newPage({ viewport: { width: 1500, height: 900 } });
+    await page.addInitScript(stubHost(HANDSHAKE));
+    await page.addInitScript(stubRoutes(stepsThrough('build'), 'build'));
+    await page.addInitScript(unfinished(items));
+    await page.goto(`file://${INDEX}`);
+    await page.waitForSelector('nav.moments', { timeout: 10_000 });
+    await onScreen(page, 'choose');
+    await page.selectOption('select[aria-label="Video"]', 'vitasilk');
+    await page.waitForTimeout(500);
+    await onScreen(page, 'run');
+    await page.waitForTimeout(400);
+    return page;
+  }
+
+  it('runs only what never ran, and nothing already paid for', async () => {
+    const page = await withRecord(MIXED);
+    if (page === null) return;
+    const button = await page.$('.pastqueues button[aria-label^="Carry on"]');
+    expect(button).not.toBeNull();
+    if (button === null) return;
+    await button.click();
+    await page.waitForTimeout(800);
+    const sent = await page.evaluate(() => ({
+      starts: (window as unknown as { __starts: number }).__starts,
+      body: String((window as unknown as { __lastBody: unknown }).__lastBody ?? ''),
+    }));
+    expect(sent.starts).toBe(1);
+    /* The two that never ran, and not the one that was paid for. */
+    expect(sent.body).toContain('sora-2');
+    expect(sent.body).toContain('sora-3');
+    expect(sent.body).not.toContain('sora-1');
+    await page.close();
+  }, 60_000);
+
+  /** Pressed twice it still starts one — a new control, a spending control. */
+  it('starts one resume, not two', async () => {
+    const page = await withRecord(MIXED);
+    if (page === null) return;
+    const button = await page.$('.pastqueues button[aria-label^="Carry on"]');
+    if (button === null) return;
+    await button.click();
+    await button.click({ force: true }).catch(() => undefined);
+    await page.waitForTimeout(800);
+    expect(await page.evaluate(() => (window as unknown as { __starts: number }).__starts)).toBe(1);
+    await page.close();
+  }, 60_000);
+
+  /** And nothing is offered on a queue where every video ran. */
+  it('offers nothing when there is nothing left to carry on', async () => {
+    const page = await withRecord(
+      MIXED.map((i) => ({ ...i, outcome: 'done' })),
+    );
+    if (page === null) return;
+    expect(
+      await page.$$eval('.pastqueues button[aria-label^="Carry on"]', (e) => e.length),
+    ).toBe(0);
+    await page.close();
+  }, 60_000);
+});
