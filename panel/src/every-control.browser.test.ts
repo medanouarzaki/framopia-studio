@@ -59,6 +59,37 @@ const COUNTING = `
   };
 `;
 
+/**
+ * **One page, re-navigated per control, not one page per control.**
+ *
+ * The first version opened a fresh browser page for each of the fifty-one controls.
+ * It worked and it made the suite unreliable: on a machine already running nine
+ * Chromiums, three unrelated tests timed out at five seconds because this one had
+ * saturated it. A test that makes other tests fail is worse than no test.
+ *
+ * Playwright re-applies `addInitScript` on every navigation, so a `goto` resets the
+ * counter and the panel just as a new page would, for a fraction of the cost.
+ */
+async function freshOn(page: Page, screen: Control['screen'], open = false): Promise<void> {
+  await page.goto(`file://${INDEX}`);
+  await page.waitForSelector('nav.moments', { timeout: 10_000 });
+  await onScreen(page, 'choose');
+  await page.selectOption('select[aria-label="Client"]', 'dr-loubna-kfafi');
+  await page.waitForTimeout(250);
+  await page.selectOption(
+    'select[aria-label="Video"]',
+    'Dr Loubna Kfafi/September Content/Exports/sora.mov',
+  );
+  await page.waitForTimeout(500);
+  await onScreen(page, screen);
+  if (open) {
+    await page.$$eval('details', (els) => {
+      els.forEach((d) => ((d as HTMLDetailsElement).open = true));
+    });
+    await page.waitForTimeout(200);
+  }
+}
+
 async function panelAt(screen: Control['screen'], open = false): Promise<Page | null> {
   if (browser === undefined) return null;
   const page = await browser.newPage({ viewport: { width: 1500, height: 900 } });
@@ -140,10 +171,11 @@ describe.skipIf(!built)('every control, pressed twice', () => {
     const quiet: string[] = [];
     const twice: string[] = [];
 
+    const page = await panelAt(screen, open);
+    if (page === null) return;
     for (const control of controls) {
       const nth = Number(control.selector.split('|')[1]);
-      const page = await panelAt(screen, open);
-      if (page === null) return;
+      await freshOn(page, screen, open);
       await pressNth(page, nth, 2);
       await page.waitForTimeout(800);
       const posts = await page.evaluate(() => (window as unknown as { __posts: string[] }).__posts);
@@ -158,8 +190,8 @@ describe.skipIf(!built)('every control, pressed twice', () => {
       if (doubled.length > 0) twice.push(`${control.name}: ${doubled.map(([p, n]) => `${p} ×${String(n)}`).join(', ')}`);
       else if (posts.length > 0) spends.push(control.name);
       else quiet.push(control.name);
-      await page.close();
     }
+    await page.close();
 
     console.log(
       `\n  == ${screen}${open ? ', everything open' : ''}: ${String(controls.length)} controls — ` +
@@ -184,11 +216,13 @@ describe.skipIf(!built)('every control, pressed then the panel closed', () => {
     await survey.close();
 
     const threw: string[] = [];
+    const page = await panelAt(screen, open);
+    if (page === null) return;
+    const uncaught = (page as unknown as { __uncaught: string[] }).__uncaught;
     for (const control of controls) {
       const nth = Number(control.selector.split('|')[1]);
-      const page = await panelAt(screen, open);
-      if (page === null) return;
-      const uncaught = (page as unknown as { __uncaught: string[] }).__uncaught;
+      await freshOn(page, screen, open);
+      uncaught.length = 0;
       await pressNth(page, nth, 1);
       /*
        * Closed *during* the request — the stub takes 350 ms, so 120 ms in is
@@ -196,9 +230,15 @@ describe.skipIf(!built)('every control, pressed then the panel closed', () => {
        * up here as an uncaught error.
        */
       await page.waitForTimeout(120);
-      await page.close();
+      /*
+       * Navigating away mid-request is what closing the panel does to a promise in
+       * flight: the component unmounts and the answer arrives to nothing.
+       */
+      await page.goto('about:blank');
+      await page.waitForTimeout(80);
       if (uncaught.length > 0) threw.push(`${control.name}: ${uncaught.join('; ')}`);
     }
+    await page.close();
     expect(threw).toEqual([]);
   }, 300_000);
 });
