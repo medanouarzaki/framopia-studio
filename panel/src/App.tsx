@@ -51,6 +51,7 @@ import {
   type RunState,
 } from './words.js';
 import { shortLabels } from './video-names.js';
+import { nothingYetWords } from './words.js';
 import type {
   ClientMode,
   DryRunPlan,
@@ -716,6 +717,17 @@ function Panel({
               <option value="__once">Just this video…</option>
             </select>
           </label>
+          {/*
+            **An empty state teaches; it does not apologise.** Block 13 session
+            100. His partner meets this on his first open, and it was
+            *"No clients set up yet"* inside a dropdown with nothing saying what
+            to do — a dead end on the first screen of the tool.
+          */}
+          {modes.length > 0 ? null : (
+            <p className="say" role="status">
+              {nothingYetWords('clients').next}
+            </p>
+          )}
           {mode === null ? null : (
             <ClientCard client={mode} connection={connection} onModes={setModes} />
           )}
@@ -768,6 +780,20 @@ function Panel({
             </p>
           )}
 
+          {/*
+            **Why there are none, and the one thing to do about it.** It showed a
+            path and an apology: *"There are no videos in /Volumes/…"*. A path is
+            not an explanation, and neither is an empty dropdown that says
+            *No videos found* — session 100.
+
+            Two different reasons and two different next things: no folder set on
+            the client, or a folder with nothing in it.
+          */}
+          {mode === null || reels.length > 0 ? null : (
+            <p className="say" role="status">
+              {nothingYetWords(videoNote.folder === null ? 'no-folder' : 'videos').next}
+            </p>
+          )}
           {videoNote.folder === null ? null : (
             <p className="faint">From {videoNote.folder}</p>
           )}

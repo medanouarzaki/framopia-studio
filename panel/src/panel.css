@@ -935,3 +935,11 @@ button.run.free:hover:enabled { border-color: #3a4049; }
 }
 .moments button.moment .news.good { color: var(--ok); }
 .moments button.moment .news.warn { color: var(--warn); }
+
+/*
+ * **The Try again sits on the line with the news.** Block 13 session 100: the
+ * service-down state was 211 px, a third of the panel, for something that usually
+ * clears on its own. Uses the tokens already declared above.
+ */
+.readiness .line button.ghost { margin-top: 0; margin-left: auto; width: auto; flex: 0 0 auto; }
+.readiness .quibbles { margin-top: 8px; }

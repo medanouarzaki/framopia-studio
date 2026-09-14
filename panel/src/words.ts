@@ -257,3 +257,84 @@ export function queueNews(queue: {
     tone: 'good',
   };
 }
+
+/**
+ * **When the companion service is not answering.**
+ *
+ * Block 13 session 100. This is the state Mohamed has photographed more than any
+ * other, and session 99 measured it at **211 px — nearly a third of the panel** —
+ * of which the first line was the service's own error text, raw:
+ * `{state.error.cause}`. Session 95 built `causeWords` for exactly that and it was
+ * never applied here.
+ *
+ * **It is not proportionate.** A helper that usually starts on its own in a few
+ * seconds does not deserve a third of the screen, and an error is not more
+ * important than the work.
+ *
+ * So: one sentence he can act on, and the raw text kept where it can be looked up
+ * rather than read past.
+ */
+export function serviceDownWords(cause: string | null | undefined, retryable: boolean): string {
+  const said = (cause ?? '').trim();
+  /*
+   * Two of the causes that reach here are already written for a person — the
+   * Node help in `core/`, and `serviceTrouble`'s sentences — and replacing those
+   * with something general would throw away the only instruction available.
+   * Session 95 learned this when its first `causeWords` swallowed the
+   * picture-tools crash.
+   */
+  if (/^No Node interpreter could be found/.test(said)) return said;
+  if (/^the panel is using an old connection|^the companion service ran into trouble|^there is nothing here/.test(said)) {
+    return said;
+  }
+  if (/\bfetch failed\b|Failed to fetch|ECONNREFUSED|ECONNRESET|socket hang up|not answering/i.test(said)) {
+    return 'The background helper has not answered yet. It usually starts on its own.';
+  }
+  if (/ENOENT|EACCES|spawn|not built|cannot find/i.test(said)) {
+    return 'The background helper could not be started on this Mac.';
+  }
+  if (retryable) return 'The background helper stopped answering. It usually clears on its own.';
+  return 'The background helper cannot start, and trying again will not help.';
+}
+
+/**
+ * **How many times it has looked, said as a person would.**
+ *
+ * It read `attempt 3 at 14:23:05` — the tool's own bookkeeping, on his screen.
+ * Returns `null` for the first look, because "first check" is noise: of course it
+ * is the first.
+ */
+export function triedWords(attempt: number, at: string): string | null {
+  if (attempt <= 0) return null;
+  const times = attempt + 1;
+  return `Looked ${times === 2 ? 'twice' : `${String(times)} times`}, last at ${at}.`;
+}
+
+/**
+ * **An empty state teaches; it does not apologise.**
+ *
+ * His partner meets the first of these on his first open, and today it is
+ * *"No clients set up yet"* inside a dropdown with nothing saying what to do.
+ * Nothing here may be a dead end.
+ */
+export function nothingYetWords(what: 'clients' | 'videos' | 'no-folder'): {
+  said: string;
+  next: string;
+} {
+  if (what === 'clients') {
+    return {
+      said: 'No clients yet.',
+      next: 'Start by setting one up — their name, their colours, and the folder their videos are in.',
+    };
+  }
+  if (what === 'no-folder') {
+    return {
+      said: 'This client has no video folder yet.',
+      next: 'Open their card above and set the folder their videos are in, then press Refresh.',
+    };
+  }
+  return {
+    said: 'No videos in this client’s folder.',
+    next: 'Put a video in it and press Refresh, or set a different folder on their card above.',
+  };
+}

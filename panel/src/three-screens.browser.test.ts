@@ -433,4 +433,46 @@ describe.skipIf(!built)('the news a step carries', () => {
     }
     await page.close();
   }, 30_000);
+
+  /**
+   * **An empty state teaches; it does not apologise.** Block 13 session 100.
+   *
+   * `open()` stubs the CEP host and nothing else, so there are no clients and no
+   * videos — which is exactly his partner's first open. It read *"No clients set
+   * up yet"* inside a dropdown, with nothing anywhere saying what to do first.
+   *
+   * Session 100's mutation M3 turned the teaching line back into the apology and
+   * **no test noticed**; this is that test.
+   */
+  it('tells him what to do first when there are no clients', async () => {
+    const page = await open();
+    if (page === null) return;
+    await onScreen(page, 'choose');
+    const said = await page.$$eval('section.client p.say', (els) =>
+      els.filter((e) => (e as HTMLElement).checkVisibility()).map((e) => e.textContent ?? ''),
+    );
+    expect(said).toHaveLength(1);
+    expect(said[0] ?? '').toContain('Start by setting one up');
+    /* Not an apology, and not a dead end. */
+    expect(said[0] ?? '').not.toBe('No clients yet.');
+    await page.close();
+  }, 30_000);
+
+  it('shows no path as an explanation on an empty first open', async () => {
+    const page = await open();
+    if (page === null) return;
+    await onScreen(page, 'choose');
+    const shown = await page.$$eval('section.client, section.video', (els) =>
+      els
+        .filter((e) => (e as HTMLElement).checkVisibility())
+        .flatMap((e) =>
+          [...e.querySelectorAll('p.say, p.faint')]
+            .filter((p) => (p as HTMLElement).checkVisibility())
+            .map((p) => p.textContent ?? ''),
+        ),
+    );
+    expect(shown.join(' ')).not.toContain('/Volumes');
+    expect(shown.join(' ')).not.toMatch(/npm run|terminal/i);
+    await page.close();
+  }, 30_000);
 });

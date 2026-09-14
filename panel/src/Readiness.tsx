@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { describeBuildStamps, panelBuildStamp } from './staleness.js';
 import { nodeMatch } from './node-match.js';
 import type { ServiceState, ToolState } from './types.js';
+import { serviceDownWords, triedWords } from './words.js';
 
 /**
  * Whether the tool can work, in one line.
@@ -48,21 +49,43 @@ export function Readiness({
     );
   }
 
+  const tried = triedWords(attempt, attemptedAt);
   if (state.kind === 'unreachable') {
     return (
       <section className="readiness bad">
+        {/*
+          **This was 211 px — nearly a third of the panel.** Block 13 session 100.
+          It is the state Mohamed has photographed more than any other, and it
+          opened with the service's own error text, raw, then repeated that it
+          usually clears, then a button, then `attempt 3 at 14:23:05`.
+
+          An error is not more important than the work. One sentence he can act
+          on, one button, and the machine's own words kept where he can find them
+          if we ever ask — never in front of him.
+        */}
         <p className="line">
           <span className="dot unreachable" />
           <span className="word">Not working</span>
+          <button className="ghost" type="button" onClick={onRetry}>
+            Try again
+          </button>
         </p>
-        <p className="say">{state.error.cause}</p>
-        {state.error.retryable ? <p className="say">This usually clears on its own.</p> : null}
-        <button className="ghost" type="button" onClick={onRetry}>
-          Try again
-        </button>
-        <p className="faint attempt" data-attempt={attempt}>
-          {attempt === 0 ? 'first check' : `attempt ${attempt + 1}`} at {attemptedAt}
-        </p>
+        <p className="say">{serviceDownWords(state.error.cause, state.error.retryable)}</p>
+        {/*
+          **Pressing Try again has to show something.** Hiding this with the raw
+          cause made the button silent — he presses it and the screen does not
+          move, which is its own kind of dead end. One short line, and only after
+          the first look: "first check" is noise, of course it is the first.
+        */}
+        {tried === null ? null : (
+          <p className="faint attempt" data-attempt={attempt}>
+            {tried}
+          </p>
+        )}
+        <details className="quibbles">
+          <summary>What it said</summary>
+          <p className="say">{state.error.cause}</p>
+        </details>
       </section>
     );
   }

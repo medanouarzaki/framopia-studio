@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  serviceDownWords,
+  triedWords,
+  nothingYetWords,
   queueNews,
   causeWords,
   money,
@@ -275,5 +278,84 @@ describe('what a step says about a queue', () => {
       .map((n) => `${n?.short ?? ''} ${n?.said ?? ''}`)
       .join(' ');
     expect(all).not.toMatch(/npm run|terminal|quit|restart|reopen|relaunch/i);
+  });
+});
+
+/**
+ * **The states Mohamed actually photographs.** Block 13 session 100.
+ */
+describe('when the companion service is not answering', () => {
+  it('says what happened and that it usually fixes itself', () => {
+    expect(serviceDownWords('connect ECONNREFUSED', true)).toBe(
+      'The background helper has not answered yet. It usually starts on its own.',
+    );
+    expect(serviceDownWords('fetch failed', true)).toContain('usually starts on its own');
+  });
+
+  it('says plainly when trying again will not help', () => {
+    expect(serviceDownWords('something nobody has words for', false)).toBe(
+      'The background helper cannot start, and trying again will not help.',
+    );
+  });
+
+  it('never repeats the machine’s own text back to him', () => {
+    for (const cause of [
+      'connect ECONNREFUSED',
+      'spawn node ENOENT',
+      'Failed to fetch',
+      'TypeError: cannot read properties of undefined',
+    ]) {
+      expect(`${cause}: ${serviceDownWords(cause, true).includes(cause)}`).toBe(`${cause}: false`);
+    }
+  });
+
+  /* Two of these were written for a person already; replacing them loses the only help there is. */
+  it('leaves a sentence that was already written for him alone', () => {
+    const node =
+      'No Node interpreter could be found. After Effects starts from the Finder and does not ' +
+      'inherit your shell PATH, so a Node installed through nvm is invisible to it.';
+    expect(serviceDownWords(node, false)).toBe(node);
+    const stale = 'the panel is using an old connection to the companion service — use Try again';
+    expect(serviceDownWords(stale, true)).toBe(stale);
+  });
+
+  /* `attempt 3 at 14:23:05` was the tool's bookkeeping, on his screen. */
+  it('says how many times it has looked, in words, and nothing on the first', () => {
+    expect(triedWords(0, '14:23:05')).toBeNull();
+    expect(triedWords(1, '14:23:05')).toBe('Looked twice, last at 14:23:05.');
+    expect(triedWords(4, '14:23:05')).toBe('Looked 5 times, last at 14:23:05.');
+    expect(triedWords(1, '14:23:05')).not.toContain('attempt');
+  });
+});
+
+/**
+ * **An empty state teaches; it does not apologise.** Nothing may be a dead end,
+ * and the first of these is the first thing his partner will ever see.
+ */
+describe('when there is nothing there yet', () => {
+  it('tells him what to do first, rather than that there is nothing', () => {
+    const clients = nothingYetWords('clients');
+    expect(clients.said).toBe('No clients yet.');
+    expect(clients.next).toContain('Start by setting one up');
+  });
+
+  it('tells apart a folder that is empty from one that was never set', () => {
+    expect(nothingYetWords('no-folder').next).toContain('set the folder');
+    expect(nothingYetWords('videos').next).toContain('press Refresh');
+    expect(nothingYetWords('no-folder').next).not.toBe(nothingYetWords('videos').next);
+  });
+
+  it('always gives him exactly something to do', () => {
+    for (const what of ['clients', 'videos', 'no-folder'] as const) {
+      expect(`${what}: ${nothingYetWords(what).next.length > 20}`).toBe(`${what}: true`);
+    }
+  });
+
+  it('shows no path as an explanation, and names no command', () => {
+    const all = (['clients', 'videos', 'no-folder'] as const)
+      .map((w) => `${nothingYetWords(w).said} ${nothingYetWords(w).next}`)
+      .join(' ');
+    expect(all).not.toContain('/Volumes');
+    expect(all).not.toMatch(/npm run|terminal|quit|restart|reopen/i);
   });
 });

@@ -405,16 +405,30 @@ describe.skipIf(!built)('the spawn path in a real browser', () => {
     if (loaded === null) return;
     const { page } = loaded;
     try {
-      await page.waitForSelector('.attempt', { timeout: 15_000 });
-      expect(await page.locator('.attempt').first().getAttribute('data-attempt')).toBe('0');
-      const first = (await page.locator('section.readiness').textContent()) ?? '';
+      /*
+       * **Session 100: the first look says nothing, and the second says so in
+       * words.** It used to read `first check at 14:23:05` and then `attempt 2 at
+       * …` — the tool's own bookkeeping. "first check" is noise, so there is no
+       * line at all until he has pressed Try again, and then it is a sentence.
+       *
+       * The line has to be *visible*: hiding it with the raw cause made the
+       * button silent, and a control that does nothing visible when pressed is
+       * its own dead end.
+       */
+      await page.waitForSelector('section.readiness p.say', { timeout: 15_000 });
+      expect(await page.locator('.attempt').count()).toBe(0);
+      const first = (await page.locator('section.readiness p.say').first().textContent()) ?? '';
 
       await page.getByRole('button', { name: 'Try again' }).first().click();
-      await page.waitForSelector('.attempt[data-attempt="1"]', { timeout: 15_000 });
-      const second = (await page.locator('section.readiness').textContent()) ?? '';
+      await page.waitForSelector('.attempt[data-attempt="1"]', {
+        timeout: 15_000,
+        state: 'visible',
+      });
+      const shown = (await page.locator('.attempt').first().textContent()) ?? '';
 
-      expect(second).not.toBe(first);
-      expect(second).toContain('attempt 2');
+      expect(shown).toContain('Looked twice');
+      expect(shown).not.toContain('attempt');
+      expect(first).not.toBe('');
     } finally {
       await page.close();
     }

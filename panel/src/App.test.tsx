@@ -192,15 +192,41 @@ describe('service state', () => {
     expect(text()).not.toContain('{');
   });
 
-  it('shows unreachable with the service’s own cause and a way forward', async () => {
+  /**
+   * **This asked for the service's own cause on screen, and session 100 took it
+   * off.**
+   *
+   * It was the first line of the state Mohamed has photographed most, and it was
+   * the service's error text verbatim — `connect ECONNREFUSED`. The sentence he
+   * gets now says what happened and that it usually fixes itself; the machine's
+   * words are still there, behind *What it said*, so they can be asked for.
+   *
+   * `text()` reads the whole screen including a closed `<details>`, so the raw
+   * cause is asserted to be *present* here and the visible sentence is asserted
+   * separately, by element.
+   */
+  it('shows unreachable in his words, with the cause kept where it can be asked for', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('connect ECONNREFUSED')));
     await render(hostThatAnswers());
 
     expect(text()).toContain('Not working');
-    expect(text()).toContain('connect ECONNREFUSED');
     expect(text()).toContain('Try again');
-    expect(text()).toContain('This usually clears on its own');
     expect([...container.querySelectorAll('button')].some((b) => b.textContent === 'Try again')).toBe(true);
+
+    /* What he reads, by element rather than by scraping the screen. */
+    const said = container.querySelector('.readiness > p.say')?.textContent ?? '';
+    expect(said).toBe('The background helper has not answered yet. It usually starts on its own.');
+    expect(said).not.toContain('ECONNREFUSED');
+
+    /* And the machine's own words, inside the disclosure and not in front of him. */
+    const summary = container.querySelector('.readiness details.quibbles summary')?.textContent;
+    expect(summary).toBe('What it said');
+    expect(
+      container.querySelector('.readiness details.quibbles p.say')?.textContent,
+    ).toContain('connect ECONNREFUSED');
+    expect(
+      (container.querySelector('.readiness details.quibbles') as HTMLDetailsElement | null)?.open,
+    ).toBe(false);
   });
 
   it('shows starting while the health call is in flight', async () => {

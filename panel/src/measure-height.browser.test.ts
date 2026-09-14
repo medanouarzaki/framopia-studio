@@ -42,7 +42,10 @@ afterAll(async () => {
 }, 120_000);
 
 describe.skipIf(!built)('how tall the panel is', () => {
-  it('measures every section, top to bottom', async () => {
+  it.each([
+    ['service answering', true],
+    ['service not answering', false],
+  ])('measures every section, top to bottom — %s', async (_name, healthy) => {
     if (browser === undefined) return;
     const page = await browser.newPage({ viewport: { width: 420, height: 900 } });
     await page.addInitScript(stubHost(HANDSHAKE));
@@ -53,7 +56,7 @@ describe.skipIf(!built)('how tall the panel is', () => {
      * error, retry button and attempt count. Healthy it is one line. The figures
      * those sessions reported were true of a panel that was not working.
      */
-    await page.addInitScript(stubFetch('healthy', HEALTHY_PAYLOAD));
+    if (healthy) await page.addInitScript(stubFetch('healthy', HEALTHY_PAYLOAD));
 
     await page.goto(`file://${INDEX}`);
     await page.waitForSelector('header.brand', { timeout: 10_000 });
