@@ -83,8 +83,14 @@ function serviceTrouble(status: number): string {
   if (status === 404) return 'there is nothing here for this video yet';
   if (status === 401 || status === 403) {
     return (
-      'the panel is using an old connection to the companion service — use Try again in the ' +
-      'line at the top'
+      /*
+       * **It named a button he could not see.** Block 13 session 103. A 401 or 403
+       * arrives while the service *is* answering, and on that line there is no
+       * button at all — *Try again* is behind *Details*. Both names here are
+       * rendered controls, and in that order.
+       */
+      'the panel is using an old connection to the companion service — open Details in the ' +
+      'line at the top and press Try again'
     );
   }
   return 'the companion service ran into trouble and did not say what';
@@ -919,7 +925,7 @@ export async function repairService(
     return {
       ok: false,
       action,
-      said: 'The background service and this panel cannot be compared, so nothing was changed.',
+      said: 'The companion service and this panel cannot be compared, so nothing was changed.',
     };
   }
 
@@ -928,7 +934,7 @@ export async function repairService(
       return {
         ok: false,
         action,
-        said: 'The background service needs preparing again and this panel cannot do it.',
+        said: 'The companion service needs preparing again and this panel cannot do it.',
       };
     }
     const built = await host.rebuildService();
@@ -936,7 +942,7 @@ export async function repairService(
       return {
         ok: false,
         action,
-        said: `The background service could not be prepared again: ${built.cause ?? 'unknown'}.`,
+        said: `The companion service could not be prepared again: ${built.cause ?? 'unknown'}.`,
       };
     }
   }
@@ -955,7 +961,7 @@ export async function repairService(
     return {
       ok: false,
       action,
-      said: `The background service was restarted and did not come back: ${again.error.cause}`,
+      said: `The companion service was restarted and did not come back: ${again.error.cause}`,
     };
   }
   return {
@@ -963,8 +969,8 @@ export async function repairService(
     action,
     said:
       action === 'rebuild'
-        ? 'The background service was out of date. It has been prepared again and restarted.'
-        : 'The background service was out of date. It has been restarted.',
+        ? 'The companion service was out of date. It has been prepared again and restarted.'
+        : 'The companion service was out of date. It has been restarted.',
   };
 }
 

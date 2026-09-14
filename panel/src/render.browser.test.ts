@@ -1286,7 +1286,12 @@ describe.skipIf(!built)('the transcript editor', () => {
     const loaded = await loadTranscript();
     if (loaded === null) return;
     const text = (await loaded.page.textContent('ul.questions')) ?? '';
-    expect(text).toContain('1 this reel');
+    /*
+      **Rewritten by Block 13 session 103**, one name for one thing: the panel says
+      *video* in fifty-one readable strings and said *reel* in seven. What these
+      assert is unchanged — the scope of a count, and the empty answer.
+    */
+    expect(text).toContain('1 this video');
     expect(text).toContain('7 corpus');
     expect(text).toContain('23 corpus');
     expect(text).toContain('13 corpus');
@@ -1306,12 +1311,12 @@ describe.skipIf(!built)('the transcript editor', () => {
     await loaded.page.close();
   });
 
-  it('says plainly when a question has none on this reel', async () => {
+  it('says plainly when a question has none on this video', async () => {
     const loaded = await loadTranscript();
     if (loaded === null) return;
     await loaded.page.click('ul.questions li:nth-child(3) button.chip');
     await loaded.page.waitForFunction(
-      () => (document.querySelector('ul.questions') as HTMLElement).textContent?.includes('None on this reel') === true,
+      () => (document.querySelector('ul.questions') as HTMLElement).textContent?.includes('None on this video') === true,
       undefined,
       { timeout: 5000 },
     );
@@ -2287,11 +2292,18 @@ describe('the image candidate picker', () => {
  * it talks to must not invent a choice.
  */
 describe.skipIf(!built)('watermark size', () => {
+  /*
+    **These moved from Make to Build at Block 13 session 103.** The control is
+    the same control doing the same thing: session 102 named Build as its home —
+    beside *What else it will use*, which already states the watermark this
+    composition gets — and deferred the move. Nothing about what these assert
+    changed; only which step the panel is on when they assert it.
+  */
   it('offers three sizes with the reel’s own marked', async () => {
     const loaded = await loadFlow('build', 'build');
     if (loaded === null) return;
     try {
-      await onScreen(loaded.page, 'run');
+      await onScreen(loaded.page, 'build');
       /*
         **Reference lives behind one press since Block 13 session 102.** The card
         is 3500 px with his real data and sat between the two decisions on Choose;
@@ -2319,7 +2331,7 @@ describe.skipIf(!built)('watermark size', () => {
     const loaded = await loadFlow('build', 'build');
     if (loaded === null) return;
     try {
-      await onScreen(loaded.page, 'run');
+      await onScreen(loaded.page, 'build');
       /*
         **Reference lives behind one press since Block 13 session 102.** The card
         is 3500 px with his real data and sat between the two decisions on Choose;
@@ -2355,7 +2367,7 @@ describe.skipIf(!built)('watermark size', () => {
     );
     if (loaded === null) return;
     try {
-      await onScreen(loaded.page, 'run');
+      await onScreen(loaded.page, 'build');
       /*
         **Reference lives behind one press since Block 13 session 102.** The card
         is 3500 px with his real data and sat between the two decisions on Choose;
@@ -2653,7 +2665,13 @@ describe.skipIf(!built)('the Build step', () => {
       await loaded.page.waitForSelector('.buildpane', { timeout: 5000 });
       const text = (await loaded.page.textContent('.buildpane')) ?? '';
       expect(text).toContain('This reel has no edit plan yet');
-      expect(text).toContain('Press Run pipeline above');
+      /*
+        **Rewritten by Block 13 session 103**, which retired the name and not the
+        rule: there has been no button called *Run pipeline* since session 95
+        replaced it with *Make the subtitles* and *Make the pictures*. What this
+        asserts is the same — the sentence says what is missing and what to do.
+      */
+      expect(text).toContain('Make the subtitles and the pictures first');
       expect(text).not.toContain('Quit After Effects');
       expect(await loaded.page.$eval('button.build-now', (b) => (b as HTMLButtonElement).disabled)).toBe(true);
       expect(loaded.uncaught).toEqual([]);
@@ -3093,7 +3111,7 @@ describe.skipIf(!built)('the build-stamp check', () => {
        * sentence contains a command.
        */
       const text = (await loaded.page.textContent('main')) ?? '';
-      expect(text).toContain('The background service was out of date');
+      expect(text).toContain('The companion service was out of date');
       expect(text).not.toContain('npm run');
       expect(text).not.toContain('terminal');
       expect(loaded.uncaught).toEqual([]);

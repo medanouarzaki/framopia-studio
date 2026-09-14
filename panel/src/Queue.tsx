@@ -70,7 +70,7 @@ export function Queue({
   return (
     <div className="card queue">
       <p className="slothead">
-        <strong>The queue</strong>
+        <strong>The list</strong>
         <em className="tag">
           {view.done
             ? `${String(view.items.length)} video${view.items.length === 1 ? '' : 's'}, finished`

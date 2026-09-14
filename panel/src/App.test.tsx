@@ -375,7 +375,11 @@ describe('the Run control', () => {
 
     await goTo('run');
 
-    expect(text()).toContain('Pick a client mode.');
+    /*
+     * **Rewritten by Block 13 session 103**, which finished the one-name-for-one-thing
+     * sweep session 101 began. What is asserted is unchanged; only the name in it is.
+     */
+    expect(text()).toContain('Pick a client.');
   });
 });
 
@@ -546,7 +550,11 @@ describe('host detection', () => {
     expect(text()).toContain('--enable-nodejs');
     expect(text()).toContain('--mixed-context');
     expect(text()).toContain('restarted');
-    expect(text()).toContain('reel list');
+    /*
+     * **Rewritten by Block 13 session 103**, which finished the one-name-for-one-thing
+     * sweep session 101 began. What is asserted is unchanged; only the name in it is.
+     */
+    expect(text()).toContain('video list');
   });
 
   /*
@@ -984,9 +992,18 @@ describe('the fonts gate', () => {
 
     await goTo('build');
 
-    expect(text()).toContain('has no fonts of its own yet');
+    /*
+     * **Rewritten by Block 13 session 103.** The warning said *"has no fonts of
+     * its own yet … PROJECT_SPEC §5 reserves the client's own fonts for Block
+     * 9"*, and Block 9 is complete: since session 54 a client has three faces he
+     * sets himself. What it tests is unchanged — the warning names both faces the
+     * build will use instead — and one assertion is added, that it now names the
+     * control that fixes it rather than a document he cannot open.
+     */
+    expect(text()).toContain('has no typefaces of their own yet');
     expect(text()).toContain('Inter Semi-Bold');
     expect(text()).toContain('Almarai Bold');
+    expect(text()).toContain('Change their details');
   });
 
   it('says nothing once a mode brings its own', async () => {
@@ -1006,7 +1023,7 @@ describe('the fonts gate', () => {
 
     await goTo('build');
 
-    expect(text()).not.toContain('has no fonts of its own yet');
+    expect(text()).not.toContain('has no typefaces of their own yet');
   });
 });
 

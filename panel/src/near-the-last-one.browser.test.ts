@@ -227,44 +227,44 @@ describe.skipIf(!built)('what is behind one press, and what is not', () => {
    * control sat between the buttons that spend and the queue — the two things he
    * presses one after the other.
    */
-  it('takes the watermark setting out of the way of the two actions', async () => {
+  /**
+   * **Rewritten by Block 13 session 103, which finished the move.** Session 102
+   * put this setting behind a press on Make and said in its own report that its
+   * home is Build, beside *What else it will use* — the sentence that already
+   * states the watermark the composition gets. It is there now.
+   *
+   * What the test holds is the same thing it always held, and one more: the
+   * setting is not in the path between the two actions, **and the distance
+   * session 102 measured has not grown**.
+   */
+  it('keeps the watermark setting out of the path, and on the screen it affects', async () => {
     const page = await hisPanel();
     if (page === null) return;
+
+    /* Not on Make at all any more. */
     await onScreen(page, 'run');
+    expect(await count(page, '.watermark')).toEqual({ there: 0, drawn: 0 });
+
+    /* The distance session 102 measured at 220 px, which must not grow. */
+    const gap = await page.evaluate(() => {
+      const spend = [...document.querySelectorAll('section.do .partrun button.run')].filter((b) =>
+        (b as HTMLElement).checkVisibility(),
+      );
+      const last = spend[spend.length - 1];
+      const queue = document.querySelector('section.pane button');
+      if (last === undefined || queue === null) return 99_999;
+      return Math.round(queue.getBoundingClientRect().top - last.getBoundingClientRect().bottom);
+    });
+    console.log(`  == run button to queue: ${String(gap)}px`);
+    expect(`run button to queue ${String(gap)}px, no more than session 102's 220: ${gap <= 220}`).toBe(
+      `run button to queue ${String(gap)}px, no more than session 102's 220: true`,
+    );
+
+    /* On Build, behind one press, and every size still there and pressable. */
+    await onScreen(page, 'build');
     expect(await count(page, '.watermark')).toEqual({ there: 1, drawn: 0 });
-
-    /*
-     * The distance from the button that spends to the queue's first control,
-     * measured with it folded and again with it open. The comparison is the
-     * claim: what is between them is smaller by the whole of this setting.
-     */
-    const gap = async (): Promise<number> =>
-      await page.evaluate(() => {
-        /*
-         * The run controls specifically — `.partrun` is the pair Mohamed presses,
-         * *Make the subtitles* then *Make the pictures*. Every button in the
-         * section would include the watermark's own three sizes once it is open,
-         * which would measure the wrong thing and report it as an improvement.
-         */
-        const spend = [...document.querySelectorAll('section.do .partrun button.run')].filter(
-          (b) => (b as HTMLElement).checkVisibility(),
-        );
-        const last = spend[spend.length - 1];
-        const queue = document.querySelector('section.pane button');
-        if (last === undefined || queue === null) return 99_999;
-        return Math.round(queue.getBoundingClientRect().top - last.getBoundingClientRect().bottom);
-      });
-    const folded = await gap();
-
-    /* One press, and the sizes are there and pressable, exactly as they were. */
     await openReference(page, '.watermark');
     expect(await page.$$eval('.watermark .sizes button', (els) => els.length)).toBe(3);
-    const open = await gap();
-
-    console.log(`  == run button to queue: ${String(folded)}px folded, ${String(open)}px open`);
-    expect(`folded ${String(folded)}px, open ${String(open)}px: ${folded < open}`).toBe(
-      `folded ${String(folded)}px, open ${String(open)}px: true`,
-    );
     await page.close();
   }, 60_000);
 
@@ -284,9 +284,20 @@ describe.skipIf(!built)('what is behind one press, and what is not', () => {
     expect(rows).toHaveLength(4);
     expect(rows.filter((r) => r.drawn)).toEqual([]);
 
-    /* Nothing is deleted: the summary says how many are behind it. */
+    /*
+     * **Rewritten by Block 13 session 103.** The summary used to count the rows —
+     * *What was done — all 4 steps* — and now it names both halves of what is
+     * behind it, because the spend record folded in with them: `section.cost` was
+     * 231 px of a 1086 px Make and is 129 px. The count moved out because at
+     * 420 px the longer sentence wrapped to two lines and cost 21 px to say the
+     * same thing; the rows themselves are asserted above and below.
+     */
     const summary = await page.$eval('details.stagesref > summary', (el) => el.textContent ?? '');
-    expect(summary).toContain('4');
+    expect(summary).toContain('cost');
+    expect(summary).toContain('step by step');
+
+    /* And the spend record is behind the same one press, not a second one. */
+    expect(await count(page, 'details.stagesref .spend')).toEqual({ there: 3, drawn: 0 });
 
     await openReference(page, 'section.cost ul.facts');
     const opened = await page.$$eval('section.cost ul.facts li', (els) =>

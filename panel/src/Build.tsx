@@ -118,7 +118,9 @@ export function Build({
           these say *above* — and since session 97 neither thing is above: the
           pickers are on Choose and Run is on Make, two presses away through a
           tab he has to find. The sentence is unchanged; *Choose a client and a
-          video* and *Press Run pipeline* are now the control that takes him.
+          video* and *Make the subtitles and the pictures* are now the control
+          that takes him. Session 103 renamed the second: there has been no button
+          called *Run pipeline* since session 95.
         */
         !ready ? (
           <Sentence
@@ -130,7 +132,7 @@ export function Build({
         ) : disabledReason !== null ? (
           <Sentence
             className="note"
-            text={`${disabledReason} Press Run pipeline above, and this will say what the composition will contain.`}
+            text={`${disabledReason} Make the subtitles and the pictures first, and this will say what the composition will contain.`}
             phrase={WAYS_THERE.runIt}
             onPress={() => onGoTo?.('run')}
           />

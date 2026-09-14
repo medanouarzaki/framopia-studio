@@ -172,8 +172,13 @@ export function Readiness({
           <p className="faint attempt" data-attempt={attempt}>
             {attempt === 0 ? 'first check' : `attempt ${attempt + 1}`} at {attemptedAt}
           </p>
+          {/*
+            **Was *Check again*.** Block 13 session 103: the same handler, the same
+            effect, three names across the panel. One name for one thing, and this
+            is the one `service.ts` tells him to press.
+          */}
           <button className="ghost" type="button" onClick={onRetry}>
-            Check again
+            Try again
           </button>
         </div>
       ) : null}

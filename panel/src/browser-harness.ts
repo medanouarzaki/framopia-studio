@@ -338,6 +338,16 @@ export function realClients(): Record<string, unknown>[] {
       },
       folderLeavesOut: null,
     };
+    /*
+     * **`listModes` sets this and the first draft of this helper did not**, which
+     * is not a detail: `FontsNote` reads `mode.fonts`, and without it a client who
+     * has chosen her typefaces renders the *no fonts of its own* warning. Block 13
+     * session 103 measured Build at 964 px with 193 px of a warning that is not on
+     * his screen, and nearly rearranged Build around it.
+     */
+    if (mode.fonts.status === 'set') {
+      entry.fonts = { latin: mode.fonts.latin, arabic: mode.fonts.arabic };
+    }
     if (mode.about !== undefined) entry.about = mode.about;
     out.push(entry);
   }

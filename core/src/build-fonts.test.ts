@@ -29,7 +29,19 @@ describe('buildFonts', () => {
     expect(warning).toContain(LATIN_FONT);
     expect(warning).toContain(ARABIC_FONT);
     expect(warning).toContain('1.07');
-    expect(warning).toContain('Block 9');
+    /*
+     * **It used to assert `Block 9`.** Block 13 session 103 retired that: the
+     * sentence said *"PROJECT_SPEC §5 reserves the client's own fonts for Block
+     * 9"*, Block 9 is complete, and since session 54 a client has three faces he
+     * sets himself — so it described a rule that no longer holds, on the screen
+     * where he builds.
+     *
+     * What replaces it is the stronger assertion, and the one that matters: the
+     * warning names the control that fixes it, and names no block, no spec
+     * section and no document he cannot open.
+     */
+    expect(warning).toContain('Change their details');
+    expect(warning).not.toMatch(/Block \d|PROJECT_SPEC|§/);
   });
 
   it('takes the mode’s own fonts once they are set, with no warning', () => {

@@ -247,7 +247,7 @@ export function createHost(repo: string): PanelHost {
          */
         return {
           ok: false as const,
-          cause: `the background service has not been prepared yet: ${entry} is not there`,
+          cause: `the companion service has not been prepared yet: ${entry} is not there`,
           reason: 'not-built' as const,
           nodePath: node.path,
         };
@@ -343,7 +343,7 @@ export function detectHost(): HostEnvironment {
         'declare --enable-nodejs and --mixed-context, and After Effects must be restarted ' +
         'after that change.',
       prevents:
-        'Nothing can be read from disk, so the reel list, the client modes and the ' +
+        'Nothing can be read from disk, so the video list, the clients and the ' +
         'companion service are all unavailable.',
     };
   }
@@ -370,8 +370,8 @@ export function detectHost(): HostEnvironment {
       missing: 'the repository',
       cause: `Node is available but the panel could not find the Framopia repository: ${(error as Error).message}`,
       prevents:
-        'Nothing on disk can be located, so the service cannot be started and no reel or ' +
-        'client mode can be listed.',
+        'Nothing on disk can be located, so the service cannot be started and no video or ' +
+        'client can be listed.',
     };
   }
 }

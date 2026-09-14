@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeAll, afterAll } from 'vitest';
-import { chromium, type Browser } from 'playwright';
+import { chromium, type Browser, type Page } from 'playwright';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -236,4 +236,225 @@ describe.skipIf(!built)('how tall the panel is with his own data', () => {
     expect(choose).toBeGreaterThan(0);
     await page.close();
   }, 120_000);
+});
+
+/**
+ * **Make and Build, block by block, in every state he meets.**
+ *
+ * Block 13 session 103. Session 102 measured whole screens with his data and found
+ * Choose at 4000 px; it fixed Choose and left Make at 1242 px and Build at 964 px
+ * of a 900 px window. A screen total says a screen is too tall; it does not say
+ * which block to look at, and neither does a total taken in one state — the state
+ * he meets daily and the worst state a screen can be in are different screens.
+ *
+ * So this walks the direct children of each visible section and prints what each
+ * costs, in five states for Make and three for Build. It asserts only that the
+ * page rendered: a ruler, not a rule. What it measured is in the session report.
+ */
+describe.skipIf(!built)('what each block of Make and Build costs', () => {
+  /** Every visible section, and the direct children inside it, with heights. */
+  async function blocks(page: Page, label: string): Promise<number> {
+    const rows = await page.evaluate(() => {
+      const out: { name: string; top: number; height: number; depth: number }[] = [];
+      for (const s of Array.from(document.querySelectorAll('section'))) {
+        if (!s.checkVisibility()) continue;
+        const r = s.getBoundingClientRect();
+        const h2 = s.querySelector('h2');
+        out.push({
+          name: h2?.textContent ?? `section.${s.className}`,
+          top: Math.round(r.top + window.scrollY),
+          height: Math.round(r.height),
+          depth: 0,
+        });
+        for (const child of Array.from(s.children)) {
+          if (!(child as HTMLElement).checkVisibility()) continue;
+          if (child.tagName === 'H2') continue;
+          const cr = child.getBoundingClientRect();
+          if (Math.round(cr.height) === 0) continue;
+          const what =
+            child.tagName === 'DETAILS'
+              ? `<details> ${child.querySelector('summary')?.textContent ?? ''}`
+              : `${child.tagName.toLowerCase()}.${child.className || '(none)'}`;
+          out.push({
+            name: what.slice(0, 46),
+            top: Math.round(cr.top + window.scrollY),
+            height: Math.round(cr.height),
+            depth: 1,
+          });
+        }
+      }
+      return out;
+    });
+    const bottom = Math.max(...rows.filter((r) => r.depth === 0).map((r) => r.top + r.height));
+    console.log(`\n  == ${label} — ends at ${String(bottom)}px of a 900px panel`);
+    for (const r of rows) {
+      const pad = r.depth === 0 ? '' : '    ';
+      console.log(
+        `     ${pad}${r.name.padEnd(46 - pad.length)} ${String(r.height).padStart(5)}px`,
+      );
+    }
+    return bottom;
+  }
+
+
+  /** A pipeline job, in the two states that change Make's shape. */
+  function runJob(state: 'running' | 'failed'): string {
+    const stage = (
+      id: string,
+      label: string,
+      st: string,
+      extra: Record<string, unknown> = {},
+    ): Record<string, unknown> => ({ id, label, state: st, reason: null, costUsd: 0, ...extra });
+    const stages =
+      state === 'running'
+        ? [
+            stage('transcription', 'Writing down the words', 'done'),
+            stage('analysis', 'Choosing the pictures', 'running', { detail: 'asking the model' }),
+            stage('images', 'Drawing the pictures', 'waiting'),
+            stage('zones', 'Looking at the video', 'waiting'),
+          ]
+        : [
+            stage('transcription', 'Writing down the words', 'done'),
+            stage('analysis', 'Choosing the pictures', 'failed', {
+              error: {
+                stage: 'analysis',
+                cause: '1 slot idea(s) depict more than one subject: slot 7',
+                retryable: true,
+              },
+            }),
+            stage('images', 'Drawing the pictures', 'waiting'),
+            stage('zones', 'Looking at the video', 'waiting'),
+          ];
+    const detail = {
+      reel: 'sora', modeId: 'dr-loubna-kfafi', planPath: '/v/p0.json', stages,
+      percent: 0.25, spentUsd: 0, planSpentUsd: 3.4025,
+      done: state === 'failed',
+      error: state === 'failed' ? stages[1]?.['error'] : null,
+    };
+    return `window.__job = () => (${JSON.stringify({
+      id: 'job-1',
+      status: state === 'running' ? 'running' : 'error',
+      progress: detail.percent,
+      detail,
+    })});`;
+  }
+
+  /** A finished build, which is what Build looks like after he presses it. */
+  function builtJob(): string {
+    const detail = {
+      reel: 'sora', planPath: '/v/p0.json',
+      stages: [
+        { id: 'prepare', label: 'Read the plan and resolve everything it names', state: 'done' },
+        { id: 'after-effects', label: 'Build the composition in After Effects', state: 'done' },
+        { id: 'check', label: 'Check the built comp against the plan', state: 'done' },
+      ],
+      percent: 1, done: true,
+      savePath: '/repo/.local/build/sora-full.aep',
+      savedOwnOutput: '/repo/.local/build/sora-full.aep',
+      wallS: 1.3, error: null,
+    };
+    return `window.__job = () => (${JSON.stringify({ id: 'job-1', status: 'done', progress: 1, detail })});`;
+  }
+
+  async function hisPanel(extra?: string): Promise<Page | null> {
+    if (browser === undefined) return null;
+    const page = await browser.newPage({ viewport: { width: 420, height: 900 } });
+    await page.addInitScript(stubHost(HANDSHAKE));
+    await page.addInitScript(realPanelRoutes());
+    if (extra !== undefined) await page.addInitScript(extra);
+    await page.goto(`file://${INDEX}`);
+    await page.waitForSelector('header.brand', { timeout: 10_000 });
+    await onScreen(page, 'choose');
+    await page.selectOption('select[aria-label="Client"]', 'dr-loubna-kfafi');
+    await page.waitForTimeout(300);
+    await page.selectOption(
+      'select[aria-label="Video"]',
+      'Dr Loubna Kfafi/September Content/Exports/sora.mov',
+    );
+    await page.waitForTimeout(600);
+    return page;
+  }
+
+  it('measures Make in the states he meets', async () => {
+    const page = await hisPanel();
+    if (page === null) return;
+
+    /* The state he meets daily: a video already run, nothing in the list. */
+    await onScreen(page, 'run');
+    await blocks(page, 'MAKE — daily: run video, queue idle');
+
+    /* Four in the list, which is how he uses it while he is away. */
+    for (const label of [
+      'Dr Loubna Kfafi/September Content/Exports/sculptra-explainer.mov',
+      'Dr Loubna Kfafi/September Content/Exports/botox-myths.mov',
+      'Dr Loubna Kfafi/September Content/Exports/skin-booster.mov',
+    ]) {
+      await onScreen(page, 'choose');
+      await page.selectOption('select[aria-label="Video"]', label);
+      await page.waitForTimeout(250);
+      await onScreen(page, 'run');
+      const add = await page.$('section.pane button.run');
+      if (add !== null) await add.click();
+      await page.waitForTimeout(120);
+    }
+    await onScreen(page, 'run');
+    await blocks(page, 'MAKE — four videos in the list');
+    await page.close();
+
+    /* A run in progress, and a run that failed: the two states that add a block. */
+    for (const [state, label] of [
+      ['running', 'MAKE — a run in progress'],
+      ['failed', 'MAKE — a stage failed'],
+    ] as const) {
+      const p2 = await hisPanel(runJob(state));
+      if (p2 === null) return;
+      await onScreen(p2, 'run');
+      await p2.click('section.do .partrun button.run');
+      await p2.waitForTimeout(900);
+      await blocks(p2, label);
+      await p2.close();
+    }
+  }, 180_000);
+
+  it('measures Build in the states he meets', async () => {
+    const page = await hisPanel();
+    if (page === null) return;
+    await onScreen(page, 'build');
+    await blocks(page, 'BUILD — ready to build');
+    await page.close();
+
+    /* Nothing chosen: the empty state session 102 grew by 26 px. */
+    if (browser === undefined) return;
+    const empty = await browser.newPage({ viewport: { width: 420, height: 900 } });
+    await empty.addInitScript(stubHost(HANDSHAKE));
+    await empty.addInitScript(realPanelRoutes());
+    await empty.goto(`file://${INDEX}`);
+    await empty.waitForSelector('header.brand', { timeout: 10_000 });
+    await onScreen(empty, 'build');
+    await blocks(empty, 'BUILD — nothing chosen');
+    await empty.close();
+
+    /* Already built once, which is what he looks at after pressing it. */
+    const done = await hisPanel(builtJob());
+    if (done === null) return;
+    await onScreen(done, 'build');
+    await done.click('button.build-now');
+    await done.waitForTimeout(900);
+    await blocks(done, 'BUILD — already built once');
+    await done.close();
+
+    /*
+     * **The worst state Build can be in**: a client who has not chosen typefaces,
+     * so `FontsNote` renders. Neither real client is in it — both have fonts set —
+     * which is exactly why the first draft of this ruler measured it by accident
+     * and reported Build 205 px taller than it is.
+     */
+    const noFonts = await hisPanel(
+      'window.__payload.modes.modes.forEach(function (m) { delete m.fonts; });',
+    );
+    if (noFonts === null) return;
+    await onScreen(noFonts, 'build');
+    await blocks(noFonts, 'BUILD — a client with no typefaces of their own');
+    await noFonts.close();
+  }, 180_000);
 });

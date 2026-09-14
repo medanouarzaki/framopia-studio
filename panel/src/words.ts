@@ -115,7 +115,20 @@ const CAUSES: { when: RegExp; say: string }[] = [
   },
   {
     when: /not authori[sz]ed|API key|invalid key|permission denied/i,
-    say: 'The key for the paid services was not accepted. Check it on the Settings screen.',
+    /*
+     * **It sent him to a screen that does not exist.** Block 13 session 102 found
+     * it and was not allowed to reword it; session 103 is. There is no Settings
+     * screen in this panel — no component, no route, nothing named Settings
+     * anywhere in `panel/src`.
+     *
+     * And there cannot be one that shows him the key: a secret lives only in
+     * `.local/` and is never printed. So the true sentence says what is wrong and
+     * what has to happen, and sends him nowhere — which is better than sending
+     * him somewhere that is not there.
+     */
+    say:
+      'The key for the paid services was not accepted. Nothing here can change it — the key ' +
+      'itself has to be replaced before anything that costs money will run.',
   },
   {
     when: /would be crossed|ceiling|budget exceeded/i,
@@ -247,7 +260,7 @@ export function queueNews(queue: {
   if (queue.stopped) {
     return {
       short: 'stopped',
-      said: `You stopped the queue. ${String(done)} ready to build.`,
+      said: `You stopped the list. ${String(done)} ready to build.`,
       tone: 'warn',
     };
   }
@@ -402,6 +415,12 @@ export const WAYS_THERE = {
   theirCard: 'Open their card',
   aDifferentFolder: 'set a different folder on their card',
   clientAndVideo: 'Choose a client and a video',
-  runIt: 'Press Run pipeline',
+  /*
+   * **There is no button called *Run pipeline*.** Block 13 session 103. Session 95
+   * replaced it with *Make the subtitles* and *Make the pictures*, and `App.tsx`
+   * says so in its own comment — but this sentence kept naming the old one, and
+   * session 102 made it a control without noticing the name was dead.
+   */
+  runIt: 'Make the subtitles and the pictures',
   pickAVideo: 'Pick a video',
 } as const;

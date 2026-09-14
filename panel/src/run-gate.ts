@@ -41,7 +41,7 @@ export function runGate(options: {
     };
   }
   if (reel === null) return { enabled: false, reason: 'Pick a video.' };
-  if (mode === null) return { enabled: false, reason: 'Pick a client mode.' };
+  if (mode === null) return { enabled: false, reason: 'Pick a client.' };
   if (!reel.present) {
     return {
       enabled: false,

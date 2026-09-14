@@ -74,7 +74,7 @@ export function Transcript({
   if (!Array.isArray(view.words) || !Array.isArray(view.cards)) {
     return (
       <p className="reason" role="status">
-        The service answered without a transcript for this reel.
+        The service answered without a transcript for this video.
       </p>
     );
   }
@@ -207,7 +207,7 @@ export function Transcript({
                    * vitasilk while the record said 7, 23 and 13; both were right
                    * and nothing said which was which.
                    */}
-                  {q.label} · <strong>{q.count}</strong> this reel · {q.corpusCount} corpus
+                  {q.label} · <strong>{q.count}</strong> this video · {q.corpusCount} corpus
                   {q.proxy ? ' · proxy' : ''}
                 </button>
                 {filter === q.id ? (
@@ -215,7 +215,7 @@ export function Transcript({
                     <p className="detail">{q.question}</p>
                     <p className="reason">{q.basis}</p>
                     {q.count === 0 ? (
-                      <p className="reason">None on this reel.</p>
+                      <p className="reason">None on this video.</p>
                     ) : (
                       <ul className="instances">
                         {q.instances.map((instance) => (

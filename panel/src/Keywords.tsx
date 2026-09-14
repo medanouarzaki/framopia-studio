@@ -63,7 +63,7 @@ export function Keywords({
   if (!Array.isArray(view.keywords) || !Array.isArray(view.promotable)) {
     return (
       <p className="reason" role="status">
-        The service answered without keywords for this reel.
+        The service answered without keywords for this video.
       </p>
     );
   }

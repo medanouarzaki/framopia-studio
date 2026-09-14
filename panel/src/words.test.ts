@@ -449,8 +449,15 @@ describe('a sentence that names a place carries the way there', () => {
         'Choose a client and a video above, and this will say what the composition will contain.',
         WAYS_THERE.clientAndVideo,
       ],
+      /*
+       * **Rewritten by Block 13 session 103**, which retired the name rather than
+       * the rule: there has been no button called *Run pipeline* since session 95
+       * replaced it with *Make the subtitles* and *Make the pictures*. The
+       * sentence and the phrase moved together, which is exactly what this test
+       * exists to force.
+       */
       [
-        'Nothing yet. Press Run pipeline above, and this will say what the composition will contain.',
+        'Nothing yet. Make the subtitles and the pictures first, and this will say what the composition will contain.',
         WAYS_THERE.runIt,
       ],
       ['Pick a video above and build it, the same way you always do.', WAYS_THERE.pickAVideo],

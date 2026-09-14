@@ -69,10 +69,24 @@ export function buildFonts(mode: ModeFontsLike): BuildFonts {
     emphasisSizeRatio: EMPHASIS_SIZE_RATIO,
     source: 'global',
     emphasisSource: 'latin',
+    /*
+     * **It named a block that finished and a spec section he cannot open.** Block
+     * 13 session 103. This said *"PROJECT_SPEC §5 reserves the client's own fonts
+     * for Block 9"* — and Block 9 is complete, and since Block 13 session 54 a
+     * client has three faces he sets himself. The sentence described a rule that
+     * no longer holds, on the screen where he builds.
+     *
+     * What is left is the same fact — no typefaces of their own, so the standard
+     * pair — and, in place of the spec reference, the control that fixes it.
+     * *Change their details* is the button on the client's own card, and it is
+     * where the three faces are set.
+     *
+     * Nothing else changed: the same two faces, the same ratio, the same
+     * condition, the same `source: 'global'`.
+     */
     warning:
-      `${mode.name} has no fonts of its own yet, so the build will use the global subtitle ` +
+      `${mode.name} has no typefaces of their own yet, so the build uses the standard ` +
       `pair: ${LATIN_FONT} for Latin and ${ARABIC_FONT} for Arabic at ${ARABIC_SIZE_RATIO}x. ` +
-      'PROJECT_SPEC §5 reserves the client’s own fonts for Block 9; everything before the ' +
-      'build runs normally.',
+      'Set theirs with Change their details on their card; everything else runs normally.',
   };
 }

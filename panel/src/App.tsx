@@ -589,7 +589,7 @@ function Panel({
     behindSide === 'panel'
       ? PANEL_IS_BEHIND
       : repairing
-        ? 'The background service was out of date. Bringing it up to date now — this takes a few seconds.'
+        ? 'The companion service was out of date. Bringing it up to date now — this takes a few seconds.'
         : (repaired ?? stale.detail);
 
   if (showMoney && connection !== null) {
@@ -942,40 +942,6 @@ function Panel({
           )}
           {job === null ? null : <RunProgress job={job} />}
 
-          {/*
-            **A setting, not an action, and it was standing in the path.** Block
-            13 session 102. This sat between the two buttons that spend and the
-            queue — the two things he presses one after the other — so the next
-            target was never where the last one was, which is Mohamed's own
-            complaint about the panel.
- 
-            It is not deleted and not moved off Make: it is behind the same one
-            press Build uses, at the foot of the block rather than through the
-            middle of it. **Where it really belongs is Build**, beside *What else
-            it will use*, which already states the watermark this composition
-            gets — the report says so; moving a control between screens is a
-            larger change than a layout pass.
-          */}
-          {dry === null || dry.planPath === null ? null : (
-            <details className="quibbles watermarkref">
-              <summary>The watermark on this video</summary>
-            <WatermarkToggle
-              enabled={dry.watermark}
-              size={dry.watermarkSize}
-              widthsPx={dry.watermarkWidthsPx}
-              onChange={async (enabled) => {
-                if (connection === null || dry.planPath === null) return;
-                await setWatermark(connection, { planPath: dry.planPath, enabled });
-                setDry({ ...dry, watermark: enabled });
-              }}
-              onResize={async (size) => {
-                if (connection === null || dry.planPath === null) return;
-                await setWatermark(connection, { planPath: dry.planPath, size });
-                setDry({ ...dry, watermarkSize: size });
-              }}
-            />
-            </details>
-          )}
         </section>
 
         {/*
@@ -1116,7 +1082,17 @@ function Panel({
               ? 'See everything spent'
               : `See everything spent — $${money.totalUsd.toFixed(2)} so far`}
           </button>
-          {reel === null ? null : <Spend reel={reel} />}
+          {/*
+            **The accounting is history, and history folds.** Block 13 session
+            103. Measured with his data, `section.cost` was 231 px of a 1086 px
+            Make — 103 px of it this block, which says what the video has cost so
+            far and what the soft alarm is. Session 98 settled that the figure he
+            acts on is the one on the button; this is the record behind it, and
+            session 102 already named it as what should go.
+ 
+            It folds in with the steps when there is nothing left to run, so the
+            whole history is one press and one summary rather than two.
+          */}
           {/*
             **Four rows of the same fact.** Block 13 session 102, and the brief's
             own question. *Writing down the words — Already done, nothing to pay*,
@@ -1130,13 +1106,30 @@ function Panel({
             they do during a run, when they are what he is watching. Nothing is
             deleted: the summary says how many rows are behind it.
           */}
-          {dry === null ? null : finishedWords(dry.stages) === null ? (
-            <DryRun plan={dry} />
+          {dry === null || finishedWords(dry.stages) === null ? (
+            <>
+              {/*
+                Something is still to run, so the steps are the decision — which
+                will cost money and what each will do — and they stay in full
+                view, as they do during a run. Only the record folds.
+              */}
+              {reel === null ? null : (
+                <details className="quibbles spendref">
+                  <summary>What this video has cost so far</summary>
+                  <Spend reel={reel} />
+                </details>
+              )}
+              {dry === null ? null : <DryRun plan={dry} />}
+            </>
           ) : (
             <details className="quibbles stagesref">
-              <summary>
-                {`What was done — all ${String(dry.stages.length)} steps`}
-              </summary>
+              {/*
+                One line on purpose: at 420 px the longer form wrapped to two and
+                cost 21 px to say the same thing. It names both halves of what is
+                behind it — the money and the steps.
+              */}
+              <summary>{`What it cost, step by step`}</summary>
+              {reel === null ? null : <Spend reel={reel} />}
               <DryRun plan={dry} />
             </details>
           )}
@@ -1177,6 +1170,40 @@ function Panel({
         <section className="buildpane-section">
           <h2>Build</h2>
           {mode === null ? null : <FontsNote mode={mode} />}
+          {/*
+            **The watermark setting, where the sentence describing it already is.**
+            Block 13 session 103, finishing what session 102 named and deferred.
+ 
+            It spent two sessions on Make: first standing between the two buttons
+            that spend and the queue, then behind a press at the foot of that
+            block. Neither was its home. It changes nothing a run does — only what
+            the composition gets — and Build's own card already says *Watermark
+            medium, 324 × 363 px* one press away under *What else it will use*.
+            The setting and the sentence stating its effect are now on one screen.
+ 
+            It does exactly what it did: the same two calls, the same plan, the
+            same refusal to appear when there is no plan to write to.
+          */}
+          {dry === null || dry.planPath === null ? null : (
+            <details className="quibbles watermarkref">
+              <summary>The watermark on this video</summary>
+              <WatermarkToggle
+                enabled={dry.watermark}
+                size={dry.watermarkSize}
+                widthsPx={dry.watermarkWidthsPx}
+                onChange={async (enabled) => {
+                  if (connection === null || dry.planPath === null) return;
+                  await setWatermark(connection, { planPath: dry.planPath, enabled });
+                  setDry({ ...dry, watermark: enabled });
+                }}
+                onResize={async (size) => {
+                  if (connection === null || dry.planPath === null) return;
+                  await setWatermark(connection, { planPath: dry.planPath, size });
+                  setDry({ ...dry, watermarkSize: size });
+                }}
+              />
+            </details>
+          )}
           <Build
             connection={connection}
             preview={plan?.build}
@@ -1353,8 +1380,15 @@ function HostUnavailable({
                 <span className="v">{env.prevents}</span>
               </li>
             </ul>
+            {/*
+              **One name for the one act.** Block 13 session 103. This button, the
+              one on the unreachable line and the one behind *Details* all call
+              `onRetry` and all do the same thing, and they were called *Retry*,
+              *Try again* and *Check again*. *Try again* is his language rather
+              than a developer's, and it is the one the panel's own messages name.
+            */}
             <button className="retry" type="button" onClick={onRetry}>
-              Retry
+              Try again
             </button>
           </div>
         </section>
@@ -1401,7 +1435,7 @@ function WatermarkToggle({
           checked={enabled}
           onChange={(event) => void onChange(event.target.checked)}
         />
-        <span>Watermark this reel</span>
+        <span>Watermark this video</span>
       </label>
       {/*
         A service older than the size choice sends nothing, and nothing is not a
@@ -1559,10 +1593,6 @@ function RunActions({
               spendsMoney(words) ? `about ${toTheCent(words)}` : 'nothing to pay'
             }`}
       </button>
-      <p className="faint">
-        The subtitles, the words to emphasise, and the ideas for the pictures. Read them and fix
-        anything wrong before you make the pictures.
-      </p>
       <CapWarning
         estimateUsd={words}
         monthSoFarUsd={money?.monthSoFarUsd ?? 0}
@@ -1601,11 +1631,37 @@ function RunActions({
         monthSoFarUsd={money?.monthSoFarUsd ?? 0}
         capUsd={money?.capUsd ?? null}
       />
-      <p className="faint">
-        {subtitlesDone
-          ? 'The subtitles are done and are not charged for again.'
-          : 'The pictures are drawn from the subtitles, so make those first.'}
-      </p>
+      {/*
+        **Two consecutive actions, with a paragraph standing between them.** Block
+        13 session 103, and the same complaint session 102 acted on: *"when I
+        click a button, the next button I'm going to click on should be near to
+        it."* He presses *Make the subtitles* and then *Make the pictures*, and
+        46 px of explanation sat in the gap.
+ 
+        Both sentences are unchanged and both are still here, now under the pair
+        rather than through it. They fold **only when both buttons can be
+        pressed** — when the pictures button is disabled, the sentence saying why
+        is the only thing that explains it, and hiding a reason behind a press
+        would make a dead control.
+      */}
+      {subtitlesDone ? (
+        <details className="quibbles whatthesedo">
+          <summary>What these two make</summary>
+          <p className="faint">
+            The subtitles, the words to emphasise, and the ideas for the pictures. Read them and fix
+            anything wrong before you make the pictures.
+          </p>
+          <p className="faint">The subtitles are done and are not charged for again.</p>
+        </details>
+      ) : (
+        <>
+          <p className="faint">
+            The subtitles, the words to emphasise, and the ideas for the pictures. Read them and fix
+            anything wrong before you make the pictures.
+          </p>
+          <p className="faint">The pictures are drawn from the subtitles, so make those first.</p>
+        </>
+      )}
     </div>
   );
 }
@@ -1619,7 +1675,7 @@ function DryRun({ plan }: { plan: DryRunPlan }): JSX.Element {
           no such field, and the panel renders rather than throws. */}
       <p className="spend note" style={{ marginTop: 0 }}>
         {plan.planClientMode == null
-          ? 'No client saved for this video yet. Run the pipeline and it is saved for you.'
+          ? 'No client saved for this video yet. Make the subtitles and it is saved for you.'
           : `Made for ${plan.planClientMode.id}.`}
       </p>
       <ul className="facts">
@@ -1672,7 +1728,7 @@ function Spend({ reel }: { reel: Reel }): JSX.Element {
         <div className="cap">soft alarm ${SPEND_SOFT_ALARM_USD.toFixed(2)}</div>
       </div>
       {level === 'alarm' ? (
-        <p className="reason">This reel is past the expected envelope for a finished reel.</p>
+        <p className="reason">This video is past the expected envelope for a finished video.</p>
       ) : null}
       {reel.planPath === null ? <p className="spend note">No edit plan yet.</p> : null}
     </div>

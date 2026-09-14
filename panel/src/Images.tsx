@@ -65,11 +65,11 @@ export function Images({
       </p>
     );
   }
-  if (view === null) return <p className="empty">Reading the image slots…</p>;
+  if (view === null) return <p className="empty">Reading the picture slots…</p>;
   if (!Array.isArray(view.slots)) {
     return (
       <p className="reason" role="status">
-        The service answered without image slots for this reel.
+        The service answered without picture slots for this video.
       </p>
     );
   }
@@ -109,7 +109,8 @@ export function Images({
 
       {view.slots.length === 0 ? (
         <p className="empty">
-          No image slots on this plan. Analysis plans them; it has not run for this reel.
+          No picture slots on this plan. Choosing what to emphasise and what to picture
+          plans them, and it has not run for this video.
         </p>
       ) : null}
 
