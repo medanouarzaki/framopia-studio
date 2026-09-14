@@ -185,6 +185,7 @@ describe.skipIf(!built)('what is behind one press, and what is not', () => {
         video.getBoundingClientRect().top - client.getBoundingClientRect().bottom,
       );
     });
+    console.log(`  == the two decisions on Choose are ${String(gap)}px apart`);
     expect(`the two decisions are ${String(gap)}px apart, under 200: ${gap < 200}`).toBe(
       `the two decisions are ${String(gap)}px apart, under 200: true`,
     );
@@ -260,6 +261,7 @@ describe.skipIf(!built)('what is behind one press, and what is not', () => {
     expect(await page.$$eval('.watermark .sizes button', (els) => els.length)).toBe(3);
     const open = await gap();
 
+    console.log(`  == run button to queue: ${String(folded)}px folded, ${String(open)}px open`);
     expect(`folded ${String(folded)}px, open ${String(open)}px: ${folded < open}`).toBe(
       `folded ${String(folded)}px, open ${String(open)}px: true`,
     );
