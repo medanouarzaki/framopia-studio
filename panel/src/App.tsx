@@ -116,7 +116,7 @@ function Panel({
   attemptedAt: string;
   onRedetect: () => void;
 }): JSX.Element {
-  const { host, logoSrc } = env;
+  const { host } = env;
   const [service, setService] = useState<ServiceState>({ kind: 'starting' });
   // Bounded self-repair of a panel/service build mismatch: see the effect below.
   const [repairs, setRepairs] = useState(0);
@@ -595,7 +595,7 @@ function Panel({
   if (showMoney && connection !== null) {
     return (
       <div className="app">
-        <Brand logoSrc={logoSrc} service={service} />
+        <Brand service={service} />
         <div className="moneyback">
           <button type="button" className="ghost" onClick={() => setShowMoney(false)}>
             Back
@@ -609,7 +609,7 @@ function Panel({
   if (newClient !== null) {
     return (
       <div className="app">
-        <Brand logoSrc={logoSrc} service={service} />
+        <Brand service={service} />
         <NewClient
           connection={connection}
           kind={newClient}
@@ -627,7 +627,7 @@ function Panel({
   if (editor !== null) {
     return (
       <div className="app">
-        <Brand logoSrc={logoSrc} service={service} />
+        <Brand service={service} />
         <Editor id={editor} onClose={() => setEditor(null)}>
           {editorContent(editor, connection, reel?.label ?? null)}
         </Editor>
@@ -646,7 +646,7 @@ function Panel({
   const news = rawNews !== null && rawNews.tone !== 'working' && queueNewsSeen ? null : rawNews;
   return (
     <div className="app">
-      <Brand logoSrc={logoSrc} service={service} />
+      <Brand service={service} />
 
       <main>
         <Readiness
@@ -1273,16 +1273,23 @@ export function countFor(id: EditorId, plan: PlanSteps | null): number | null {
   return preview.images;
 }
 
-function Brand({
-  logoSrc,
-  service,
-}: {
-  logoSrc: string | null;
-  service: ServiceState;
-}): JSX.Element {
+/**
+ * **The mark, and only the mark.** Block 13 session 104, Mohamed's ruling.
+ *
+ * The header drew the full Framopia logo from `assets/brand/` when it was on
+ * disk and a red square when it was not, so the panel had two different
+ * identities depending on the machine. What stands beside the words now is the
+ * one red element out of that logo — a short rounded bar — on every machine.
+ *
+ * It is a mark, not a control: a `div`, hidden from the accessibility tree, with
+ * no cursor, no hover, no focus and `pointer-events: none`, so it cannot be
+ * pressed or even hovered. That matters because red means *this spends money*
+ * everywhere else in the panel.
+ */
+function Brand({ service }: { service: ServiceState }): JSX.Element {
   return (
     <header className="brand">
-      {logoSrc === null ? <div className="mark" aria-hidden="true" /> : <img src={logoSrc} alt="" />}
+      <div className="mark" aria-hidden="true" />
       <div className="name">
         Framopia <em>Studio</em>
       </div>

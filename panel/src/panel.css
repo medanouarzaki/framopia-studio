@@ -17,6 +17,42 @@
   --warn: #d29922;
   /* Focus, deliberately not the accent. Bright enough to find by eye. */
   --focus: #e8eaed;
+
+  /*
+   * **One type scale, in pixels.** Block 13 session 104.
+   *
+   * Mohamed looked at the panel and said it is not beautiful to see: underlined
+   * text at many sizes, reading like a paragraph in Word. Measured in the browser
+   * that draws it, the three screens rendered **23 distinct type settings across
+   * eleven sizes** — 8.96, 9.39, 10.4, 10.54, 10.84, 11.05, 11.56, 13.26, 14.45,
+   * 15.17 and 17 px. Three of those sat within half a pixel of each other doing
+   * three different jobs, and one control, `.linky`, drew at 17 px in one place
+   * and 11.56 px in another.
+   *
+   * The cause is that every size was written in `em`, which compounds through
+   * nesting, so no one could tell from the source what any element was set in.
+   * These are pixels: a step is the same size wherever it sits.
+   *
+   * **Six steps on four sizes.** The panel is 420 px wide and dense — more than
+   * four sizes at this width is what produced eleven. Weight, colour, case and
+   * tracking carry the rest of the hierarchy, which is what the greys were
+   * already there for.
+   */
+  --t-label: 11px;    /* section and field labels: 600, faint, uppercase, tracked */
+  --t-micro: 11px;    /* versions, timestamps, monospace values: 400, faint */
+  --t-second: 13px;   /* hints, notes, offers, what is behind a press: 400, muted */
+  --t-body: 15px;     /* sentences meant to be read: 400, text */
+  --t-action: 15px;   /* a control's own text: 600 */
+  --t-title: 17px;    /* the one strongest line on a card: 600, text */
+
+  /*
+   * **Three spacing values, not ten.** Inside a group, between groups, around a
+   * section. Session 98 grouped Make's controls with a heading; this is the same
+   * grouping done with space, so it reads before the words are read.
+   */
+  --s-tight: 8px;
+  --s-group: 16px;
+  --s-section: 28px;
 }
 
 * { box-sizing: border-box; }
@@ -38,26 +74,37 @@ header.brand {
   padding: 18px 20px 14px;
   border-bottom: 1px solid var(--line);
 }
-header.brand img { width: 22px; height: auto; display: block; }
+/*
+ * **The mark: the one red element out of the logo, and nothing else.** Block 13
+ * session 104, Mohamed's ruling. A short rounded bar, a little larger than the
+ * 14 px square it replaces, in the accent the brand already owns — no new colour
+ * is introduced here. The `img` rule goes with the logo it sized.
+ *
+ * **It must never be mistaken for a control**, because the accent means *this
+ * spends money* everywhere else. So it takes no cursor, no hover, no focus ring
+ * and no pointer events at all; it is a `div` with `aria-hidden`, it sits in the
+ * header rather than in `main` where every control lives, and it is the only red
+ * thing in the panel that is not a full-width padded button.
+ */
 header.brand .mark {
-  width: 14px; height: 14px; border-radius: 3px;
-  background: var(--accent); flex: 0 0 auto;
+  width: 7px; height: 22px; border-radius: 3.5px;
+  background: var(--accent); flex: 0 0 auto; pointer-events: none;
 }
-header.brand .name { font-size: 0.85em; font-weight: 600; letter-spacing: -0.01em; }
+header.brand .name { font-size: var(--t-body); font-weight: 600; letter-spacing: -0.01em; }
 header.brand .name em { font-style: normal; color: var(--accent); }
 header.brand .version {
-  margin-left: auto; color: var(--faint); font-size: 0.65em;
+  margin-left: auto; color: var(--faint); font-size: var(--t-micro);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 .promise { margin: 0; color: var(--muted); }
 .issues {
   margin: 10px 0 0; padding-left: 18px;
-  color: var(--muted); font-size: 0.72em; line-height: 1.6;
+  color: var(--muted); font-size: var(--t-second); line-height: 1.6;
   overflow-wrap: anywhere;
 }
 .detail { margin: 10px 0 0; color: var(--text); overflow-wrap: anywhere; }
-.card > .note { margin: 10px 0 0; color: var(--warn); font-size: 0.72em; line-height: 1.5; }
+.card > .note { margin: 10px 0 0; color: var(--warn); font-size: var(--t-second); line-height: 1.5; }
 
 button.back { width: auto; margin-top: 14px; cursor: pointer; }
 button.back:hover:enabled { border-color: #3a4049; }
@@ -69,26 +116,48 @@ button.back:hover:enabled { border-color: #3a4049; }
  */
 main {
   flex: 1 1 auto; overflow-y: auto; padding: 20px;
-  display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px; align-content: start;
+  display: grid; grid-template-columns: minmax(0, 1fr);
+  gap: var(--s-section); align-content: start;
+  /*
+   * **The body step, set once.** Block 13 session 104. Everything inside `main`
+   * that never declared a size inherited the document's 17 px — twenty-two
+   * elements of it, buttons and sentences alike, which is most of what made the
+   * panel read like a paragraph in Word. The document stays at 17 px because the
+   * full cost screen sits outside `main` and its sizes are still `em`; this is
+   * scoped so that screen is untouched.
+   */
+  font-size: var(--t-body); line-height: 1.5;
 }
 
-main.editor { gap: 14px; }
+main.editor { gap: var(--s-group); }
 .editorhead { display: flex; align-items: center; gap: 12px; }
 .editorhead h2 { margin: 0; }
 
+/*
+ * **A section label, not a heading.** It names the group and then gets out of the
+ * way: the smallest step, the faintest grey, uppercase and tracked so it reads as
+ * a label at 11 px rather than as small body text.
+ */
 section > h2 {
-  margin: 0 0 10px;
-  font-size: 0.62em; text-transform: uppercase; letter-spacing: 0.1em;
-  color: var(--faint); font-weight: 600;
+  /*
+   * **Tight to what it labels.** A section label belongs to its group, so the
+   * space under it is the inside-a-group step; the space that separates one group
+   * from the next is `--s-group`, and the space around the whole section is
+   * `--s-section`. Set the other way round, a heading floats between two groups
+   * and belongs to neither.
+   */
+  margin: 0 0 var(--s-tight);
+  font-size: var(--t-label); text-transform: uppercase; letter-spacing: 0.1em;
+  color: var(--faint); font-weight: 600; line-height: 1.45;
 }
 
 .card {
   background: var(--panel); border: 1px solid var(--line);
-  border-radius: 9px; padding: 14px 15px;
+  border-radius: 9px; padding: var(--s-group);
 }
 
 .attempt {
-  color: var(--faint); font-size: 0.65em;
+  color: var(--faint); font-size: var(--t-micro);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   margin-bottom: 10px;
 }
@@ -98,16 +167,27 @@ section > h2 {
 .dot.starting { background: var(--warn); }
 .dot.healthy { background: var(--ok); }
 .dot.unreachable { background: var(--accent); }
-.status .headline { font-weight: 600; }
+/*
+ * **The title step, and the only place on a card that uses it.** One line at 17/600
+ * against 15 px body is enough of a jump at this width; two would be a poster.
+ */
+.status .headline { font-size: var(--t-title); font-weight: 600; line-height: 1.35; }
 .status .detail { color: var(--muted); margin-top: 3px; min-width: 0; overflow-wrap: anywhere; }
 
 .facts { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 7px; }
 .facts li { display: flex; gap: 10px; align-items: baseline; }
-.facts .k { color: var(--faint); min-width: 96px; flex: 0 0 auto; }
+/*
+ * Key and value on one row read as one row. Block 13 session 104: the key drew at
+ * the body step and the value at the micro step, four pixels apart on the same
+ * line, which is the crowding this session went looking for.
+ */
+.facts .k {
+  color: var(--faint); font-size: var(--t-micro); min-width: 96px; flex: 0 0 auto;
+}
 /* A long path or an ffmpeg banner wraps rather than widening the card. */
 .facts .v {
   color: var(--text); font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 0.68em; min-width: 0; overflow-wrap: anywhere;
+  font-size: var(--t-micro); min-width: 0; overflow-wrap: anywhere;
 }
 .facts .v.bad { color: var(--accent); }
 .facts .v.good { color: var(--ok); }
@@ -115,7 +195,7 @@ section > h2 {
 /* Which binary answered, under the version it reported. Quiet by design. */
 .facts .v .where {
   display: block; margin-top: 2px;
-  color: var(--faint); font-style: normal; font-size: 0.65em;
+  color: var(--faint); font-style: normal; font-size: var(--t-micro);
   overflow-wrap: anywhere;
 }
 
@@ -124,8 +204,9 @@ section > h2 {
 
 label.field { display: block; }
 label.field > span {
+  line-height: 1.45;
   display: block; margin-bottom: 6px;
-  font-size: 0.62em; text-transform: uppercase; letter-spacing: 0.1em; color: var(--faint); font-weight: 600;
+  font-size: var(--t-label); text-transform: uppercase; letter-spacing: 0.1em; color: var(--faint); font-weight: 600;
 }
 
 select, button {
@@ -146,6 +227,15 @@ select:disabled, button:disabled { color: var(--faint); cursor: not-allowed; }
 button.retry { width: auto; margin-top: 12px; cursor: pointer; }
 button.retry:hover:enabled { border-color: #3a4049; }
 
+/*
+ * **The action step.** Block 13 session 104: every control's own text is one size
+ * and one weight, so a button reads as a button before it is read as words. The
+ * weight and the padding carry the emphasis that a larger size used to — at 420 px
+ * a button set two steps above its sentence is what made the panel shout.
+ */
+main button.run, main button.ghost, main button.retry, main .change .opener .what {
+  font-size: var(--t-action); font-weight: 600; line-height: 1.25;
+}
 button.run {
   margin-top: 4px; padding: 11px; font-weight: 600;
   background: var(--accent); border-color: var(--accent); color: #fff; cursor: pointer;
@@ -158,10 +248,10 @@ button.run:disabled { background: var(--panel-2); border-color: var(--line); col
 .spend { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
 .spend .amount {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 1.05em; font-variant-numeric: tabular-nums;
+  font-size: var(--t-title); font-variant-numeric: tabular-nums;
 }
 .spend .amount.alarm { color: var(--accent); }
-.spend .cap { color: var(--faint); font-size: 0.68em; }
+.spend .cap { color: var(--faint); font-size: var(--t-micro); }
 .spend .note { margin-top: 6px; color: var(--faint); }
 
 .empty { color: var(--faint); }
@@ -176,7 +266,7 @@ button.run:disabled { background: var(--panel-2); border-color: var(--line); col
 button.chip {
   width: auto; padding: 5px 9px; cursor: pointer;
   background: var(--panel-2); border: 1px solid var(--line); border-radius: 999px;
-  color: var(--muted); font: inherit; font-size: 0.72em;
+  color: var(--muted); font: inherit; font-size: var(--t-second);
 }
 button.chip:hover:enabled { color: var(--text); border-color: #3a4049; }
 button.chip.on { color: var(--text); border-color: var(--focus); }
@@ -191,7 +281,7 @@ ol.words { list-style: none; margin: 14px 0 0; padding: 0; }
 
 .wid {
   flex: 0 0 auto; width: 46px;
-  color: var(--faint); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.65em;
+  color: var(--faint); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: var(--t-micro);
 }
 
 /*
@@ -202,11 +292,11 @@ ol.words { list-style: none; margin: 14px 0 0; padding: 0; }
 button.wtext {
   width: auto; padding: 2px 4px; cursor: text;
   background: none; border: 1px solid transparent; border-radius: 4px;
-  color: var(--text); font: inherit; font-size: 0.9em;
+  color: var(--text); font: inherit; font-size: var(--t-body);
 }
 button.wtext:hover { border-color: var(--line); }
 input.wtext {
-  width: auto; padding: 2px 4px; font-size: 0.9em;
+  width: auto; padding: 2px 4px; font-size: var(--t-body);
   background: var(--panel-2); border: 1px solid var(--focus); border-radius: 4px; color: var(--text);
 }
 
@@ -222,7 +312,7 @@ input.wtext {
 
 .wmeta {
   flex: 1 1 auto; min-width: 0;
-  color: var(--faint); font-size: 0.65em; overflow-wrap: anywhere;
+  color: var(--faint); font-size: var(--t-micro); overflow-wrap: anywhere;
 }
 .wmeta .src { display: inline-block; margin-left: 8px; color: var(--muted); font-style: normal; }
 .wmeta .tag {
@@ -239,13 +329,13 @@ ul.instances > li {
   display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px;
   padding: 5px 0; border-top: 1px solid var(--line); min-width: 0;
 }
-.itext { font-size: 0.85em; color: var(--text); }
-.idetail { flex: 1 1 200px; min-width: 0; color: var(--faint); font-size: 0.65em; overflow-wrap: anywhere; }
+.itext { font-size: var(--t-body); color: var(--text); }
+.idetail { flex: 1 1 200px; min-width: 0; color: var(--faint); font-size: var(--t-micro); overflow-wrap: anywhere; }
 .iparts { display: flex; flex-wrap: wrap; gap: 6px; }
 .iparts em {
   display: inline-flex; align-items: baseline; gap: 5px;
   padding: 1px 6px; border: 1px solid var(--line); border-radius: 3px;
-  color: var(--muted); font-style: normal; font-size: 0.65em;
+  color: var(--muted); font-style: normal; font-size: var(--t-micro);
 }
 
 /* Step 3. Same row shape as the transcript, so the two read as one tool. */
@@ -254,7 +344,7 @@ ol.keywords { list-style: none; margin: 14px 0 0; padding: 0; }
   display: flex; align-items: baseline; gap: 10px;
   padding: 7px 0; border-bottom: 1px solid var(--line); min-width: 0;
 }
-.ktext { font-size: 1.05em; color: var(--text); }
+.ktext { font-size: var(--t-title); color: var(--text); }
 
 /* The watermark decision sits at Build, beside the other build-time facts. */
 .watermark {
@@ -280,7 +370,7 @@ ol.keywords { list-style: none; margin: 14px 0 0; padding: 0; }
   color: var(--muted);
   cursor: pointer;
   font: inherit;
-  font-size: 0.72em;
+  font-size: var(--t-second);
   padding: 4px 10px;
 }
 
@@ -424,7 +514,7 @@ ol.keywords { list-style: none; margin: 14px 0 0; padding: 0; }
   align-items: center;
   color: var(--faint);
   display: flex;
-  font-size: 0.72em;
+  font-size: var(--t-second);
   gap: 8px;
   padding: 3px 0;
 }
@@ -460,13 +550,13 @@ ol.keywords { list-style: none; margin: 14px 0 0; padding: 0; }
 .buildpane .card.missing .what {
   color: var(--text);
   display: block;
-  font-size: 0.78em;
+  font-size: var(--t-body);
 }
 
 .buildpane .card.missing code {
   color: var(--muted);
   display: block;
-  font-size: 0.65em;
+  font-size: var(--t-micro);
   margin-top: 4px;
   overflow-wrap: anywhere;
 }
@@ -482,27 +572,41 @@ ol.keywords { list-style: none; margin: 14px 0 0; padding: 0; }
 .readiness .say { margin: 8px 0 0; color: var(--warn); overflow-wrap: anywhere; }
 .readiness.bad .say { color: var(--text); }
 .readiness .faint {
-  margin: 8px 0 0; color: var(--faint); font-size: 0.8em;
+  margin: 8px 0 0; color: var(--faint); font-size: var(--t-second);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 .readiness .details {
   margin-top: 12px; padding: 12px 14px;
   background: var(--panel); border: 1px solid var(--line); border-radius: 9px;
 }
+/*
+ * *Details* on the readiness line. **The fifth underline**, and the same kind of
+ * thing as `.linky` and a disclosure row — a press that reveals. Block 13 session
+ * 104 gives all three one appearance: weight and contrast at rest, the underline
+ * on hover and on keyboard focus.
+ */
 button.link {
   margin-left: auto; padding: 0; background: none; border: none;
-  color: var(--muted); font: inherit; font-size: 0.85em; cursor: pointer;
-  text-decoration: underline; text-underline-offset: 3px;
+  color: var(--muted); font: inherit; font-size: var(--t-second); font-weight: 600;
+  letter-spacing: 0.01em; cursor: pointer; text-decoration: none;
 }
-button.link:hover { color: var(--text); }
+button.link:hover, button.link:focus-visible {
+  color: var(--text); text-decoration: underline; text-underline-offset: 3px;
+}
 button.ghost {
   width: auto; margin-top: 10px; padding: 6px 14px;
   background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px;
   color: var(--text); font: inherit; cursor: pointer;
 }
 
-/* Run and Build, one under the other: the two things he actually presses. */
-.do { display: grid; gap: 10px; }
+/*
+ * **The grouping, done with space as well as a heading.** Block 13 session 104.
+ * Session 98 split Make's four controls into *This video* and *Make several
+ * videos* and gave each a heading; the space between them was the same as the
+ * space inside them, so the grouping had to be read to be seen. Between groups is
+ * `--s-group`; inside one is `--s-tight`.
+ */
+.do { display: grid; gap: var(--s-group); }
 .do .say { margin: 0; color: var(--muted); overflow-wrap: anywhere; }
 
 /* The third move: come back and change the one thing that bothered him. */
@@ -517,12 +621,38 @@ button.ghost {
 .change .opener:enabled:hover { border-color: #3a4049; }
 .change .opener:disabled { color: var(--faint); cursor: not-allowed; }
 .change .opener .count {
-  color: var(--muted); font-size: 0.85em; font-variant-numeric: tabular-nums;
+  color: var(--muted); font-size: var(--t-body); font-variant-numeric: tabular-nums;
 }
 .change .opener:disabled .count { color: var(--faint); }
 
-.quibbles { margin-top: 10px; color: var(--muted); font-size: 0.85em; }
-.quibbles summary { cursor: pointer; }
+/*
+ * **A disclosure row is a control, and it should look like one.** Block 13 session
+ * 104. In all four places it appears — the client card on Choose, *What these two
+ * make* and *What it cost, step by step* on Make, *What else it will use* and *The
+ * watermark on this video* on Build — it was grey text with the browser's own
+ * triangle, indistinguishable from the prose above it.
+ *
+ * One row: the label step's weight and tracking at the secondary step's size, a
+ * rule above it so it reads as the lid of something, and a caret drawn here rather
+ * than by the browser so it is the same mark on every platform. It turns when the
+ * row opens, with no transition — nothing in this panel animates.
+ */
+.quibbles { margin-top: var(--s-tight); color: var(--muted); font-size: var(--t-second); }
+.quibbles > summary {
+  display: flex; align-items: center; gap: 9px;
+  padding: var(--s-tight) 0 0; border-top: 1px solid var(--line);
+  font-weight: 600; letter-spacing: 0.01em; color: var(--muted);
+  cursor: pointer; list-style: none;
+}
+.quibbles > summary::-webkit-details-marker { display: none; }
+.quibbles > summary::before {
+  content: ''; flex: 0 0 auto; width: 5px; height: 5px;
+  border: solid currentColor; border-width: 0 1.5px 1.5px 0;
+  transform: rotate(-45deg); margin-left: 1px;
+}
+.quibbles[open] > summary::before { transform: rotate(45deg); margin-left: 0; }
+.quibbles > summary:hover { color: var(--text); }
+.quibbles > summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 
 /*
  * **A way there, inside the sentence that names the place.** Block 13 session
@@ -530,26 +660,34 @@ button.ghost {
  * to click on should be near to it."*
  *
  * It carries no colour of its own — colour in this panel means *this spends
- * money*, and nothing behind one of these does. Underlined and in the text's own
- * colour, inside prose that is muted, which is what separates it from the prose
- * without shouting.
+ * money*, and nothing behind one of these does.
+ *
+ * **It was underlined, and that is what Mohamed saw.** Block 13 session 104: an
+ * underline through the middle of a sentence is what made the panel read like a
+ * paragraph in Word, and there were five of them. What separates a pressable
+ * phrase from its sentence now is weight and contrast — 600 in the full text
+ * colour, inside prose that is muted — which is the same pair of signals the
+ * disclosure rows use. The underline comes back on hover and on keyboard focus,
+ * where it confirms rather than decorates.
  *
  * `.linky` already existed as the queue's *take it out* and had no rule at all,
- * so it drew as a native grey button in the middle of a list. This is that rule.
+ * so it drew as a native grey button in the middle of a list.
  */
 .linky {
   display: inline; padding: 0; margin: 0;
   background: none; border: 0; border-radius: 0;
-  color: var(--text); font: inherit; text-align: left;
-  text-decoration: underline; text-underline-offset: 2px; cursor: pointer;
+  color: var(--text); font: inherit; font-weight: 600; text-align: left;
+  text-decoration: none; cursor: pointer;
 }
-.linky:hover { color: var(--text); }
+.linky:hover, .linky:focus-visible {
+  text-decoration: underline; text-underline-offset: 3px;
+}
 
 /* Video actions: Refresh, a path to open, and Open. */
 .videoactions { display: flex; gap: 8px; margin-top: 10px; align-items: center; }
 .videoactions .ghost { margin-top: 0; flex: 0 0 auto; }
 section.video .faint {
-  margin: 8px 0 0; color: var(--faint); font-size: 0.75em; overflow-wrap: anywhere;
+  margin: 8px 0 0; color: var(--faint); font-size: var(--t-second); overflow-wrap: anywhere;
 }
 section.client .say, section.video .say { margin: 8px 0 0; color: var(--muted); }
 
@@ -561,15 +699,15 @@ section.client .say, section.video .say { margin: 8px 0 0; color: var(--muted); 
   color: var(--text); font: inherit; padding: 7px 10px; width: 100%;
 }
 .field.stacked input:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
-.field .hint { color: var(--faint); font-size: 0.75em; font-style: normal; line-height: 1.5; }
+.field .hint { color: var(--faint); font-size: var(--t-second); font-style: normal; line-height: 1.5; }
 
 /* A path is chosen, never typed: the button is the control and the path is the
    receipt underneath it. */
-.pathfield > span { color: var(--faint); font-size: 0.62em; letter-spacing: 0.08em; text-transform: uppercase; }
+.pathfield > span { color: var(--faint); font-size: var(--t-label); letter-spacing: 0.08em; text-transform: uppercase; }
 .pathfield .choose { justify-self: start; }
 .pathfield .chosenpath {
   margin: 0;
-  font-size: 0.72em;
+  font-size: var(--t-micro);
   color: var(--text);
   word-break: break-all;
   line-height: 1.4;
@@ -585,7 +723,7 @@ section.client .say, section.video .say { margin: 8px 0 0; color: var(--muted); 
 }
 .ownpics li.chosen { border-color: var(--text); }
 .ownpics li img.shot { width: 100%; height: 100px; object-fit: contain; background: var(--panel-2); border-radius: 6px; }
-.ownpics li .what { color: var(--muted); font-size: 0.75em; overflow-wrap: anywhere; }
+.ownpics li .what { color: var(--muted); font-size: var(--t-second); overflow-wrap: anywhere; }
 
 /* What a client looks like: swatches, their type, their logo, one line. */
 .clientcard { margin-top: 10px; }
@@ -596,12 +734,12 @@ section.client .say, section.video .say { margin: 8px 0 0; color: var(--muted); 
   display: block; height: 26px; border-radius: 5px; border: 1px solid var(--line);
 }
 .clientcard ul.swatches .what {
-  color: var(--faint); font-size: 0.65em; line-height: 1.35; overflow-wrap: anywhere;
+  color: var(--faint); font-size: var(--t-micro); line-height: 1.35; overflow-wrap: anywhere;
 }
 .clientcard .typesample { margin-top: 10px; }
-.clientcard .typesample p { margin: 0; font-size: 1.05em; color: var(--text); }
+.clientcard .typesample p { margin: 0; font-size: var(--t-title); color: var(--text); }
 .clientcard .hint {
-  margin: 6px 0 0; color: var(--faint); font-size: 0.72em; font-style: normal;
+  margin: 6px 0 0; color: var(--faint); font-size: var(--t-second); font-style: normal;
 }
 .clientcard img.clientlogo {
   margin-top: 10px; max-width: 120px; max-height: 48px; display: block;
@@ -614,7 +752,7 @@ section.client .say, section.video .say { margin: 8px 0 0; color: var(--muted); 
  */
 .savepath {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 0.78em;
+  font-size: var(--t-second);
   line-height: 1.45;
   margin: 0.15em 0 0.6em;
   padding: 0.5em 0.6em;
@@ -627,10 +765,12 @@ section.client .say, section.video .say { margin: 8px 0 0; color: var(--muted); 
 }
 
 /* A face is chosen from what After Effects has, and shown set in itself. */
+/* The label step wherever it is used, with its own leading so it is one thing. */
 .fontfield > span, .heightfield > span, .colourhead {
-  color: var(--faint); font-size: 0.62em; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 600;
+  line-height: 1.45;
+  color: var(--faint); font-size: var(--t-label); letter-spacing: 0.08em; text-transform: uppercase; font-weight: 600;
 }
-.fontsample { margin: 2px 0 0; font-size: 1.1em; color: var(--text); line-height: 1.3; }
+.fontsample { margin: 2px 0 0; font-size: var(--t-title); color: var(--text); line-height: 1.3; }
 
 /* Subtitle height: positioned by eye against a real frame, at about a tenth. */
 .heightpreview { display: grid; gap: 4px; justify-items: start; }
@@ -654,8 +794,8 @@ section.client .say, section.video .say { margin: 8px 0 0; color: var(--muted); 
 .colours .colour input[type='color'] {
   width: 34px; height: 24px; padding: 0; border: 1px solid var(--line); background: none;
 }
-.colours .colour .what { flex: 1; font-size: 0.78em; color: var(--muted); }
-.colours .colour code { font-size: 0.72em; color: var(--faint); }
+.colours .colour .what { flex: 1; font-size: var(--t-second); color: var(--muted); }
+.colours .colour code { font-size: var(--t-micro); color: var(--faint); }
 
 /*
  * The transcript as prose. The line carries its own direction, so a wholly
@@ -665,17 +805,18 @@ section.client .say, section.video .say { margin: 8px 0 0; color: var(--muted); 
 .readtoggle { display: flex; gap: 6px; margin-top: 10px; }
 .readview { display: grid; gap: 10px; }
 .readline {
-  margin: 0; font-size: 1.05em; line-height: 1.6; color: var(--text);
+  margin: 0; font-size: var(--t-body); line-height: 1.6; color: var(--text);
   overflow-wrap: anywhere;
 }
 .readline .at {
   display: inline-block; float: left; width: 3.4em;
-  color: var(--faint); font-size: 0.66em; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--faint); font-size: var(--t-micro); font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 /* The second half of the run: the words alone, or the pictures alone. */
-.partrun { display: grid; gap: 6px; margin-top: 10px; }
-.partrun .faint { margin: 0; font-size: 0.78em; }
+/* Two consecutive actions: the tight step, so the pair reads as one thing. */
+.partrun { display: grid; gap: var(--s-tight); margin-top: 0; }
+.partrun .faint { margin: 0; font-size: var(--t-second); }
 
 /* The client's own photographs, on both client screens. */
 .ownphotos { display: grid; gap: 8px; margin-top: 12px; }
@@ -690,13 +831,13 @@ section.client .say, section.video .say { margin: 8px 0 0; color: var(--muted); 
   width: 100%; height: 84px; object-fit: contain;
   background: var(--panel-2); border-radius: 6px;
 }
-.ownphotos .cannot { margin: 0; color: var(--faint); font-size: 0.72em; font-style: italic; }
-.ownphotos ul.photos .what { color: var(--muted); font-size: 0.75em; overflow-wrap: anywhere; }
+.ownphotos .cannot { margin: 0; color: var(--faint); font-size: var(--t-second); font-style: italic; }
+.ownphotos ul.photos .what { color: var(--muted); font-size: var(--t-second); overflow-wrap: anywhere; }
 .ownphotos .addphoto { display: grid; gap: 8px; }
 
 /* The font list is searchable and the sample is drawn in the real face. */
 .fontfield .fontsearch { width: 100%; }
-.fontsample.cannot { color: var(--faint); font-size: 0.78em; font-style: italic; }
+.fontsample.cannot { color: var(--faint); font-size: var(--t-second); font-style: italic; }
 
 
 .palette .paletteedit { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
@@ -707,12 +848,12 @@ section.client .say, section.video .say { margin: 8px 0 0; color: var(--muted); 
 
 .colours .colour { flex-wrap: wrap; }
 .colours .colour input.hex {
-  width: 8.5em; font-family: var(--mono, ui-monospace, monospace); font-size: 0.78em;
+  width: 8.5em; font-family: var(--mono, ui-monospace, monospace); font-size: var(--t-second);
   text-transform: uppercase; padding: 2px 4px;
   border: 1px solid var(--line); background: none; color: inherit;
 }
 .colours .colour input.hex.refused { border-color: var(--bad, #c0392b); }
-.colours .colour .trouble { flex-basis: 100%; font-size: 0.72em; color: var(--bad, #c0392b); }
+.colours .colour .trouble { flex-basis: 100%; font-size: var(--t-second); color: var(--bad, #c0392b); }
 .palette .swatches input.hex { width: 7em; }
 
 /*
@@ -819,7 +960,7 @@ section.client .say, section.video .say { margin: 8px 0 0; color: var(--muted); 
 .moneyback .ghost { margin-top: 0; }
 
 .capwarning {
-  margin: 6px 0 0; color: var(--warn); font-size: 0.75em; line-height: 1.5;
+  margin: 6px 0 0; color: var(--warn); font-size: var(--t-second); line-height: 1.5;
 }
 
 /* Money in, the two sources, and what the screen cannot reach. */
@@ -872,7 +1013,7 @@ section.client .say, section.video .say { margin: 8px 0 0; color: var(--muted); 
  * pressed rather than after it fails.
  */
 .colours .hint.needed { color: var(--warn); }
-.say.needed { color: var(--warn); margin: 6px 0 0; font-size: 0.8em; }
+.say.needed { color: var(--warn); margin: 6px 0 0; font-size: var(--t-second); }
 
 /*
  * A video whose plan names one client while it sits in another's folder.
@@ -884,8 +1025,8 @@ section.client .say, section.video .say { margin: 8px 0 0; color: var(--muted); 
   background: var(--panel); border: 1px solid var(--warn); border-radius: 9px;
   padding: 12px 13px;
 }
-.wrongclient .said { margin: 0; color: var(--text); font-size: 0.85em; line-height: 1.5; }
-.wrongclient .offer { margin: 0; color: var(--muted); font-size: 0.75em; line-height: 1.5; }
+.wrongclient .said { margin: 0; color: var(--text); font-size: var(--t-body); line-height: 1.5; }
+.wrongclient .offer { margin: 0; color: var(--muted); font-size: var(--t-second); line-height: 1.5; }
 .wrongclient .ghost { margin-top: 4px; justify-self: start; }
 .wrongclient.done { border-color: var(--line); }
 .wrongclient.done .said { color: var(--muted); }
@@ -895,13 +1036,13 @@ section.client .say, section.video .say { margin: 8px 0 0; color: var(--muted); 
   background: var(--panel); border: 1px solid var(--warn); border-radius: 9px;
   padding: 12px 13px;
 }
-.otherservice .said { margin: 0; color: var(--text); font-size: 0.85em; line-height: 1.5; }
-.otherservice .offer { margin: 0; color: var(--muted); font-size: 0.75em; line-height: 1.5; }
+.otherservice .said { margin: 0; color: var(--text); font-size: var(--t-body); line-height: 1.5; }
+.otherservice .offer { margin: 0; color: var(--muted); font-size: var(--t-second); line-height: 1.5; }
 .otherservice .ghost { margin-top: 4px; justify-self: start; }
 .otherservice.done { border-color: var(--line); }
 .otherservice.done .said { color: var(--muted); }
 
-.leavesout { margin: 2px 0 0; color: var(--warn); font-size: 0.75em; line-height: 1.5; }
+.leavesout { margin: 2px 0 0; color: var(--warn); font-size: var(--t-second); line-height: 1.5; }
 
 /*
  * **Red means this spends money, and nothing else.** Block 13 session 95.
@@ -929,7 +1070,7 @@ button.run.free:hover:enabled { border-color: #3a4049; }
   border-bottom: 1px solid var(--line); padding-bottom: 10px;
 }
 .moments button.moment {
-  flex: 1; padding: 8px 6px; font-size: 0.78em; font-weight: 600;
+  flex: 1; padding: 8px 6px; font-size: var(--t-second); font-weight: 600;
   background: var(--panel-2); border: 1px solid var(--line); color: var(--muted);
   border-radius: 6px; cursor: pointer;
 }
@@ -951,7 +1092,7 @@ button.run.free:hover:enabled { border-color: #3a4049; }
  */
 .moments button.moment .news {
   display: block; margin-top: 3px;
-  font-size: 0.86em; font-weight: 600; font-variant-numeric: tabular-nums;
+  font-size: var(--t-micro); font-weight: 600; font-variant-numeric: tabular-nums;
   color: var(--muted);
 }
 .moments button.moment .news.good { color: var(--ok); }

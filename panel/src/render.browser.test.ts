@@ -269,31 +269,55 @@ describe.skipIf(!built)('the built panel in a real browser', () => {
     }
   }, 20_000);
 
-  /*
-   * The real PNG, decoded by the browser. Asserting an <img> element exists
-   * proved nothing: the header rendered a red square for a whole session
-   * because the path was wrong and a broken image is still an element.
+  /**
+   * **Rewritten by Block 13 session 104**, which retired the logo rather than the
+   * rule behind this test.
+   *
+   * It used to decode `assets/brand/Framopia_LOGO.png` and assert its real pixel
+   * dimensions, because a previous session shipped a header that drew a red square
+   * for want of a correct path and a broken image is still an element. Mohamed's
+   * ruling replaces the logo with the one red element out of it, on every machine
+   * — so there is no longer a file to decode, and the square *is* the design.
+   *
+   * What it asserts instead is the harder half: the mark is drawn at the size and
+   * colour it is meant to be, **and it is not a control**. That matters more than
+   * the logo ever did, because the accent means *this spends money* everywhere
+   * else in the panel.
    */
-  it('loads the real logo, not merely an <img> element', async () => {
+  it('draws the mark, and nothing about it can be pressed', async () => {
     const loaded = await load({ files: { ...HANDSHAKE, [LOGO]: '' } });
     if (loaded === null) return;
     const { page } = loaded;
     try {
-      const img = page.locator('header.brand img');
-      expect(await img.count()).toBe(1);
-      expect(await page.locator('header.brand .mark').count()).toBe(0);
-      expect(await img.getAttribute('src')).toBe(`file://${LOGO}`);
+      /* The logo is gone on every machine, including one that has the file. */
+      expect(await page.locator('header.brand img').count()).toBe(0);
+      expect(await page.locator('header.brand .mark').count()).toBe(1);
 
-      const decoded = await img.evaluate((el) => ({
-        complete: (el as HTMLImageElement).complete,
-        w: (el as HTMLImageElement).naturalWidth,
-        h: (el as HTMLImageElement).naturalHeight,
-      }));
-      expect(decoded.complete).toBe(true);
-      expect(decoded.w).toBe(962);
-      expect(decoded.h).toBe(1077);
-
-      expect((await img.boundingBox())?.width).toBeGreaterThan(0);
+      const mark = await page.$eval('header.brand .mark', (el) => {
+        const s = getComputedStyle(el);
+        const r = el.getBoundingClientRect();
+        return {
+          tag: el.tagName.toLowerCase(),
+          hidden: el.getAttribute('aria-hidden'),
+          background: s.backgroundColor,
+          cursor: s.cursor,
+          pointerEvents: s.pointerEvents,
+          width: Math.round(r.width),
+          height: Math.round(r.height),
+          pressable: el.closest('button, a') !== null,
+        };
+      });
+      /* The accent the brand already owns — #ed1c24 — and no new colour. */
+      expect(mark.background).toBe('rgb(237, 28, 36)');
+      /* A short bar, and larger than the 14px square it replaces. */
+      expect(mark.width).toBe(7);
+      expect(mark.height).toBe(22);
+      /* Not a control, and not reachable as one. */
+      expect(mark.tag).toBe('div');
+      expect(mark.hidden).toBe('true');
+      expect(mark.pressable).toBe(false);
+      expect(mark.cursor).toBe('auto');
+      expect(mark.pointerEvents).toBe('none');
     } finally {
       await page.close();
     }

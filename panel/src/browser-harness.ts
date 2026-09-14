@@ -283,7 +283,9 @@ export function realClients(): Record<string, unknown>[] {
       id: mode.id,
       name: mode.name,
       version: mode.version,
-      fontsStatus: mode.fonts.status,
+      /* `listModes` sends `fontsResolved` and no `fontsStatus`; nothing reads the
+         latter, and a harness that sends a field the route does not is a harness
+         that can drift. Block 13 session 104 checked the two key by key. */
       fontsResolved: mode.fonts.status === 'set',
       hasFolder: mode.videoFolder !== undefined,
       look: {

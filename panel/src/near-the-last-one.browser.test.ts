@@ -118,12 +118,36 @@ describe.skipIf(!built)('a sentence that names a place takes him there', () => {
     await onScreen(page, 'run');
     const drawn = await page.$eval('section.do p.say button.linky', (el) => {
       const s = getComputedStyle(el);
-      return { colour: s.color, background: s.backgroundColor, decoration: s.textDecorationLine };
+      const prose = getComputedStyle(el.parentElement as HTMLElement);
+      return {
+        colour: s.color,
+        background: s.backgroundColor,
+        decoration: s.textDecorationLine,
+        weight: s.fontWeight,
+        proseColour: prose.color,
+        proseWeight: prose.fontWeight,
+        size: s.fontSize,
+        proseSize: prose.fontSize,
+      };
     });
     /* The accent is #ed1c24; nothing free may be drawn in it. */
     expect(drawn.colour).not.toBe('rgb(237, 28, 36)');
     expect(drawn.background).toBe('rgba(0, 0, 0, 0)');
-    expect(drawn.decoration).toContain('underline');
+    /*
+     * **It used to assert an underline.** Block 13 session 104 retired that:
+     * Mohamed looked at the panel and said it reads like a paragraph in Word, and
+     * an underline through the middle of a sentence was the largest part of why.
+     *
+     * What replaces it is the rule that now carries the affordance, and it is a
+     * stronger assertion than the one it replaces — the phrase must differ from
+     * the prose around it in **both** weight and contrast, and must not differ in
+     * size, which is what kept it from being a control that shouts.
+     */
+    expect(drawn.decoration).toBe('none');
+    expect(drawn.weight).toBe('600');
+    expect(drawn.proseWeight).toBe('400');
+    expect(drawn.colour).not.toBe(drawn.proseColour);
+    expect(drawn.size).toBe(drawn.proseSize);
     await page.close();
   }, 60_000);
 
@@ -186,8 +210,14 @@ describe.skipIf(!built)('what is behind one press, and what is not', () => {
       );
     });
     console.log(`  == the two decisions on Choose are ${String(gap)}px apart`);
-    expect(`the two decisions are ${String(gap)}px apart, under 200: ${gap < 200}`).toBe(
-      `the two decisions are ${String(gap)}px apart, under 200: true`,
+    /*
+     * **Bounded at what session 103 measured, not at a round number.** Block 13
+     * session 104 tightened this from `< 200`: the gap was 101 px and the brief
+     * for this session made it a thing that must not grow, so the bound is 101.
+     * It measures 88 px now — a section label sits tight to the group it labels.
+     */
+    expect(`the two decisions are ${String(gap)}px apart, no more than 101: ${gap <= 101}`).toBe(
+      `the two decisions are ${String(gap)}px apart, no more than 101: true`,
     );
     await page.close();
   }, 60_000);
@@ -256,8 +286,9 @@ describe.skipIf(!built)('what is behind one press, and what is not', () => {
       return Math.round(queue.getBoundingClientRect().top - last.getBoundingClientRect().bottom);
     });
     console.log(`  == run button to queue: ${String(gap)}px`);
-    expect(`run button to queue ${String(gap)}px, no more than session 102's 220: ${gap <= 220}`).toBe(
-      `run button to queue ${String(gap)}px, no more than session 102's 220: true`,
+    /* Tightened from session 102's 220 to session 103's measured 190. */
+    expect(`run button to queue ${String(gap)}px, no more than session 103's 190: ${gap <= 190}`).toBe(
+      `run button to queue ${String(gap)}px, no more than session 103's 190: true`,
     );
 
     /* On Build, behind one press, and every size still there and pressable. */
