@@ -1,15 +1,6 @@
 import { describe, expect, it, beforeAll, afterAll } from 'vitest';
 import { chromium, type Browser, type Page } from 'playwright';
-import {
-  built,
-  INDEX,
-  HANDSHAKE,
-  stubHost,
-  realPanelRoutes,
-  onScreen,
-  hisPanelAt,
-  WIDTHS,
-} from './browser-harness.js';
+import { built, onScreen, hisPanelAt, WIDTHS } from './browser-harness.js';
 
 /**
  * **How wide the panel is, and how much of that it uses.**
