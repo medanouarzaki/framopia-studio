@@ -356,9 +356,16 @@ describe.skipIf(!built)('what each block of Make and Build costs', () => {
     return `window.__job = () => (${JSON.stringify({ id: 'job-1', status: 'done', progress: 1, detail })});`;
   }
 
-  async function hisPanel(extra?: string): Promise<Page | null> {
+  /**
+   * **At his width, not at 420 px.** Block 13 session 105: sixteen of this panel's
+   * browser viewports say `width: 420`, and every height sessions 95 to 104
+   * reported — 589, 849, 750 — is a height of a 420 px panel. His window is
+   * roughly 1500 px, where less text wraps and the heights are different figures
+   * about a different thing.
+   */
+  async function hisPanel(extra?: string, width = 1500): Promise<Page | null> {
     if (browser === undefined) return null;
-    const page = await browser.newPage({ viewport: { width: 420, height: 900 } });
+    const page = await browser.newPage({ viewport: { width, height: 900 } });
     await page.addInitScript(stubHost(HANDSHAKE));
     await page.addInitScript(realPanelRoutes());
     if (extra !== undefined) await page.addInitScript(extra);

@@ -53,7 +53,34 @@
   --s-tight: 8px;
   --s-group: 16px;
   --s-section: 28px;
+
+  /*
+   * **The panel is one column in a window that is roughly 1500 px wide.** Block 13
+   * session 105.
+   *
+   * Every ruler this project has written renders at 420 px — sixteen viewports say
+   * so — and the heights sessions 95 to 104 reported are heights of a 420 px
+   * panel. Measured at the width Mohamed actually has, `select, button
+   * { width: 100% }` draws *Build the composition* **1460 px wide for 180 px of
+   * text**, a picker 1460 px wide for a 22 px value, and *Details* 1460 px wide
+   * for 45 px, which is why it sits on a band of its own.
+   *
+   * **These are caps, not widths.** Below them nothing behaves differently at all,
+   * which is the whole of why the narrow case is unchanged: a 380 px panel never
+   * reaches any of them.
+   */
+  --w-control: 420px;  /* a button is as wide as its text, up to this */
+  --w-field: 460px;    /* a picker */
+  --w-prose: 76ch;     /* a readable measure — about 570px at the body step */
 }
+
+/*
+ * **820 px is where two things fit side by side**, and it is written literally in
+ * the media queries below because a media query cannot read a custom property.
+ * It is the only breakpoint in the panel: one column below it, and above it the
+ * pairs that belong together sit together. Everything else is a cap, so the panel
+ * changes continuously with the window rather than jumping between two layouts.
+ */
 
 * { box-sizing: border-box; }
 
@@ -223,6 +250,26 @@ select, button {
  */
 select:focus, button:focus { outline: none; border-color: var(--focus); }
 select:disabled, button:disabled { color: var(--faint); cursor: not-allowed; }
+
+/*
+ * **Nothing stretches past what it is for.** Block 13 session 105.
+ *
+ * `width: 100%` above is what makes a control fill a narrow panel, and it stays —
+ * these only stop it once there is more room than the control has any use for. A
+ * button keeps its full width up to 420 px, a picker to 460, and a line of prose
+ * to a measure that can be read in one sweep of the eye rather than two turns of
+ * the head.
+ *
+ * Scoped to `main`, so the full cost screen — which sits outside it — is untouched.
+ */
+main select { max-width: var(--w-field); }
+main button.run, main button.build-now, main button.ghost, main button.retry {
+  max-width: var(--w-control);
+}
+main p.say, main p.detail, main p.faint, main p.note, main p.reason, main p.hint,
+main .readiness .say, main .buildpane .detail {
+  max-width: var(--w-prose);
+}
 
 button.retry { width: auto; margin-top: 12px; cursor: pointer; }
 button.retry:hover:enabled { border-color: #3a4049; }
@@ -565,7 +612,15 @@ ol.keywords { list-style: none; margin: 14px 0 0; padding: 0; }
  * The readiness line. One word and a dot while everything works; the machine
  * facts sit behind Details, and a real problem comes forward as a sentence.
  */
-.readiness .line { display: flex; align-items: center; flex-wrap: wrap; gap: 9px; margin: 0; }
+/*
+ * **A status line, not a status band.** Block 13 session 105: `Details` is pushed
+ * to the far end by `margin-left: auto`, so at 1500 px it sat 1400 px away from
+ * the word it belongs to. Capped, the two stay in one glance of each other.
+ */
+.readiness .line {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 9px; margin: 0;
+  max-width: var(--w-prose);
+}
 .readiness .word { min-width: 0; overflow-wrap: anywhere; }
 .readiness .word { font-weight: 600; }
 .readiness .line .dot { margin-top: 0; }
@@ -586,6 +641,13 @@ ol.keywords { list-style: none; margin: 14px 0 0; padding: 0; }
  * on hover and on keyboard focus.
  */
 button.link {
+  /*
+   * **It was drawn 1460 px wide for 45 px of text.** Block 13 session 105: the
+   * base rule gives every `button` `width: 100%`, so *Details* filled the
+   * readiness line and wrapped onto a row of its own with 200 px of nothing
+   * beside it. It is a word at the end of a line, and now it is sized like one.
+   */
+  width: auto; flex: 0 0 auto;
   margin-left: auto; padding: 0; background: none; border: none;
   color: var(--muted); font: inherit; font-size: var(--t-second); font-weight: 600;
   letter-spacing: 0.01em; cursor: pointer; text-decoration: none;
@@ -610,7 +672,12 @@ button.ghost {
 .do .say { margin: 0; color: var(--muted); overflow-wrap: anywhere; }
 
 /* The third move: come back and change the one thing that bothered him. */
-.change .three { display: flex; gap: 8px; }
+/*
+ * Three openers of 481 px each at his width, for labels of 70 to 93 px. They are
+ * a row of three small things, not three banners — and they still share whatever
+ * room there is when there is less of it.
+ */
+.change .three { display: flex; gap: 8px; max-width: var(--w-prose); }
 .change .opener {
   flex: 1 1 0; min-width: 0;
   display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
@@ -637,7 +704,11 @@ button.ghost {
  * than by the browser so it is the same mark on every platform. It turns when the
  * row opens, with no transition — nothing in this panel animates.
  */
-.quibbles { margin-top: var(--s-tight); color: var(--muted); font-size: var(--t-second); }
+.quibbles {
+  /* The rule above a disclosure row is a lid, and a lid a metre long is a line. */
+  max-width: var(--w-prose);
+  margin-top: var(--s-tight); color: var(--muted); font-size: var(--t-second);
+}
 .quibbles > summary {
   display: flex; align-items: center; gap: 9px;
   padding: var(--s-tight) 0 0; border-top: 1px solid var(--line);
@@ -1066,11 +1137,23 @@ button.run.free:hover:enabled { border-color: #3a4049; }
  * there is no second visual language and nothing to install.
  */
 .moments {
-  display: flex; gap: 6px; margin: 0 0 14px;
-  border-bottom: 1px solid var(--line); padding-bottom: 10px;
+  /*
+   * **It was spaced twice.** Block 13 session 105: `main` is a grid with a 28 px
+   * section gap, and this added 14 px of margin and 10 px of padding on top of it
+   * — 52 px under the steps against 28 px above them, for no reason anyone chose.
+   * The rule below the steps is theirs, so it keeps the inside-a-group step; the
+   * space that separates them from the first section is the grid's, once.
+   */
+  display: flex; gap: 6px; margin: 0;
+  border-bottom: 1px solid var(--line); padding-bottom: var(--s-tight);
 }
 .moments button.moment {
-  flex: 1; padding: 8px 6px; font-size: var(--t-second); font-weight: 600;
+  /*
+   * Three tabs of 483 px each at his width, for labels of 60 to 73 px. They still
+   * share the line when there is no room, and stop growing when there is too much.
+   */
+  flex: 1 1 auto; max-width: 220px;
+  padding: 8px 6px; font-size: var(--t-second); font-weight: 600;
   background: var(--panel-2); border: 1px solid var(--line); color: var(--muted);
   border-radius: 6px; cursor: pointer;
 }
@@ -1105,3 +1188,44 @@ button.run.free:hover:enabled { border-color: #3a4049; }
  */
 .readiness .line button.ghost { margin-top: 0; margin-left: auto; width: auto; flex: 0 0 auto; }
 .readiness .quibbles { margin-top: 8px; }
+
+/*
+ * **Above 820 px, the things that belong together sit together.**
+ *
+ * Block 13 session 105. The one breakpoint in the panel, and everything else is a
+ * cap — so the layout changes with the window rather than jumping between two of
+ * them. Below 820 px not one of these rules applies and the panel is exactly the
+ * single column it has always been, which is what makes the narrow case safe: it
+ * is not a second layout, it is the absence of this one.
+ */
+@media (min-width: 820px) {
+  /*
+   * **Picking a client and picking a video are two halves of one decision**, and
+   * they were two stacked full-width dropdowns with a heading and a disclosure
+   * between them. Everything else in `main` still spans, so no other section moves
+   * and no screen gains a column it did not ask for.
+   */
+  /*
+   * The first column is exactly a field wide, not half the window. Two equal
+   * halves of 1460 px put the two pickers **284 px apart** — further from each
+   * other than the 88 px they were when stacked, which is the opposite of what
+   * pairing them is for. At a field's width they sit one column-gap apart.
+   */
+  main { grid-template-columns: var(--w-field) minmax(0, 1fr); column-gap: var(--s-section); }
+  main > * { grid-column: 1 / -1; }
+  main > section.client, main > section.video { grid-column: auto; }
+
+  /*
+   * **Four sentences were four paragraphs down a metre-wide page.** What the build
+   * will contain, where it writes, that it replaces what is there, and that it is
+   * free — four facts he reads at once, in two columns. The disclosure rows and
+   * anything that shouts stay across both, because they are not part of the four.
+   */
+  .buildpane .card {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: var(--s-section); row-gap: var(--s-tight); align-items: start;
+  }
+  .buildpane .card > details,
+  .buildpane .card > .clientlook,
+  .buildpane .card.missing > * { grid-column: 1 / -1; }
+}

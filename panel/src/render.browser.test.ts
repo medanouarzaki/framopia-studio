@@ -960,17 +960,28 @@ async function overflowing(page: Page): Promise<string[]> {
   );
 }
 
-/*
- * One column, at every width.
+/**
+ * **One column, and one pair.**
  *
- * The two-column layout above 830px is retired (2026-08-29, user ruling): the
- * screen is short enough now not to need it, and a docked panel is a column —
- * reading down beats reading across two. What still has to hold at every width
- * is that nothing overflows sideways.
+ * The two-column layout above 830 px was retired on 2026-08-29 by the user's
+ * ruling — *the screen is short enough not to need it and a docked panel is a
+ * column* — and this test asserted strictly one column from 380 to 1920 px.
+ *
+ * **Block 13 session 105 narrows that ruling rather than keeping or dropping it.**
+ * Mohamed's window is roughly 1500 px and his words about it are *"Client and
+ * Video are two stacked dropdowns, each full width, with a heading and a
+ * disclosure between them — two related choices that could sit side by side."*
+ * Those two sections pair above 820 px. **Every other section still spans the
+ * full width**, so the body of the panel is still a column read downwards, which
+ * is the part of the ruling that was about reading rather than about width.
+ *
+ * What is unchanged and is asserted harder: **below the breakpoint it is exactly
+ * the one column it always was**, and nothing overflows sideways at any width.
+ * `docs/PROJECT_SPEC.md` records the narrowing.
  */
 describe.skipIf(!built)('the layout', () => {
-  it('is one column and never overflows, from docked to full screen', async () => {
-    for (const width of [380, 420, 700, 830, 1200, 1920]) {
+  it('is one column when docked, one pair when wide, and never overflows', async () => {
+    for (const width of [380, 420, 700, 819, 820, 1200, 1500, 1920]) {
       const loaded = await load({
         files: { ...HANDSHAKE, ...SERVICE_BUILT },
         fetch: 'healthy',
@@ -980,7 +991,31 @@ describe.skipIf(!built)('the layout', () => {
       const { page } = loaded;
       try {
         await page.waitForSelector('.dot.healthy', { timeout: 15_000 });
-        expect(await columnCount(page), `at ${width}px`).toBe(1);
+        /*
+         * 819 and 820 are on purpose: a breakpoint is where a layout is most
+         * likely to be wrong, and a test that steps over it never looks at it.
+         */
+        expect(await columnCount(page), `at ${width}px`).toBe(width < 820 ? 1 : 2);
+        /* Only the two pickers pair; every other section still spans. */
+        const spans = await page.evaluate(() => {
+          const main = document.querySelector('main');
+          if (main === null) return [];
+          /*
+           * The content box, not the border box: `main` carries 20px of padding,
+           * so measuring its outer width says every section is narrower than it.
+           */
+          const cs = getComputedStyle(main);
+          const full = Math.round(
+            main.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight),
+          );
+          return [...document.querySelectorAll('main > section')]
+            .filter((s) => (s as HTMLElement).checkVisibility())
+            .filter((s) => Math.round(s.getBoundingClientRect().width) < full - 1)
+            .map((s) => `section.${String(s.className).split(' ')[0]}`);
+        });
+        expect(spans.sort(), `at ${width}px`).toEqual(
+          width < 820 ? [] : ['section.client', 'section.video'],
+        );
         expect(await overflowing(page), `at ${width}px`).toEqual([]);
       } finally {
         await page.close();

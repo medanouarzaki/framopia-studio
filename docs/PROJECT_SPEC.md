@@ -759,6 +759,22 @@ ruling): the screen is short enough not to need it and a docked panel is a
 column. `panel/src/panel-width.ts` is deleted. One column at every width from
 380 to 1920, with nothing overflowing, asserted in a real browser.
 
+> **Narrowed at Block 13 session 105**, on the user's instruction for that
+> session: *"Client and Video are two stacked dropdowns, each full width, with a
+> heading and a disclosure between them — two related choices that could sit side
+> by side."* His window is roughly 1500 px wide.
+>
+> **Those two sections, and only those two, pair above 820 px.** Every other
+> section still spans the full width, so the body of the panel is still a column
+> read downwards — which is the part of the ruling that was about reading rather
+> than about width. Below 820 px nothing applies and the panel is exactly the one
+> column it was. Nothing overflowing at any width from 380 to 1920 is unchanged
+> and is asserted harder: the breakpoint itself, 819 and 820, is now tested.
+>
+> Everything else this session added is a **cap, not a width** — a control is as
+> wide as its text up to 420 px, a picker to 460, a line of prose to 76ch — so a
+> narrow panel reaches none of them and behaves exactly as it always did.
+
 **Picking a video always shows the main screen.** `panel/src/steps.ts` — the
 remembered-step store, `stepViews`, `reconcileStep`, `openingStep` and the
 `framopia.panel.last-step` key — is deleted with its tests. The behaviour it
