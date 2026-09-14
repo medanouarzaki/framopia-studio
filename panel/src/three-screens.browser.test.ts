@@ -25,12 +25,21 @@ import {
  * rather than inside one. That is invisible in a diff and obvious here.
  */
 let browser: Browser | undefined;
+/*
+ * **Launching a browser is not a ten-second job on a busy Mac.** Block 13
+ * session 99: the fourth of five back-to-back panel runs exited 1 with
+ * `Hook timed out in 10000ms` while all 337 tests passed — seven of these files
+ * each start their own Chromium, and vitest's default hook bound is ten seconds.
+ * The bound is a hang detector, not a measurement of how fast a browser starts,
+ * so it is generous on purpose. Session 90 made the same correction to the CV
+ * sidecar's for the same reason.
+ */
 beforeAll(async () => {
   if (built) browser = await chromium.launch();
 }, 120_000);
 afterAll(async () => {
   await browser?.close();
-});
+}, 120_000);
 
 async function open(): Promise<Page | null> {
   if (browser === undefined) return null;
