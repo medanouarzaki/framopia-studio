@@ -763,6 +763,30 @@ export interface ListedJob {
  * A service older than this route answers 404, and the panel then behaves exactly
  * as it did before: it knows about a queue only if it started one this session.
  */
+/** One queue as the service recorded it. */
+export interface QueueRecordView {
+  id: string;
+  startedAt: string;
+  finishedAt: string | null;
+  progress: {
+    items: { reel: string; outcome: string; spentUsd: number }[];
+    spentUsd: number;
+    done: boolean;
+    stopped: boolean;
+  };
+}
+
+/**
+ * **Every queue this machine has run, newest first.**
+ *
+ * Mohamed's ruling of 2026-09-15: kept forever. A service older than this route
+ * answers 404 and the panel shows no record at all, which is what it always did.
+ */
+export async function fetchQueues(connection: Connection): Promise<QueueRecordView[]> {
+  const answer = await getJson<{ queues?: QueueRecordView[] }>(connection, '/queues');
+  return answer.queues ?? [];
+}
+
 export async function fetchJobs(connection: Connection): Promise<ListedJob[]> {
   const answer = await getJson<{ jobs?: ListedJob[] }>(connection, '/jobs');
   return answer.jobs ?? [];

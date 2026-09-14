@@ -73,11 +73,19 @@ describe('the irreplaceable set', () => {
     for (const group of BACKUP_GROUPS) {
       expect(group.recovery.length).toBeGreaterThan(20);
     }
-    // The four that fail the test outright say so in the same words.
+    /*
+     * The ones that cannot be regenerated say so in the same words.
+     *
+     * **`queues` joined them at Block 14 session 110.** It records money that was
+     * actually spent and what became of each video, so a fresh one would be a
+     * different claim about the past — the same sentence the ledger already
+     * carried, for the same reason. Mohamed ruled on 2026-09-15 that it is kept
+     * forever, which makes leaving it out of the backup indefensible.
+     */
     const cannot = BACKUP_GROUPS.filter((g) => g.recovery.startsWith('CANNOT')).map((g) => g.id);
     expect(cannot).toEqual([
       'transcription-cache', 'analysis-cache', 'ground-truth',
-      'align-references', 'ledger', 'plans', 'footage',
+      'align-references', 'ledger', 'queues', 'plans', 'footage',
     ]);
   });
 

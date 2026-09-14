@@ -125,6 +125,16 @@ export const BACKUP_GROUPS: readonly BackupGroup[] = [
     },
   },
   {
+    id: 'queues',
+    title: 'The record of every queue that has run',
+    recovery:
+      'CANNOT be regenerated. It records money that was actually spent and what ' +
+      'became of each video; a fresh one would be a different claim about the past. ' +
+      'Mohamed ruled on 2026-09-15 that it is kept forever.',
+    inGit: false,
+    files: () => walk(path.join(REPO_ROOT, '.local', 'queues'), (f) => f.endsWith('.json')),
+  },
+  {
     id: 'plans',
     title: 'Edit Plans, including their backups',
     recovery:

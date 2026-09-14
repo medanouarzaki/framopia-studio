@@ -38,7 +38,8 @@ const HEARTBEAT_MS = 5000;
 /** How often to ask the service how the run is going. Chosen, not measured. */
 const JOB_POLL_MS = 1000;
 import { runGate } from './run-gate.js';
-import { startQueue, stopQueue, fetchJobs } from './service.js';
+import { startQueue, stopQueue, fetchJobs, fetchQueues, type QueueRecordView } from './service.js';
+import { PastQueues } from './PastQueues.js';
 import { formatUsd, SPEND_SOFT_ALARM_USD, spendLevel } from './spend.js';
 import {
   causeWords,
@@ -207,6 +208,14 @@ function Panel({
   const [adopted, setAdopted] = useState(false);
   /* The same window, on the control that starts a whole list of them. */
   const [queueStarting, setQueueStarting] = useState(false);
+  /* Which failed video is being started again, so its control cannot go twice. */
+  const [tryingAgain, setTryingAgain] = useState<string | null>(null);
+  /**
+   * **Every queue that has run, kept forever.** Mohamed's ruling of 2026-09-15.
+   * Re-read whenever a queue's state changes, so the record he is looking at is
+   * the one on disk rather than one this panel remembers.
+   */
+  const [queueRecords, setQueueRecords] = useState<QueueRecordView[]>([]);
   const [queueError, setQueueError] = useState<string | null>(null);
   /**
    * **Which of the three screens he is on.**
@@ -500,6 +509,13 @@ function Panel({
    * reason: the service owns it. Closing this panel stops the polling, not the
    * queue — when he opens it again the job is still there to be read.
    */
+  useEffect(() => {
+    if (connection === null) return;
+    void fetchQueues(connection).then(setQueueRecords, () => {
+      /* A service older than this route. No record is shown, as before. */
+    });
+  }, [connection, queueJobId, queueJob?.status]);
+
   useEffect(() => {
     if (connection === null || adopted) return;
     setAdopted(true);
@@ -1123,6 +1139,31 @@ function Panel({
               view={queueJob.detail as unknown as QueueView}
               stopping={queueStopping}
               onGoTo={setMoment}
+              tryingAgain={tryingAgain}
+              onTryAgain={(reel) => {
+                if (connection === null || tryingAgain !== null) return;
+                const failed = queueItemsOf(queueJob).find((i) => i.reel === reel);
+                if (failed === undefined) return;
+                setTryingAgain(reel);
+                setQueueError(null);
+                /*
+                 * **A queue of one.** Everything already paid for is read from the
+                 * cache and costs nothing — the same path a re-run has taken since
+                 * sessions 86 and 92 — so this re-runs the stage that failed and
+                 * re-buys nothing that succeeded.
+                 */
+                void startQueue(connection, [{ reel, mode: failed.modeId ?? '' }]).then(
+                  (id) => {
+                    setQueueJobId(id);
+                    setQueueNewsSeen(false);
+                    setTryingAgain(null);
+                  },
+                  (error: Error) => {
+                    setQueueError(error.message);
+                    setTryingAgain(null);
+                  },
+                );
+              }}
               onStop={() => {
                 if (connection === null || queueJobId === null) return;
                 setQueueStopping(true);
@@ -1132,6 +1173,24 @@ function Panel({
                 });
               }}
             />
+          )}
+          {/*
+            **The record, under the queue it belongs to.** One reliable place for
+            the current one and the past ones, which is what session 109 left open
+            and sessions 98, 99 and 103 all flagged: the summary had no dismiss and
+            was destroyed by the next queue.
+ 
+            **Not while one is running**, and the reason is measured rather than
+            aesthetic. Session 106 got every screen inside the 900 px panel; Make's
+            worst state — a queue running, with its four steps showing — is 896 px,
+            with four to spare. The record costs 93 px, so showing it there would
+            put Make at 989 px and break the one rule every session since 106 has
+            held. While a queue runs, the running card is the subject and the record
+            is history; when it stops, the record is the first thing he wants.
+          */}
+          {queueJob !== null && queueJob.detail !== undefined &&
+          (queueJob.detail as unknown as QueueView).done === false ? null : (
+            <PastQueues records={queueRecords} />
           )}
         </section>
 
@@ -1330,6 +1389,18 @@ function Panel({
       </main>
     </div>
   );
+}
+
+/**
+ * The items a queue job is carrying, whatever shape its detail happens to be.
+ *
+ * A record written before Block 14 session 110 has no `modeId` on its items, and
+ * a retry then has no client to run against — so it is read defensively and the
+ * control is simply not offered.
+ */
+function queueItemsOf(job: PipelineJob | null): { reel: string; modeId?: string }[] {
+  const detail = job?.detail as unknown as { items?: { reel: string; modeId?: string }[] };
+  return detail?.items ?? [];
 }
 
 export type EditorId = 'words' | 'emphasis' | 'pictures';

@@ -935,6 +935,15 @@ section.client .say, section.video .say { margin: 8px 0 0; color: var(--muted); 
 .partrun { display: grid; gap: var(--s-tight); margin-top: 0; }
 .partrun .faint { margin: 0; font-size: var(--t-second); }
 
+/*
+ * **The record of every queue that has run.** Block 14 session 110, on Mohamed's
+ * ruling that it is kept forever. It uses the rows and the label the panel already
+ * has; nothing here is a new visual language.
+ */
+.pastqueues { display: grid; gap: var(--s-tight); margin-top: var(--s-group); }
+.pastqueues ul.facts { margin-top: 0; }
+.pastqueues .k { min-width: 150px; }
+
 /* The client's own photographs, on both client screens. */
 .ownphotos { display: grid; gap: 8px; margin-top: 12px; }
 /*

@@ -1,5 +1,6 @@
 import { asStageError, runPipeline, type PipelineStageError } from './pipeline.js';
 import { registerJobRunner } from './jobs.js';
+import { writeQueueRecord } from './queue-record.js';
 import { PICTURES_STAGE_IDS, WORDS_STAGE_IDS, type PipelineStageId } from './pipeline-stages.js';
 
 /**
@@ -44,6 +45,17 @@ export interface QueueResultItem extends QueueItem {
   error?: PipelineStageError;
   /** How many times the video was attempted; 1 unless a retry was allowed. */
   attempts: number;
+  /**
+   * Which of the four stages this video is on, while it is the one running.
+   *
+   * **Optional with a default**, like every schema addition: a record written
+   * before Block 14 session 110 has none, and the panel then shows what it always
+   * showed. Block 13 session 94 measured the wait — 25.8 minutes between the
+   * transcript landing and the masks being made — and for all of it the only thing
+   * that moved was `2/4`, once. The stage ids are the pipeline's own; session 101
+   * already named each of them in his words.
+   */
+  stage?: PipelineStageId | null;
 }
 
 export interface QueueProgress {
@@ -77,7 +89,12 @@ export interface RunQueueOptions {
    * Runs one video. Injected so the queue can be proved without spending: the
    * money boundary is inside this, never inside the queue.
    */
-  runOne: (item: QueueItem, attempt: number) => Promise<{ spentUsd: number }>;
+  runOne: (
+    item: QueueItem,
+    attempt: number,
+    /** Called as the video moves from one stage to the next. Session 110. */
+    onStage?: (stage: PipelineStageId | null) => void,
+  ) => Promise<{ spentUsd: number }>;
   /** Asked before each video and between attempts. True stops the queue. */
   shouldStop?: () => boolean;
   onProgress?: (progress: QueueProgress) => void;
@@ -140,15 +157,25 @@ export async function runQueue(options: RunQueueOptions): Promise<QueueProgress>
 
     record.startedAt = now();
     record.outcome = 'not-reached';
+    record.stage = null;
     onProgress(progress(index));
 
     for (let attempt = 1; attempt <= QUEUE_ATTEMPTS; attempt += 1) {
       record.attempts = attempt;
       try {
-        const { spentUsd: cost } = await runOne(item, attempt);
+        const { spentUsd: cost } = await runOne(item, attempt, (stage) => {
+          /*
+           * **What it is doing, while it does it.** Session 110. Reported as the
+           * stage moves, so the panel has something true to show between the two
+           * moments `2/4` changes.
+           */
+          record.stage = stage;
+          onProgress(progress(index));
+        });
         record.spentUsd += cost;
         spentUsd += cost;
         record.outcome = 'done';
+        record.stage = null;
         delete record.error;
         break;
       } catch (error) {
@@ -253,6 +280,27 @@ registerJobRunner(QUEUE_JOB_TYPE, async (params, job) => {
       const reached = progress.items.filter((i) => i.outcome !== 'not-reached').length;
       job.progress = items.length === 0 ? 1 : reached / items.length;
       /*
+       * **Written after every video, not at the end.** Session 109 left the queue
+       * in memory and said so; a service restart took the whole list, and the
+       * service restarts by itself when the panel repairs it. Four videos already
+       * paid for must not vanish because of that.
+       *
+       * A failure to write is swallowed on purpose: a queue that is spending money
+       * must not stop because a record could not be saved. The record is evidence,
+       * not a dependency.
+       */
+      try {
+        writeQueueRecord({
+          id: job.id,
+          startedAt: job.startedAt ?? new Date().toISOString(),
+          finishedAt: progress.done ? new Date().toISOString() : null,
+          progress,
+          ...(progress.done ? { summary: queueSummary(progress) } : {}),
+        });
+      } catch {
+        // Evidence, not a dependency.
+      }
+      /*
        * The summary rides along with the progress once it is finished, so the
        * panel reads the service's own sentences rather than composing its own.
        * A second copy of "is this worth trying again" in a React bundle is a
@@ -260,11 +308,20 @@ registerJobRunner(QUEUE_JOB_TYPE, async (params, job) => {
        */
       job.detail = progress.done ? { ...progress, summary: queueSummary(progress) } : progress;
     },
-    runOne: async (item) => {
+    runOne: async (item, _attempt, onStage) => {
       const result = await runPipeline({
         reel: item.reel,
         modeId: item.modeId,
         only: [...QUEUE_STAGE_IDS],
+        /*
+         * **The pipeline's own report, not a second one.** It already says which
+         * stage is running; session 110 reads that rather than adding a parallel
+         * channel that could disagree with it.
+         */
+        onProgress: (inner) => {
+          const at = inner.stages.find((stage) => stage.state === 'running');
+          onStage?.(at === undefined ? null : (at.id as PipelineStageId));
+        },
       });
       return { spentUsd: result.spentUsd };
     },

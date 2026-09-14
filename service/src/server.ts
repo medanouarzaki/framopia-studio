@@ -5,6 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { REPO_ROOT, loadMode, modePathFor, snapshotOfMode } from '@framopia/core';
 import { createJob, getJob, listJobs, UnknownJobTypeError } from './jobs.js';
+import { listQueueRecords } from './queue-record.js';
 import { readEditPlan, writeEditPlan } from './editplan/io.js';
 import { clearManualZone, ManualZoneError, setManualZone } from './frames/plan-zones.js';
 import { chooseCandidate, imagesView, ImageViewError } from './image-view.js';
@@ -765,6 +766,19 @@ export function createApp(token: string): http.Server {
        *
        * Read-only, free, and it starts nothing.
        */
+      /*
+       * **Every queue this machine has run, newest first.** Block 14 session 110,
+       * on Mohamed's ruling that the record is kept forever: it records money
+       * actually spent, and `.local/queues/` is beside his plans and his ledger
+       * rather than in a cache that evicts.
+       *
+       * Read-only, free, and it starts nothing.
+       */
+      if (req.method === 'GET' && url.pathname === '/queues') {
+        sendJson(res, 200, { queues: listQueueRecords() });
+        return;
+      }
+
       if (req.method === 'GET' && url.pathname === '/jobs') {
         sendJson(res, 200, {
           jobs: listJobs().map((j) => ({
