@@ -50,10 +50,21 @@ const COUNTING = `
     const method = String((init && init.method) || 'GET').toUpperCase();
     if (method !== 'GET') {
       window.__posts.push(method + ' ' + u.replace(/^https?:\\/\\/[^/]+/, ''));
-      /* Deliberately slow: a guard that only works against an instant answer is
-         not a guard. Session 109 found the defect exactly this way. */
+      /*
+       * **Deliberately slow, and slow enough to be unambiguous.** A guard that
+       * only works against an instant answer is not a guard — session 109 found
+       * the money defect exactly this way.
+       *
+       * Three seconds rather than 350 ms because 350 ms was **too short to mean
+       * what it claimed**: under load Playwright's two clicks can land 400 ms
+       * apart, the first request has already finished, and the second is a
+       * legitimate second press rather than a double-submit. Session 112 chased
+       * that as a panel defect before recognising it as an instrument that could
+       * not tell the two apart. At three seconds, two requests means the second
+       * arrived while the first was still in flight, always.
+       */
       return new Promise((go) => setTimeout(
-        () => go({ ok: true, json: () => Promise.resolve({ id: 'job-1' }) }), 350));
+        () => go({ ok: true, json: () => Promise.resolve({ id: 'job-1' }) }), 3000));
     }
     return real(url, init);
   };

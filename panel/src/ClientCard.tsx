@@ -100,18 +100,24 @@ function Photographs({
   const dialog = fileDialogSupport();
 
   /**
-   * **A second press must not get through, and `busy` alone does not stop it.**
+   * **A second press is stopped twice over, and only one of the two was proved.**
    *
-   * Block 14 session 112. `setBusy(true)` is React state, so two clicks inside one
-   * render cycle both read `busy === false` and both reach the service — a
-   * `DELETE /clients/pictures` twice on one photograph. The `disabled` attribute
-   * hides it whenever React re-renders in time, which is almost always, and lets
-   * it through when the machine is loaded: the enumeration caught it on one run in
-   * five and passed on the others.
+   * Block 14 session 112. `setBusy(true)` is React state, so in principle two
+   * clicks inside one render cycle could both read `busy === false` and both reach
+   * the service. This ref is written synchronously, so a second press sees it in
+   * the same tick whatever React has or has not done — the shape session 109 gave
+   * `onRun` after two presses started two paid runs.
    *
-   * A ref is written synchronously, so the second press sees it in the same tick
-   * whatever React has or has not done. The same shape session 109 gave `onRun`
-   * after two presses started two paid runs.
+   * **Said plainly: it was added on the strength of a red the instrument
+   * produced, not the panel.** The enumeration's stub answered in 350 ms, and
+   * under load Playwright's two clicks can land 400 ms apart — so the first
+   * request had finished and the second was a legitimate press, counted as a
+   * double. With the stub slowed to three seconds, where two requests can only
+   * mean the second arrived in flight, `disabled={busy}` alone holds and removing
+   * this ref does **not** turn the test red.
+   *
+   * It stays because it is the pattern this project settled on for exactly this
+   * class of control and it costs nothing — not because a defect was measured here.
    */
   const working = useRef(false);
 
