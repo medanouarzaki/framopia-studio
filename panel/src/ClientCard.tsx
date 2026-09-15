@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { fileUrl } from './picture.js';
 import { ClientPictures, type ShownPicture } from './ClientPictures.js';
 import { ColourField } from './ColourField.js';
@@ -99,8 +99,25 @@ function Photographs({
   const [error, setError] = useState<string | null>(null);
   const dialog = fileDialogSupport();
 
+  /**
+   * **A second press must not get through, and `busy` alone does not stop it.**
+   *
+   * Block 14 session 112. `setBusy(true)` is React state, so two clicks inside one
+   * render cycle both read `busy === false` and both reach the service — a
+   * `DELETE /clients/pictures` twice on one photograph. The `disabled` attribute
+   * hides it whenever React re-renders in time, which is almost always, and lets
+   * it through when the machine is loaded: the enumeration caught it on one run in
+   * five and passed on the others.
+   *
+   * A ref is written synchronously, so the second press sees it in the same tick
+   * whatever React has or has not done. The same shape session 109 gave `onRun`
+   * after two presses started two paid runs.
+   */
+  const working = useRef(false);
+
   const change = async (make: (c: Connection) => Promise<void>): Promise<void> => {
-    if (connection === null) return;
+    if (connection === null || working.current) return;
+    working.current = true;
     setBusy(true);
     setError(null);
     try {
@@ -109,6 +126,7 @@ function Photographs({
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
+      working.current = false;
       setBusy(false);
     }
   };
