@@ -142,6 +142,31 @@ describe('what went wrong, in his words', () => {
     expect(causeWords('fetch failed')).toContain('nothing extra was charged');
   });
 
+  /**
+   * The 429 session 111 measured for real: the Google account's prepayment
+   * credits were depleted. Before this it read *"It stopped before finishing"*,
+   * which left him to discover on his own that pressing again fails the same
+   * way every time.
+   */
+  it('says that an account with no credit will keep refusing', () => {
+    for (const cause of [
+      '429 RESOURCE_EXHAUSTED: You exceeded your current quota',
+      'Error: [429 Too Many Requests] quota exceeded',
+      'insufficient credit on the account',
+    ]) {
+      const said = causeWords(cause);
+      expect(said).toContain('no credit left');
+      expect(said).toContain('Nothing was charged');
+      /* It must not tell him to try again — that is the one thing that fails. */
+      expect(said).not.toMatch(/try it again/i);
+    }
+  });
+
+  /* A busy service and an empty account are opposite instructions. */
+  it('still tells him to try again when the service was merely busy', () => {
+    expect(causeWords('503 Service Unavailable')).toContain('Try it again shortly');
+  });
+
   it('does not repeat the raw text back to him, ever', () => {
     for (const cause of [
       raw,
@@ -174,6 +199,7 @@ describe('what went wrong, in his words', () => {
       causeWords('fetch failed'),
       causeWords('not authorised'),
       causeWords('ENOENT: no such file'),
+      causeWords('429 RESOURCE_EXHAUSTED'),
       causeWords(null),
     ].join(' ');
     expect(all).not.toMatch(/npm run|terminal|quit|restart|reopen|relaunch/i);

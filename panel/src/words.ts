@@ -114,6 +114,24 @@ const CAUSES: { when: RegExp; say: string }[] = [
     say: 'The service we use was busy and turned it away. Nothing was charged. Try it again shortly.',
   },
   {
+    /*
+     * **The one Mohamed has actually hit.** Session 111 ran into a real 429
+     * while proving a resume: the Google account's prepayment credits were
+     * depleted. It fell through to *"It stopped before finishing"* — true, and
+     * it left him to work out on his own that pressing again would fail the
+     * same way every time.
+     *
+     * It must come after the 5xx rule, not before: a busy service and an empty
+     * account are the opposite instruction — one says try again shortly, the
+     * other says trying again is the one thing that will not help.
+     */
+    when: /\b429\b|RESOURCE_EXHAUSTED|exceeded your current quota|quota exceeded|insufficient credit/i,
+    say:
+      'The paid service turned it away because the account has no credit left. Nothing was ' +
+      'charged and nothing already paid for is lost. It will keep refusing until the account ' +
+      'has credit again.',
+  },
+  {
     when: /not authori[sz]ed|API key|invalid key|permission denied/i,
     /*
      * **It sent him to a screen that does not exist.** Block 13 session 102 found
