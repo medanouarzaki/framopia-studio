@@ -483,21 +483,61 @@ export async function runPipeline(options: RunPipelineOptions): Promise<Pipeline
     };
   });
 
+  /*
+   * **This stage is two billable calls, and it resumes at the one that did not
+   * finish.**
+   *
+   * The keywords half writes `pipeline.analysis = done` and saves the plan
+   * before the slots half is attempted at all. So a run that bought the
+   * keywords and then lost the network on the slots left a plan saying the
+   * analysis was finished and carrying no image slots — and the next press
+   * skipped the whole stage on the strength of that record, skipped the
+   * pictures for want of slots, finished every stage green and produced a reel
+   * that could never have a picture in it. Block 14 session 113 measured it at
+   * $0.35 paid, silent, and no way out of it from the panel.
+   *
+   * The two halves are asked about separately, by the record each of them
+   * writes. Keeping the keywords is the point: they are $0.18 and they are
+   * already bought, so re-running the stage whole would fix the slots by paying
+   * for the keywords twice — which is the defect session 90 lost $0.61 to,
+   * pointed the other way.
+   *
+   * `pipeline.images` is the slots half's record, not the picture stage's. That
+   * double-naming is older than this and still open; what matters here is that
+   * `planImageSlotsForPlan` is the only thing that writes it, so it is an
+   * honest answer to "did the slots half run".
+   */
   await run('analysis', async () => {
     if (!asked('analysis')) return { skipped: true, reason: 'not part of this run' };
     const existing = await planIfAny();
-    if (existing?.pipeline.analysis.status === 'done' && !wants('analysis')) {
-      return { skipped: true, reason: 'already on the plan' };
-    }
+    const again = wants('analysis');
+    const keywordsDone = !again && existing?.pipeline.analysis.status === 'done';
+    const slotsDone = !again && existing?.pipeline.images.status === 'done';
+    if (keywordsDone && slotsDone) return { skipped: true, reason: 'already on the plan' };
     if (planPath === null) return { skipped: true, reason: 'no plan to analyse' };
 
-    assertWithinCeiling('analysis');
-    const keywords = await impl.keywords({ planPath, modeId, keywordMode: 'auto', cacheRoot, log });
-    assertWithinCeiling('analysis');
-    const slots = await impl.slots({ planPath, modeId, cacheRoot, log, force: forceTranscript });
-    const cost =
-      (keywords.cached ? 0 : keywords.analysis.costUsd) + (slots.cached ? 0 : slots.analysis.costUsd);
-    return { costUsd: cost, reason: keywords.cached && slots.cached ? 'cached' : null };
+    let cost = 0;
+    let bought = false;
+    if (!keywordsDone) {
+      assertWithinCeiling('analysis');
+      const keywords = await impl.keywords({ planPath, modeId, keywordMode: 'auto', cacheRoot, log });
+      cost += keywords.cached ? 0 : keywords.analysis.costUsd;
+      if (!keywords.cached) bought = true;
+    } else {
+      log('analysis: the keywords are already on the plan and are not bought again');
+    }
+    if (!slotsDone) {
+      assertWithinCeiling('analysis');
+      const slots = await impl.slots({ planPath, modeId, cacheRoot, log, force: forceTranscript });
+      cost += slots.cached ? 0 : slots.analysis.costUsd;
+      if (!slots.cached) bought = true;
+    } else {
+      log('analysis: the image slots are already on the plan and are not planned again');
+    }
+    return {
+      costUsd: cost,
+      reason: bought ? null : 'cached',
+    };
   });
 
   await run('images', async () => {

@@ -420,7 +420,22 @@ export async function dryRun(reelLabel: string, modeId: string): Promise<DryRunP
      * will never reach an image call at all. `test-2` read $1.45 for images
      * while a run skips both stages.
      */
-    if (pipeline['analysis']?.status === 'done') {
+    /*
+     * **The slots half's own record, not the keywords half's.**
+     *
+     * `pipeline.analysis` is written by `analyseKeywordsForPlan` before the slot
+     * planner is even called, so a reel whose slots half never finished says
+     * `analysis: done` and carries no slots — and reading that as "analysis has
+     * already run without planning any" told him a run would never make
+     * pictures for a reel where a run now plans them. `test 2` is in exactly
+     * that state on this machine, and read $0.00 for a run that would spend
+     * $2.17.
+     *
+     * `pipeline.images` is what `planImageSlotsForPlan` writes, so it is the
+     * honest answer to "did the slots half run". The runner reads it the same
+     * way; `pipeline-stages.test.ts` is what holds the two together.
+     */
+    if (pipeline['images']?.status === 'done') {
       add(
         'images',
         null,

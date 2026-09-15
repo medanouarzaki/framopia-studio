@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
+import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { REPO_ROOT } from '@framopia/core';
+import { findReelByLabel } from './catalogue.js';
+import { editPlanPathFor } from './editplan/io.js';
 import { stepsFor, STEP_IDS, StepsError } from './steps.js';
 
 /**
@@ -112,16 +115,60 @@ describe('the image estimate', () => {
   });
 
   /*
-   * And images cannot bill when nothing will ever plan a slot for them:
-   * `test-2`'s analysis has run and planned none, so a run reaches no image
-   * call at all. It read $1.45.
+   * And images cannot bill when nothing will ever plan a slot for them: a reel
+   * whose slot planner ran and planned none reaches no image call at all. It
+   * read $1.45.
+   *
+   * **This asked `test-2`, and `test-2` is not that reel.** Block 14 session 113
+   * measured what its plan actually holds: `analysis: done`, `images: pending`,
+   * no slots — the state a run leaves when the keywords are bought and the slot
+   * planner never finishes. The keywords half writes `pipeline.analysis` before
+   * the slot planner is called at all, so "analysis has already run" was true of
+   * the record and false of the work, and the screen read $0.00 for a press that
+   * spends $2.17.
+   *
+   * The rule this test protects did not change and is still checked. What
+   * changed is that the state is now built rather than borrowed from whatever a
+   * reel on this machine happens to hold: `images: done` with no slots is the
+   * slot planner having run and planned none, and only `planImageSlotsForPlan`
+   * writes it.
    */
-  it('prices nothing for images when no slot will ever be planned', async () => {
+  it('prices nothing for images when the slot planner ran and planned none', async () => {
     const { dryRun } = await import('./dry-run.js');
-    const plan = await dryRun('test-2', 'k2-syndicalia');
-    const images = plan.stages.find((s) => s.id === 'images');
-    expect(images?.estimateUsd).toBeNull();
-    expect(images?.note).toContain('analysis has already run without planning any');
+    const reel = findReelByLabel('test-2');
+    if (reel === undefined) throw new Error('test-2 is not catalogued on this machine');
+    const planPath = editPlanPathFor(reel.videoPath);
+    const saved = readFileSync(planPath, 'utf8');
+    try {
+      const plan = JSON.parse(saved) as {
+        pipeline: Record<string, { status: string }>;
+        images: { slots: unknown[] };
+      };
+      expect(plan.images.slots.length).toBe(0);
+      plan.pipeline['images'] = { ...plan.pipeline['images'], status: 'done' } as {
+        status: string;
+      };
+      writeFileSync(planPath, `${JSON.stringify(plan, null, 2)}\n`, 'utf8');
+
+      const said = await dryRun('test-2', 'k2-syndicalia');
+      const images = said.stages.find((s) => s.id === 'images');
+      expect(images?.estimateUsd).toBeNull();
+      expect(images?.note).toContain('analysis has already run without planning any');
+    } finally {
+      writeFileSync(planPath, saved, 'utf8');
+    }
+  });
+
+  /*
+   * And the state `test-2` is really in: the slot planner never finished, so a
+   * run plans the slots and buys the pictures — and the screen has to say so.
+   */
+  it('prices the pictures for a reel whose slot planner never finished', async () => {
+    const { dryRun } = await import('./dry-run.js');
+    const said = await dryRun('test-2', 'k2-syndicalia');
+    const images = said.stages.find((s) => s.id === 'images');
+    expect(images?.estimateUsd ?? 0).toBeGreaterThan(0);
+    expect(images?.note).toContain('no image slots planned yet');
   });
 
   it('charges nothing for a reel whose candidates are all cached', async () => {
