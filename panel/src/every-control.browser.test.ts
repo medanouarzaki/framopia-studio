@@ -414,6 +414,55 @@ const ELSEWHERE: Somewhere[] = [
     },
   },
   {
+    /**
+     * **Session 112's largest honest gap, closed.**
+     *
+     * The three controls that write to his photograph store were named and left
+     * empty: they were not reachable by the pass, because the add form renders
+     * only when the host offers a file chooser and `realPanelRoutes` alone does
+     * not give one. `WITH_A_CHOOSER` does, and this fills the one field that
+     * gates the Add button, so all three are visible, enabled and pressable.
+     *
+     * **Nothing is written.** The routes are stubbed, so a double press is
+     * counted rather than performed. What a double press would do to the store
+     * itself is measured against a scratch client in
+     * `service/src/clients/pressed-twice.test.ts`, on scratch photographs.
+     */
+    name: 'adding a photograph to a client',
+    within: '.addphoto',
+    reach: async (page) => {
+      await onScreen(page, 'choose');
+      await page.$$eval('details', (els) => {
+        els.forEach((d) => ((d as HTMLDetailsElement).open = true));
+      });
+      await page.waitForTimeout(250);
+      if (!(await press(page, '.addphoto button.choose', 'Choose a photo'))) return false;
+      const what = await page.$('input[aria-label="What is it?"]');
+      if (what === null) return false;
+      await what.fill('a scratch photograph session 113 named');
+      await page.waitForTimeout(250);
+      return (await page.$('.addphoto')) !== null;
+    },
+  },
+  {
+    /* The third of the three: the label on a photograph he already has. */
+    name: 'changing the words that choose a photograph',
+    within: '.saidwhen',
+    reach: async (page) => {
+      await onScreen(page, 'choose');
+      await page.$$eval('details', (els) => {
+        els.forEach((d) => ((d as HTMLDetailsElement).open = true));
+      });
+      await page.waitForTimeout(250);
+      const box = await page.$('.saidwhen input');
+      if (box === null) return false;
+      /* The Save control appears only once the words differ from what is saved. */
+      await box.fill('a word session 113 typed');
+      await page.waitForTimeout(250);
+      return (await page.$('.saidwhen button')) !== null;
+    },
+  },
+  {
     name: 'the machine facts behind Details',
     within: 'section.readiness',
     reach: async (page) => {
