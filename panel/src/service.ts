@@ -769,7 +769,20 @@ export interface QueueRecordView {
   startedAt: string;
   finishedAt: string | null;
   progress: {
-    items: { reel: string; modeId?: string; outcome: string; spentUsd: number }[];
+    items: {
+      reel: string;
+      modeId?: string;
+      outcome: string;
+      spentUsd: number;
+      /**
+       * Why this one did not finish. **Optional with a default**, per the standing
+       * schema rule: the service has written it since session 94 and the panel
+       * never read it, so every record already on disk carries one — but a record
+       * for a video that finished has none, and neither does one written by a
+       * service older than this.
+       */
+      error?: { stage?: string; cause?: string; retryable?: boolean };
+    }[];
     spentUsd: number;
     done: boolean;
     stopped: boolean;
@@ -834,6 +847,67 @@ export async function startBuild(
 
 export async function fetchBuildJob(connection: Connection, id: string): Promise<BuildJob> {
   return await getJson<BuildJob>(connection, `/jobs/${encodeURIComponent(id)}`);
+}
+
+/** One video in a list being built, as the service reports it. */
+export interface BuildQueueItemView {
+  reel: string;
+  planPath: string;
+  modeId?: string;
+  outcome: 'built' | 'failed' | 'stopped' | 'not-reached';
+  savePath: string | null;
+  error?: string;
+}
+
+/** A list of videos being built, as the service reports it. */
+export interface BuildQueueView {
+  items: BuildQueueItemView[];
+  buildingIndex: number | null;
+  buildingPercent: number | null;
+  done: boolean;
+  stopped: boolean;
+}
+
+export interface BuildQueueJob {
+  id: string;
+  status: string;
+  progress?: number;
+  detail?: BuildQueueView;
+  error?: string;
+}
+
+/**
+ * **Build every finished video, one press.**
+ *
+ * Block 14 session 114. The same shape as `startQueue` above, and deliberately a
+ * different job type: After Effects runs one script at a time, so these are a
+ * sequence like the run queue, but they bill nothing and they are not the same
+ * work. Keeping them apart means a running build list and a running run queue
+ * cannot be mistaken for one another on screen.
+ */
+export async function startBuildQueue(
+  connection: Connection,
+  items: readonly { reel: string; planPath: string; modeId?: string }[],
+): Promise<string> {
+  const res = await fetch(`http://127.0.0.1:${connection.port}/jobs`, {
+    method: 'POST',
+    headers: { 'x-service-token': connection.token, 'content-type': 'application/json' },
+    body: JSON.stringify({ type: 'build-queue', params: { items } }),
+  });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as Partial<ServiceError>;
+    throw new Error(body.cause ?? body.error ?? serviceTrouble(res.status));
+  }
+  const body = (await res.json()) as { id?: string };
+  if (typeof body.id !== 'string') throw new Error('the builds started but cannot be followed');
+  return body.id;
+}
+
+export async function fetchBuildQueueJob(
+  connection: Connection,
+  id: string,
+): Promise<BuildQueueJob> {
+  return await getJson<BuildQueueJob>(connection, `/jobs/${encodeURIComponent(id)}`);
 }
 
 export async function fetchTranscript(

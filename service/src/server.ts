@@ -52,7 +52,9 @@ import {
 import './pipeline.js';
 /* Registers the queue job runner, the same way the pipeline registers its own. */
 import './queue.js';
+import './build-queue.js';
 import { stopQueue } from './queue.js';
+import { stopBuildQueue } from './build-queue.js';
 import './build/job.js';
 import { health } from './health.js';
 import { addPayment, correctPayment, moneyView, removePayment, setCap, setCredit } from './money.js';
@@ -833,7 +835,13 @@ export function createApp(token: string): http.Server {
           sendJson(res, 404, { error: 'no such job' });
           return;
         }
+        /*
+         * One route for both sequences. A job id belongs to one of them, and a
+         * flag set on the other's set is never read — so asking both is cheaper
+         * and safer than the panel having to know which kind it is looking at.
+         */
         stopQueue(id);
+        stopBuildQueue(id);
         sendJson(res, 200, { stopping: true });
         return;
       }
