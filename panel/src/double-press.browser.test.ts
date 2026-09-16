@@ -112,13 +112,22 @@ describe.skipIf(!built)('a control that spends, pressed twice before it answers'
     const page = await slowPanel();
     if (page === null) return;
     await onScreen(page, 'run');
-    const add = await page.$('section.pane button.run');
-    if (add !== null) await add.click();
-    await page.waitForTimeout(200);
+    /*
+     * **The list is ticked, not added to one at a time.** Block 14 session 114
+     * replaced *Add X to the list* with the client's videos shown where the list
+     * is assembled, so this ticks one and starts it. The rule under test did not
+     * change — one press of a control that spends starts one queue — and it is
+     * the arrival that moved.
+     */
+    const tick = await page.$('.pickseveral button.pick');
+    expect(tick).toBeDefined();
+    if (tick === null || tick === undefined) return;
+    await tick.click();
+    await page.waitForTimeout(250);
 
     await resetCount(page);
     const runs = await page.$$('section.pane button.run');
-    /* The last one is "Make these N videos"; the first adds to the list. */
+    /* *Make these N videos* is the only control that spends in this pane now. */
     const start = runs[runs.length - 1];
     expect(start).toBeDefined();
     if (start === undefined) return;

@@ -228,13 +228,21 @@ describe.skipIf(!built)('the news a step carries', () => {
     return page;
   }
 
-  /** Starts a queue the way he does: pick a video, add it, press the button. */
+  /**
+   * Starts a queue the way he does: pick the client, tick the video where the
+   * list is made, press the button.
+   *
+   * **Block 14 session 114 moved the ticking, not the news.** Choosing which
+   * videos go in a list happens on Make now, so this no longer crosses to Choose
+   * for the video — it picks the client and ticks. Everything these four tests
+   * assert about what the step says is unchanged.
+   */
   async function startQueueOf(page: Page, video = 'vitasilk'): Promise<void> {
     await onScreen(page, 'choose');
-    await page.selectOption('select[aria-label="Video"]', video);
     await page.selectOption('select[aria-label="Client"]', 'k2-syndicalia');
+    await page.waitForTimeout(250);
     await onScreen(page, 'run');
-    await page.click(`button.run:has-text("Add ${video} to the list")`);
+    await page.click(`.pickseveral button.pick:has-text("${video}")`, { timeout: 10_000 });
     await page.click('button.run:has-text("Make these")');
     await page.waitForSelector('nav.moments .news', { timeout: 10_000 });
   }

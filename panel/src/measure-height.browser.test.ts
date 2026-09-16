@@ -457,6 +457,61 @@ describe.skipIf(!built)('what each block of Make and Build costs', () => {
     await done.close();
 
     /*
+     * **A list ready to build, and a list that has been built.** Block 14
+     * session 114 put both on Build, so both are measured — the second is the
+     * taller, because every video carries its own line and a failure carries a
+     * sentence under it.
+     *
+     * Twenty rather than the ten Mohamed named: at ten this read **887 px of
+     * 900** uncapped, and thirteen pixels is not margin. The list is capped and
+     * scrolls now, so the number in it stops deciding the height — which is what
+     * measuring twice the worst case is here to hold.
+     */
+    const listed = await hisPanel(`
+      window.__job = () => ({
+        id: 'q-1', status: 'done', progress: 1,
+        detail: {
+          items: Array.from({ length: 20 }, function (_, i) {
+            return {
+              reel: 'Dr Loubna Kfafi/September Content/Exports/reel-' + i + '.mov',
+              modeId: 'dr-loubna-kfafi', outcome: 'done', spentUsd: 0,
+              attempts: 1, stage: null, startedAt: null, finishedAt: null,
+            };
+          }),
+          runningIndex: null, spentUsd: 0, done: true, stopped: false,
+        },
+      });
+      /* The panel's own first video stays, because arriving here picks it. */
+      window.__payload.reels.reels = window.__payload.reels.reels.concat(
+        Array.from({ length: 20 }, function (_, i) {
+          return {
+            label: 'Dr Loubna Kfafi/September Content/Exports/reel-' + i + '.mov',
+            present: true, durationS: 25, planPath: '/v/p' + i + '.json', spentUsd: 0,
+          };
+        }),
+      );
+    `);
+    if (listed === null) return;
+    /*
+     * A list has to have been started for the panel to know what finished, so
+     * this ticks one and presses it — the same two actions he takes. Measuring
+     * the block without doing that measured a screen the block is not on, and
+     * reported Build unchanged.
+     */
+    await onScreen(listed, 'run');
+    await listed.waitForTimeout(400);
+    await listed.click('.pickseveral button.pick', { timeout: 10_000 });
+    await listed.waitForTimeout(250);
+    await listed.click('button.run:has-text("Make these")', { timeout: 10_000 });
+    await listed.waitForTimeout(1400);
+    await onScreen(listed, 'build');
+    await listed.waitForTimeout(700);
+    const offered = await listed.$$eval('.buildall li', (els) => els.length);
+    if (offered !== 20) throw new Error(`the build block offered ${String(offered)}, not 20`);
+    await blocks(listed, 'BUILD — twenty from a list ready to build');
+    await listed.close();
+
+    /*
      * **The worst state Build can be in**: a client who has not chosen typefaces,
      * so `FontsNote` renders. Neither real client is in it — both have fonts set —
      * which is exactly why the first draft of this ruler measured it by accident

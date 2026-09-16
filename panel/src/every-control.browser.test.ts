@@ -403,13 +403,28 @@ const ELSEWHERE: Somewhere[] = [
         });
       });
       await onScreen(page, 'run');
-      /* Put one in the list and start it, which is how he gets here. */
-      if (!(await press(page, 'section.pane button.run'))) return false;
+      /*
+       * Put one in the list and start it, which is how he gets here.
+       *
+       * **Block 14 session 114 moved the first half.** The list is assembled by
+       * ticking a video where the list is, not by pressing *Add X to the list* —
+       * so the old arrival pressed the start control twice and reached nothing,
+       * and this state's two cells went empty without a word. Session 112 earned
+       * them; the restructure had to carry them, not drop them.
+       */
+      if (!(await press(page, '.pickseveral button.pick'))) return false;
       const runs = await page.$$('section.pane button.run');
       const start = runs[runs.length - 1];
       if (start === undefined) return false;
       await start.click({ timeout: 3000 }).catch(() => undefined);
-      await page.waitForTimeout(900);
+      /*
+       * **Longer than the stub holds an answer.** `COUNTING` above delays every
+       * non-GET by three seconds on purpose, so at 900 ms the list had not
+       * started yet: the pane still showed the control that starts it, disabled
+       * while it was in flight, and this state enumerated nothing while
+       * reporting that it had arrived. The wait has to clear the instrument.
+       */
+      await page.waitForTimeout(3600);
       return (await page.$('section.pane button.run')) !== null;
     },
   },
