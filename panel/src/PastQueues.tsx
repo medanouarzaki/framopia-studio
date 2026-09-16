@@ -1,5 +1,6 @@
 import type { JSX } from 'react';
 import { shortLabels } from './video-names.js';
+import { causeWords } from './words.js';
 import { videosLeftIn, type QueueRecordView } from './service.js';
 
 /**
@@ -52,6 +53,43 @@ export function whatBecameOfIt(record: QueueRecordView): string {
 }
 
 /**
+ * **Which videos, and which one did not finish.**
+ *
+ * Block 14 session 114. The record held every video's name, its outcome and the
+ * cause of its failure from the day it was written — and the panel put all of it
+ * in a `title` tooltip. What Mohamed read was *Monday, 11:40 PM · 1 ready ·
+ * $0.00*, four rows of it, and he said outright that he cannot tell which video
+ * did not finish.
+ *
+ * So the names come out of the tooltip. A queue that went cleanly says so in one
+ * line and does not list what it did — the count is the news then. A queue with a
+ * failure names **the ones that failed**, because those are the only ones he has
+ * to do anything about, and gives each one the same sentence a live failure gives
+ * him rather than the raw cause. The one on his machine now is a real 429, and
+ * raw it reads: *"analysis keywords failed: {"error":{"code":429,"message":"Your
+ * prepayment credits are depleted. Please go to AI Studio at https://…"*.
+ *
+ * **Only failures get a line**, so the height this adds is paid only by the rows
+ * that have something to say. A clean queue costs nothing it did not cost before.
+ */
+export function whichOnesFailed(
+  record: QueueRecordView,
+  shown: Map<string, string>,
+): { reel: string; said: string }[] {
+  return record.progress.items
+    .filter((i) => i.outcome === 'failed')
+    .map((i) => ({
+      reel: shown.get(i.reel) ?? i.reel,
+      said: causeWords(i.error?.cause ?? null),
+    }));
+}
+
+/** The videos a queue held, named, for a row that has room to say them. */
+export function videosIn(record: QueueRecordView, shown: Map<string, string>): string {
+  return record.progress.items.map((i) => shown.get(i.reel) ?? i.reel).join(', ');
+}
+
+/**
  * The record, under the queue it belongs to: the recent ones in view, the rest
  * behind the one disclosure this panel uses.
  */
@@ -75,11 +113,16 @@ export function PastQueues({
   const shown = shortLabels(records.flatMap((r) => r.progress.items.map((i) => i.reel)));
   const row = (record: QueueRecordView): JSX.Element => (
     <li key={record.id}>
-      <span className="k" title={record.progress.items.map((i) => shown.get(i.reel) ?? i.reel).join(', ')}>
+      <span className="k" title={videosIn(record, shown)}>
         {whenItRan(record.startedAt)}
       </span>
       <span className="v">
         {whatBecameOfIt(record)}
+        {whichOnesFailed(record, shown).map((f) => (
+          <em className="where" key={f.reel}>
+            {`${f.reel} did not finish. ${f.said}`}
+          </em>
+        ))}
         {/*
           **Carry on where it stopped.** Only on a queue that did not finish and
           still has videos that never ran. It runs those and no others, so nothing

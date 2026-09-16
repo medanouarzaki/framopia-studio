@@ -167,6 +167,16 @@ describe('what went wrong, in his words', () => {
     expect(causeWords('503 Service Unavailable')).toContain('Try it again shortly');
   });
 
+  /* Block 14 session 114: the commonest reason a video in a build list fails. */
+  it('says a video has not been made yet rather than naming its plan', () => {
+    const said = causeWords(
+      'there is no Edit Plan at /v/p2.json. Run the pipeline for this reel first.',
+    );
+    expect(said).toContain('has not been made yet');
+    expect(said).not.toContain('/v/p2.json');
+    expect(said).not.toContain('pipeline');
+  });
+
   it('does not repeat the raw text back to him, ever', () => {
     for (const cause of [
       raw,
@@ -200,6 +210,7 @@ describe('what went wrong, in his words', () => {
       causeWords('not authorised'),
       causeWords('ENOENT: no such file'),
       causeWords('429 RESOURCE_EXHAUSTED'),
+      causeWords('there is no Edit Plan at /v/p.json'),
       causeWords(null),
     ].join(' ');
     expect(all).not.toMatch(/npm run|terminal|quit|restart|reopen|relaunch/i);

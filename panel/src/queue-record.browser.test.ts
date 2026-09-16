@@ -7,6 +7,7 @@ import {
   stubHost,
   stubRoutes,
   stepsThrough,
+  realPanelRoutes,
   onScreen,
 } from './browser-harness.js';
 
@@ -316,6 +317,61 @@ describe.skipIf(!built)('the record, with fifty queues on disk', () => {
   }, 60_000);
 
   /** And the label says when, without making him read a timestamp. */
+  /**
+   * **Which video did not finish, and why.**
+   *
+   * Block 14 session 114. Mohamed read four rows of *Monday, 11:40 PM · 1 ready
+   * · $0.00* and said outright that he cannot tell which video did not finish.
+   * Every one of those names, and the cause of every failure, was in the record
+   * on disk the whole time and in a `title` tooltip on screen.
+   */
+  it('names the video that did not finish, and says why in his words', async () => {
+    if (browser === undefined) return;
+    const page = await browser.newPage({ viewport: { width: 1500, height: 900 } });
+    await page.addInitScript(stubHost(HANDSHAKE));
+    await page.addInitScript(realPanelRoutes());
+    await page.addInitScript(`
+      window.__queues = { queues: [{
+        id: 'q-real',
+        startedAt: '2026-09-16T10:00:00.000Z',
+        finishedAt: '2026-09-16T10:40:00.000Z',
+        progress: {
+          items: [
+            { reel: 'September/sora.mov', outcome: 'done', spentUsd: 1.2 },
+            { reel: 'September/sculptra.mov', outcome: 'failed', spentUsd: 0,
+              error: { stage: 'analysis', retryable: false, cause:
+                'analysis keywords failed: {"error":{"code":429,"message":"Your prepayment credits are depleted. Please go to AI Studio at https://ai.studio/projects"}}' } }
+          ],
+          spentUsd: 1.2, done: true, stopped: false
+        }
+      }] };
+      const real = window.fetch;
+      window.fetch = (url, init) => {
+        const u = String(url);
+        if (/\\/queues$/.test(u.split('?')[0])) {
+          return Promise.resolve({ ok: true, json: () => Promise.resolve(window.__queues) });
+        }
+        return real(url, init);
+      };
+    `);
+    await page.goto(`file://${INDEX}`);
+    await page.waitForSelector('nav.moments', { timeout: 10_000 });
+    await onScreen(page, 'run');
+    await page.waitForTimeout(900);
+
+    const said = await page.$eval('.pastqueues', (el) => (el.textContent ?? '').trim());
+    console.log(`\n  == the record reads: ${said}`);
+    /* The one that did not finish is named, and the one that did is not noise. */
+    expect(said).toContain('sculptra.mov');
+    expect(said).toContain('did not finish');
+    /* And why, in his words — never the model's JSON, never a URL. */
+    expect(said).toContain('no credit left');
+    expect(said).not.toContain('RESOURCE_EXHAUSTED');
+    expect(said).not.toContain('ai.studio');
+    expect(said).not.toContain('{');
+    await page.close();
+  }, 60_000);
+
   it('says when each ran in words, not in ISO', async () => {
     if (browser === undefined) return;
     const page = await browser.newPage({ viewport: { width: 1500, height: 900 } });

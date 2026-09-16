@@ -155,6 +155,20 @@ const CAUSES: { when: RegExp; say: string }[] = [
       'Raise the limit or use a shorter video.',
   },
   {
+    /*
+     * **A build list is where he meets this one.** Block 14 session 114: the
+     * build sequence names the video that did not build, and the commonest
+     * reason is a reel whose pictures were never made — so there is no plan to
+     * build from. Raw it reads *"there is no Edit Plan at /v/p2.json. Run the
+     * pipeline for this reel first."*, which is a path and an instruction to run
+     * something. It sits before the ENOENT rule because it is more specific.
+     */
+    when: /no Edit Plan|nothing to build from/i,
+    say:
+      'That video has not been made yet, so there is nothing to build for it. ' +
+      'Put it in a list on the previous step and make it first.',
+  },
+  {
     when: /ENOENT|no such file|does not exist|cannot find/i,
     say:
       'A file it needed was not where it expected. If the drive is unplugged, plug it in and ' +
