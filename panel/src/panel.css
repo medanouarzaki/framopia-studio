@@ -940,6 +940,45 @@ section.client .say, section.video .say { margin: 8px 0 0; color: var(--muted); 
  * ruling that it is kept forever. It uses the rows and the label the panel already
  * has; nothing here is a new visual language.
  */
+/*
+ * **Several videos, ticked in one place.** Block 14 session 114.
+ *
+ * Six rows and then it scrolls: a client with thirty videos would otherwise put
+ * Make past the 900 px every screen has stayed inside since session 106. A row
+ * is a button spanning both columns, so the whole line is the target rather than
+ * a checkbox someone has to hit.
+ */
+.pickseveral ul.facts { margin-top: 0; max-height: 156px; overflow-y: auto; }
+.pickseveral li { padding: 0; }
+.pickseveral button.pick {
+  display: flex; justify-content: space-between; gap: var(--s-tight);
+  width: 100%; text-align: left; background: none; border: 0;
+  padding: 3px 0; font: inherit; color: inherit; cursor: pointer;
+}
+.pickseveral button.pick:disabled { cursor: default; opacity: 0.55; }
+.pickseveral button.pick .v { color: var(--muted); }
+.pickseveral button.pick.chosen .v { color: var(--text); }
+.pickseveral button.pick:hover:not(:disabled) .v { text-decoration: underline; }
+
+/*
+ * **Building them all**, on Build, above the single-composition card.
+ *
+ * The same shape as `.pastqueues` below it and for the same reason: a heading, a
+ * two-column list, and whatever control the state calls for. Nothing here is the
+ * accent — building spends nothing, and colour in this panel means money.
+ */
+.buildall { display: grid; gap: var(--s-tight); margin-bottom: var(--s-group); }
+/*
+ * **It scrolls rather than growing**, the same rule the picker above follows.
+ * Block 14 session 114 measured Build with the ten videos Mohamed named at
+ * **887 px of 900** — inside, and 13 px is not margin. Eleven would have put it
+ * out. Capped, ten reads at 727 px and twenty at the same, because the box stops
+ * growing and the list scrolls inside it.
+ */
+.buildall ul.facts { margin-top: 0; max-height: 196px; overflow-y: auto; }
+.buildall .k { min-width: 150px; }
+.buildall button { justify-self: start; }
+
 .pastqueues { display: grid; gap: var(--s-tight); margin-top: var(--s-group); }
 .pastqueues ul.facts { margin-top: 0; }
 .pastqueues .k { min-width: 150px; }

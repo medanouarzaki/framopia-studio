@@ -12,9 +12,15 @@ import {
   fetchSteps,
   setWatermark,
   startPipeline,
+  startBuildQueue,
+  fetchBuildQueueJob,
+  type BuildQueueJob,
+  type BuildQueueView,
   type Connection,
 } from './service.js';
 import { Build } from './Build.js';
+import { BuildAll } from './BuildAll.js';
+import { PickSeveral } from './PickSeveral.js';
 import { Queue, type QueueView } from './Queue.js';
 import { ClientCard } from './ClientCard.js';
 import { NewClient } from './NewClient.js';
@@ -194,6 +200,18 @@ function Panel({
   const [queueJobId, setQueueJobId] = useState<string | null>(null);
   const [queueJob, setQueueJob] = useState<PipelineJob | null>(null);
   const [queueStopping, setQueueStopping] = useState(false);
+  /**
+   * **Building them all.** Block 14 session 114.
+   *
+   * A second list, on Build, and deliberately not the same one: the run queue is
+   * what costs money and takes half an hour a video, and this is three seconds a
+   * video that costs nothing. Sharing one job type would have meant one screen
+   * saying both things.
+   */
+  const [buildAllId, setBuildAllId] = useState<string | null>(null);
+  const [buildAllJob, setBuildAllJob] = useState<BuildQueueJob | null>(null);
+  const [buildAllStarting, setBuildAllStarting] = useState(false);
+  const [buildAllError, setBuildAllError] = useState<string | null>(null);
   /**
    * **Coming back.** Block 14 session 109, and session 101's oldest open item.
    *
@@ -565,6 +583,29 @@ function Panel({
       clearInterval(timer);
     };
   }, [connection, queueJobId]);
+
+  useEffect(() => {
+    if (connection === null || buildAllId === null) return;
+    let live = true;
+    const tick = (): void => {
+      void fetchBuildQueueJob(connection, buildAllId).then(
+        (next) => {
+          if (!live) return;
+          setBuildAllJob(next);
+          if (next.status === 'done' || next.status === 'error') setBuildAllId(null);
+        },
+        () => {
+          /* A poll that fails is not a build that failed; the next tick retries. */
+        },
+      );
+    };
+    tick();
+    const timer = setInterval(tick, JOB_POLL_MS);
+    return () => {
+      live = false;
+      clearInterval(timer);
+    };
+  }, [connection, buildAllId]);
 
   /*
    * **Reading it is what dismisses it.** He is on Make and the queue has ended,
@@ -1063,47 +1104,38 @@ function Panel({
                 Add videos here and they will be made one after another, without you
                 watching. The compositions are left for you to build yourself.
               </p>
-              <button
-                className="run"
-                type="button"
-                disabled={
-                  reel === null ||
-                  mode === null ||
-                  queueItems.some((q) => q.reel === reel.label)
-                }
-                onClick={() => {
-                  if (reel === null || mode === null) return;
-                  setQueueItems([...queueItems, { reel: reel.label, mode: mode.id }]);
-                }}
-              >
-                {reel === null
-                  ? 'Choose a video first'
-                  : queueItems.some((q) => q.reel === reel.label)
-                    ? `${nameOf(reel.label)} is already in the list`
-                    : `Add ${nameOf(reel.label)} to the list`}
-              </button>
+              {/*
+                **The videos are chosen here, not on Choose.** Block 14 session
+                114. Adding a second video used to mean crossing back to Choose,
+                picking it, and crossing to Make again — 41 actions to put ten in
+                a list, 18 of them crossings. The client is still picked once, on
+                Choose; which of that client's videos go in the list is a question
+                that belongs where the list is.
+
+                **A duplicate add is still refused**, which is what session 109
+                proved: pressing a row that is already in the list takes it out
+                again rather than adding it twice, so the list cannot hold one
+                video twice by construction.
+              */}
+              {mode === null ? (
+                <p className="faint">Choose a client first.</p>
+              ) : (
+                <PickSeveral
+                  reels={reels}
+                  chosen={queueItems.map((q) => q.reel)}
+                  disabled={queueStarting || queueJobId !== null}
+                  onToggle={(label) => {
+                    if (mode === null) return;
+                    setQueueItems(
+                      queueItems.some((q) => q.reel === label)
+                        ? queueItems.filter((q) => q.reel !== label)
+                        : [...queueItems, { reel: label, mode: mode.id }],
+                    );
+                  }}
+                />
+              )}
               {queueItems.length === 0 ? null : (
                 <>
-                  <ul className="facts">
-                    {queueItems.map((q, i) => (
-                      <li key={q.reel}>
-                        <span className="k" title={q.reel}>
-                          {i + 1}. {nameOf(q.reel)}
-                        </span>
-                        <span className="v">
-                          <button
-                            type="button"
-                            className="linky"
-                            onClick={() =>
-                              setQueueItems(queueItems.filter((x) => x.reel !== q.reel))
-                            }
-                          >
-                            take it out
-                          </button>
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
                   <button
                     className="run"
                     type="button"
@@ -1369,6 +1401,38 @@ function Panel({
               />
             </details>
           )}
+          {/*
+            **Building them all sits above building one.**
+            Block 14 session 114. It is the thing he came to Build to do when he
+            has run a list, and the card below is the one he uses when he wants
+            to look at a single composition first. Neither replaces the other —
+            the order says which is the common case.
+          */}
+          <BuildAll
+            ready={readyToBuild(queueJob, reels)}
+            view={(buildAllJob?.detail as BuildQueueView | undefined) ?? null}
+            starting={buildAllStarting}
+            error={buildAllError}
+            onBuildAll={(items) => {
+              if (connection === null || buildAllStarting || buildAllId !== null) return;
+              setBuildAllStarting(true);
+              setBuildAllError(null);
+              void startBuildQueue(connection, items).then(
+                (id) => {
+                  setBuildAllId(id);
+                  setBuildAllStarting(false);
+                },
+                (error: Error) => {
+                  setBuildAllError(error.message);
+                  setBuildAllStarting(false);
+                },
+              );
+            }}
+            onStop={() => {
+              if (connection === null || buildAllId === null) return;
+              void stopQueue(connection, buildAllId).catch(() => undefined);
+            }}
+          />
           <Build
             connection={connection}
             preview={plan?.build}
@@ -1425,6 +1489,33 @@ function Panel({
 function queueItemsOf(job: PipelineJob | null): { reel: string; modeId?: string }[] {
   const detail = job?.detail as unknown as { items?: { reel: string; modeId?: string }[] };
   return detail?.items ?? [];
+}
+
+/**
+ * **What a finished list left ready to build.**
+ *
+ * Block 14 session 114. The videos the run queue got through, paired with the
+ * plan each one is built from — which the queue's own record does not carry,
+ * because a queue item is a reel and a client and nothing else. The plan comes
+ * from the picker's list, which is the same place one video's build gets it.
+ *
+ * **A reel with no plan is left out rather than offered and refused.** That
+ * happens when the catalogue has not caught up, and a row that cannot be built
+ * is worse than a row that is not there.
+ */
+export function readyToBuild(
+  job: PipelineJob | null,
+  reels: Reel[],
+): { reel: string; planPath: string; modeId?: string }[] {
+  return queueItemsOf(job)
+    .filter((i) => (i as { outcome?: string }).outcome === 'done')
+    .map((i) => {
+      const known = reels.find((r) => r.label === i.reel);
+      return known?.planPath == null
+        ? null
+        : { reel: i.reel, planPath: known.planPath, ...(i.modeId === undefined ? {} : { modeId: i.modeId }) };
+    })
+    .filter((x): x is { reel: string; planPath: string; modeId?: string } => x !== null);
 }
 
 export type EditorId = 'words' | 'emphasis' | 'pictures';
