@@ -16,6 +16,51 @@ until these are fixed"*, you are done.
 
 ---
 
+## What Mohamed hands you, in order
+
+**Everything on this list, and nothing else.** Measured on 2026-09-18 by walking
+this document to the end on a real clone. Work down it.
+
+| # | what | size | where it comes from |
+|---|---|---|---|
+| **1** | **The two API keys** | — | **The account pages, signed in, typed in by you.** Never a message, never a screenshot. §10. |
+| **2** | **The five Edit Plans** | **308 KB** | His `my files/test videos/*.editplan.json`. Gitignored, so they are not in the clone. Small enough to send. §11. |
+| **3** | The saved answers from the paid services | **362 MB** | His `.local/cache/`. §12. **Optional — it saves money, not correctness.** |
+| **4** | The cut-out pictures | **51 MB** | His `my files/test videos/cutouts/`. §12. Optional, same reason. |
+| **5** | His seven newest product photographs | **8.9 MB** | `assets/client-pictures/dr-loubna-kfafi/pic016`–`pic022`. Not committed yet, so the clone has 15 of his 22. Optional. |
+| **6** | The five source videos | **12 GB** | **Only if you want to make a video from scratch.** Everything else works without them. |
+
+**Everything else arrives with `git clone`:** 987 files, 66 MB, including the
+template library, both client files, all the documents and 15 of the product
+pictures. You do not ask for any of it.
+
+### The order that matters
+
+**1 and 2 are the only things you cannot start without.** Do the steps below to
+§10, put your keys in, copy the five Edit Plans in at §11, and you are working.
+3, 4 and 5 make things cheaper and more complete; 6 is for making a new video.
+
+### What you can do the moment you are set up
+
+Measured, not promised. With the keys and the five plans and no video at all:
+
+- **Build a composition** from any of the five plans — that is the whole point of
+  them, and building calls nothing and costs nothing.
+- Create a client, correct any of their details, set their colours, give them
+  photographs, remove them.
+- Read and edit the words, the emphasis and the pictures on a plan.
+- Open any of the five reels and see what it cost and what it holds.
+
+### What you cannot do until something else arrives
+
+- **Make a new video** — the words or the pictures — without **6**, the source
+  video. `npm run doctor` names this as its one remaining blocker and it is
+  right to.
+- **Spend anything at all today**, with or without the videos. See *One account,
+  two Macs* below: the prepayment is gone.
+
+---
+
 ## What you are receiving
 
 Written from measurement on the first Mac, not from optimism. Read it before
