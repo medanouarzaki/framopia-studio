@@ -118,9 +118,23 @@ describe.skipIf(!built)('what the type actually is', () => {
       await page.selectOption('select[aria-label="Video"]', label);
       await page.waitForTimeout(250);
       await onScreen(page, 'run');
-      const add = await page.$('section.pane button.run');
-      if (add !== null) await add.click();
-      await page.waitForTimeout(120);
+      /*
+       * **This clicked a control that no longer exists.** Block 15 session 117.
+       *
+       * Until session 114 the list was built with *Add X to the list*, which was
+       * `section.pane button.run`; that session replaced it with a row per video
+       * and the selector went on matching nothing — `page.$` answers null and the
+       * sweep carried on. So the second pass stopped reaching the states it was
+       * written for, silently, and the count fell from **16 settings to 14**
+       * without a test going red.
+       *
+       * The row is ticked now. The two settings that came back are the ones only
+       * a list with items in it renders.
+       */
+      const row = await page.$(`.pickseveral button.pick:has-text("${label.split('/').pop() ?? ''}")`);
+      if (row === null) throw new Error(`no row to tick for ${label}`);
+      await row.click({ timeout: 4000 });
+      await page.waitForTimeout(160);
     }
     for (const screen of ['choose', 'run', 'build'] as const) {
       await onScreen(page, screen);

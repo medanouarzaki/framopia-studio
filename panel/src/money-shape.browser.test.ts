@@ -91,6 +91,23 @@ describe.skipIf(!built)('the money screen, measured', () => {
     expect(named).toContain('Spent since the beginning');
     expect(named).toContain('Paid in');
     expect(named).toContain('Making his videos');
+    /*
+     * **Zero says why it is zero.** Block 15 session 117: session 116 read
+     * "$0.00 went on building the tool" as meaning building the tool was free,
+     * when what it means is that nothing has been paid for on a test reel since
+     * the field existed. The rule fires — `spendPurposeFor` returns `building`
+     * for all five corpus reels — so the bucket is empty for a true reason, and
+     * the screen now gives that reason instead of a bare zero.
+     */
+    const building = figures.find((f) => f.what === 'Making his videos');
+    expect(building?.caveat).toContain('before this was recorded');
+    const line = await page.$eval('.moneybanner .figure:nth-of-type(3) .since', (e) =>
+      (e.textContent ?? '').trim(),
+    );
+    console.log(`     the building line reads: "${line}"`);
+    expect(line).not.toMatch(/^\$0\.00 went on building/);
+    expect(line).toContain('test reel');
+
     /* Each of the three says what it is not, because none is a reading. */
     const said = figures.map((f) => f.caveat).join(' ');
     expect(said).toContain('not your invoice');

@@ -190,8 +190,28 @@ export function Money({ connection }: { connection: Connection }): JSX.Element {
         <div className="figure">
           <span className="what">Making his videos</span>
           <strong className="total">{usd(clientWorkUsd(data))}</strong>
+          {/*
+            **$0.00 here does not mean building the tool was free.**
+
+            Block 15 session 117. Session 116 read this as *"every dollar the tool
+            can attribute to a purpose went on client work"*, which is true of the
+            record and misleading about the world: roughly $19 went on benchmarks,
+            prompt experiments and corpus reels across sessions 1 to 83, and every
+            penny of it is in the line below, from before any line carried a
+            purpose.
+
+            **The rule fires.** Session 117 checked it rather than assuming:
+            `spendPurposeFor` returns `building` for all five corpus reels and for
+            a call with no video at all, all five spend points pass it, and no
+            tagged line has ever named a corpus reel — because since session 68
+            nothing has been paid for on one. So the bucket is empty for a true
+            reason, and saying zero without saying that invited the reading
+            session 116 gave it.
+          */}
           <span className="since">
-            {usd(buildingUsd(data))} went on building the tool
+            {buildingUsd(data) === 0
+              ? 'Nothing has been charged to a test reel since September'
+              : `${usd(buildingUsd(data))} went on building the tool`}
           </span>
           <span className="caveat">
             {usd(data.unattributedUsd)} is from before this was recorded

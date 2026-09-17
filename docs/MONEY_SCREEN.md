@@ -64,6 +64,32 @@ cache reconstruction session 46 used now recovers **$10.344745 of $18.832129 —
 falls with every run because the caches evict. Transcription cache entries carry
 no cost at all, so even that route cannot attribute transcription spend.
 
+> **Two percentages, and they are not the same one.** Block 15 session 117.
+>
+> The **45.1%** above is what the *cache* could not recover, out of the $18.832129
+> the ledger held at session 68 — at that moment not one of those 165 lines
+> carried a client, so by the ledger's own reckoning the unattributable share was
+> **100%**.
+>
+> The figure the screen shows is the other one: **lines carrying no `client`
+> field, against the whole ledger**. On 2026-09-17 that is **$19.6795 of
+> $36.2496 — 54.3%**. It falls as attributed spending is added, because the
+> numerator is fixed history and the denominator grows.
+>
+> Session 116 tried to reconcile the two and could not, because it assumed the
+> 45.1% had $18.83 as its numerator and concluded the total must once have been
+> $41.75. The numerator is **$8.487384**. Neither figure was ever wrong; a
+> restatement of one in the other's words was.
+>
+> **The same happened to session 71's stage table.** It measured the images stage
+> at **$9.436246 in the ledger against $7.371076 claimed by plans**, and that was
+> right on the day. Recomputed by its own method on 2026-09-17 it is
+> **$24.123426 against $12.388962**, because the ledger has more than doubled
+> since. It is a whole-history figure over every stage and every plan, including
+> benchmarks no plan should ever claim — **not** the per-video understatement,
+> which for the seven reels the ledger can name is **$0.62**. Both are true; they
+> answer different questions.
+
 **So per-client and per-video totals begin at session 68**, and everything before
 is one honest bucket labelled *before this was recorded*. The alternative —
 back-filling from the cache while it still holds something — would write a guess
