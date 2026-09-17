@@ -580,6 +580,19 @@ export function Money({ connection }: { connection: Connection }): JSX.Element {
           <li>Anything spent outside Framopia — a subscription, a tool bought elsewhere.</li>
           <li>Money you paid into an account, until you add it above.</li>
           <li>What an account has left today, until you type it at the top.</li>
+          {/*
+            **Two Macs, one account.** Block 15 session 116, measured rather than
+            assumed: the ledger is `.local/costs.jsonl`, written beside the
+            checkout it belongs to; `.local/` is ignored at line 1 of
+            `.gitignore`; and the rehearsal clone has no ledger file at all. So
+            each Mac keeps a true account of its own spending and neither is the
+            total. `docs/SECOND_MACHINE.md` §10a says the same thing at length to
+            the person setting up the other one.
+          */}
+          <li>
+            Anything spent on the other Mac. Each keeps its own record, and the
+            account page is the only place the two are added up.
+          </li>
         </ul>
         <p className="faint">
           None of this is broken. It is what a record of this tool&rsquo;s own spending

@@ -350,7 +350,13 @@ describe.skipIf(!built)('the money screen', () => {
           items: [...(el?.querySelectorAll('li') ?? [])].map((li) => li.textContent ?? ''),
         };
       });
-      expect(block.items.length).toBe(3);
+      /*
+       * Four since block 15 session 116: two Macs share one account and neither
+       * cost screen can see the other's spending. Measured, not assumed — the
+       * rehearsal clone has no ledger file at all.
+       */
+      expect(block.items.length).toBe(4);
+      expect(block.text).toContain('the other Mac');
       expect(block.text).toContain('outside Framopia');
       expect(block.text).toContain('None of this is broken');
       for (const forbidden of ['npm run', 'terminal', 'error', 'failed']) {

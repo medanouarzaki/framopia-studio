@@ -157,12 +157,14 @@ that is `<repo>` for the rest of this document.
 If someone has already put the folder on a drive for you, plug the drive in and
 `cd` into it instead.
 
-**How big it is.** Re-measured on 2026-09-12, because this was wrong twice
-before and wrong again by the time anyone checked:
+**How big it is.** Re-measured on 2026-09-17 by pulling the rehearsal clone to
+the current commit, because this was wrong twice before and wrong again by the
+time anyone checked. The file count grew by 56 across sessions 93 to 116; the
+sizes did not move much, because what was added is source and reports.
 
 | after | on disk | what was added |
 |---|---|---|
-| §1, checked out | **65 MB** in files, **49 MB** in `.git` | 929 tracked files, including the 15 product pictures at 26 MB |
+| §1, checked out | **66 MB** in files, **50 MB** in `.git` | 985 tracked files, including the 15 product pictures at 26 MB |
 | §4, `npm install` | **+168 MB** | 165 entries in `node_modules` |
 | §6, the picture tools | **+822 MB** | the Python environment and, mostly, one segmentation model |
 | **total** | **about 1.1 GB** | |
@@ -529,20 +531,50 @@ only place the real remaining balance exists is the provider's own account page.
 number to quote is the one on your own cost screen, and the two of you add them
 up by talking, because nothing in the tool does it for you.
 
+### What you will see first, today
+
+**The Google prepayment is spent.** Measured on 2026-09-17: $40 went in, $10.45
+of it was Moroccan VAT rather than credit, so it bought **$29.55** — and Google
+has charged **$34.44**. There is nothing left to spend.
+
+So the first time you press **Make the subtitles** or **Make the pictures**, it
+will stop and the panel will say:
+
+> The paid service turned it away because the account has no credit left. Nothing
+> was charged and nothing already paid for is lost. It will keep refusing until
+> the account has credit again.
+
+**That is not your setup being wrong.** Everything up to that point — the panel,
+the keys, the plans — is working, and the same message would appear on Mohamed's
+Mac. Nothing you can do on this machine changes it; the account needs topping up.
+
+**Building a composition still works**, because building calls nothing and costs
+nothing. If the Edit Plans from §11 came with pictures already made, you can go
+from those plans to a finished `.aep` today without spending anything.
+
 ---
 
-## 11. The Edit Plans — 297 KB, and this is all you need
+## 11. The Edit Plans — 308 KB, and this is all you need
 
 Copy these five files into `<repo>/my files/test videos/`:
 
 | file | size |
 |---|---|
-| `ground truth.editplan.json` | 59 KB |
-| `test 1.editplan.json` | 64 KB |
-| `test 2.editplan.json` | 50 KB |
-| `test 3.editplan.json` | 39 KB |
-| `vitasilk.editplan.json` | 85 KB |
-| **total** | **297 KB** |
+| `ground truth.editplan.json` | 60 KB |
+| `test 1.editplan.json` | 68 KB |
+| `test 2.editplan.json` | 52 KB |
+| `test 3.editplan.json` | 40 KB |
+| `vitasilk.editplan.json` | 88 KB |
+| **total** | **308 KB** |
+
+Re-measured on 2026-09-17. They were 297 KB when session 65 weighed them and
+have grown by 11 KB as the stages wrote more into them; the point of the figure
+is unchanged, which is that this is a thing you can send in a message while the
+videos are 12 GB.
+
+**These five are the corpus, and they are not his clients' work.** His clients'
+plans live elsewhere and are not part of setting this Mac up — there are 14 of
+them, 812 KB, and none of them is needed to run a single test.
 
 They are small enough to send in a message. Put them here:
 
@@ -894,11 +926,73 @@ given; and you cannot see, on your own cost screen, anything Mohamed has spent.
 
 ## The three things most likely to stop you
 
-Measured on 2026-09-12 by walking this document again on a checkout of the
-current code. These are in the order you will meet them, and none of them is
-guesswork — each is something that actually happened on the rehearsal.
+Re-measured on 2026-09-17 by pulling the rehearsal clone 61 commits forward to
+the current code and walking the document again. These are in the order you will
+meet them, and none of them is guesswork — each is something that actually
+happened on the rehearsal.
 
-### 1. You run out of disk before you finish §6
+**What changed since 2026-09-12.** Running out of disk was first on this list and
+is no longer: the doctor now reports **32.8 GB free** on the rehearsal Mac and
+passes that check. It is still the one that depends on your machine rather than
+on ours, so it is kept below — but the two the doctor actually named this time
+are **the keys** and **the reels**, and they are now 1 and 2.
+
+### 1. You have not put your own keys in yet
+
+**What you will see**, from `npm run doctor` at §14:
+
+```
+  MISS  the API keys, by presence and shape
+        googleApiKey is still the example's placeholder, not a key; elevenLabsApiKey is still the example's placeholder, not a key
+        fix: open .local/config.json and replace the two placeholder values with your own keys
+```
+
+and, under the blockers,
+
+```
+this machine cannot run the pipeline until these are fixed:
+  the API keys, by presence and shape — open .local/config.json and replace the two placeholder values ...
+```
+
+**Why it will catch you:** §10 is one of only two steps nobody can do for you,
+and it is the step every rehearsal of this document has stopped at — including
+this one, deliberately: **a real key is never typed into a rehearsal copy.** The
+placeholders are the right shape and the wrong length, which is exactly what the
+doctor is checking.
+
+**What to do:** §10. Get today's keys off the account pages yourself, signed in,
+and type them into `.local/config.json`. Not from a message, ever.
+
+### 2. Your first `npm run check` fails, in large numbers
+
+**What you will see:** typecheck and lint pass, then tests fail — **102 of them
+on 2026-09-17**, across core, the service and the panel, naming videos and
+ledgers that do not exist on your Mac. It was 98 when this was last measured; the
+number grows as the suites grow and it means nothing about your setup:
+
+```
+   × the hand-made reference declaration > every declared reference is on this disk
+     → expected [ …(4) ] to deeply equal []
+ FAIL  src/ledger-read.test.ts [ src/ledger-read.test.ts ]
+Error: ENOENT: no such file or directory, open '.../.local/costs.jsonl'
+   × the preflight, before anything can spend > refuses before the first billable stage, and no stage runs
+```
+
+Counted on 2026-09-17: **2 in core, 94 in the service, 6 in the panel**, and the
+benchmarks passed whole. One of them is not a failing test but a whole file that
+will not even load, because it reads the ledger at the top rather than inside a
+test — that is ours to fix and not a sign of anything wrong with your Mac.
+
+**Why it will catch you:** §14 used to promise `check: PASS`, and the section
+after it describes a tidy list of things that were skipped. Neither happens.
+Those tests were written against a machine holding 11.93 GB of test video and a
+real spending history, and they do not stand aside when those are absent.
+
+**What to do: nothing, and do not read it as a fault in your setup.** It is our
+gate on our machine and making it work on yours is our job. **`npm run doctor` is
+the one that describes your Mac** — go by that.
+
+### 3. You run out of disk before you finish §6
 
 **What you will see**, from `npm run doctor` at §14:
 
@@ -922,28 +1016,7 @@ files. **Check free space before you start**, not at §14.
 **What to do:** free space on the drive holding the folder, then run
 `npm run doctor` again. Nothing needs reinstalling.
 
-### 2. Your first `npm run check` fails, in large numbers
-
-**What you will see:** typecheck and lint pass, then tests fail — **98 of them on
-the rehearsal**, naming videos and ledgers that do not exist on your Mac:
-
-```
-   × the money view > reads the real ledger and reconciles to the cent
-     → ENOENT: no such file or directory, open '.../.local/costs.jsonl'
-   × the hand-made reference declaration > every declared reference is on this disk
-     → expected [ …(4) ] to deeply equal []
-```
-
-**Why it will catch you:** §14 used to promise `check: PASS`, and the section
-after it describes a tidy list of things that were skipped. Neither happens.
-Those tests were written against a machine holding 11.93 GB of test video and a
-real spending history, and they do not stand aside when those are absent.
-
-**What to do: nothing, and do not read it as a fault in your setup.** It is our
-gate on our machine and making it work on yours is our job. **`npm run doctor` is
-the one that describes your Mac** — go by that.
-
-### 3. The panel shows the wrong build after your first `git pull`
+### 4. The panel shows the wrong build after your first `git pull`
 
 **What you will see**, inside the panel, word for word:
 

@@ -16,7 +16,26 @@ function scratch(reel = 'vitasilk'): string {
   return to;
 }
 
-describe('imagesView', () => {
+/**
+ * **These read and rewrite a real 88 KB Edit Plan, through the validator.**
+ *
+ * Block 15 session 116. `clears the choice and the override together` timed out
+ * at the 5,000 ms default during a full `npm run check`, passed alone, and the
+ * gate had to be run twice — which is the thing a gate must never need.
+ *
+ * Measured: unloaded it takes **991 ms**, the slowest in the file, because it
+ * copies the plan, then chooses and unchooses a candidate — two full read,
+ * validate and write cycles. A default that leaves five times the unloaded cost
+ * is not margin when `check` runs five vitest projects and pytest at once, and
+ * that is exactly when it failed.
+ *
+ * **The bound is raised rather than the work reduced.** The work is the point:
+ * these prove a real plan survives a real edit. Nothing is weakened — a hang
+ * still fails, fifteen seconds later instead of five.
+ */
+const A_REAL_PLAN_EDIT = 15_000;
+
+describe('imagesView', { timeout: A_REAL_PLAN_EDIT }, () => {
   it('shows every candidate, rejected ones included', async () => {
     const view = await imagesView('vitasilk');
     expect(view.slots).toHaveLength(5);
@@ -143,7 +162,7 @@ describe('imagesView', () => {
   });
 });
 
-describe('choosing a candidate', () => {
+describe('choosing a candidate', { timeout: A_REAL_PLAN_EDIT }, () => {
   it('writes the choice, which is itself the human-flagged marker', async () => {
     const planPath = scratch();
     const view = await chooseCandidate({ planPath, slotId: 'img002', candidateId: 'img002-c2' });
@@ -216,7 +235,7 @@ describe('choosing a candidate', () => {
  * 2026-09-12 makes reuse automatic and automatic is why it must be visible: a
  * reused picture was drawn for another reel and judged there.
  */
-describe('where a picture came from', () => {
+describe('where a picture came from', { timeout: A_REAL_PLAN_EDIT }, () => {
   it('says nothing about a picture made for this video', () => {
     expect(originOf({})).toBeUndefined();
   });
