@@ -124,6 +124,26 @@ export function Money({ connection }: { connection: Connection }): JSX.Element {
           {data.firstAt === null ? null : (
             <span className="since">since {data.firstAt.slice(0, 10)}</span>
           )}
+          {/*
+            **This figure is not the invoice, and it has to say so.**
+ 
+            Mohamed compared it against his real Google billing page: the ledger
+            said **$36.25** and Google had charged **$34.44** — August $15.58,
+            September $18.86. About **5% high**, and the two were never going to
+            agree. Framopia prices every call itself, from a table, at the moment
+            it spends; the provider bills its own figures with its own rounding,
+            and there are charges on his account this tool never made.
+ 
+            **Nothing reconciles them, on purpose.** Google's billing is not
+            something this tool can read, and a number computed here and
+            presented as an invoice would be the defect this project names first.
+            So the figure stays exactly what it is and the screen stops implying
+            otherwise.
+ 
+            It matters now because he is about to hand this screen to a partner,
+            who will read a total and believe it.
+          */}
+          <span className="caveat">Framopia’s own count, not your invoice</span>
         </div>
 
         <div className="figure credit">

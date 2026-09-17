@@ -83,6 +83,41 @@ describe.skipIf(!built)('the money screen', () => {
     }
   }, 30_000);
 
+  /**
+   * **The total is not the invoice, and the screen says so.**
+   *
+   * Block 14, A4. Mohamed compared this figure against his real Google billing
+   * page: the ledger said $36.25 and Google had charged $34.44. About 5% high,
+   * and the two were never going to agree — Framopia prices each call itself at
+   * the moment it spends, and the provider bills its own figures.
+   *
+   * He is about to hand this screen to a partner, who will read a total and
+   * believe it. The twin of the credit figure's own caveat below.
+   */
+  it('says the total is its own count and not an invoice', async () => {
+    const loaded = await open();
+    if (loaded === null) return;
+    try {
+      const said = await loaded.page.evaluate(() => {
+        const figure = document.querySelector('.moneybanner .figure') as HTMLElement | null;
+        return (figure?.querySelector('.caveat')?.textContent ?? '').trim();
+      });
+      expect(said).toBe('Framopia’s own count, not your invoice');
+      /* Beside the total it qualifies, not in the credit figure next to it. */
+      const beside = await loaded.page.evaluate(() =>
+        (document.querySelector('.moneybanner .figure')?.textContent ?? '').includes(
+          'Spent since the beginning',
+        ),
+      );
+      expect(beside).toBe(true);
+      /* Session 91's rule holds here too: no command, no screen that is not there. */
+      expect(said.toLowerCase()).not.toMatch(/npm run|terminal|settings|console/);
+      expect(loaded.uncaught).toEqual([]);
+    } finally {
+      await loaded.page.close();
+    }
+  }, 30_000);
+
   /*
    * Never a reading of his account. Session 46 carried a balance forward and got
    * $2.91 where a later report said $2.71 — a $0.20 gap nothing could explain.
