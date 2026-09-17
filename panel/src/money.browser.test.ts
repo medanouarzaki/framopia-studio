@@ -292,11 +292,20 @@ describe.skipIf(!built)('the money screen', () => {
         };
       });
       expect(seen.paidInIsItsOwnBlock).toBe(1);
-      expect(seen.paidIn).toContain('Money you have paid in');
-      expect(seen.paidIn).toContain('cannot see your accounts');
+      /*
+       * **The rule is that they are two things, not that the block is worded one
+       * way.** Block 15 session 116 moved the total to the banner and folded the
+       * payments behind a press, so the heading now names how many there are —
+       * and this asserted the empty-state wording, which is only true when none
+       * are entered. What it exists to protect is untouched: a payment is money
+       * that went in on a day and adds up; credit is what an account has left
+       * today and does not. They never share a block and are never netted.
+       */
+      expect(seen.paidIn).toMatch(/Money you have paid in|payments behind/);
       // The credit figure lives in the banner and nowhere else.
       expect(seen.banner).toContain('Credit left');
       expect(seen.paidIn).not.toContain('Credit left');
+      expect(seen.banner).toContain('Paid in');
       expect(loaded.uncaught).toEqual([]);
     } finally {
       await loaded.page.close();

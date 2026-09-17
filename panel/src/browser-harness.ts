@@ -31,6 +31,7 @@ import {
   byDay,
   byMonth,
   byPurpose,
+  providerSplit,
   byStage,
   byVideo,
   readLedger,
@@ -168,6 +169,20 @@ function realReels(): Record<string, unknown>[] {
   return out;
 }
 
+/** What he has entered as paid in, off the real file. Empty when there is none. */
+function realPayments(): { id: string; usd: number; on: string; account: string }[] {
+  const at = path.join(REPO, '.local', 'payments.json');
+  if (!existsSync(at)) return [];
+  try {
+    const parsed = JSON.parse(readFileSync(at, 'utf8')) as unknown;
+    return Array.isArray(parsed)
+      ? (parsed as { id: string; usd: number; on: string; account: string }[])
+      : [];
+  } catch {
+    return [];
+  }
+}
+
 export function realMoney(): Record<string, unknown> {
   const at = path.join(REPO, '.local', 'costs.jsonl');
   const read = readLedger(existsSync(at) ? readFileSync(at, 'utf8') : '');
@@ -192,11 +207,23 @@ export function realMoney(): Record<string, unknown> {
     perReel: realReels(),
     cap: { monthlyUsd: null, monthSoFarUsd: 0 },
     /*
-     * No payments: none are recorded on this machine, which is what a real
-     * reading gives. Seeding one would make the screen show a figure nobody
-     * entered.
+     * **His real payments, read off the same file the service reads.**
+     *
+     * This said "no payments: none are recorded on this machine" and seeded an
+     * empty list. That was true when it was written and stopped being true the
+     * moment any were entered — so the harness was quietly showing $0.00 paid in
+     * against a screen that shows $52, and the block that reads them rendered in
+     * no test at all. A fixture that hard-codes a fact about his disk goes stale
+     * without saying so; this reads the disk, as the ledger above it does.
      */
-    paidIn: { payments: [], totalInUsd: 0, impliedLeftUsd: -read.totalUsd },
+    paidIn: {
+      payments: realPayments(),
+      totalInUsd: realPayments().reduce((t, p) => t + p.usd, 0),
+      impliedLeftUsd:
+        realPayments().reduce((t, p) => t + p.usd, 0) - read.totalUsd,
+    },
+    byProviderPaid: providerSplit(read.lines, realPayments()).providers,
+    unmatchedPaidInUsd: providerSplit(read.lines, realPayments()).unmatchedPaidInUsd,
     reconciliation: {
       ledgerTotalUsd: read.totalUsd,
       ledgerProductionUsd: read.totalUsd,

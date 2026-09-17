@@ -9,6 +9,8 @@ import {
   byDay,
   byMonth,
   byPurpose,
+  providerSplit,
+  type ProviderSplitRow,
   byStage,
   byVideo,
   readLedger,
@@ -45,6 +47,10 @@ export interface MoneyView {
   perReel: ReelCost[];
   cap: CapView;
   paidIn: PaymentsView;
+  /** What each company was paid and what it has billed. Session 116. */
+  byProviderPaid: ProviderView[];
+  /** Money paid into an account no ledger line names. Shown, never folded in. */
+  unmatchedPaidInUsd: number;
   reconciliation: Reconciliation;
 }
 
@@ -135,6 +141,27 @@ export interface PaymentsView {
   /** Paid in, minus everything the ledger records. Arithmetic, not a reading. */
   impliedLeftUsd: number;
 }
+
+/**
+ * **One company: what went in, what it has billed, and what that says.**
+ *
+ * Block 15 session 116. *Paid in $52* is true and it misleads, which session 115
+ * measured and said so: about $12 of that $52 sits at a provider this tool has
+ * billed **six cents** against. Mohamed has to decide whether he still needs that
+ * subscription and the screen gave him no way to see it.
+ *
+ * **The two figures are never netted.** Spend is the ledger, written at the point
+ * of a call; paid in is his own entry about a bank, which nothing here can
+ * verify. Session 46 lost a session to a computed balance presented as a reading,
+ * and this keeps the two apart for the same reason.
+ *
+ * **A payment is matched to a provider by the account name he typed**, and only
+ * when it plainly says so. A payment naming neither is not forced into a bucket —
+ * it stays in `unmatchedPaidInUsd`, shown, because a figure quietly assigned to
+ * the wrong account is worse than one that says it does not know.
+ */
+export type ProviderView = ProviderSplitRow;
+
 
 /**
  * **What the ledger says against what the videos account for.**
@@ -444,6 +471,7 @@ export function moneyView(options: {
   const reels = reelCosts(options.planPaths ?? [], read.lines);
   const payments = readPayments();
   const paidIn = sumUsd(payments.map((p) => p.usd));
+  const split = providerSplit(read.lines, payments);
   const monthSoFar = sumUsd(
     read.lines.filter((l) => l.timestamp.slice(0, 7) === month).map((l) => l.usd),
   );
@@ -479,6 +507,8 @@ export function moneyView(options: {
       totalInUsd: paidIn,
       impliedLeftUsd: Math.round((paidIn - read.totalUsd) * 1_000_000) / 1_000_000,
     },
+    byProviderPaid: split.providers,
+    unmatchedPaidInUsd: split.unmatchedPaidInUsd,
     reconciliation: reconcile(read.lines, reels),
   };
 }

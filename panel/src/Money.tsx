@@ -11,6 +11,22 @@ import {
 } from './service.js';
 
 /** Money is always US dollars and never converted — Mohamed's ruling. */
+/**
+ * **What went on his clients' videos, and what went on building the tool.**
+ *
+ * Session 68 writes a purpose on every line it can. Two things it cannot: a line
+ * written before the field existed, which is `BEFORE_LABEL` and is its own
+ * figure, and nothing else — so these two and the unattributed figure are the
+ * whole of the total and the screen can be read without arithmetic.
+ */
+export function clientWorkUsd(data: { byPurpose: MoneyGroup[] }): number {
+  return data.byPurpose.find((g) => g.key === 'client-work')?.usd ?? 0;
+}
+
+export function buildingUsd(data: { byPurpose: MoneyGroup[] }): number {
+  return data.byPurpose.find((g) => g.key === 'building')?.usd ?? 0;
+}
+
 export function usd(amount: number): string {
   return `$${amount.toFixed(2)}`;
 }
@@ -146,6 +162,42 @@ export function Money({ connection }: { connection: Connection }): JSX.Element {
           <span className="caveat">Framopia’s own count, not your invoice</span>
         </div>
 
+        {/*
+          **What he had to ask a person for.** Block 15 session 116: he asked how
+          much he had paid in and had to be told by hand, because the figure was
+          two blocks down behind a heading. It is one of the three things he
+          actually comes to this screen for, so it is at the top with the others.
+        */}
+        <div className="figure">
+          <span className="what">Paid in</span>
+          <strong className="total">{usd(data.paidIn.totalInUsd)}</strong>
+          <span className="since">
+            {data.paidIn.payments.length}{' '}
+            {data.paidIn.payments.length === 1 ? 'payment' : 'payments'}
+          </span>
+          <span className="caveat">Your figures, not a reading of any account</span>
+        </div>
+
+        {/*
+          **Building the tool against making his videos.**
+
+          Session 68 derived this from whether the video is in the corpus
+          catalogue and it has sat behind a filter press ever since. It is the
+          question he asks about this project — what did it cost to build, what
+          does it cost to run — and it was the one number on this screen that was
+          computed and never shown.
+        */}
+        <div className="figure">
+          <span className="what">Making his videos</span>
+          <strong className="total">{usd(clientWorkUsd(data))}</strong>
+          <span className="since">
+            {usd(buildingUsd(data))} went on building the tool
+          </span>
+          <span className="caveat">
+            {usd(data.unattributedUsd)} is from before this was recorded
+          </span>
+        </div>
+
         <div className="figure credit">
           <span className="what">Credit left</span>
           {data.credit === null ? (
@@ -210,6 +262,54 @@ export function Money({ connection }: { connection: Connection }): JSX.Element {
         </div>
       </div>
 
+      {/*
+        **Paid in is not one number, and one number was misleading him.**
+
+        Session 115 measured it: **$0.0559 of ElevenLabs against $12 paid in** —
+        two months of subscription against six cents of use. *Paid in $52* is true
+        and says nothing about that, and he is deciding whether to keep paying it.
+
+        **The two figures are never netted.** Spend is the ledger, written at the
+        point of a call; paid in is his own entry about a bank, which nothing here
+        can verify. Session 46 lost a session to a computed balance shown as a
+        reading, and this keeps them apart for the same reason — *left* is
+        arithmetic between them and says so.
+
+        The hybrid benchmark runs are one row of their own: each was a Scribe pass
+        **and** a Gemini correction billed as one figure, and splitting them here
+        would be inventing a number.
+      */}
+      {(data.byProviderPaid ?? []).length === 0 ? null : (
+        <div className="moneyproviders">
+          <h3>Each account</h3>
+          <table>
+            <tbody>
+              {(data.byProviderPaid ?? []).map((p) => (
+                <tr key={p.provider}>
+                  <th scope="row">{p.provider}</th>
+                  <td className="count">{p.lines}</td>
+                  <td className="amount">{usd(p.paidInUsd)} in</td>
+                  <td className="amount">{usd(p.spentUsd)} used</td>
+                  <td className="rate">
+                    {p.paidInUsd === 0 ? '—' : `${usd(p.impliedLeftUsd)} left`}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {(data.unmatchedPaidInUsd ?? 0) === 0 ? null : (
+            <p className="hint">
+              {usd(data.unmatchedPaidInUsd ?? 0)} was paid into an account none of these
+              names, so it is shown here and put against nothing.
+            </p>
+          )}
+          <p className="hint">
+            What went in is what you typed. What was used is what Framopia asked
+            for. Neither is a reading of the account itself.
+          </p>
+        </div>
+      )}
+
       <div className="moneyfilters" role="group" aria-label="How to group the spending">
         {FILTERS.map((f) => (
           <button
@@ -246,6 +346,27 @@ export function Money({ connection }: { connection: Connection }): JSX.Element {
       {data.perReel.length > 0 ? (
         <>
           <h3>What each video cost</h3>
+          {/*
+            **The second thing this screen cannot know, said where it applies.**
+
+            A reel's figure is the greater of what the ledger records against it
+            and what its own plan claims — session 71's rule, because the ledger
+            is written at the point of spend and cannot undercount, while a plan
+            only ever accumulated what it saw. Where the ledger knows a reel it is
+            usually the larger: session 116 measured **$0.62 more across the seven
+            reels the ledger knows, and $2.08 on the four where the plan claims
+            less**.
+
+            The reels the ledger knows nothing about are the ones whose figure is
+            their plan's alone, and those are the ones that can be low. Saying so
+            is the point: a number that quietly means less than it appears is this
+            project's oldest defect shape.
+          */}
+          <p className="hint">
+            A video’s figure is whichever is larger: what was charged against it, or
+            what its own record claims. For anything made before September there is
+            only the record, and a record can only count what it saw.
+          </p>
           <table className="moneyreels">
             <tbody>
               {data.perReel.map((r) => (
@@ -280,8 +401,20 @@ export function Money({ connection }: { connection: Connection }): JSX.Element {
         </>
       ) : null}
 
-      <div className="paidin">
-        <h3>Money you have paid in</h3>
+      <details className="quibbles paidin">
+        <summary>
+          {data.paidIn.payments.length === 0
+            ? 'Money you have paid in'
+            : `The ${String(data.paidIn.payments.length)} payments behind ${usd(data.paidIn.totalInUsd)}`}
+        </summary>
+        {/*
+          **Folded, because its total moved to the top.** Block 15 session 116:
+          once the six payments were entered this block was 546 px of rows whose
+          sum is now the second figure in the banner, and he had to scroll past
+          all of it to reach anything else. Nothing is gone — every row, the
+          adding and the removing are one press away, which is the same
+          disclosure this panel uses everywhere.
+        */}
         {/*
           * **A payment is not a spend and not a credit reading.** The ledger is
           * what this tool spent through the APIs; a payment is money that went
@@ -407,7 +540,7 @@ export function Money({ connection }: { connection: Connection }): JSX.Element {
             Add
           </button>
         </div>
-      </div>
+      </details>
 
       <div className="reconcile">
         <h3>Where the total comes from</h3>

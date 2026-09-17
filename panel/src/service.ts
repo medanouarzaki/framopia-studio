@@ -1190,6 +1190,21 @@ export interface Money {
   perReel: MoneyReel[];
   cap: { monthlyUsd: number | null; monthSoFarUsd: number };
   paidIn: PaidIn;
+  /**
+   * What each company was paid and what it has billed. Session 116.
+   *
+   * **Optional with a default**, per the standing schema rule: a service older
+   * than this route sends neither, and the screen then shows what it always
+   * showed rather than an empty block.
+   */
+  byProviderPaid?: {
+    provider: string;
+    spentUsd: number;
+    lines: number;
+    paidInUsd: number;
+    impliedLeftUsd: number;
+  }[];
+  unmatchedPaidInUsd?: number;
   reconciliation: Reconciliation;
 }
 

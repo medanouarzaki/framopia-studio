@@ -20,6 +20,32 @@ import type { SpendPurpose } from './costs.js';
  * carried in `unreadable` and counted as present. Hiding a line the reader
  * cannot parse is how a ledger stops being evidence — the money was still spent.
  */
+/**
+ * **Which company actually bills for a call.**
+ *
+ * Block 15 session 116. The money screen showed one total and one *paid in*, and
+ * session 115 measured what that hides: **$0.0559 of ElevenLabs against $12 paid
+ * in** — two months of subscription against six cents of use. One pair of numbers
+ * cannot say that, and Mohamed has to decide whether he still needs it.
+ *
+ * **Read off the model**, which is the only thing a ledger line records about
+ * where a call went. The names are stable and few: Scribe is ElevenLabs, Gemini
+ * and Imagen are Google.
+ *
+ * `hybrid` is neither, and is not guessed at. It is nine benchmark runs, each a
+ * Scribe pass **and** a Gemini correction billed as one figure, and splitting
+ * them on screen would be inventing a number. They get their own row, named for
+ * what they are.
+ */
+export type Provider = 'Google' | 'ElevenLabs' | 'more than one';
+
+export function providerOf(model: string): Provider {
+  const m = model.toLowerCase();
+  if (m.includes('scribe') || m.includes('eleven')) return 'ElevenLabs';
+  if (m.includes('gemini') || m.includes('imagen')) return 'Google';
+  return 'more than one';
+}
+
 export interface LedgerLine {
   stage: string;
   model: string;
@@ -179,8 +205,83 @@ export const byVideo = (l: readonly LedgerLine[]): Group[] =>
   groupBy(l, (x) => x.video ?? BEFORE_THIS_WAS_RECORDED);
 export const byPurpose = (l: readonly LedgerLine[]): Group[] =>
   groupBy(l, (x) => x.purpose ?? BEFORE_THIS_WAS_RECORDED);
+/**
+ * What each company has been billed for.
+ *
+ * **Spend only.** What he paid *in* to an account is not a ledger line and never
+ * will be — a payment is a fact about a bank that nothing here can verify — so
+ * the pairing with his payments happens on the screen, as two figures side by
+ * side rather than one net one.
+ */
+export const byProvider = (l: readonly LedgerLine[]): Group[] =>
+  groupBy(l, (x) => providerOf(x.model));
 
 /** What a group carries that cannot be attributed, so it is shown and not omitted. */
 export function unattributed(groups: readonly Group[]): Group | null {
   return groups.find((g) => g.key === BEFORE_THIS_WAS_RECORDED) ?? null;
+}
+
+/** One payment in, as the money screen records it. Declared here so the split below can be shared. */
+export interface PaidInEntry {
+  usd: number;
+  account: string;
+}
+
+export interface ProviderSplitRow {
+  provider: string;
+  spentUsd: number;
+  lines: number;
+  paidInUsd: number;
+  /** Paid in minus spent, for this provider alone. Arithmetic, not a reading. */
+  impliedLeftUsd: number;
+}
+
+function matchesProvider(account: string, provider: string): boolean {
+  const a = account.toLowerCase().replace(/[^a-z]/g, '');
+  const p = provider.toLowerCase().replace(/[^a-z]/g, '');
+  return p !== '' && a.includes(p);
+}
+
+/**
+ * **What each company was paid and what it has billed, never netted.**
+ *
+ * Block 15 session 116. Spend is the ledger, written at the point of a call;
+ * paid in is his own entry about a bank, which nothing here can verify. Session
+ * 46 lost a session to a computed balance shown as a reading, so the two stay
+ * apart and *left* is named as the arithmetic between them.
+ *
+ * **A payment is matched by the account name he typed, and only when it plainly
+ * says so.** One naming no provider is not forced into a bucket — it comes back
+ * as `unmatchedPaidInUsd` and is shown, because a figure quietly assigned to the
+ * wrong account is worse than one that says it does not know.
+ *
+ * **Here rather than in the service** so the panel's browser harness computes it
+ * the same way the service does. A harness with its own copy of a rule is a
+ * second source of truth, and this project has paid for that before.
+ */
+export function providerSplit(
+  lines: readonly LedgerLine[],
+  payments: readonly PaidInEntry[],
+): { providers: ProviderSplitRow[]; unmatchedPaidInUsd: number } {
+  const round = (n: number): number => Math.round(n * 1_000_000) / 1_000_000;
+  const spent = byProvider(lines);
+  const named = spent.map((g) => g.key);
+  const providers = spent.map((g) => {
+    const paidInUsd = round(
+      payments.filter((p) => matchesProvider(p.account, g.key)).reduce((t, p) => t + p.usd, 0),
+    );
+    return {
+      provider: g.key,
+      spentUsd: g.usd,
+      lines: g.lines,
+      paidInUsd,
+      impliedLeftUsd: round(paidInUsd - g.usd),
+    };
+  });
+  const unmatchedPaidInUsd = round(
+    payments
+      .filter((p) => !named.some((key) => matchesProvider(p.account, key)))
+      .reduce((t, p) => t + p.usd, 0),
+  );
+  return { providers, unmatchedPaidInUsd };
 }

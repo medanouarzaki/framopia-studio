@@ -1051,7 +1051,15 @@ section.client .say, section.video .say { margin: 8px 0 0; color: var(--muted); 
  */
 .money { display: grid; gap: 14px; padding: 0 20px 20px; min-width: 0; }
 
-.moneybanner { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+/*
+ * **Three figures he comes here for, and the fourth he entered.** Block 15
+ * session 116. Two fixed columns wrapped the four to two rows and cost 139 px;
+ * auto-fit puts them on one line at his width and stacks them when the panel is
+ * narrow, which is session 105's rule applied to this screen for the first time.
+ */
+.moneybanner {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px;
+}
 .moneybanner .figure {
   display: flex; flex-direction: column; gap: 3px; min-width: 0;
   background: var(--panel); border: 1px solid var(--line);
@@ -1089,6 +1097,20 @@ section.client .say, section.video .say { margin: 8px 0 0; color: var(--muted); 
 .moneyfilters button:hover { color: var(--text); border-color: #3a4049; }
 .moneyfilters button.chosen {
   background: var(--panel); border-color: var(--accent); color: var(--text);
+}
+
+/*
+ * **Each account**, under the three figures. Block 15 session 116.
+ * The same table shape as every other block on this screen; nothing here is the
+ * accent, because reading what an account has left spends nothing.
+ */
+.moneyproviders { display: grid; gap: var(--s-tight); }
+.moneyproviders table { width: 100%; border-collapse: collapse; }
+.moneyproviders th[scope='row'] { text-align: left; font-weight: 600; padding: 6px 0; }
+.moneyproviders td { padding: 6px 0; color: var(--muted); text-align: right; }
+.moneyproviders td.count { color: var(--faint); width: 3.4em; text-align: right; }
+.moneyproviders tr + tr th[scope='row'], .moneyproviders tr + tr td {
+  border-top: 1px solid var(--line);
 }
 
 .money .partial {
