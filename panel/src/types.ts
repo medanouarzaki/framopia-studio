@@ -138,6 +138,10 @@ export interface DryRunPlan {
   picturesStages?: string[];
   /** Whether the subtitles exist yet. Absent means a service older than this panel. */
   wordsDone?: boolean;
+  /** The most one video may cost before a run refuses it. Absent from an older service. */
+  videoLimitUsd?: number;
+  /** Whether *Make the pictures* would be refused at that figure, asked of the gate itself. */
+  picturesOverLimit?: boolean;
   /** True when a stage reuses a transcription made against an older guide. */
   reusesOlderGuide: boolean;
 }

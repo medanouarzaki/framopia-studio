@@ -28,10 +28,11 @@ import { Readiness } from './Readiness.js';
 import { panelBuildStamp, stalenessOf } from './staleness.js';
 import { whichIsBehind, PANEL_IS_BEHIND } from '@framopia/core/build-stamp';
 import { CapWarning } from './CapWarning.js';
+import { VideoLimit } from './VideoLimit.js';
 import { Money } from './Money.js';
 import { OtherService } from './OtherService.js';
 import { WrongClient } from './WrongClient.js';
-import { fetchMoney, type Money as MoneyData } from './service.js';
+import { fetchMoney, saveVideoLimit, type Money as MoneyData } from './service.js';
 import { fileDialogSupport, pickVideoFile } from './file-dialog.js';
 import { Transcript } from './Transcript.js';
 import { Images } from './Images.js';
@@ -50,7 +51,9 @@ import { videosLeftIn } from './service.js';
 import { formatUsd, SPEND_SOFT_ALARM_USD, spendLevel } from './spend.js';
 import {
   causeWords,
+  LIMIT_CAUSE,
   money as toTheCent,
+  upToTheCent,
   queueNews,
   runStateWords,
   spendsMoney,
@@ -463,7 +466,11 @@ function Panel({
     return () => {
       current = false;
     };
-  }, [connection, reel, mode]);
+    /*
+     * `showMoney` too: the most for one video can be changed on the money screen,
+     * and coming back has to read what a run would now do.
+     */
+  }, [connection, reel, mode, showMoney]);
 
   /*
    * Step state comes from the plan on disk, never from this component. The
@@ -1068,6 +1075,19 @@ function Panel({
                 ? null
                 : { monthSoFarUsd: money.cap.monthSoFarUsd, capUsd: money.cap.monthlyUsd }
             }
+            refusedAtLimit={LIMIT_CAUSE.test(job?.detail?.error?.cause ?? '')}
+            onLimit={async (usd) => {
+              if (connection === null) return;
+              await saveVideoLimit(connection, usd);
+              /*
+               * Read back rather than trusting the answer: the price and the
+               * verdict under the button are the service's, and so is the figure.
+               */
+              if (reel !== null && mode !== null) {
+                setDry(await fetchDryRun(connection, reel.label, mode.id));
+              }
+              setMoney(await fetchMoney(connection));
+            }}
           />
           {gate.reason === null ? null : (
             <p className="say" role="status">
@@ -1822,6 +1842,8 @@ function RunActions({
   running,
   onRun,
   money,
+  refusedAtLimit,
+  onLimit,
 }: {
   dry: DryRunPlan | null;
   enabled: boolean;
@@ -1829,6 +1851,9 @@ function RunActions({
   onRun: (part?: { only?: string[]; redo?: string[] }) => void;
   /** What has been spent this month and the cap, when there is one. */
   money: { monthSoFarUsd: number; capUsd: number | null } | null;
+  /** The last run stopped at the most for one video. */
+  refusedAtLimit: boolean;
+  onLimit: (usd: number) => Promise<void>;
 }): JSX.Element {
   const words = dry?.wordsUsd;
   const pictures = dry?.picturesUsd;
@@ -1848,6 +1873,23 @@ function RunActions({
    * only signal there is.
    */
   const subtitlesDone = dry.wordsDone ?? words === 0;
+  const limitUsd = dry.videoLimitUsd;
+  const showLimit =
+    limitUsd !== undefined && (dry.picturesOverLimit === true || refusedAtLimit);
+  const picturesButton = (
+    <button
+      className={`run ${spendsMoney(pictures) ? '' : 'free'}`}
+      type="button"
+      disabled={!enabled || !subtitlesDone}
+      onClick={() => onRun({ only: dry.picturesStages ?? ['images'], redo: ['images'] })}
+    >
+      {running
+        ? 'Working…'
+        : `Make the pictures — ${
+            spendsMoney(pictures) ? `about ${toTheCent(pictures)}` : 'nothing to pay'
+          }`}
+    </button>
+  );
 
   return (
     <div className="partrun">
@@ -1889,23 +1931,33 @@ function RunActions({
         and it is still open. Every candidate already on disk comes back from
         the cache, so redoing the stage re-bills nothing that exists.
       */}
-      <button
-        className={`run ${spendsMoney(pictures) ? '' : 'free'}`}
-        type="button"
-        disabled={!enabled || !subtitlesDone}
-        onClick={() => onRun({ only: dry.picturesStages ?? ['images'], redo: ['images'] })}
-      >
-        {running
-          ? 'Working…'
-          : `Make the pictures — ${
-              spendsMoney(pictures) ? `about ${toTheCent(pictures)}` : 'nothing to pay'
-            }`}
-      </button>
+      {/*
+        **The limit that refuses, beside the button it refuses.** Block 15 session
+        119. Only when this video is over it, or a run has just stopped at it — an
+        ordinary day's Make is unchanged. On the same row as the price, so the two
+        figures are read together and the refused state stays inside 900 px. It is
+        always on the money screen too.
+      */}
+      {showLimit ? (
+        <div className="withlimit">
+          {picturesButton}
+          <VideoLimit limitUsd={limitUsd} save={onLimit} />
+        </div>
+      ) : (
+        picturesButton
+      )}
       <CapWarning
         estimateUsd={pictures}
         monthSoFarUsd={money?.monthSoFarUsd ?? 0}
         capUsd={money?.capUsd ?? null}
       />
+      {showLimit && dry.picturesOverLimit === true && !refusedAtLimit ? (
+        <p className="hint" role="status">
+          About {toTheCent(pictures)} is more than the {toTheCent(limitUsd)} you allow for one
+          video, so Make the pictures would be refused and nothing spent. It needs{' '}
+          {upToTheCent(pictures)} or more.
+        </p>
+      ) : null}
       {/*
         **Two consecutive actions, with a paragraph standing between them.** Block
         13 session 103, and the same complaint session 102 acted on: *"when I

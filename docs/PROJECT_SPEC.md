@@ -842,3 +842,25 @@ asserted by test.
 worse than useless: `PlanMergeBlockedError` throws whenever a flag is present,
 so any reel whose watermark had been set would refuse an ordinary
 re-transcription until it was forced. A merge test pins the survival.
+
+### The most one video may cost is his to set, and it refuses
+
+**Ruled by the user on 2026-09-30, Block 15 session 119.** A 70-second client
+video priced at about $6.87 was refused by `PIPELINE_CEILING_USD`, a $4.00
+figure chosen in Block 8 and marked *CHOSEN, NOT MEASURED*. Block 10 session 31
+reported that a longer reel would meet it and left it undecided; nobody had put
+it to him until this session. He ruled:
+
+- **It stays a refusal.** A run that would cost one video more than the figure
+  is refused before anything is requested, exactly as before. It is not a
+  warning, and it is not the monthly cap.
+- **He sets it**, as *Most for one video*: on Make, beside *Make the pictures*,
+  whenever a video is over it or a run has just stopped at it; and always on
+  the money screen, beside *Warn me past*. It is kept in
+  `.local/video-limit.json`, a file of its own.
+- **It starts at $4.00**, so nobody's run changes because the control exists.
+
+**Three money figures, three questions.** *Most for one video* refuses one
+video. *Warn me past* (session 69) warns about a month and never refuses. The
+*soft alarm $2.00* (ARCHITECTURE §6) colours what one video has cost so far and
+refuses nothing.

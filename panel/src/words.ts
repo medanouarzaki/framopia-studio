@@ -90,6 +90,28 @@ export function money(usd: number): string {
   return `$${usd.toFixed(2)}`;
 }
 
+/** Every cause that means the most for one video was reached. */
+export const LIMIT_CAUSE = /would be crossed|ceiling|budget exceeded/i;
+
+/** The control's own label, which every refusal names. */
+export const LIMIT_LABEL = 'Most for one video';
+const LIMIT_CONTROL = `\u201c${LIMIT_LABEL}\u201d`;
+const LIMIT_WHERE = 'beside Make the pictures';
+
+/** The dollar figures in a cause, in the order it gives them. */
+function figuresIn(cause: string): number[] {
+  return [...cause.matchAll(/\$(\d+(?:\.\d+)?)/g)].map((m) => Number(m[1]));
+}
+
+/**
+ * **Rounded up, never to the nearest.** The gate compares the unrounded figure,
+ * so a limit typed from *about $6.87* when the estimate is $6.8742 is refused
+ * again. The figure he is told to type is one that will pass.
+ */
+export function upToTheCent(usd: number): string {
+  return money(Math.ceil(Math.round(usd * 1e6) / 1e4) / 100);
+}
+
 /**
  * **An internal message never reaches the screen raw.**
  *
@@ -98,7 +120,7 @@ export function money(usd: number): string {
  * do**. Anything unmatched falls through to a sentence that is honest about not
  * knowing rather than to the raw text.
  */
-const CAUSES: { when: RegExp; say: string }[] = [
+const CAUSES: { when: RegExp; say: string | ((cause: string) => string) }[] = [
   {
     when: /depict more than one subject/i,
     say:
@@ -148,11 +170,39 @@ const CAUSES: { when: RegExp; say: string }[] = [
       'The key for the paid services was not accepted. Nothing here can change it — the key ' +
       'itself has to be replaced before anything that costs money will run.',
   },
+  /*
+   * **It named a limit he could not reach.** Block 15 session 119: *"Raise the
+   * limit"*, and the only money control on his screen was the monthly cap, which
+   * only warns. The limit that refuses is now his to set, and each sentence names
+   * the control by its label, where it is, and — when the cause carries the
+   * figures — how high it has to go.
+   */
   {
-    when: /would be crossed|ceiling|budget exceeded/i,
+    when: /Estimated \$[\d.]+ .*over the \$[\d.]+ ceiling/i,
+    say: (cause) => {
+      const [wanted = 0, limit = 0] = figuresIn(cause);
+      return (
+        `This would cost about ${money(wanted)}, more than the ${money(limit)} you allow for one ` +
+        `video, so nothing was spent. Set ${LIMIT_CONTROL}, ${LIMIT_WHERE}, to ` +
+        `${upToTheCent(wanted)} or more.`
+      );
+    },
+  },
+  {
+    when: /already (billed|spent).*\$[\d.]+ ceiling|would cross the \$[\d.]+ ceiling/i,
+    say: (cause) => {
+      const limit = figuresIn(cause).at(-1) ?? 0;
+      return (
+        `It stopped at the ${money(limit)} you allow for one video, before asking for anything ` +
+        `more. What it made first is kept. Raise ${LIMIT_CONTROL}, ${LIMIT_WHERE}, to let it finish.`
+      );
+    },
+  },
+  {
+    when: LIMIT_CAUSE,
     say:
-      'This would have cost more than the limit set for one video, so nothing was spent. ' +
-      'Raise the limit or use a shorter video.',
+      'It would have cost more than you allow for one video, so it stopped before asking for ' +
+      `anything more. Raise ${LIMIT_CONTROL}, ${LIMIT_WHERE}.`,
   },
   {
     /*
@@ -218,7 +268,7 @@ export function causeWords(cause: string | null | undefined): string {
     if (written.test(cause.trim())) return cause;
   }
   for (const entry of CAUSES) {
-    if (entry.when.test(cause)) return entry.say;
+    if (entry.when.test(cause)) return typeof entry.say === 'string' ? entry.say : entry.say(cause);
   }
   return 'It stopped before finishing. Nothing you have already paid for is lost.';
 }

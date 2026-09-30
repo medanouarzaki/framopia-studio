@@ -8,6 +8,7 @@ import {
   nothingYetWords,
   queueNews,
   causeWords,
+  upToTheCent,
   money,
   runStateWords,
   skippedWords,
@@ -191,6 +192,56 @@ describe('what went wrong, in his words', () => {
         `${cause.slice(0, 20)}: false`,
       );
     }
+  });
+
+  /*
+   * Block 15 session 119. *"Raise the limit"* — and the only money control he
+   * could find was the monthly cap, which only warns. Each sentence now names the
+   * control by its label and where it is, and says how high it has to go.
+   */
+  it('names the control that refused him, where it is, and the figure that passes', () => {
+    const said = causeWords(
+      'Estimated $6.8742 for 38 images (19 slots x 2) on gemini-3-pro-image-preview at 2K, ' +
+        'over the $4.00 ceiling. Nothing was generated.',
+    );
+    expect(said).toBe(
+      'This would cost about $6.87, more than the $4.00 you allow for one video, so nothing ' +
+        'was spent. Set “Most for one video”, beside Make the pictures, to $6.88 or more.',
+    );
+  });
+
+  it('does not say nothing was spent when a run stopped part-way at the limit', () => {
+    for (const cause of [
+      'stopping before images: this run has already billed $4.1200 against a $4.00 ceiling. ' +
+        'The run is aborted, not truncated, and nothing was requested.',
+      'stopping before image 3: $0.3618 already spent this session plus $0.1809 for the next ' +
+        'image would cross the $0.50 ceiling. The run is aborted, not truncated.',
+    ]) {
+      const said = causeWords(cause);
+      expect(said).toContain('“Most for one video”');
+      expect(said).toContain('What it made first is kept');
+      expect(said).not.toContain('nothing was spent');
+    }
+    expect(causeWords('the ceiling would be crossed')).toContain('“Most for one video”');
+  });
+
+  it('never again tells him to raise a limit without naming it', () => {
+    for (const cause of [
+      'Estimated $6.8742 for 38 images, over the $4.00 ceiling.',
+      'the ceiling would be crossed',
+      'budget exceeded',
+    ]) {
+      expect(causeWords(cause)).not.toContain('Raise the limit');
+      expect(causeWords(cause)).not.toContain('the limit set for one video');
+    }
+  });
+
+  /* The gate compares the unrounded figure, so the figure he is told must pass it. */
+  it('rounds the figure he is told to type up, never to the nearest', () => {
+    expect(upToTheCent(6.8742)).toBe('$6.88');
+    expect(upToTheCent(6.87)).toBe('$6.87');
+    expect(upToTheCent(4)).toBe('$4.00');
+    expect(upToTheCent(2.1708)).toBe('$2.18');
   });
 
   it('says something honest when there is no cause at all', () => {

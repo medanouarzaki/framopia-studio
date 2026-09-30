@@ -11,6 +11,7 @@ import { resolveTranscriptionEntry } from './transcription/resolve-entry.js';
 import { analyseFrames, assertFrameAnalysisAvailable, type FrameAnalysisProgress } from './frames/analyse.js';
 import { applyLoudnessToPlan, ensureLoudness, ensureWatermarkFacts } from './build/measurements.js';
 import type { EditPlan } from './editplan/types.js';
+import { PIPELINE_CEILING_USD, readVideoLimitUsd } from './video-limit.js';
 
 /**
  * The pipeline runner: one reel, one mode, four stages, driven from the panel.
@@ -82,21 +83,8 @@ export class PipelineError extends Error {
   }
 }
 
-/**
- * The hard gate on a run, in dollars of ledger spend across every billable
- * stage.
- *
- * **This is not the $2.00 figure the panel shows.** That is ARCHITECTURE §6's
- * soft alarm — a number the user is warned about, per reel, cumulative. This is
- * a refusal: checked against the ledger before each billable request, so a run
- * cannot walk past it while it is happening. It sits above the alarm because a
- * reel legitimately crossing $2.00 should warn, not fail.
- *
- * CHOSEN, NOT MEASURED. A five-slot reel costs about $1.90 end to end
- * (transcription ~$0.17, keywords ~$0.18, slots ~$0.06, images ~$1.55), so this
- * leaves room for one regeneration and stops well short of a runaway.
- */
-export const PIPELINE_CEILING_USD = 4;
+/** The default gate on a run; his own figure is read by the callers below. */
+export { PIPELINE_CEILING_USD };
 
 /** Every ledger stage a pipeline run can append to. */
 const BILLABLE_LEDGER_STAGES = [
@@ -656,6 +644,12 @@ registerJobRunner(PIPELINE_JOB_TYPE, async (params, job) => {
     modeId,
     redo,
     only,
+    /*
+     * **His figure, read when the run starts.** Block 15 session 119: this used
+     * the default alone, so the limit that refused him could not be raised from
+     * anywhere he could reach.
+     */
+    ceilingUsd: readVideoLimitUsd(),
     onProgress: (progress) => {
       job.progress = progress.percent;
       job.detail = progress;

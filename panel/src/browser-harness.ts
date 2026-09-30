@@ -206,6 +206,8 @@ export function realMoney(): Record<string, unknown> {
      */
     perReel: realReels(),
     cap: { monthlyUsd: null, monthSoFarUsd: 0 },
+    /* Where a run starts. The harness never reads this machine's own figure. */
+    videoLimitUsd: 4,
     /*
      * **His real payments, read off the same file the service reads.**
      *
@@ -586,6 +588,52 @@ export function stubRoutes(
       : p.dry;
     return Promise.resolve({ ok: true, json: () => Promise.resolve(body) });
   };`;
+}
+
+/**
+ * **His video as it was refused.** Block 15 session 119: a 69.7-second client
+ * video priced at $6.8742 for 38 pictures, against the $4.00 a run starts with.
+ * Laid over `realPanelRoutes`, so everything else is his.
+ */
+export const HIS_REFUSED_VIDEO = { picturesUsd: 6.8742, videoLimitUsd: 4 };
+
+export function overTheLimit(): string {
+  return `
+  window.__payload.dry = Object.assign({}, window.__payload.dry, {
+    estimateUsd: ${String(HIS_REFUSED_VIDEO.picturesUsd)},
+    picturesUsd: ${String(HIS_REFUSED_VIDEO.picturesUsd)},
+    videoLimitUsd: ${String(HIS_REFUSED_VIDEO.videoLimitUsd)},
+    picturesOverLimit: true,
+  });`;
+}
+
+/** The run that refusal ends, as the job the panel polls. */
+export function refusedAtTheLimit(): string {
+  return failedRun(
+    'Estimated $6.8742 for 38 images (19 slots x 2) on gemini-3-pro-image-preview at 2K, ' +
+      'over the $4.00 ceiling. Nothing was generated.',
+  );
+}
+
+/** A run that stopped at the pictures, for whatever cause is given. */
+export function failedRun(cause: string): string {
+  const error = { stage: 'images', cause, retryable: false };
+  const stage = (id: string, label: string, state: string, extra = {}): unknown => ({
+    id, label, state, reason: null, costUsd: 0, ...extra,
+  });
+  const detail = {
+    reel: 'sora', modeId: 'dr-loubna-kfafi', planPath: '/v/p0.json',
+    stages: [
+      stage('transcription', 'Writing down the words', 'skipped'),
+      stage('analysis', 'Choosing the pictures', 'skipped'),
+      stage('images', 'Drawing the pictures', 'failed', { error }),
+      stage('zones', 'Looking at the video', 'waiting'),
+    ],
+    percent: 0.5, spentUsd: 0, planSpentUsd: 0.6636, done: true, error,
+  };
+  return `window.__job = () => (${JSON.stringify({
+    id: 'job-1', status: 'error', progress: 0.5, detail,
+  })});`;
 }
 
 export function stepsThrough(upTo: string): unknown[] {

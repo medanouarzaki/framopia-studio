@@ -775,13 +775,20 @@ and its `cacheEntryId`/`cacheProvenance` into the plan, so a stage the plan
 records as `done` is skipped with its reason said out loud. `redo: [stageId]`
 runs one again deliberately.
 
-**Two ceilings, and they are different things.** `PIPELINE_CEILING_USD = 4` in
-`service/src/pipeline.ts` is the **hard gate**: a running check against the
-ledger before each billable request, so a run is aborted rather than truncated.
-ARCHITECTURE §6's **$2.00 is a soft alarm** the panel shows against a reel's
-cumulative `costs.spentUsd` — a warning, never a refusal. The hard gate sits
-above the alarm because a reel legitimately crossing $2.00 should warn, not
-fail. `PIPELINE_CEILING_USD` is CHOSEN, NOT MEASURED.
+**Two ceilings, and they are different things.** The **hard gate** is the most
+one video may cost: a running check against the ledger before each billable
+request, so a run is aborted rather than truncated. Since Block 15 session 119
+it is **his figure** — *Most for one video*, read by `readVideoLimitUsd` in
+`service/src/video-limit.ts` from `.local/video-limit.json` when each run starts
+(the single-run job and every video of a queue), set through
+`POST /money/video-limit`, and defaulting to `PIPELINE_CEILING_USD = 4` when he
+has set none. The dry run reports it as `videoLimitUsd` and says whether *Make
+the pictures* would be refused as `picturesOverLimit`, asked of the gate's own
+`exceedsCeiling`. ARCHITECTURE §6's **$2.00 is a soft alarm** the panel shows
+against a reel's cumulative `costs.spentUsd` — a warning, never a refusal. The
+default sits above the alarm because a reel legitimately crossing $2.00 should
+warn, not fail. The $4.00 is CHOSEN, NOT MEASURED; that he may change it is
+his ruling (PROJECT_SPEC, *The most one video may cost*).
 
 **Frame analysis is driven** (Block 9 session 1). The `zones` stage — *Looking
 at the video* on screen — samples the reel, segments every frame and derives the

@@ -60,6 +60,7 @@ import { health } from './health.js';
 import { addPayment, correctPayment, moneyView, removePayment, setCap, setCredit } from './money.js';
 import { keepPreviousAttachment } from './clients/reattach.js';
 import { planPathsForMoney } from './money-plans.js';
+import { setVideoLimitUsd } from './video-limit.js';
 import {
   clearHandshake,
   DEFAULT_SERVICE_JSON_PATH,
@@ -306,6 +307,29 @@ export function createApp(token: string): http.Server {
           return;
         }
         setCap(usd as number | null);
+        sendJson(res, 200, moneyView({ planPaths: planPathsForMoney() }));
+        return;
+      }
+
+      /*
+       * **The most one video may cost.** Block 15 session 119: a run refused him
+       * at a figure nothing in the panel could reach. A number above zero; there
+       * is no "none", because he ruled that it stays a refusal.
+       */
+      if (req.method === 'POST' && url.pathname === '/money/video-limit') {
+        let body: Record<string, unknown>;
+        try {
+          body = JSON.parse((await readBody(req)) || '{}') as Record<string, unknown>;
+        } catch {
+          sendJson(res, 400, { error: 'invalid JSON body' });
+          return;
+        }
+        const usd = body['usd'];
+        if (typeof usd !== 'number' || !Number.isFinite(usd) || usd <= 0) {
+          sendJson(res, 400, { error: 'the most for one video is an amount above zero' });
+          return;
+        }
+        setVideoLimitUsd(usd);
         sendJson(res, 200, moneyView({ planPaths: planPathsForMoney() }));
         return;
       }

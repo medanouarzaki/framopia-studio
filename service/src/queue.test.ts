@@ -359,6 +359,36 @@ describe('what he comes back to', () => {
     }
   });
 
+  /*
+   * Block 15 session 119: *"the limit set for one video"*, when he had no such
+   * control. The refusal names the one he has, and how high it has to go.
+   */
+  it('names the control that refused a video, and how high it has to go', async () => {
+    const s = await ran(async () => {
+      throw new Error(
+        'Estimated $6.8742 for 38 images (19 slots x 2) on gemini at 2K, over the $4.00 ' +
+          'ceiling. Nothing was generated.',
+      );
+    });
+    const said = s.lines[0]?.said ?? '';
+    expect(said).toContain('“Most for one video”');
+    expect(said).toContain('$6.88 or more');
+    expect(said).toContain('nothing was spent');
+    expect(said).not.toContain('the limit set for one video');
+  });
+
+  it('does not say nothing was spent when it stopped part-way through', async () => {
+    const s = await ran(async () => {
+      throw new Error(
+        'stopping before image 3: $0.3618 already spent this session plus $0.1809 for the ' +
+          'next image would cross the $0.50 ceiling. The run is aborted, not truncated.',
+      );
+    });
+    const said = s.lines[0]?.said ?? '';
+    expect(said).toContain('“Most for one video”');
+    expect(said).not.toContain('nothing was spent');
+  });
+
   it('says plainly when a video was never started', async () => {
     const out = await runQueue({
       items: [item('one'), item('two')],

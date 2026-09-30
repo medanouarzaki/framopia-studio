@@ -102,5 +102,13 @@ export function formatEstimate(estimate: ImageRunEstimate, cachedImages = 0): st
  * costs nothing rather than aborting halfway with images already billed.
  */
 export function assertWithinCeiling(estimate: ImageRunEstimate, ceilingUsd: number): void {
-  if (estimate.usd > ceilingUsd) throw new ImageBudgetExceededError(estimate, ceilingUsd);
+  if (exceedsCeiling(estimate.usd, ceilingUsd)) throw new ImageBudgetExceededError(estimate, ceilingUsd);
+}
+
+/**
+ * **The one comparison the refusal makes.** The dry run asks it too, so what the
+ * Make screen says will be refused is what this gate refuses, from the same line.
+ */
+export function exceedsCeiling(usd: number, ceilingUsd: number): boolean {
+  return usd > ceilingUsd;
 }

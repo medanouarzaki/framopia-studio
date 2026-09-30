@@ -9,7 +9,9 @@ import {
   HEALTHY_PAYLOAD,
   HANDSHAKE,
   onScreen,
+  overTheLimit,
   realPanelRoutes,
+  refusedAtTheLimit,
 } from './browser-harness.js';
 
 /**
@@ -427,6 +429,23 @@ describe.skipIf(!built)('what each block of Make and Build costs', () => {
       await blocks(p2, label);
       await p2.close();
     }
+
+    /*
+     * Block 15 session 119: the two states the most for one video appears in —
+     * a video priced over it, and the run it has just refused.
+     */
+    const over = await hisPanel(overTheLimit());
+    if (over === null) return;
+    await onScreen(over, 'run');
+    await blocks(over, 'MAKE — over the most for one video');
+    await over.close();
+    const refused = await hisPanel(overTheLimit() + refusedAtTheLimit());
+    if (refused === null) return;
+    await onScreen(refused, 'run');
+    await refused.click('section.do .partrun button.run');
+    await refused.waitForTimeout(900);
+    await blocks(refused, 'MAKE — refused at the most for one video');
+    await refused.close();
   }, 180_000);
 
   it('measures Build in the states he meets', async () => {

@@ -1189,6 +1189,8 @@ export interface Money {
   credit: MoneyCredit | null;
   perReel: MoneyReel[];
   cap: { monthlyUsd: number | null; monthSoFarUsd: number };
+  /** The most one video may cost before a run refuses it. Absent from an older service. */
+  videoLimitUsd?: number;
   paidIn: PaidIn;
   /**
    * What each company was paid and what it has billed. Session 116.
@@ -1220,6 +1222,10 @@ export async function saveCredit(connection: Connection, usd: number): Promise<M
 
 export async function saveCap(connection: Connection, monthlyUsd: number | null): Promise<Money> {
   return await postJson<Money>(connection, '/money/cap', { monthlyUsd });
+}
+
+export async function saveVideoLimit(connection: Connection, usd: number): Promise<Money> {
+  return await postJson<Money>(connection, '/money/video-limit', { usd });
 }
 
 /** A payment in, or a correction to one when `id` is given. */

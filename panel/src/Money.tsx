@@ -1,9 +1,11 @@
 import { useEffect, useState, type JSX } from 'react';
+import { VideoLimit } from './VideoLimit.js';
 import {
   fetchMoney,
   removePayment,
   saveCap,
   saveCredit,
+  saveVideoLimit,
   savePayment,
   type Connection,
   type Money as MoneyData,
@@ -656,6 +658,27 @@ export function Money({ connection }: { connection: Connection }): JSX.Element {
           </button>
         </label>
       </div>
+
+      {/*
+        **Beside the cap, and not the same thing.** The cap is a month and only
+        warns; this is one video and refuses. Block 15 session 119.
+      */}
+      {data.videoLimitUsd === undefined ? null : (
+        <div className="moneycap">
+          <h3>The most for one video</h3>
+          <p className="faint">
+            Making one video that would cost more than this is refused before anything is
+            spent. It is {usd(data.videoLimitUsd)} now.
+          </p>
+          <VideoLimit
+            limitUsd={data.videoLimitUsd}
+            save={async (wanted) => {
+              await saveVideoLimit(connection, wanted);
+              setData(await fetchMoney(connection));
+            }}
+          />
+        </div>
+      )}
 
       {data.unreadable > 0 ? (
         <p className="hint" role="status">

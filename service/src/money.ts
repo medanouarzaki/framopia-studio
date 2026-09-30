@@ -19,6 +19,7 @@ import {
   type Group,
   type LedgerLine,
 } from '@framopia/core';
+import { readVideoLimitUsd } from './video-limit.js';
 
 /**
  * **What the money screen is shown, and the only place the ledger is opened.**
@@ -46,6 +47,11 @@ export interface MoneyView {
   credit: CreditView | null;
   perReel: ReelCost[];
   cap: CapView;
+  /**
+   * The most one video may cost before a run refuses it. Beside the cap and not
+   * inside it: the cap warns about a month, this refuses a video.
+   */
+  videoLimitUsd: number;
   paidIn: PaymentsView;
   /** What each company was paid and what it has billed. Session 116. */
   byProviderPaid: ProviderView[];
@@ -502,6 +508,7 @@ export function moneyView(options: {
           },
     perReel: reels,
     cap: { monthlyUsd: readCap(), monthSoFarUsd: monthSoFar },
+    videoLimitUsd: readVideoLimitUsd(),
     paidIn: {
       payments,
       totalInUsd: paidIn,

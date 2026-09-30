@@ -7,6 +7,7 @@ import {
   stubHost,
   realPanelRoutes,
   onScreen,
+  overTheLimit,
 } from './browser-harness.js';
 
 /**
@@ -475,6 +476,47 @@ const ELSEWHERE: Somewhere[] = [
       await box.fill('a word session 113 typed');
       await page.waitForTimeout(250);
       return (await page.$('.saidwhen button')) !== null;
+    },
+  },
+  {
+    /*
+     * Block 15 session 119. The most for one video appears beside *Make the
+     * pictures* only when a video is over it, so the state is his refused video
+     * laid over his data. A figure is typed first: Save with nothing in the box
+     * sends nothing, and a cell earned that way would prove nothing.
+     */
+    name: 'the most for one video, beside Make the pictures',
+    within: '.withlimit .videolimit',
+    reach: async (page) => {
+      await page.evaluate(overTheLimit());
+      await page.selectOption(
+        'select[aria-label="Video"]',
+        'Dr Loubna Kfafi/September Content/Exports/sculptra-explainer.mov',
+      );
+      await page.waitForTimeout(400);
+      await page.selectOption(
+        'select[aria-label="Video"]',
+        'Dr Loubna Kfafi/September Content/Exports/sora.mov',
+      );
+      await page.waitForTimeout(500);
+      await onScreen(page, 'run');
+      const box = await page.$('.withlimit .videolimit input');
+      if (box === null) return false;
+      await box.fill('8');
+      return true;
+    },
+  },
+  {
+    name: 'the most for one video, on the money screen',
+    within: '.moneycap .videolimit',
+    reach: async (page) => {
+      await onScreen(page, 'run');
+      if (!(await press(page, 'button.seemoney'))) return false;
+      await page.waitForSelector('.moneybanner', { timeout: 10_000 }).catch(() => undefined);
+      const box = await page.$('.moneycap .videolimit input');
+      if (box === null) return false;
+      await box.fill('8');
+      return true;
     },
   },
   {

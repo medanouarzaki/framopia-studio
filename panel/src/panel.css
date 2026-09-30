@@ -1169,6 +1169,18 @@ section.client .say, section.video .say { margin: 8px 0 0; color: var(--muted); 
   margin: 6px 0 0; color: var(--warn); font-size: var(--t-second); line-height: 1.5;
 }
 
+/*
+ * **The most for one video, on the row of the button it refuses.** Block 15
+ * session 119. Beside it rather than under it: the price and the limit are read
+ * together, and a run it has just refused stays inside 900 px. It wraps under the
+ * button when the column is too narrow for both.
+ */
+.withlimit { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-tight); }
+.withlimit > button.run { flex: 0 1 auto; }
+.withlimit .videolimit { flex: 1 1 240px; min-width: 0; }
+/* On the scale Make already uses for a hint: 13px, muted, 20px leading. */
+.videolimit .capentry span { font-size: var(--t-second); line-height: 1.55; }
+
 /* Money in, the two sources, and what the screen cannot reach. */
 .paidin, .reconcile, .cannotsee { display: grid; gap: 6px; }
 

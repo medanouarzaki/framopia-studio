@@ -22,6 +22,8 @@ import { IMAGE_CACHE_STAGE } from './images/cache.js';
 import { imageFingerprintInputs, imageFingerprintOf } from './images/fingerprint.js';
 import { cacheEntryDir, CACHE_ROOT } from './transcription/cache.js';
 import { DEFAULT_IMAGE_CONFIG } from './images/config.js';
+import { exceedsCeiling } from './images/estimate.js';
+import { readVideoLimitUsd } from './video-limit.js';
 import { watermarkEnabled, watermarkSizeOf } from './placement/watermark.js';
 import { WATERMARK_SIZES, type WatermarkSize } from './editplan/types.js';
 import { slotNeedsGenerating, slotsNeedingGeneration } from './editplan/slot-fill.js';
@@ -162,6 +164,17 @@ export interface DryRunPlan {
    * they are cached and still never have been written onto this plan.
    */
   wordsDone: boolean;
+  /**
+   * The most one video may cost before a run refuses it — his figure, or the
+   * default until he sets one. Optional so a panel reads an older service's
+   * answer as "not said" rather than as zero.
+   */
+  videoLimitUsd?: number;
+  /**
+   * Whether *Make the pictures* would be refused at that figure, before a cent
+   * is spent. Asked of the gate's own comparison, not worked out again here.
+   */
+  picturesOverLimit?: boolean;
   /** True when any stage resolves `compatible`; the panel says so plainly. */
   reusesOlderGuide: boolean;
   /** Null unless the evidence clearly says the video is someone else's. */
@@ -238,7 +251,11 @@ function perImageCeilingUsd(): number {
   }).perImageUsd;
 }
 
-export async function dryRun(reelLabel: string, modeId: string): Promise<DryRunPlan> {
+export async function dryRun(
+  reelLabel: string,
+  modeId: string,
+  options: { videoLimitUsd?: number } = {},
+): Promise<DryRunPlan> {
   const reel = findReelByLabel(reelLabel);
   if (reel === undefined) {
     throw new DryRunError(`there is no video called "${reelLabel}" any more. Pick it again from the list.`);
@@ -560,6 +577,11 @@ export async function dryRun(reelLabel: string, modeId: string): Promise<DryRunP
           offer: reattachSentence(mismatched),
         };
 
+  const picturesUsd = stages
+    .filter((s) => PICTURES_STAGE_IDS.includes(s.id as PipelineStageId))
+    .reduce((sum, s) => sum + (s.estimateUsd ?? 0), 0);
+  const videoLimitUsd = options.videoLimitUsd ?? readVideoLimitUsd();
+
   return {
     reel: reel.label,
     videoPath: reel.videoPath,
@@ -582,12 +604,12 @@ export async function dryRun(reelLabel: string, modeId: string): Promise<DryRunP
           'colours from. Choose the client for this video before building.'
         : null,
     estimateUsd: stages.reduce((sum, s) => sum + (s.estimateUsd ?? 0), 0),
+    videoLimitUsd,
+    picturesOverLimit: exceedsCeiling(picturesUsd, videoLimitUsd),
     wordsUsd: stages
       .filter((s) => WORDS_STAGE_IDS.includes(s.id as PipelineStageId))
       .reduce((sum, s) => sum + (s.estimateUsd ?? 0), 0),
-    picturesUsd: stages
-      .filter((s) => PICTURES_STAGE_IDS.includes(s.id as PipelineStageId))
-      .reduce((sum, s) => sum + (s.estimateUsd ?? 0), 0),
+    picturesUsd,
     wordsStages: [...WORDS_STAGE_IDS],
     picturesStages: [...PICTURES_STAGE_IDS],
     wordsDone: stages

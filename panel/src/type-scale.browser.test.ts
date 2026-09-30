@@ -7,6 +7,9 @@ import {
   stubHost,
   realPanelRoutes,
   onScreen,
+  failedRun,
+  overTheLimit,
+  refusedAtTheLimit,
 } from './browser-harness.js';
 
 /**
@@ -28,10 +31,11 @@ afterAll(async () => {
   await browser?.close();
 }, 120_000);
 
-export async function hisPanel(b: Browser): Promise<Page> {
+export async function hisPanel(b: Browser, extra?: string): Promise<Page> {
   const page = await b.newPage({ viewport: { width: 420, height: 900 } });
   await page.addInitScript(stubHost(HANDSHAKE));
   await page.addInitScript(realPanelRoutes());
+  if (extra !== undefined) await page.addInitScript(extra);
   await page.goto(`file://${INDEX}`);
   await page.waitForSelector('header.brand', { timeout: 10_000 });
   await onScreen(page, 'choose');
@@ -90,6 +94,7 @@ describe.skipIf(!built)('what the type actually is', () => {
   it('counts every size, weight, colour and leading on screen', async () => {
     if (browser === undefined) return;
     const page = await hisPanel(browser);
+    const b2 = async (extra: string): Promise<Page> => await hisPanel(browser as Browser, extra);
     const all = new Map<string, { count: number; what: string }>();
     const sweep = async (): Promise<void> => {
       for (const screen of ['choose', 'run', 'build'] as const) {
@@ -144,6 +149,42 @@ describe.skipIf(!built)('what the type actually is', () => {
       await page.waitForTimeout(200);
     }
     await sweep();
+    /*
+     * **And the two states the most for one video appears in.** Block 15 session
+     * 119: a video priced over it, and the run it has just refused. Neither is
+     * reached by the passes above, and a control nobody sweeps is a size nobody
+     * counts.
+     */
+    const beforeAnyFailure = all.size;
+    for (const extra of [
+      failedRun('1 slot idea(s) depict more than one subject: slot 7'),
+      'LIMIT',
+      overTheLimit(),
+      overTheLimit() + refusedAtTheLimit(),
+    ]) {
+      if (extra === 'LIMIT') {
+        console.log(
+          `\n  == ${String(beforeAnyFailure)} before any failed run, ` +
+            `${String(all.size)} with one, before the most for one video`,
+        );
+        continue;
+      }
+      const over = await b2(extra);
+      await onScreen(over, 'run');
+      if (extra.includes('__job')) {
+        await over.click('section.do .partrun button.run');
+        await over.waitForTimeout(900);
+      }
+      for (const row of await inventory(over)) {
+        const at = all.get(row.key) ?? { count: 0, what: row.what };
+        at.count += row.count;
+        if (!at.what.includes(row.what.split(',')[0] ?? '')) {
+          at.what = `${at.what}, ${row.what.split(',')[0] ?? ''}`;
+        }
+        all.set(row.key, at);
+      }
+      await over.close();
+    }
     const rows = [...all.entries()].sort((a, b) => b[1].count - a[1].count);
     console.log(`\n  == ${String(rows.length)} distinct type settings across the three screens\n`);
     for (const [key, v] of rows) {

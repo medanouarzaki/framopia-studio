@@ -2,6 +2,7 @@ import { asStageError, runPipeline, type PipelineStageError } from './pipeline.j
 import { registerJobRunner } from './jobs.js';
 import { writeQueueRecord } from './queue-record.js';
 import { PICTURES_STAGE_IDS, WORDS_STAGE_IDS, type PipelineStageId } from './pipeline-stages.js';
+import { readVideoLimitUsd } from './video-limit.js';
 
 /**
  * **The queue runs everything that costs money and takes time, and stops before
@@ -346,6 +347,8 @@ registerJobRunner(QUEUE_JOB_TYPE, async (params, job) => {
         reel: item.reel,
         modeId: item.modeId,
         only: [...QUEUE_STAGE_IDS],
+        /* The same figure a single run reads; each video is its own run. */
+        ceilingUsd: readVideoLimitUsd(),
         /*
          * **The pipeline's own report, not a second one.** It already says which
          * stage is running; session 110 reads that rather than adding a parallel
@@ -410,8 +413,26 @@ function whyItStopped(cause: string | null | undefined): string {
   if (/no video called|there is no reel/i.test(said)) {
     return 'That video is not on this Mac any more.';
   }
+  /*
+   * Block 15 session 119: this said *"the limit set for one video"* and he had no
+   * such control. It names the one he has now, and the figure when the cause
+   * carries it. The panel's `causeWords` says the same thing for a single run.
+   */
+  const estimated = /Estimated \$([\d.]+) .*over the \$([\d.]+) ceiling/i.exec(said);
+  if (estimated !== null) {
+    const wanted = Number(estimated[1]);
+    return (
+      `It would cost about $${wanted.toFixed(2)}, more than the $${Number(estimated[2]).toFixed(2)} ` +
+      'you allow for one video, so nothing was spent. Raise \u201cMost for one video\u201d, ' +
+      'beside Make the pictures, to ' +
+      `$${(Math.ceil(Math.round(wanted * 1e6) / 1e4) / 100).toFixed(2)} or more.`
+    );
+  }
   if (/ceiling|would be crossed|budget exceeded/i.test(said)) {
-    return 'It would have cost more than the limit set for one video, so nothing was spent.';
+    return (
+      'It reached the most you allow for one video and stopped before asking for anything ' +
+      'more. Raise \u201cMost for one video\u201d, beside Make the pictures, to let it finish.'
+    );
   }
   if (/ENOENT|no such file|does not exist/i.test(said)) {
     return 'A file it needed was not where it expected — if the drive is unplugged, plug it in.';
